@@ -5,7 +5,7 @@
 # Build context: repository root.
 
 ARG RUST_VERSION=1.97
-ARG DEBIAN_RELEASE=bookworm
+ARG DEBIAN_RELEASE=trixie
 
 FROM rust:${RUST_VERSION}-${DEBIAN_RELEASE} AS build
 WORKDIR /src

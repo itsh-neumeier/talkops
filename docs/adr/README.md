@@ -15,5 +15,6 @@ nächste freie Nummer; überholte ADRs werden nicht gelöscht, sondern auf
 | [0006](0006-steuerung-xml-curl-und-esl.md) | FreeSWITCH-Steuerung über mod_xml_curl und Event Socket | Angenommen |
 | [0007](0007-deployment-und-netzwerk.md) | Deployment: Docker Compose mit Host-Networking | Angenommen |
 | [0008](0008-secrets-at-rest.md) | Verschlüsselung von SIP- und Trunk-Zugangsdaten | Angenommen |
+| [0009](0009-basis-images-debian-trixie.md) | Basis-Images: Debian 13 „Trixie“ (FreeSWITCH mit PCRE2-Backport) | Angenommen |
 
 Vorlage: [`template.md`](template.md)

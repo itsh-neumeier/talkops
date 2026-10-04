@@ -85,5 +85,7 @@ CI (`.github/workflows/ci.yml`) runs exactly these checks; keep them green.
   All UI strings go through `t()` with keys in both `en.ts` and `de.ts`.
 - **Language**: code, comments, README and commit messages in English.
   Architecture docs and ADRs in German. User docs in both `docs/de/` and `docs/en/`.
-- **Images**: all images run as UID/GID 10001 (`talkops`) so shared volumes work.
+- **Images**: Debian 13 "trixie" based (ADR 0009); FreeSWITCH patches live in
+  `docker/freeswitch/patches/` with their upstream origin in the header.
+  All images run as UID/GID 10001 (`talkops`) so shared volumes work.
   `docker-compose.yml` must never contain `build:` (Portainer compatibility).

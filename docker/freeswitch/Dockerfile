@@ -5,7 +5,7 @@
 # minimal bootstrap configuration; everything else is served by TalkOps via
 # mod_xml_curl (see docs/adr/0006-control-plane-xml-curl-esl.md).
 
-ARG DEBIAN_RELEASE=bookworm
+ARG DEBIAN_RELEASE=trixie
 
 FROM debian:${DEBIAN_RELEASE}-slim AS build
 
@@ -20,9 +20,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         autoconf automake build-essential ca-certificates cmake git libtool libtool-bin \
         nasm pkg-config uuid-dev yasm \
         libcurl4-openssl-dev libedit-dev libjpeg-dev libldns-dev libncurses-dev libogg-dev \
-        libopus-dev libpcre3-dev libsndfile1-dev libspeex-dev libspeexdsp-dev libsqlite3-dev \
+        libopus-dev libpcre2-dev libsndfile1-dev libspeex-dev libspeexdsp-dev libsqlite3-dev \
         libssl-dev libtiff-dev zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
+
+# The pinned releases predate GCC 14 and curl 8.x type checks, and
+# FreeSWITCH builds with -Werror. Keep warnings visible but non-fatal, and
+# downgrade the diagnostics GCC 14 made errors by default.
+ENV CFLAGS="-O2 -g -Wno-error -Wno-error=incompatible-pointer-types -Wno-error=implicit-function-declaration -Wno-error=int-conversion -Wno-error=implicit-int -Wno-error=return-mismatch"
 
 WORKDIR /usr/src
 
@@ -43,7 +48,10 @@ RUN git clone https://github.com/freeswitch/spandsp.git \
     && ldconfig
 
 RUN git clone --depth 1 --branch "${FREESWITCH_VERSION}" https://github.com/signalwire/freeswitch.git
+COPY patches/ /usr/src/patches/
 COPY build-modules.conf /usr/src/freeswitch/modules.conf
+# Patches backport fixes from FreeSWITCH master (see each file's header).
+RUN cd freeswitch && for p in /usr/src/patches/*.patch; do git apply --verbose "$p"; done
 RUN cd freeswitch \
     && ./bootstrap.sh -j \
     && ./configure --prefix=/usr/local/freeswitch --disable-static \
@@ -64,9 +72,9 @@ LABEL org.opencontainers.image.title="talkops-freeswitch" \
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        ca-certificates libcurl4 libedit2 libjpeg62-turbo libldns3 libncurses6 libogg0 \
-        libopus0 libpcre3 libsndfile1 libspeex1 libspeexdsp1 libsqlite3-0 libssl3 libtiff6 \
-        libuuid1 zlib1g \
+        ca-certificates libcurl4t64 libedit2 libjpeg62-turbo libldns3t64 libncursesw6 libogg0 \
+        libopus0 libpcre2-8-0 libsndfile1 libspeex1 libspeexdsp1 libsqlite3-0 libssl3t64 \
+        libtiff6 libuuid1 zlib1g \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /usr/local/lib/ /usr/local/lib/

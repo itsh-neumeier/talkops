@@ -32,9 +32,9 @@
 
 | Dienst | Aufgabe | Technik |
 |---|---|---|
-| `freeswitch` | SIP-Registrar/Proxy-Endpunkt, Medien (RTP, Video-Passthrough, WebRTC), Aufzeichnung, Konferenz, Queues, Fax | FreeSWITCH 1.10.12, aus Quellcode, gepinnt ([ADR 0002](adr/0002-telefonie-engine-freeswitch.md)) |
+| `freeswitch` | SIP-Registrar/Proxy-Endpunkt, Medien (RTP, Video-Passthrough, WebRTC), Aufzeichnung, Konferenz, Queues, Fax | FreeSWITCH 1.10.12 auf Debian 13, aus Quellcode, gepinnt ([ADR 0002](adr/0002-telefonie-engine-freeswitch.md), [ADR 0009](adr/0009-basis-images-debian-trixie.md)) |
 | `talkops` | Control Plane: liefert FreeSWITCH-Konfiguration aus der DB, steuert Anrufe per ESL, REST-API, Web-UI, Provisioning, Auth | Rust: tokio, axum, sqlx, utoipa |
-| `postgres` | Einzige Quelle der Wahrheit: Konfiguration, CDR, Job-Queue, Audit-Log | PostgreSQL 17 ([ADR 0003](adr/0003-datenbank-postgresql.md)) |
+| `postgres` | Einzige Quelle der Wahrheit: Konfiguration, CDR, Job-Queue, Audit-Log | PostgreSQL 17, `postgres:17-trixie` ([ADR 0003](adr/0003-datenbank-postgresql.md)) |
 | `media-worker` | Asynchrone Jobs: TTS (Piper), Transkription (whisper.cpp) | Rust, Postgres-Job-Queue ([ADR 0005](adr/0005-job-queue-postgres.md)) |
 | `caddy` (optional) | HTTPS mit ACME vor dem Web-UI | Caddy 2 |
 
@@ -173,7 +173,7 @@ talkops/
 ├── web/                          SvelteKit + TS + Tailwind (SPA)
 │   └── src/  lib/{api.ts, i18n/, theme.svelte.ts} · routes/
 ├── docker/
-│   ├── freeswitch/               Dockerfile, build-modules.conf, conf/ (Bootstrap)
+│   ├── freeswitch/               Dockerfile, build-modules.conf, conf/ (Bootstrap), patches/
 │   ├── talkops/                  Dockerfile (Rust + Web-UI)
 │   └── media-worker/             Dockerfile (P3/P5: Piper, whisper.cpp, CUDA-Variante)
 ├── tests/                        P1: SIPp-Szenarien + Compose-Integrationstests

@@ -1,0 +1,53 @@
+# Builds the FreeSWITCH image when its sources change. The source build takes
+# a while, so it only runs for changes under docker/freeswitch.
+name: FreeSWITCH image
+
+on:
+  push:
+    branches: [main]
+    paths: ["docker/freeswitch/**", ".github/workflows/freeswitch.yml"]
+  pull_request:
+    paths: ["docker/freeswitch/**", ".github/workflows/freeswitch.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: docker/freeswitch
+          push: false
+          load: true
+          tags: talkops-freeswitch:ci
+          cache-from: type=gha,scope=talkops-freeswitch-amd64
+          cache-to: type=gha,scope=talkops-freeswitch-amd64,mode=max
+      - name: Start FreeSWITCH and wait for healthy
+        run: |
+          docker run -d --name fs --network host \
+            -e TALKOPS_ESL_PASSWORD=ci -e TALKOPS_XMLCURL_PASSWORD=ci \
+            talkops-freeswitch:ci
+          for i in $(seq 1 60); do
+            docker exec fs /usr/local/bin/fs-healthcheck.sh && exit 0
+            sleep 2
+          done
+          docker logs fs
+          exit 1
+      - name: All configured modules are loaded
+        run: |
+          missing=0
+          for m in $(grep -oE 'mod_[a-z0-9_]+' docker/freeswitch/conf/autoload_configs/modules.conf.xml); do
+            if [ "$(docker exec fs fs_cli -p ci -x "module_exists $m")" != "true" ]; then
+              echo "::error::$m is not loaded"
+              missing=1
+            fi
+          done
+          [ "$missing" = 0 ] || { docker logs fs 2>&1 | grep -E '\[(ERR|CRIT)\]'; exit 1; }
+      - name: Container runs unprivileged
+        run: test "$(docker exec fs id -u)" = 10001

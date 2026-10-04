@@ -1,0 +1,10 @@
+@import 'tailwindcss';
+
+/* Dark mode is toggled via the `dark` class on <html> (see lib/theme.svelte.ts). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+	body {
+		@apply bg-slate-50 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
+	}
+}

@@ -1,0 +1,7 @@
+<configuration name="sofia.conf" description="SIP stack (profiles are served by TalkOps)">
+  <global_settings>
+    <param name="log-level" value="0"/>
+    <param name="debug-presence" value="0"/>
+  </global_settings>
+  <profiles/>
+</configuration>

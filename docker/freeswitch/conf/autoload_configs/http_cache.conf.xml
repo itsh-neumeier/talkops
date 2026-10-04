@@ -1,0 +1,13 @@
+<configuration name="http_cache.conf" description="Cache for audio files fetched over HTTP (e.g. TTS prompts)">
+  <settings>
+    <param name="enable-file-formats" value="false"/>
+    <param name="max-urls" value="10000"/>
+    <param name="location" value="$${cache_dir}"/>
+    <param name="default-max-age" value="86400"/>
+    <param name="prefetch-thread-count" value="4"/>
+    <param name="prefetch-queue-size" value="100"/>
+    <param name="ssl-cacert" value="/etc/ssl/certs/ca-certificates.crt"/>
+    <param name="ssl-verifypeer" value="true"/>
+    <param name="ssl-verifyhost" value="true"/>
+  </settings>
+</configuration>

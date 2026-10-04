@@ -1,0 +1,11 @@
+<configuration name="local_stream.conf" description="Music on hold streams (further streams served by TalkOps)">
+  <!-- mod_local_stream needs at least one stream to load. Uploaded music on
+       hold is configured by TalkOps (roadmap phase 4). -->
+  <directory name="default" path="$${sounds_dir}/music/default">
+    <param name="rate" value="8000"/>
+    <param name="shuffle" value="true"/>
+    <param name="channels" value="1"/>
+    <param name="interval" value="20"/>
+    <param name="timer-name" value="soft"/>
+  </directory>
+</configuration>

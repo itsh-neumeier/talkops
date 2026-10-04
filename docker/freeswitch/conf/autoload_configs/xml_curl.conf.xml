@@ -1,0 +1,11 @@
+<configuration name="xml_curl.conf" description="TalkOps control plane binding">
+  <bindings>
+    <binding name="talkops">
+      <param name="gateway-url" value="$${talkops_xmlcurl_url}" bindings="directory|dialplan|configuration"/>
+      <param name="gateway-credentials" value="talkops:$${talkops_xmlcurl_password}"/>
+      <param name="auth-scheme" value="basic"/>
+      <param name="timeout" value="3"/>
+      <param name="enable-post-var" value="true"/>
+    </binding>
+  </bindings>
+</configuration>

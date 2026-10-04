@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<!--
+  TalkOps bootstrap configuration.
+
+  This is intentionally minimal: it only contains what FreeSWITCH needs to
+  start and reach TalkOps. Directory, dialplan and module configuration are
+  fetched from TalkOps at runtime through mod_xml_curl. Do not add business
+  logic here - put it into the TalkOps database instead.
+-->
+<document type="freeswitch/xml">
+  <X-PRE-PROCESS cmd="include" data="vars.xml"/>
+
+  <section name="configuration" description="Bootstrap module configuration">
+    <X-PRE-PROCESS cmd="include" data="autoload_configs/*.xml"/>
+  </section>
+
+  <section name="dialplan" description="Served by TalkOps via mod_xml_curl"/>
+  <section name="directory" description="Served by TalkOps via mod_xml_curl"/>
+</document>

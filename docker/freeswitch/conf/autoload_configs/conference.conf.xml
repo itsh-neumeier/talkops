@@ -1,0 +1,4 @@
+<configuration name="conference.conf" description="Conferences (profiles served by TalkOps)">
+  <caller-controls/>
+  <profiles/>
+</configuration>

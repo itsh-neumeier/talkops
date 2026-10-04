@@ -1,0 +1,13 @@
+<configuration name="opus.conf" description="Opus codec">
+  <settings>
+    <param name="use-vbr" value="1"/>
+    <param name="use-dtx" value="0"/>
+    <param name="complexity" value="10"/>
+    <param name="packet-loss-percent" value="10"/>
+    <param name="keep-fec-enabled" value="1"/>
+    <param name="advertise-useinbandfec" value="1"/>
+    <param name="adjust-bitrate" value="1"/>
+    <param name="maxaveragebitrate" value="0"/>
+    <param name="maxplaybackrate" value="0"/>
+  </settings>
+</configuration>

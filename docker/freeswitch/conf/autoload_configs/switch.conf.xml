@@ -1,0 +1,15 @@
+<configuration name="switch.conf" description="Core configuration">
+  <settings>
+    <param name="colorize-console" value="false"/>
+    <param name="dialplan-timestamps" value="false"/>
+    <param name="max-db-handles" value="50"/>
+    <param name="db-handle-timeout" value="10"/>
+    <param name="max-sessions" value="$${talkops_max_sessions}"/>
+    <param name="sessions-per-second" value="30"/>
+    <param name="loglevel" value="$${talkops_log_level}"/>
+    <param name="rtp-start-port" value="$${talkops_rtp_start_port}"/>
+    <param name="rtp-end-port" value="$${talkops_rtp_end_port}"/>
+    <param name="rtp-enable-zrtp" value="false"/>
+    <param name="dump-cores" value="no"/>
+  </settings>
+</configuration>

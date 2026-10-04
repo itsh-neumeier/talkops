@@ -1,0 +1,10 @@
+<configuration name="event_socket.conf" description="Event Socket for the TalkOps control plane">
+  <settings>
+    <param name="nat-map" value="false"/>
+    <param name="listen-ip" value="$${talkops_esl_listen_ip}"/>
+    <param name="listen-port" value="$${talkops_esl_port}"/>
+    <param name="password" value="$${talkops_esl_password}"/>
+    <param name="apply-inbound-acl" value="loopback.auto"/>
+    <param name="stop-on-bind-error" value="true"/>
+  </settings>
+</configuration>

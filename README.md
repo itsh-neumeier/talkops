@@ -4,8 +4,10 @@
 set of UniFi Talk plus video door stations, call recording, local
 transcription and LDAP/AD, packaged as a Docker Compose stack.
 
-> **Status: early development (phase 0 – foundation).** Not usable as a phone
-> system yet. See the [roadmap](docs/architecture.md#roadmap).
+> **Status: early development (phase 1 – basic telephony).** Extensions with
+> multiple devices, SIP trunks from 28 provider presets, internal and external
+> calls, emergency routing and a call log work; voicemail, Yealink
+> provisioning and more follow. See the [roadmap](docs/architecture.md#roadmap).
 
 ## Highlights (planned)
 
@@ -45,9 +47,12 @@ curl -L -o .env https://raw.githubusercontent.com/itsh-neumeier/talkops/main/.en
 docker compose up -d
 ```
 
-Then open `http://<host>:8080`. Full guide: [English](docs/en/installation.md) ·
-[Deutsch](docs/de/installation.md) · Portainer: [EN](docs/en/portainer.md) ·
-[DE](docs/de/portainer.md).
+Then open `http://<host>:8080` and create the admin account. Guides:
+installation [EN](docs/en/installation.md) / [DE](docs/de/installation.md) ·
+first steps [EN](docs/en/first-steps.md) / [DE](docs/de/erste-schritte.md) ·
+Portainer [EN](docs/en/portainer.md) / [DE](docs/de/portainer.md) ·
+LEONET [EN](docs/en/leonet.md) / [DE](docs/de/leonet.md) ·
+[trunk presets](docs/trunk-presets.md).
 
 ## Development
 
@@ -59,12 +64,13 @@ DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/postgres cargo test --w
 # Web UI
 cd web && npm ci && npm run dev
 
-# Whole stack from source
+# Whole stack from source, then SIPp end-to-end test
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+tests/e2e/run.sh
 ```
 
 See [CLAUDE.md](CLAUDE.md) for conventions. Contributions of trunk presets are
-especially welcome (format documented in phase 1).
+especially welcome – see [docs/trunk-presets.md](docs/trunk-presets.md).
 
 ## License
 

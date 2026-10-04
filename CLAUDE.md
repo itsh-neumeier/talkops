@@ -46,14 +46,16 @@ DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/postgres cargo test --w
 
 # Run the server locally (needs Postgres; FreeSWITCH optional)
 TALKOPS_DATABASE_URL=postgres://... TALKOPS_ESL_PASSWORD=dev TALKOPS_XMLCURL_PASSWORD=dev \
+  TALKOPS_SECRET_KEY=$(openssl rand -hex 32) TALKOPS_PRESETS_DIR=presets/trunks \
   TALKOPS_WEB_DIR=web/build cargo run -p talkops-api -- serve
 
 # Web UI
 cd web && npm ci && npm run lint && npm run check && npm run build
 npm run dev   # proxies /api to 127.0.0.1:8080
 
-# Full stack from source
+# Full stack from source + SIPp end-to-end test (needs sipp, jq)
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+tests/e2e/run.sh
 ```
 
 CI (`.github/workflows/ci.yml`) runs exactly these checks; keep them green.
@@ -76,7 +78,13 @@ CI (`.github/workflows/ci.yml`) runs exactly these checks; keep them green.
 - **Secrets**: no plaintext passwords in the DB. Web logins: argon2id hashes.
   SIP/trunk secrets: encrypted with `TALKOPS_SECRET_KEY` (ADR 0008). Never log secrets.
 - **FreeSWITCH config**: do not add business logic to `docker/freeswitch/conf`.
-  Serve it from the database via `/fs/xml` instead (ADR 0006).
+  Serve it from the database via `/fs/xml` instead (ADR 0006). Every value in
+  generated dialplan/directory XML that is not fully controlled by TalkOps
+  must go through `fsxml::sanitize_value` (FreeSWITCH expands `${…}`, including
+  API calls).
+- **API**: handlers live in `talkops-api/src/routes`, each with a
+  `#[utoipa::path]` annotation and registered via `routes!()`. Every mutation
+  writes an audit entry (never with secrets) and checks the role.
 - **Trunk presets**: data files in `presets/trunks/*.yaml`, never hard-coded.
   Parameters must come from official provider documentation; record the source
   and mark unverified presets as `untested`.

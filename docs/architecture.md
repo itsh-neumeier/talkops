@@ -1,6 +1,6 @@
 # TalkOps – Architektur
 
-> Status: Phase 0 (Fundament). Entscheidungen mit Begründung stehen in den
+> Status: Phase 1 (Grundtelefonie). Entscheidungen mit Begründung stehen in den
 > [ADRs](adr/README.md); dieses Dokument beschreibt das Zusammenspiel.
 
 ## Überblick
@@ -80,6 +80,46 @@ Startreihenfolge: `postgres` → `talkops` (Migrationen, `/readyz`) → `freeswi
 FreeSWITCH gehört bewusst **nicht** zur Readiness von TalkOps (zirkuläre
 Abhängigkeit); sein Zustand steht unter `/api/v1/status`.
 
+## Anruf-Routing (Phase 1)
+
+Jede Anfrage im Kontext `internal` (authentifizierte Geräte) bzw. `public`
+(Trunks) beantwortet `fsxml::dialplan` mit genau einer generierten Extension:
+
+| Kontext | Ziel | Aktion |
+|---|---|---|
+| internal | Nebenstelle | `bridge` an alle aktiven Geräte (`user/<sip-user>@talkops.local`, gleichzeitig), `call_timeout` = Klingeldauer |
+| internal | Notruf (110/112, konfigurierbar) | unverändert über den Trunk der **Standardrufnummer**, nie mit CLIR; Absender = eigene Nummer, falls auf demselben Trunk |
+| internal | Sonderrufnummer (`11x`) | unverändert über die Rufnummer der Nebenstelle bzw. Standardrufnummer |
+| internal | extern | Wählregeln → E.164 → Format der Vorlage (`number_format`), Absender im Format `caller_id_format` per From/PAI/PPI, optional CLIR (`privacy full`) |
+| public | eigene Rufnummer | Normalisierung (+49…, 0049…, 49…, 0…) → Rufnummer → Ziel-Nebenstelle; Anrufernummer national formatiert (Rückruf ohne Umweg) |
+| public | unbekannt | `404` |
+
+Gespeicherte Werte aus Nutzer- oder Providerhand (Anzeigenamen, Caller-IDs)
+werden vor der Ausgabe von FreeSWITCH-Steuerzeichen bereinigt
+(`fsxml::sanitize_value`), da FreeSWITCH `${…}` in Applikationsdaten
+expandiert – inkl. API-Aufrufen.
+
+Trunk-Accounts werden zu Gateways `gw-<uuid>` im Profil `external`; nach
+Änderungen sendet TalkOps `sofia profile external killgw <gw>` + `rescan`.
+Bei Anbietern mit Zugangsdaten je Rufnummer (`per_number`) setzt TalkOps
+`extension`/`extension-in-contact`, damit eingehende Anrufe der Nummer
+zugeordnet werden können.
+
+## API & Authentifizierung
+
+- REST-API unter `/api/v1`, OpenAPI 3.1 unter `/api/v1/openapi.json` (utoipa).
+- Sitzungen: zufälliges Token im Cookie `talkops_session` (`HttpOnly`,
+  `SameSite=Strict`, `Secure` hinter HTTPS); in der DB liegt nur der SHA-256.
+  Gleitender Ablauf nach 12 h Inaktivität.
+- CSRF: zustandsändernde Requests brauchen `X-Requested-With: TalkOps` und das
+  Sitzungs-CSRF-Token in `X-CSRF-Token`.
+- Rollen: `admin` (alles), `operator` (lesen + Anrufliste aller), `user`
+  (eigene Nebenstellen/Geräte/Anrufe).
+- Login-Rate-Limit pro IP (10 Versuche / 5 min), argon2id, Audit-Log für alle
+  Änderungen und jede Anzeige von SIP-Zugangsdaten.
+- Erst-Einrichtung `POST /api/v1/setup` funktioniert nur, solange es keinen
+  Benutzer gibt (Advisory-Lock gegen Wettläufe).
+
 ## Netzwerk & Ports ([ADR 0007](adr/0007-deployment-und-netzwerk.md))
 
 `freeswitch`, `talkops`, `media-worker` und `caddy` laufen mit
@@ -143,8 +183,7 @@ Phase 8.
 
 ## Verzeichnisstruktur
 
-Ist-Stand Phase 0 plus (kursiv in den Kommentaren) geplante Ergänzungen der
-folgenden Phasen:
+Ist-Stand Phase 1 plus geplante Ergänzungen (P2 … P8):
 
 ```
 talkops/
@@ -156,35 +195,35 @@ talkops/
 ├── .env.example
 ├── crates/
 │   ├── talkops-core/
-│   │   └── src/  db.rs · jobs.rs · tenant.rs · telemetry.rs
-│   │             (P1: users.rs, extensions.rs, devices.rs, trunks.rs, numbers.rs,
-│   │              cdr.rs, crypto.rs, audit.rs, presets.rs, dialrules.rs)
+│   │   └── src/  db · jobs · tenant · telemetry · crypto · users · extensions
+│   │             trunks · settings · dialing · presets · cdr · audit
 │   ├── talkops-api/
-│   │   └── src/  main.rs · config.rs · esl.rs · routes/{health,fs_xml}.rs
-│   │             (P1: auth/, routes/{users,extensions,trunks,numbers,cdr}.rs,
-│   │              fsxml/{directory,dialplan,sofia}.rs mit XML-Templates)
+│   │   └── src/  main · config · auth · error · esl · telephony
+│   │             fsxml/{sofia,directory,dialplan,cdr}
+│   │             routes/{health,auth,users,extensions,trunks,settings,fs}
 │   ├── talkops-esl/              Event-Socket-Client (inbound; P3: outbound-Server)
 │   ├── talkops-provisioning/     P2: Yealink-Templates, Telefonbuch, Firmware
 │   ├── talkops-media-worker/     P3: Piper-Handler, P5: Whisper-Handler
 │   └── talkops-doorbell/         P6: Dahua-HTTP-API/CGI, MQTT/Webhooks
 ├── migrations/                   sqlx-Migrationen (ein Satz für alle Dienste)
 ├── presets/
-│   └── trunks/                   P1: leonet.yaml, telekom-*.yaml, sipgate-*.yaml …
+│   └── trunks/                   28 Anbieter-Vorlagen (leonet.yaml, telekom-*.yaml …)
 ├── web/                          SvelteKit + TS + Tailwind (SPA)
 │   └── src/  lib/{api.ts, i18n/, theme.svelte.ts} · routes/
 ├── docker/
 │   ├── freeswitch/               Dockerfile, build-modules.conf, conf/ (Bootstrap), patches/
 │   ├── talkops/                  Dockerfile (Rust + Web-UI)
 │   └── media-worker/             Dockerfile (P3/P5: Piper, whisper.cpp, CUDA-Variante)
-├── tests/                        P1: SIPp-Szenarien + Compose-Integrationstests
-│   └── sipp/                     register.xml, call.xml, voicemail.xml, transfer.xml
+├── tests/
+│   ├── sipp/                     register.xml, call.xml, bad_password.xml (P3+: voicemail, transfer)
+│   └── e2e/run.sh                Ende-zu-Ende-Test gegen den laufenden Stack
 ├── docs/
 │   ├── architecture.md · adr/
-│   ├── de/  installation.md · portainer.md (P1+: leonet.md, yealink.md, dahua.md,
-│   │                                         ldap.md, backup.md)
-│   ├── en/  (gleiche Struktur auf Englisch)
-│   └── trunk-presets.md          P1: Format & Beitragsregeln für Vorlagen
-└── .github/workflows/            ci.yml · freeswitch.yml · release.yml
+│   ├── de/  installation.md · portainer.md · erste-schritte.md · leonet.md
+│   │        (P2+: yealink.md, dahua.md, ldap.md, backup.md)
+│   ├── en/  (gleiche Inhalte auf Englisch)
+│   └── trunk-presets.md          Format & Beitragsregeln für Vorlagen
+└── .github/workflows/            ci.yml · freeswitch.yml · e2e.yml · release.yml
 ```
 
 ## Roadmap
@@ -192,7 +231,7 @@ talkops/
 | Phase | Inhalt | Status |
 |---|---|---|
 | 0 | Fundament: Workspace, ADRs, CI, Compose, FreeSWITCH-Image, Postgres, Healthchecks | ✅ |
-| 1 | Grundtelefonie: xml_curl-Directory/Dialplan, Nebenstellen, Trunk-Presets (LEONET u. a.), Web-UI Login/User/Trunks, CDR | geplant |
+| 1 | Grundtelefonie: xml_curl-Directory/Dialplan, Nebenstellen, Trunk-Presets (LEONET u. a.), Web-UI Login/User/Trunks, CDR | ✅ (LEONET-Livetest offen) |
 | 2 | Yealink: Provisioning, Templates, XML-Telefonbuch, BLF, Feature-Codes, MWI | geplant |
 | 3 | Voicemail & TTS: ESL-Voicemail, Piper, Mehrsprachigkeit, Mail | geplant |
 | 4 | Gruppen & Logik: Rufgruppen, Queues, IVR-Editor, Zeitsteuerung/Feiertage, Parken/Pickup | geplant |

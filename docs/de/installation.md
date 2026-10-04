@@ -1,7 +1,8 @@
 # Installation
 
-> Stand Phase 0: Der Stack startet und alle Dienste werden „healthy“; Telefonie-
-> Funktionen folgen ab Phase 1.
+> Stand Phase 1: Nebenstellen, Geräte, SIP-Trunks (Provider-Vorlagen),
+> interne/externe Gespräche und Anrufliste. Danach weiter mit
+> [Erste Schritte](erste-schritte.md).
 
 ## Voraussetzungen
 
@@ -11,7 +12,8 @@
 
 | Port | Protokoll | Zweck |
 |---|---|---|
-| 5060, 5061, 5080 | UDP/TCP | SIP (ab Phase 1) |
+| 5060 | UDP/TCP | SIP für Telefone |
+| 5080 | UDP/TCP | SIP für Trunks (Provider) |
 | 16384–16999 | UDP | RTP (Sprache/Video), konfigurierbar |
 | 8080 | TCP | Web-UI / API |
 | 8021, 5432 | TCP | nur lokal (127.0.0.1): FreeSWITCH-ESL, PostgreSQL |
@@ -48,7 +50,8 @@ docker compose ps        # alle Dienste sollten "healthy" sein
 ```
 
 Das Web-UI ist unter `http://<host>:8080` erreichbar, der Komponentenstatus
-unter `http://<host>:8080/api/v1/status`.
+unter `http://<host>:8080/api/v1/status`, die API-Beschreibung (OpenAPI) unter
+`http://<host>:8080/api/v1/openapi.json`. Weiter mit [Erste Schritte](erste-schritte.md).
 
 ## HTTPS mit Caddy (optional)
 
@@ -77,7 +80,7 @@ FreeSWITCH eine eigene IP im LAN bekommen. Dann müssen `talkops` und
 `freeswitch` sich gegenseitig erreichen; dafür `TALKOPS_ESL_ADDR`,
 `TALKOPS_XMLCURL_URL` und `TALKOPS_ESL_LISTEN_IP` auf die jeweiligen IPs setzen
 und das ESL-Passwort besonders stark wählen. Eine fertige Beispielkonfiguration
-folgt in Phase 1.
+folgt in Phase 8.
 
 ## Fehlersuche
 

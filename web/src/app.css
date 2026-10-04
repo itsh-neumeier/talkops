@@ -7,4 +7,64 @@
 	body {
 		@apply bg-slate-50 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
 	}
+	h1 {
+		@apply text-xl font-semibold;
+	}
+	h2 {
+		@apply text-base font-semibold;
+	}
+	label {
+		@apply text-sm text-slate-600 dark:text-slate-300;
+	}
+}
+
+@layer components {
+	.card {
+		@apply rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900;
+	}
+	.input {
+		@apply mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-teal-600 focus:ring-2 focus:ring-teal-600/30 focus:outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100;
+	}
+	.btn {
+		@apply inline-flex items-center justify-center gap-1 rounded-md border border-slate-300 px-3 py-2 text-sm font-medium hover:bg-slate-100 disabled:opacity-50 dark:border-slate-700 dark:hover:bg-slate-800;
+	}
+	.btn-primary {
+		@apply border-teal-700 bg-teal-700 text-white hover:bg-teal-800 dark:border-teal-600 dark:bg-teal-600 dark:hover:bg-teal-500;
+	}
+	.btn-danger {
+		@apply border-red-300 text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950;
+	}
+	.btn-sm {
+		@apply px-2 py-1 text-xs;
+	}
+	.table {
+		@apply w-full text-left text-sm;
+	}
+	.table th {
+		@apply border-b border-slate-200 px-2 py-2 font-medium text-slate-500 dark:border-slate-800 dark:text-slate-400;
+	}
+	.table td {
+		@apply border-b border-slate-100 px-2 py-2 align-top dark:border-slate-800/60;
+	}
+	.hint {
+		@apply mt-1 text-xs text-slate-500 dark:text-slate-400;
+	}
+	.error-box {
+		@apply rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-300;
+	}
+	.badge {
+		@apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium;
+	}
+	.badge-ok {
+		@apply bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300;
+	}
+	.badge-bad {
+		@apply bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300;
+	}
+	.badge-muted {
+		@apply bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300;
+	}
+	.badge-warn {
+		@apply bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300;
+	}
 }

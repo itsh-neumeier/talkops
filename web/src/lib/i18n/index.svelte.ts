@@ -31,6 +31,25 @@ export function setLocale(locale: Locale) {
 	}
 }
 
-export function t(key: MessageKey): string {
-	return locales[i18n.locale][key] ?? en[key];
+/** Translates a key; `{name}` placeholders are replaced from `params`. */
+export function t(key: MessageKey, params?: Record<string, string | number>): string {
+	let text: string = locales[i18n.locale][key] ?? en[key];
+	for (const [name, value] of Object.entries(params ?? {})) {
+		text = text.replaceAll(`{${name}}`, String(value));
+	}
+	return text;
+}
+
+export function formatDateTime(iso: string | null | undefined): string {
+	if (!iso) return '—';
+	return new Date(iso).toLocaleString(i18n.locale === 'de' ? 'de-DE' : 'en-GB', {
+		dateStyle: 'short',
+		timeStyle: 'short'
+	});
+}
+
+export function formatDuration(secs: number): string {
+	const m = Math.floor(secs / 60);
+	const s = secs % 60;
+	return `${m}:${String(s).padStart(2, '0')}`;
 }

@@ -1,3 +1,73 @@
+// Typed client for the TalkOps REST API (same origin, cookie session).
+
+export class ApiError extends Error {
+	constructor(
+		public status: number,
+		public code: string,
+		message: string
+	) {
+		super(message);
+	}
+}
+
+let csrfToken = '';
+
+export function setCsrf(token: string) {
+	csrfToken = token;
+}
+
+/** Called when the session is gone (401); set by the session store. */
+let onUnauthorized: () => void = () => {};
+export function setUnauthorizedHandler(fn: () => void) {
+	onUnauthorized = fn;
+}
+
+export async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+	const headers: Record<string, string> = { 'X-Requested-With': 'TalkOps' };
+	if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
+	if (body !== undefined) headers['Content-Type'] = 'application/json';
+	const res = await fetch(`/api/v1${path}`, {
+		method,
+		headers,
+		body: body === undefined ? undefined : JSON.stringify(body),
+		credentials: 'same-origin'
+	});
+	if (res.status === 204) return undefined as T;
+	const data = await res.json().catch(() => ({}));
+	if (!res.ok) {
+		if (res.status === 401 && !path.startsWith('/auth/login')) onUnauthorized();
+		throw new ApiError(res.status, data.error ?? 'error', data.message ?? res.statusText);
+	}
+	return data as T;
+}
+
+export const api = {
+	get: <T>(path: string) => request<T>('GET', path),
+	post: <T>(path: string, body?: unknown) => request<T>('POST', path, body ?? {}),
+	put: <T>(path: string, body: unknown) => request<T>('PUT', path, body),
+	del: (path: string) => request<void>('DELETE', path)
+};
+
+// --- types (mirror the Rust API) -------------------------------------------
+
+export type Role = 'admin' | 'operator' | 'user';
+
+export interface User {
+	id: string;
+	username: string;
+	display_name: string;
+	email: string | null;
+	role: Role;
+	enabled: boolean;
+	auth_source: string;
+	last_login_at: string | null;
+}
+
+export interface Me {
+	user: User;
+	csrf_token: string;
+}
+
 export interface Component {
 	ok: boolean;
 	detail?: string;
@@ -9,8 +79,170 @@ export interface SystemStatus {
 	freeswitch: Component;
 }
 
-export async function fetchStatus(): Promise<SystemStatus> {
-	const res = await fetch('/api/v1/status');
-	if (!res.ok) throw new Error(`HTTP ${res.status}`);
-	return res.json();
+export interface Extension {
+	id: string;
+	number: string;
+	display_name: string;
+	user_id: string | null;
+	outbound_number_id: string | null;
+	hide_caller_id: boolean;
+	ring_timeout_secs: number;
+	enabled: boolean;
+}
+
+export type DeviceKind = 'desk' | 'dect' | 'softphone' | 'mobile' | 'door' | 'other';
+
+export interface Device {
+	id: string;
+	extension_id: string;
+	name: string;
+	kind: DeviceKind;
+	sip_username: string;
+	mac: string | null;
+	model: string | null;
+	enabled: boolean;
+}
+
+export interface ExtensionWithDevices extends Extension {
+	devices: Device[];
+}
+
+export interface DeviceCredentials {
+	device_id: string;
+	sip_username: string;
+	sip_password: string;
+	sip_domain: string;
+}
+
+export interface LocalizedText {
+	en: string;
+	de: string;
+}
+
+export interface SipSettings {
+	registrar?: string | null;
+	realm?: string | null;
+	proxy?: string | null;
+	outbound_proxy?: string | null;
+	transport: 'udp' | 'tcp' | 'tls';
+	srtp: 'off' | 'optional' | 'required';
+	register: boolean;
+	number_format: string;
+	caller_id_format: string;
+	caller_id_header: string;
+}
+
+export interface Preset {
+	id: string;
+	name: string;
+	product: string;
+	country: string;
+	status: 'verified' | 'community' | 'untested';
+	sources: string[];
+	notes: LocalizedText;
+	credentials: {
+		mode: 'per_number' | 'shared' | 'no_registration';
+		username_template: string;
+		username_hint: LocalizedText;
+	};
+	sip: SipSettings;
+}
+
+export interface Trunk {
+	id: string;
+	name: string;
+	preset: string;
+	overrides: Record<string, unknown>;
+	enabled: boolean;
+}
+
+export interface GatewayState {
+	name: string;
+	state: string;
+	status: string;
+	last_error: string | null;
+}
+
+export interface TrunkAccount {
+	id: string;
+	trunk_id: string;
+	username: string;
+	auth_username: string;
+	enabled: boolean;
+	gateway: string;
+	state: GatewayState | null;
+}
+
+export interface PhoneNumber {
+	id: string;
+	trunk_id: string;
+	account_id: string | null;
+	e164: string;
+	label: string;
+	destination_type: 'none' | 'extension';
+	destination_id: string | null;
+	enabled: boolean;
+}
+
+export interface TrunkDetail extends Trunk {
+	accounts: TrunkAccount[];
+	numbers: PhoneNumber[];
+}
+
+export interface Settings {
+	country_code: string;
+	area_code: string;
+	national_prefix: string;
+	international_prefix: string;
+	emergency_numbers: string[];
+	external_ip: string;
+	default_language: string;
+	default_number_id: string | null;
+}
+
+export interface Registration {
+	user: string;
+	network_ip: string;
+	network_port: string;
+	transport: string;
+	user_agent: string;
+	expires: number;
+}
+
+export interface LiveStatus {
+	connected: boolean;
+	registrations: Registration[];
+	gateways: Record<string, GatewayState>;
+	updated_at: string | null;
+}
+
+export interface Call {
+	id: string;
+	call_uuid: string;
+	direction: 'inbound' | 'outbound' | 'internal';
+	caller_number: string;
+	caller_name: string;
+	destination: string;
+	extension_id: string | null;
+	started_at: string;
+	answered_at: string | null;
+	ended_at: string;
+	duration_secs: number;
+	billsec: number;
+	hangup_cause: string;
+}
+
+export interface AuditEntry {
+	id: number;
+	username: string | null;
+	action: string;
+	entity_type: string;
+	entity_id: string | null;
+	details: Record<string, unknown>;
+	ip: string | null;
+	created_at: string;
+}
+
+export function fetchStatus(): Promise<SystemStatus> {
+	return api.get<SystemStatus>('/status');
 }

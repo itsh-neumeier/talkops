@@ -1,0 +1,13 @@
+[package]
+name = "talkops-doorbell"
+description = "Dahua VTO door station integration (door opener, snapshots, events)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+
+[lints]
+workspace = true

@@ -77,8 +77,6 @@ services:
       - voicemail:/var/lib/talkops/voicemail
       - sounds:/var/lib/talkops/sounds
       - freeswitch-db:/usr/local/freeswitch/var/lib/freeswitch/db
-    ulimits:
-      nofile: { soft: 65536, hard: 65536 }
 
   media-worker:
     image: ghcr.io/itsh-neumeier/talkops-media-worker:${TALKOPS_VERSION:-latest}

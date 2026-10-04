@@ -33,7 +33,7 @@ impl EslHandle {
                         }
                         Err(err) => {
                             tracing::warn!(%addr, error = %err, retry_in = ?delay, "FreeSWITCH event socket unavailable");
-                            delay = (delay * 2).min(Duration::from_secs(30));
+                            delay = (delay * 2).min(Duration::from_secs(10));
                         }
                     }
                 }

@@ -1,2 +1,7 @@
-pub mod fs_xml;
+pub mod auth;
+pub mod extensions;
+pub mod fs;
 pub mod health;
+pub mod settings;
+pub mod trunks;
+pub mod users;

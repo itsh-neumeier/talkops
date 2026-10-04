@@ -1,11 +1,12 @@
-use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::Context;
 use clap::{Parser, Subcommand};
 use talkops_api::config::Config;
-use talkops_api::esl::EslHandle;
+use talkops_api::fsxml::sofia::ProfileSettings;
 use talkops_api::{AppState, app};
+use talkops_core::crypto::SecretBox;
+use talkops_core::presets::PresetCatalog;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 #[derive(Debug, Parser)]
@@ -18,7 +19,7 @@ struct Cli {
 #[derive(Debug, Subcommand)]
 enum Command {
     /// Run the HTTP server and FreeSWITCH control plane.
-    Serve(Config),
+    Serve(Box<Config>),
     /// Apply pending database migrations and exit.
     Migrate {
         #[arg(long, env = "TALKOPS_DATABASE_URL", hide_env_values = true)]
@@ -35,7 +36,7 @@ enum Command {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     match Cli::parse().command {
-        Command::Serve(config) => serve(config).await,
+        Command::Serve(config) => serve(*config).await,
         Command::Migrate { database_url } => {
             let pool = talkops_core::db::connect_lazy(&database_url, 1)?;
             talkops_core::db::migrate(&pool).await?;
@@ -66,24 +67,61 @@ async fn serve(config: Config) -> anyhow::Result<()> {
         tracing::info!("database schema up to date");
     }
 
-    let esl = EslHandle::default();
-    esl.spawn_supervisor(config.esl_addr.clone(), config.esl_password.clone());
+    let secrets = SecretBox::from_hex(&config.secret_key).context("invalid TALKOPS_SECRET_KEY")?;
+    let catalog = PresetCatalog::load_dir(&config.presets_dir).with_context(|| {
+        format!(
+            "cannot load trunk presets from {}",
+            config.presets_dir.display()
+        )
+    })?;
+    tracing::info!(presets = catalog.len(), "trunk presets loaded");
 
-    let state = AppState {
-        db,
-        esl,
-        xmlcurl_password: Arc::from(config.xmlcurl_password.as_str()),
+    let profile = ProfileSettings {
+        sip_ip: config.sip_ip.clone(),
+        internal_port: config.sip_port,
+        external_port: config.sip_trunk_port,
+        external_ip: String::new(),
     };
+    let state = AppState::new(
+        db.clone(),
+        secrets,
+        catalog,
+        profile,
+        &config.xmlcurl_password,
+    );
+    state
+        .telephony
+        .esl
+        .spawn_supervisor(config.esl_addr.clone(), config.esl_password.clone());
+    state.telephony.spawn_poller(Duration::from_secs(10));
+    spawn_session_cleanup(db);
     let router = app(state, Some(&config.web_dir));
 
     let listener = tokio::net::TcpListener::bind(config.listen)
         .await
         .with_context(|| format!("cannot bind {}", config.listen))?;
-    axum::serve(listener, router)
-        .with_graceful_shutdown(shutdown_signal())
-        .await?;
+    axum::serve(
+        listener,
+        router.into_make_service_with_connect_info::<std::net::SocketAddr>(),
+    )
+    .with_graceful_shutdown(shutdown_signal())
+    .await?;
     tracing::info!("TalkOps stopped");
     Ok(())
+}
+
+/// Deletes expired sessions once an hour.
+fn spawn_session_cleanup(db: sqlx::PgPool) {
+    tokio::spawn(async move {
+        loop {
+            match talkops_core::users::purge_expired_sessions(&db).await {
+                Ok(n) if n > 0 => tracing::debug!(purged = n, "expired sessions removed"),
+                Ok(_) => {}
+                Err(err) => tracing::warn!(error = %err, "session cleanup failed"),
+            }
+            tokio::time::sleep(Duration::from_secs(3600)).await;
+        }
+    });
 }
 
 /// Minimal HTTP/1.0 GET against 127.0.0.1 so the runtime image needs no curl.

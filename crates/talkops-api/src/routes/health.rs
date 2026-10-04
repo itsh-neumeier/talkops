@@ -5,8 +5,17 @@ use axum::extract::State;
 use axum::http::StatusCode;
 use serde::Serialize;
 use utoipa::ToSchema;
+use utoipa_axum::router::OpenApiRouter;
+use utoipa_axum::routes;
 
 use crate::AppState;
+
+pub fn router() -> OpenApiRouter<AppState> {
+    OpenApiRouter::new()
+        .routes(routes!(healthz))
+        .routes(routes!(readyz))
+        .routes(routes!(status))
+}
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct Health {
@@ -67,7 +76,7 @@ pub async fn status(State(state): State<AppState>) -> Json<Status> {
             detail: Some("unreachable".into()),
         },
     };
-    let freeswitch = match state.esl.get().await {
+    let freeswitch = match state.telephony.esl.get().await {
         None => Component {
             ok: false,
             detail: Some("event socket not connected".into()),

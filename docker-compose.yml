@@ -1,0 +1,119 @@
+# TalkOps – production stack (prebuilt images only, usable as Portainer stack).
+#
+#   cp .env.example .env   # set the passwords
+#   docker compose up -d
+#
+# FreeSWITCH, TalkOps and the media worker use host networking: SIP and the
+# RTP port range need it, and it keeps the event socket and the xml_curl
+# endpoint on 127.0.0.1. Linux hosts only. See docs/installation.md.
+
+name: talkops
+
+x-talkops-env: &talkops-env
+  TALKOPS_DATABASE_URL: postgres://${POSTGRES_USER:-talkops}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@127.0.0.1:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-talkops}
+  TALKOPS_LOG_FORMAT: ${TALKOPS_LOG_FORMAT:-json}
+  RUST_LOG: ${RUST_LOG:-info}
+  TZ: ${TZ:-Europe/Berlin}
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-talkops}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-talkops}
+      TZ: ${TZ:-Europe/Berlin}
+    ports:
+      # Only reachable from the host (where the host-networked services run).
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  talkops:
+    image: ghcr.io/itsh-neumeier/talkops-server:${TALKOPS_VERSION:-latest}
+    restart: unless-stopped
+    network_mode: host
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      <<: *talkops-env
+      TALKOPS_LISTEN: ${TALKOPS_LISTEN:-0.0.0.0:8080}
+      TALKOPS_ESL_ADDR: 127.0.0.1:${TALKOPS_ESL_PORT:-8021}
+      TALKOPS_ESL_PASSWORD: ${TALKOPS_ESL_PASSWORD:?set TALKOPS_ESL_PASSWORD}
+      TALKOPS_XMLCURL_PASSWORD: ${TALKOPS_XMLCURL_PASSWORD:?set TALKOPS_XMLCURL_PASSWORD}
+      TALKOPS_SECRET_KEY: ${TALKOPS_SECRET_KEY:?set TALKOPS_SECRET_KEY}
+    volumes:
+      - recordings:/var/lib/talkops/recordings
+      - voicemail:/var/lib/talkops/voicemail
+      - sounds:/var/lib/talkops/sounds
+      - provisioning:/var/lib/talkops/provisioning
+
+  freeswitch:
+    image: ghcr.io/itsh-neumeier/talkops-freeswitch:${TALKOPS_VERSION:-latest}
+    restart: unless-stopped
+    network_mode: host
+    # FreeSWITCH loads its configuration from TalkOps at startup.
+    depends_on:
+      talkops:
+        condition: service_healthy
+    environment:
+      TALKOPS_ESL_PORT: ${TALKOPS_ESL_PORT:-8021}
+      TALKOPS_ESL_PASSWORD: ${TALKOPS_ESL_PASSWORD:?set TALKOPS_ESL_PASSWORD}
+      TALKOPS_XMLCURL_URL: http://127.0.0.1:${TALKOPS_HTTP_PORT:-8080}/fs/xml
+      TALKOPS_XMLCURL_PASSWORD: ${TALKOPS_XMLCURL_PASSWORD:?set TALKOPS_XMLCURL_PASSWORD}
+      TALKOPS_RTP_START_PORT: ${TALKOPS_RTP_START_PORT:-16384}
+      TALKOPS_RTP_END_PORT: ${TALKOPS_RTP_END_PORT:-16999}
+      TALKOPS_FS_LOG_LEVEL: ${TALKOPS_FS_LOG_LEVEL:-info}
+      TZ: ${TZ:-Europe/Berlin}
+    volumes:
+      - recordings:/var/lib/talkops/recordings
+      - voicemail:/var/lib/talkops/voicemail
+      - sounds:/var/lib/talkops/sounds
+      - freeswitch-db:/usr/local/freeswitch/var/lib/freeswitch/db
+    ulimits:
+      nofile: { soft: 65536, hard: 65536 }
+
+  media-worker:
+    image: ghcr.io/itsh-neumeier/talkops-media-worker:${TALKOPS_VERSION:-latest}
+    restart: unless-stopped
+    network_mode: host
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      <<: *talkops-env
+    volumes:
+      - recordings:/var/lib/talkops/recordings
+      - voicemail:/var/lib/talkops/voicemail
+      - sounds:/var/lib/talkops/sounds
+      - models:/var/lib/talkops/models
+
+  # Optional HTTPS reverse proxy with automatic certificates (ACME).
+  # Enable with: COMPOSE_PROFILES=caddy and TALKOPS_DOMAIN=pbx.example.com
+  caddy:
+    image: caddy:2-alpine
+    profiles: ["caddy"]
+    restart: unless-stopped
+    network_mode: host
+    command: caddy reverse-proxy --from ${TALKOPS_DOMAIN:-localhost} --to 127.0.0.1:${TALKOPS_HTTP_PORT:-8080}
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  postgres:
+  recordings:
+  voicemail:
+  sounds:
+  provisioning:
+  models:
+  freeswitch-db:
+  caddy-data:
+  caddy-config:

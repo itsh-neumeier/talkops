@@ -1,0 +1,29 @@
+# Local development builds. Use as override on top of docker-compose.yml:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+#
+# The FreeSWITCH image compiles from source and takes 20-40 minutes on the
+# first build; later builds are cached.
+
+services:
+  talkops:
+    image: talkops-server:dev
+    build:
+      context: .
+      dockerfile: docker/talkops/Dockerfile
+    environment:
+      TALKOPS_LOG_FORMAT: pretty
+      RUST_LOG: ${RUST_LOG:-info,talkops=debug,talkops_api=debug}
+
+  freeswitch:
+    image: talkops-freeswitch:dev
+    build:
+      context: docker/freeswitch
+
+  media-worker:
+    image: talkops-media-worker:dev
+    build:
+      context: .
+      dockerfile: docker/media-worker/Dockerfile
+    environment:
+      TALKOPS_LOG_FORMAT: pretty

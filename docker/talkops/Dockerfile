@@ -38,6 +38,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
 
 COPY --from=build /usr/local/bin/talkops /usr/local/bin/talkops
 COPY --from=web /src/web/build /usr/share/talkops/web
+COPY presets/ /usr/share/talkops/presets/
 
 ENV TALKOPS_LISTEN=0.0.0.0:8080 \
     TALKOPS_WEB_DIR=/usr/share/talkops/web \

@@ -24,6 +24,7 @@ check() {
         "talkops_esl_password=${TALKOPS_ESL_PASSWORD}" \
         "talkops_xmlcurl_url=${TALKOPS_XMLCURL_URL:-http://127.0.0.1:8080/fs/xml}" \
         "talkops_xmlcurl_password=${TALKOPS_XMLCURL_PASSWORD}" \
+        "talkops_cdr_url=${TALKOPS_CDR_URL:-http://127.0.0.1:8080/fs/cdr}" \
         "talkops_rtp_start_port=${TALKOPS_RTP_START_PORT:-16384}" \
         "talkops_rtp_end_port=${TALKOPS_RTP_END_PORT:-16999}" \
         "talkops_max_sessions=${TALKOPS_MAX_SESSIONS:-200}" \
@@ -42,4 +43,5 @@ fi
 # -nonat: no UPnP/NAT-PMP probing; -np: normal scheduling priority (realtime
 # needs CAP_SYS_NICE, which an unprivileged container does not have);
 # -c: foreground with console log on stdout.
-exec /usr/local/freeswitch/bin/freeswitch -nonat -np -c
+# stdbuf: line-buffer stdout so `docker logs` shows log lines immediately.
+exec stdbuf -oL -eL /usr/local/freeswitch/bin/freeswitch -nonat -np -c

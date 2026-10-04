@@ -96,7 +96,7 @@ COPY docker-entrypoint.sh fs-healthcheck.sh /usr/local/bin/
 RUN mkdir -p /var/lib/talkops/recordings /var/lib/talkops/voicemail /var/lib/talkops/sounds \
     && for d in var/lib/freeswitch/db var/lib/freeswitch/storage var/lib/freeswitch/recordings \
                 share/freeswitch/sounds/music/default \
-                var/log/freeswitch var/run/freeswitch var/cache/freeswitch; do \
+                var/log/freeswitch/xml_cdr var/run/freeswitch var/cache/freeswitch; do \
            mkdir -p /usr/local/freeswitch/$d; \
        done \
     && chown -R talkops:talkops /usr/local/freeswitch /var/lib/talkops \

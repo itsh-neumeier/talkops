@@ -1,0 +1,17 @@
+<configuration name="xml_cdr.conf" description="Call records to TalkOps">
+  <settings>
+    <param name="url" value="$${talkops_cdr_url}"/>
+    <param name="cred" value="talkops:$${talkops_xmlcurl_password}"/>
+    <param name="auth-scheme" value="basic"/>
+    <!-- POST body is cdr=<url-encoded XML> -->
+    <param name="encode" value="true"/>
+    <param name="retries" value="3"/>
+    <param name="delay" value="5"/>
+    <param name="timeout" value="10"/>
+    <param name="disable-100-continue" value="true"/>
+    <!-- CDRs that could not be delivered are kept here for manual re-import. -->
+    <param name="err-log-dir" value="$${log_dir}/xml_cdr"/>
+    <param name="log-b-leg" value="false"/>
+    <param name="prefix-a-leg" value="true"/>
+  </settings>
+</configuration>

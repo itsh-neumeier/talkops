@@ -1,0 +1,36 @@
+# sipgate – sipgate trunking
+# Status: untested. See docs/trunk-presets.md for the format.
+id: sipgate-trunking
+name: sipgate
+product: sipgate trunking
+country: DE
+status: untested
+sources:
+- >-
+  https://help.sipgate.de/trunking/en/wie-konfiguriere-ich-asterisk-fuer-sipgate-trunking
+notes:
+  en: >-
+    Numbers international without '+' (49…). Caller ID via P-Preferred-Identity; From user = SIP-ID, from
+    domain sipconnect.sipgate.de. T.38 supported.
+  de: >-
+    Rufnummern international ohne '+' (49…). Absenderrufnummer per P-Preferred-Identity; From-User = SIP-ID,
+    From-Domain sipconnect.sipgate.de. T.38 unterstützt.
+credentials:
+  mode: shared
+  username_template: '{input}'
+  username_hint:
+    en: Trunk SIP-ID
+    de: Trunking-SIP-ID
+sip:
+  registrar: sipconnect.sipgate.de
+  from_domain: sipconnect.sipgate.de
+  transport: udp
+  number_format: e164_no_plus
+  caller_id_format: e164_no_plus
+  caller_id_header: ppi
+  from_user: username
+  codecs:
+  - G722
+  - PCMA
+  - PCMU
+  t38: true

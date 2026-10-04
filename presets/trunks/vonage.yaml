@@ -1,0 +1,33 @@
+# Vonage – SIP Trunking (Vonage API)
+# Status: untested. See docs/trunk-presets.md for the format.
+id: vonage
+name: Vonage
+product: SIP Trunking (Vonage API)
+country: '*'
+status: untested
+sources:
+- https://developer.vonage.com/en/voice/sip/configure/freepbx
+notes:
+  en: >-
+    Outbound: sip.nexmo.com with API key as username and API secret as password. Inbound calls need a
+    SIP URI pointing to TalkOps' public address configured in the Vonage dashboard.
+  de: >-
+    Abgehend: sip.nexmo.com mit API-Key als Benutzername und API-Secret als Passwort. Ankommend muss im
+    Vonage-Dashboard eine SIP-URI auf die öffentliche Adresse von TalkOps eingetragen werden.
+credentials:
+  mode: no_registration
+  username_template: '{input}'
+  username_hint:
+    en: Vonage API key
+    de: Vonage-API-Key
+sip:
+  registrar: sip.nexmo.com
+  register: false
+  transport: udp
+  number_format: e164_no_plus
+  caller_id_format: e164_no_plus
+  caller_id_header: from
+  from_user: number
+  codecs:
+  - PCMU
+  - PCMA

@@ -1,0 +1,30 @@
+# sipgate – sipgate team
+# Status: untested. See docs/trunk-presets.md for the format.
+id: sipgate-team
+name: sipgate
+product: sipgate team
+country: DE
+status: untested
+sources:
+- >-
+  https://ringotel.atlassian.net/wiki/spaces/RSW/pages/895090689/How+to+integrate+Ringotel+Shell+with+Sipgate+Team
+notes:
+  en: >-
+    One SIP-ID per device/user, created in sipgate team. Outbound proxy proxy.live.sipgate.de may be required.
+  de: >-
+    Eine SIP-ID je Gerät/Benutzer, angelegt in sipgate team. Ggf. Outbound-Proxy proxy.live.sipgate.de
+    nötig.
+credentials:
+  mode: shared
+  username_template: '{input}'
+  username_hint:
+    en: SIP-ID
+    de: SIP-ID
+sip:
+  registrar: sipgate.de
+  outbound_proxy: proxy.live.sipgate.de
+  transport: udp
+  number_format: e164_no_plus
+  caller_id_format: e164_no_plus
+  caller_id_header: from
+  from_user: username

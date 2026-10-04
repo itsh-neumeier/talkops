@@ -1,0 +1,26 @@
+# Vodafone – IP-Anlagenanschluss / SIP-Trunk (Business)
+# Status: untested. See docs/trunk-presets.md for the format.
+id: vodafone-sip-trunk
+name: Vodafone
+product: IP-Anlagenanschluss / SIP-Trunk (Business)
+country: DE
+status: untested
+sources:
+- https://wiki.innovaphone.com/?i=9743
+notes:
+  en: >-
+    Realm/SIP domain, SBC address and credentials are provided individually by Vodafone. Enter them as
+    registrar and outbound proxy.
+  de: >-
+    Realm/SIP-Domain, SBC-Adresse und Zugangsdaten stellt Vodafone individuell bereit. Als Registrar bzw.
+    Outbound-Proxy eintragen.
+credentials:
+  mode: shared
+  username_template: '{input}'
+sip:
+  transport: udp
+  number_format: e164
+  caller_id_format: e164
+  caller_id_header: pai
+  from_user: number
+  t38: true

@@ -1,0 +1,29 @@
+# Swisscom – Smart Business Connect Internet Trunk
+# Status: untested. See docs/trunk-presets.md for the format.
+id: swisscom
+name: Swisscom
+product: Smart Business Connect Internet Trunk
+country: CH
+status: untested
+sources:
+- https://www.3cx.com/docs/sip-trunk/swisscom-smart-business-switzerland/
+- https://wiki.innovaphone.com/?i=14782
+notes:
+  en: >-
+    Only available with encryption (TLS + SRTP). Registrar strunkpub.join.swisscom.ch unless Swisscom
+    specifies otherwise. UserID, username and password come from Swisscom.
+  de: >-
+    Nur verschlüsselt verfügbar (TLS + SRTP). Registrar strunkpub.join.swisscom.ch, sofern Swisscom nichts
+    anderes vorgibt. UserID, Benutzername und Passwort von Swisscom.
+credentials:
+  mode: shared
+  username_template: '{input}'
+  auth_username_template: '{input}'
+sip:
+  registrar: strunkpub.join.swisscom.ch
+  transport: tls
+  srtp: required
+  number_format: e164
+  caller_id_format: e164
+  caller_id_header: pai
+  from_user: username

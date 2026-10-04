@@ -1,0 +1,23 @@
+# Magenta Telekom (AT) – Business Voice SIP
+# Status: untested. See docs/trunk-presets.md for the format.
+id: magenta-at
+name: Magenta Telekom (AT)
+product: Business Voice SIP
+country: AT
+status: untested
+sources:
+- https://wiki.unify.com/images/5/5a/SIP-Trunk-Configuration-AT-Magenta.pdf
+notes:
+  en: >-
+    Registrar and credentials are provided by Magenta. Vendor guides use SIP port 5060 towards the provider.
+  de: >-
+    Registrar und Zugangsdaten stellt Magenta bereit. Herstelleranleitungen nutzen SIP-Port 5060 zum Provider.
+credentials:
+  mode: shared
+  username_template: '{input}'
+sip:
+  transport: udp
+  number_format: e164
+  caller_id_format: e164
+  caller_id_header: ppi
+  from_user: username

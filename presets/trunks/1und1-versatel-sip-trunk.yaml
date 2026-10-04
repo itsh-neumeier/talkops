@@ -1,0 +1,22 @@
+# 1&1 Versatel – SIP-Trunk (Business)
+# Status: untested. See docs/trunk-presets.md for the format.
+id: 1und1-versatel-sip-trunk
+name: 1&1 Versatel
+product: SIP-Trunk (Business)
+country: DE
+status: untested
+sources:
+- https://wiki.unify.com/images/c/c2/SIP-Trunk-Configuration-Versatel.pdf
+notes:
+  en: Registrar, transport and credentials are provided individually with the order.
+  de: >-
+    Registrar, Transport und Zugangsdaten werden individuell mit dem Auftrag bereitgestellt.
+credentials:
+  mode: shared
+  username_template: '{input}'
+sip:
+  transport: udp
+  number_format: e164
+  caller_id_format: e164
+  caller_id_header: ppi
+  from_user: number

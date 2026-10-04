@@ -2,7 +2,9 @@
 //! by all TalkOps services.
 
 pub mod db;
+pub mod dialing;
 pub mod jobs;
+pub mod presets;
 pub mod telemetry;
 pub mod tenant;
 

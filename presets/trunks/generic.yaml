@@ -1,0 +1,21 @@
+# Generic SIP provider – Any SIP account or trunk
+# Status: untested. See docs/trunk-presets.md for the format.
+id: generic
+name: Generic SIP provider
+product: Any SIP account or trunk
+country: '*'
+status: untested
+sources: []
+notes:
+  en: >-
+    All parameters are entered manually. Use this when no preset exists for your provider.
+  de: Alle Parameter werden manuell eingetragen. Für Anbieter ohne eigene Vorlage.
+credentials:
+  mode: shared
+  username_template: '{input}'
+sip:
+  transport: udp
+  number_format: e164
+  caller_id_format: e164
+  caller_id_header: from
+  from_user: username

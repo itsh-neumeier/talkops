@@ -1,0 +1,29 @@
+# Sunrise – Business Voice SIP-Trunk
+# Status: untested. See docs/trunk-presets.md for the format.
+id: sunrise
+name: Sunrise
+product: Business Voice SIP-Trunk
+country: CH
+status: untested
+sources:
+- https://wiki.innovaphone.com/?i=7720
+notes:
+  en: >-
+    Registerless trunk authenticated by public IP: TalkOps must be reachable on its public IP. Only G.711;
+    no T.38. The SBC address is provided by Sunrise.
+  de: >-
+    Trunk ohne Registrierung, Authentifizierung über die öffentliche IP: TalkOps muss unter seiner öffentlichen
+    IP erreichbar sein. Nur G.711, kein T.38. SBC-Adresse stellt Sunrise bereit.
+credentials:
+  mode: no_registration
+  username_template: '{input}'
+sip:
+  register: false
+  transport: udp
+  number_format: e164
+  caller_id_format: e164
+  caller_id_header: pai
+  from_user: number
+  codecs:
+  - PCMA
+  - PCMU

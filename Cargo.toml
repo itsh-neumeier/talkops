@@ -13,8 +13,6 @@ authors = ["TalkOps contributors"]
 [workspace.dependencies]
 talkops-core = { path = "crates/talkops-core" }
 talkops-esl = { path = "crates/talkops-esl" }
-talkops-provisioning = { path = "crates/talkops-provisioning" }
-talkops-doorbell = { path = "crates/talkops-doorbell" }
 
 anyhow = "1"
 axum = { version = "0.8", features = ["macros"] }

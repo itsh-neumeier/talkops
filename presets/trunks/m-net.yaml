@@ -1,0 +1,32 @@
+# M-net – Premium SIP-Trunk (Business)
+# Status: untested. See docs/trunk-presets.md for the format.
+id: m-net
+name: M-net
+product: Premium SIP-Trunk (Business)
+country: DE
+status: untested
+sources:
+- >-
+  https://www.m-net.de/fileadmin/2_Geschaeftskunden/GK.2_Telefonie/SIP_Trunk/technische-hinweise-m-net-sip-trunk.pdf
+- >-
+  https://www.m-net.de/fileadmin/2_Geschaeftskunden/GK.2_Telefonie/SIP_Trunk/Konfigurationshilfe_M-net_Premium_SIP_Trunk_MGW___PBX.PDF
+notes:
+  en: >-
+    Registrar e.g. business.mnet-voip.de; username and authentication ID in E.164 (+49…). M-net recommends
+    UDP; TCP and TLS are available.
+  de: >-
+    Registrar z. B. business.mnet-voip.de; Benutzername und Authentifizierungs-ID im E.164-Format (+49…).
+    M-net empfiehlt UDP; TCP und TLS sind möglich.
+credentials:
+  mode: shared
+  username_template: '{input}'
+  username_hint:
+    en: +49… (from M-net)
+    de: +49… (von M-net)
+sip:
+  registrar: business.mnet-voip.de
+  transport: udp
+  number_format: e164
+  caller_id_format: e164
+  caller_id_header: ppi
+  from_user: username

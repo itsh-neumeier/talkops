@@ -1,0 +1,32 @@
+# Telnyx – SIP Trunking (credential connection)
+# Status: untested. See docs/trunk-presets.md for the format.
+id: telnyx
+name: Telnyx
+product: SIP Trunking (credential connection)
+country: '*'
+status: untested
+sources:
+- https://support.telnyx.com/en/articles/1130674-configuring-linphone-with-telnyx
+- >-
+  https://support.telnyx.com/en/articles/2026092301-identify-your-connection-in-the-first-sip-invite
+notes:
+  en: >-
+    Create a credential-based SIP connection. sip.telnyx.com, UDP/TCP 5060 or TLS 5061. Numbers in E.164
+    with '+'. A valid caller ID (a Telnyx number) is required.
+  de: >-
+    SIP-Connection vom Typ 'Credentials' anlegen. sip.telnyx.com, UDP/TCP 5060 oder TLS 5061. Rufnummern
+    in E.164 mit '+'. Gültige Absenderrufnummer (Telnyx-Nummer) erforderlich.
+credentials:
+  mode: shared
+  username_template: '{input}'
+sip:
+  registrar: sip.telnyx.com
+  transport: udp
+  number_format: e164
+  caller_id_format: e164
+  caller_id_header: from
+  from_user: number
+  codecs:
+  - G722
+  - PCMU
+  - PCMA

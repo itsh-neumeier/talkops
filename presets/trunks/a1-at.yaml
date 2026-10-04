@@ -1,0 +1,27 @@
+# A1 Telekom Austria – SIP-Trunk (Business)
+# Status: untested. See docs/trunk-presets.md for the format.
+id: a1-at
+name: A1 Telekom Austria
+product: SIP-Trunk (Business)
+country: AT
+status: untested
+sources:
+- >-
+  https://wiki.unify.com/images/5/58/SIP-Trunk-Configuration-A1-Telekom-Austria-reg.pdf
+- >-
+  https://service-de.enreach.com/hc/en-gb/articles/16339434408476-SIP-Provider-A1-Telekom-AT
+notes:
+  en: >-
+    User ID, user name, password and registrar are provided by A1. Disable T.38 according to vendor guides.
+  de: >-
+    Benutzer-ID, Benutzername, Passwort und Registrar stellt A1 bereit. T.38 laut Herstellerhinweisen
+    deaktivieren.
+credentials:
+  mode: shared
+  username_template: '{input}'
+sip:
+  transport: udp
+  number_format: e164
+  caller_id_format: e164
+  caller_id_header: ppi
+  from_user: username

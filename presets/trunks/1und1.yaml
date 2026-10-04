@@ -1,0 +1,27 @@
+# 1&1 – DSL/Glasfaser-Anschluss (Privat)
+# Status: untested. See docs/trunk-presets.md for the format.
+id: 1und1
+name: 1&1
+product: DSL/Glasfaser-Anschluss (Privat)
+country: DE
+status: untested
+sources:
+- https://www.ip-phone-forum.de/threads/keine-verbindung-zu-sip-1und1-de.323325/
+notes:
+  en: >-
+    Username = number in international format without '+' (49<area code><number>). STUN: stun.1und1.de,
+    realm 1und1.de.
+  de: >-
+    Benutzername = Rufnummer international ohne '+' (49<Vorwahl ohne 0><Rufnummer>). STUN: stun.1und1.de,
+    Realm 1und1.de.
+credentials:
+  mode: per_number
+  username_template: '{e164_digits}'
+sip:
+  registrar: sip.1und1.de
+  realm: 1und1.de
+  transport: udp
+  number_format: national
+  caller_id_format: e164_no_plus
+  caller_id_header: from
+  from_user: username

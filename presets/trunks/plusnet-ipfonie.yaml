@@ -1,0 +1,28 @@
+# Plusnet – IPfonie extended connect
+# Status: untested. See docs/trunk-presets.md for the format.
+id: plusnet-ipfonie
+name: Plusnet
+product: IPfonie extended connect
+country: DE
+status: untested
+sources:
+- https://plusnet.de/go/ipfonie.extendedconnect.installationshinweise
+- >-
+  https://www.plusnet.de/wp-content/uploads/2020/06/Spezifikation-IPfonie-Extended-Connect-2.5-1910.pdf
+notes:
+  en: >-
+    One registration for all numbers; username <CPE number><4 digits>. Unencrypted: sipconnect.ipfonie.de;
+    with the TLS/SRTP option: secure-sipconnect.ipfonie.de (override registrar and transport).
+  de: >-
+    Eine Registrierung für alle Rufnummern; Benutzername <CPE-Nummer><4 Ziffern>. Unverschlüsselt: sipconnect.ipfonie.de;
+    mit TLS/SRTP-Option: secure-sipconnect.ipfonie.de (Registrar und Transport überschreiben).
+credentials:
+  mode: shared
+  username_template: '{input}'
+sip:
+  registrar: sipconnect.ipfonie.de
+  transport: udp
+  number_format: e164
+  caller_id_format: e164
+  caller_id_header: ppi
+  from_user: username

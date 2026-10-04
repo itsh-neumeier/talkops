@@ -1,0 +1,34 @@
+# Deutsche Telekom – DeutschlandLAN SIP-Trunk
+# Status: untested. See docs/trunk-presets.md for the format.
+id: telekom-deutschlandlan-sip-trunk
+name: Deutsche Telekom
+product: DeutschlandLAN SIP-Trunk
+country: DE
+status: untested
+sources:
+- https://www.telekom.de/hilfe/downloads/1tr119.pdf
+- >-
+  https://community.asterisk.org/t/pjsip-settings-for-two-german-telekom-products/79293
+notes:
+  en: >-
+    Registered mode over TCP. Username = 'Zugangsnummer' from the order confirmation; one registration
+    for all numbers. Calls go via the outbound proxy reg.sip-trunk.telekom.de.
+  de: >-
+    Registered Mode über TCP. Benutzername = Zugangsnummer aus der Auftragsbestätigung; eine Registrierung
+    für alle Rufnummern. Rufe über den Outbound-Proxy reg.sip-trunk.telekom.de.
+credentials:
+  mode: shared
+  username_template: '{input}'
+  username_hint:
+    en: Zugangsnummer (access number)
+    de: Zugangsnummer
+sip:
+  registrar: sip-trunk.telekom.de
+  realm: sip-trunk.telekom.de
+  outbound_proxy: reg.sip-trunk.telekom.de
+  transport: tcp
+  expire_seconds: 480
+  number_format: e164
+  caller_id_format: e164
+  caller_id_header: ppi
+  from_user: number

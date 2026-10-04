@@ -1,0 +1,30 @@
+# AVM FRITZ!Box – TalkOps als IP-Telefon an der FRITZ!Box
+# Status: untested. See docs/trunk-presets.md for the format.
+id: fritzbox
+name: AVM FRITZ!Box
+product: TalkOps als IP-Telefon an der FRITZ!Box
+country: DE
+status: untested
+sources:
+- https://service.avm.de/help/en/FRITZ-Box-7590/019/hilfe_fon_howto_ip-telefon
+notes:
+  en: >-
+    Create an 'IP telephone' in the FRITZ!Box (Telephony > Telephone Devices) and enter its username and
+    password here. The FRITZ!Box handles the provider; numbers are dialed in national format.
+  de: >-
+    In der FRITZ!Box ein 'IP-Telefon' anlegen (Telefonie > Telefoniegeräte) und dessen Benutzername und
+    Passwort hier eintragen. Die FRITZ!Box übernimmt den Provider; Rufnummern werden national gewählt.
+credentials:
+  mode: shared
+  username_template: '{input}'
+  username_hint:
+    en: Username of the IP telephone in the FRITZ!Box
+    de: Benutzername des IP-Telefons in der FRITZ!Box
+sip:
+  registrar: fritz.box
+  transport: udp
+  expire_seconds: 300
+  number_format: national
+  caller_id_format: national
+  caller_id_header: from
+  from_user: username

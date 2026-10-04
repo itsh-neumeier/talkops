@@ -1,0 +1,31 @@
+# Twilio – Elastic SIP Trunking
+# Status: untested. See docs/trunk-presets.md for the format.
+id: twilio
+name: Twilio
+product: Elastic SIP Trunking
+country: '*'
+status: untested
+sources:
+- https://www.twilio.com/docs/sip-trunking
+notes:
+  en: >-
+    Registration is not supported: outbound calls use the termination URI (<name>.pstn.twilio.com, or
+    regional e.g. <name>.pstn.frankfurt.twilio.com) with a credential list; inbound calls require an origination
+    URI pointing to TalkOps' public address.
+  de: >-
+    Keine Registrierung: Abgehend über die Termination-URI (<name>.pstn.twilio.com bzw. regional z. B.
+    <name>.pstn.frankfurt.twilio.com) mit Credential-List; ankommend ist eine Origination-URI auf die
+    öffentliche Adresse von TalkOps nötig.
+credentials:
+  mode: no_registration
+  username_template: '{input}'
+sip:
+  register: false
+  transport: udp
+  number_format: e164
+  caller_id_format: e164
+  caller_id_header: from
+  from_user: number
+  codecs:
+  - PCMU
+  - PCMA

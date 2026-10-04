@@ -1,0 +1,30 @@
+# LEONET – SIP-Anschluss (Privat/Business)
+# Status: untested. See docs/trunk-presets.md for the format.
+id: leonet
+name: LEONET
+product: SIP-Anschluss (Privat/Business)
+country: DE
+status: untested
+sources:
+- Project owner reference configuration (to be verified with a live line)
+notes:
+  en: >-
+    Every phone number registers separately with its own password. The username is 'leo' followed by the
+    number in international format without '+' (leo49<area code><number>). Numbers are sent without '+'.
+  de: >-
+    Jede Rufnummer registriert sich einzeln mit eigenem Passwort. Benutzername: 'leo' + Rufnummer international
+    ohne '+' (leo49<Vorwahl ohne 0><Rufnummer>). Rufnummern werden ohne '+' übermittelt.
+credentials:
+  mode: per_number
+  username_template: leo{e164_digits}
+  username_hint:
+    en: leo49<area code><number>
+    de: leo49<Vorwahl ohne 0><Rufnummer>
+sip:
+  registrar: sip.leovoice.online
+  transport: udp
+  number_format: national
+  caller_id_format: e164_no_plus
+  caller_id_header: from
+  from_user: username
+  ping_seconds: 30

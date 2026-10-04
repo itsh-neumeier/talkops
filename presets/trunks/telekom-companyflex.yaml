@@ -1,0 +1,30 @@
+# Deutsche Telekom – CompanyFlex SIP-Trunk
+# Status: untested. See docs/trunk-presets.md for the format.
+id: telekom-companyflex
+name: Deutsche Telekom
+product: CompanyFlex SIP-Trunk
+country: DE
+status: untested
+sources:
+- https://www.telekom.de/hilfe/downloads/1tr119.pdf
+- https://wiki.innovaphone.com/?i=11537
+notes:
+  en: >-
+    TLS with SRTP is recommended by Telekom (root CA 'T-TeleSec GlobalRoot Class 2'). Credentials come
+    from the CompanyFlex portal. Check 1TR119 for the current requirements.
+  de: >-
+    Telekom empfiehlt TLS mit SRTP (Root-CA 'T-TeleSec GlobalRoot Class 2'). Zugangsdaten aus dem CompanyFlex-Portal.
+    Aktuelle Anforderungen siehe 1TR119.
+credentials:
+  mode: shared
+  username_template: '{input}'
+sip:
+  registrar: reg.sip-trunk.telekom.de
+  realm: sip-trunk.telekom.de
+  transport: tls
+  srtp: required
+  expire_seconds: 480
+  number_format: e164
+  caller_id_format: e164
+  caller_id_header: ppi
+  from_user: number

@@ -8,13 +8,21 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+argon2 = "0.6.0"
+base64 = "0.23.1"
+chacha20poly1305 = "0.11.0"
 chrono.workspace = true
+getrandom = "0.4"
+hex = "0.4.3"
 serde.workspace = true
 serde_json.workspace = true
+serde_yaml_ng = "0.10.0"
+sha2 = "0.11.0"
 sqlx.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
+utoipa = { workspace = true, features = ["uuid", "chrono"] }
 uuid.workspace = true
 
 [dev-dependencies]

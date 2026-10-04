@@ -1,0 +1,26 @@
+# Placetel – SIP-Trunk / PROFI
+# Status: untested. See docs/trunk-presets.md for the format.
+id: placetel
+name: Placetel
+product: SIP-Trunk / PROFI
+country: DE
+status: untested
+sources:
+- https://teamwork.gigaset.com/gigawiki/x/4IEFEg
+notes:
+  en: >-
+    Registration is mandatory. Username, password and registrar (fpbx.de) are shown in the Placetel web
+    portal for the trunk.
+  de: >-
+    Registrierung ist Pflicht. Benutzername, Passwort und Registrar (fpbx.de) stehen im Placetel-Webportal
+    beim Trunk.
+credentials:
+  mode: shared
+  username_template: '{input}'
+sip:
+  registrar: fpbx.de
+  transport: udp
+  number_format: e164
+  caller_id_format: e164
+  caller_id_header: ppi
+  from_user: username

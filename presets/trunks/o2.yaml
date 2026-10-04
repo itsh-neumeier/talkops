@@ -1,0 +1,31 @@
+# Telefónica o2 – DSL/Kabel/Glasfaser-Anschluss
+# Status: untested. See docs/trunk-presets.md for the format.
+id: o2
+name: Telefónica o2
+product: DSL/Kabel/Glasfaser-Anschluss
+country: DE
+status: untested
+sources:
+- >-
+  https://hilfe.o2online.de/dsl-kabel-glasfaser-router-software-internet-telefonie-34/registrar-angeben-bitte-165880
+notes:
+  en: >-
+    Current o2 lines use sip.alice-voip.de as registrar and proxy. SIP username and password are shown
+    in the o2 customer portal.
+  de: >-
+    Aktuelle o2-Anschlüsse nutzen sip.alice-voip.de als Registrar und Proxy. SIP-Benutzername und -Passwort
+    stehen im o2-Kundenportal.
+credentials:
+  mode: per_number
+  username_template: '{input}'
+  username_hint:
+    en: SIP username from the o2 portal
+    de: SIP-Benutzername aus dem o2-Portal
+sip:
+  registrar: sip.alice-voip.de
+  proxy: sip.alice-voip.de
+  transport: udp
+  number_format: national
+  caller_id_format: e164
+  caller_id_header: from
+  from_user: username

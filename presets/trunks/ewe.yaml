@@ -1,0 +1,29 @@
+# EWE – SIP-Trunk / SIP-Line (Business)
+# Status: untested. See docs/trunk-presets.md for the format.
+id: ewe
+name: EWE
+product: SIP-Trunk / SIP-Line (Business)
+country: DE
+status: untested
+sources:
+- >-
+  https://business.ewe.de/dokumente/telekommunikation/04_broschueren_und_infomaterial/technische_beschreibung_des_ewe_sip_trunk.pdf
+- >-
+  https://business.ewe.de/dokumente/telekommunikation/04_broschueren_und_infomaterial/konfigurationsempfehlung-bintec-elmeg-beIp-plus.pdf
+notes:
+  en: >-
+    Registrar/domain siptrunk3.voice.ewetel.de (DNS SRV, UDP). Username like 494418030 (country code +
+    area code + base number).
+  de: >-
+    Registrar/Domain siptrunk3.voice.ewetel.de (DNS-SRV, UDP). Benutzername z. B. 494418030 (Länder- +
+    Ortsvorwahl + Stammnummer).
+credentials:
+  mode: shared
+  username_template: '{input}'
+sip:
+  registrar: siptrunk3.voice.ewetel.de
+  transport: udp
+  number_format: e164_no_plus
+  caller_id_format: e164_no_plus
+  caller_id_header: ppi
+  from_user: username

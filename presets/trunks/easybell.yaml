@@ -1,0 +1,29 @@
+# easybell – SIP-Trunk / Rufnummern
+# Status: untested. See docs/trunk-presets.md for the format.
+id: easybell
+name: easybell
+product: SIP-Trunk / Rufnummern
+country: DE
+status: untested
+sources:
+- >-
+  https://en.easybell.de/fileadmin/help/legacy-articles/Wo_kann_ich_meine_SIP-Zugangsdaten_einsehen.pdf
+- >-
+  https://en.easybell.de/help/telephone-configuration/ip-telephone-systems-for-easybell-sip-trunking/answer/openvox-uc-series-ippbx-version-242/
+notes:
+  en: >-
+    Registrar/proxy sip.easybell.de; 5060 UDP/TCP, 5061 TLS. Username and password are shown in the easybell
+    customer portal per SIP trunk.
+  de: >-
+    Registrar/Proxy sip.easybell.de; 5060 UDP/TCP, 5061 TLS. Benutzername und Passwort je SIP-Trunk im
+    easybell-Kundenportal.
+credentials:
+  mode: shared
+  username_template: '{input}'
+sip:
+  registrar: sip.easybell.de
+  transport: udp
+  number_format: national
+  caller_id_format: e164
+  caller_id_header: ppi
+  from_user: username

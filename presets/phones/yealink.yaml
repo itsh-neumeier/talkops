@@ -1,0 +1,29 @@
+# Yealink models supported by the TalkOps provisioning templates.
+#
+# accounts:   number of SIP accounts (DECT bases: handsets/accounts)
+# line_keys:  programmable line keys incl. all pages (managed by TalkOps)
+# family:     desk | dect | conference
+# Common config file names follow "y0000000000XX.cfg" (hardware id); TalkOps
+# serves the same common file for every such name.
+#
+# Sources: Yealink IP Phones Auto Provisioning Guide V1.3 (2021),
+# Yealink SIP-T2/T4 Auto Provisioning Guide V80, product datasheets.
+vendor: yealink
+status: untested
+models:
+  - { id: t31g, name: SIP-T31G, family: desk, accounts: 2, line_keys: 2 }
+  - { id: t33g, name: SIP-T33G, family: desk, accounts: 4, line_keys: 4 }
+  - { id: t42u, name: SIP-T42U, family: desk, accounts: 12, line_keys: 15 }
+  - { id: t43u, name: SIP-T43U, family: desk, accounts: 12, line_keys: 21 }
+  - { id: t46u, name: SIP-T46U, family: desk, accounts: 16, line_keys: 40 }
+  - { id: t48u, name: SIP-T48U, family: desk, accounts: 16, line_keys: 29 }
+  - { id: t53w, name: SIP-T53W, family: desk, accounts: 12, line_keys: 21 }
+  - { id: t54w, name: SIP-T54W, family: desk, accounts: 16, line_keys: 27 }
+  - { id: t57w, name: SIP-T57W, family: desk, accounts: 16, line_keys: 29 }
+  - { id: t58w, name: SIP-T58W, family: desk, accounts: 16, line_keys: 27, video: true }
+  - { id: vp59, name: VP59, family: desk, accounts: 16, line_keys: 29, video: true }
+  - { id: cp920, name: CP920, family: conference, accounts: 1, line_keys: 0 }
+  - { id: cp960, name: CP960, family: conference, accounts: 1, line_keys: 0 }
+  - { id: w60b, name: W60B, family: dect, accounts: 8, line_keys: 0 }
+  - { id: w70b, name: W70B, family: dect, accounts: 10, line_keys: 0 }
+  - { id: w80b, name: W80B, family: dect, accounts: 100, line_keys: 0 }

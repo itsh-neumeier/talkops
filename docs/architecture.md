@@ -1,6 +1,6 @@
 # TalkOps – Architektur
 
-> Status: Phase 1 (Grundtelefonie). Entscheidungen mit Begründung stehen in den
+> Status: Phase 2 (Yealink). Entscheidungen mit Begründung stehen in den
 > [ADRs](adr/README.md); dieses Dokument beschreibt das Zusammenspiel.
 
 ## Überblick
@@ -93,6 +93,18 @@ Jede Anfrage im Kontext `internal` (authentifizierte Geräte) bzw. `public`
 | internal | extern | Wählregeln → E.164 → Format der Vorlage (`number_format`), Absender im Format `caller_id_format` per From/PAI/PPI, optional CLIR (`privacy full`) |
 | public | eigene Rufnummer | Normalisierung (+49…, 0049…, 49…, 0…) → Rufnummer → Ziel-Nebenstelle; Anrufernummer national formatiert (Rückruf ohne Umweg) |
 | public | unbekannt | `404` |
+| internal | `*78` / `*79` | Nicht stören an/aus (Bestätigungston, kein CDR) |
+| internal | `*72<Nummer>` / `*73` | Rufumleitung sofort an/aus (Ziel: Nebenstelle oder externe Nummer) |
+| internal | `**<Nebenstelle>` | gezieltes Heranholen (`pickup ext-<uuid>`) |
+
+Beim Klingeln einer Nebenstelle gilt (Phase 2): deaktiviert → `480`,
+**Nicht stören** → `486 Busy Here`, **Rufumleitung** → genau ein Sprung (keine
+Ketten, keine Schleifen) zu einer Nebenstelle bzw. extern über die Rufnummer
+der umleitenden Nebenstelle (sonst Standardrufnummer). Jeder Klingelvorgang
+enthält zusätzlich den Endpunkt `pickup/ext-<uuid>`, damit `**<Nebenstelle>`
+und BLF-Tasten den Anruf übernehmen können. Geräte melden Presence als
+`<Nebenstelle>@talkops.local` (`presence_id` im Directory) – darauf
+abonnieren BLF-Tasten (`manage-presence` im Profil `internal`).
 
 Gespeicherte Werte aus Nutzer- oder Providerhand (Anzeigenamen, Caller-IDs)
 werden vor der Ausgabe von FreeSWITCH-Steuerzeichen bereinigt
@@ -104,6 +116,26 @@ Trunk-Accounts werden zu Gateways `gw-<uuid>` im Profil `external`; nach
 Bei Anbietern mit Zugangsdaten je Rufnummer (`per_number`) setzt TalkOps
 `extension`/`extension-in-contact`, damit eingehende Anrufe der Nummer
 zugeordnet werden können.
+
+## Provisioning (Phase 2)
+
+Telefone holen ihre Konfiguration per HTTP(S) von `/provisioning/…` (Basic-Auth
+mit generierten Zugangsdaten; Fehlversuche sind wie der Login begrenzt):
+
+| Pfad | Inhalt |
+|---|---|
+| `y0000000000XX.cfg` | gemeinsame Yealink-Datei: Provisioning-Server, nächtlicher Abgleich, Admin-Passwort, Zeitzone/NTP, Sprache, Telefonbücher, Action-URLs |
+| `<mac>.cfg` | je Telefon: SIP-Konten (DECT: Mobilteile), Funktionstasten (Leitung/BLF/Kurzwahl), MWI, Firmware-URL; nur für angelegte MACs |
+| `phonebook/internal.xml`, `phonebook/contacts.xml` | Yealink-XML-Telefonbücher (Nebenstellen bzw. gemeinsame Kontakte, Suche über `search`) |
+| `firmware/<id>/<datei>` | hochgeladene Firmware (aktiv je Modell) |
+| `events?key=…` | Action-URLs: DND am Telefon, „Setup abgeschlossen“ |
+
+Die Modellliste ist eine Datendatei (`presets/phones/yealink.yaml`), die
+Templates (`crates/talkops-provisioning/templates`) basieren auf dem Yealink
+Auto Provisioning Guide und setzen jeden Wert über `cfg_value` (keine
+Zeilenumbrüche). Ein Resync schickt `NOTIFY check-sync` (`sofia profile
+internal check_sync`); Yealink startet dann neu und lädt die Konfiguration.
+MWI wird per `MESSAGE_WAITING`-Event gesetzt (genutzt ab Phase 3).
 
 ## API & Authentifizierung
 
@@ -183,7 +215,7 @@ Phase 8.
 
 ## Verzeichnisstruktur
 
-Ist-Stand Phase 1 plus geplante Ergänzungen (P2 … P8):
+Ist-Stand Phase 2 plus geplante Ergänzungen (P2 … P8):
 
 ```
 talkops/
@@ -196,18 +228,20 @@ talkops/
 ├── crates/
 │   ├── talkops-core/
 │   │   └── src/  db · jobs · tenant · telemetry · crypto · users · extensions
-│   │             trunks · settings · dialing · presets · cdr · audit
+│   │             trunks · settings · dialing · presets · cdr · audit · phones
 │   ├── talkops-api/
 │   │   └── src/  main · config · auth · error · esl · telephony
 │   │             fsxml/{sofia,directory,dialplan,cdr}
-│   │             routes/{health,auth,users,extensions,trunks,settings,fs}
+│   │             routes/{health,auth,users,extensions,trunks,settings,fs,
+│   │                     phones,provisioning}
 │   ├── talkops-esl/              Event-Socket-Client (inbound; P3: outbound-Server)
-│   ├── talkops-provisioning/     P2: Yealink-Templates, Telefonbuch, Firmware
+│   ├── talkops-provisioning/     Yealink-Templates, Modellkatalog, XML-Telefonbuch
 │   ├── talkops-media-worker/     P3: Piper-Handler, P5: Whisper-Handler
 │   └── talkops-doorbell/         P6: Dahua-HTTP-API/CGI, MQTT/Webhooks
 ├── migrations/                   sqlx-Migrationen (ein Satz für alle Dienste)
 ├── presets/
-│   └── trunks/                   28 Anbieter-Vorlagen (leonet.yaml, telekom-*.yaml …)
+│   ├── trunks/                   28 Anbieter-Vorlagen (leonet.yaml, telekom-*.yaml …)
+│   └── phones/                   Telefonmodelle (yealink.yaml)
 ├── web/                          SvelteKit + TS + Tailwind (SPA)
 │   └── src/  lib/{api.ts, i18n/, theme.svelte.ts} · routes/
 ├── docker/
@@ -219,8 +253,8 @@ talkops/
 │   └── e2e/run.sh                Ende-zu-Ende-Test gegen den laufenden Stack
 ├── docs/
 │   ├── architecture.md · adr/
-│   ├── de/  installation.md · portainer.md · erste-schritte.md · leonet.md
-│   │        (P2+: yealink.md, dahua.md, ldap.md, backup.md)
+│   ├── de/  installation.md · portainer.md · erste-schritte.md · leonet.md · yealink.md
+│   │        (P3+: dahua.md, ldap.md, backup.md)
 │   ├── en/  (gleiche Inhalte auf Englisch)
 │   └── trunk-presets.md          Format & Beitragsregeln für Vorlagen
 └── .github/workflows/            ci.yml · freeswitch.yml · e2e.yml · release.yml
@@ -232,7 +266,7 @@ talkops/
 |---|---|---|
 | 0 | Fundament: Workspace, ADRs, CI, Compose, FreeSWITCH-Image, Postgres, Healthchecks | ✅ |
 | 1 | Grundtelefonie: xml_curl-Directory/Dialplan, Nebenstellen, Trunk-Presets (LEONET u. a.), Web-UI Login/User/Trunks, CDR | ✅ (LEONET-Livetest offen) |
-| 2 | Yealink: Provisioning, Templates, XML-Telefonbuch, BLF, Feature-Codes, MWI | geplant |
+| 2 | Yealink: Provisioning, Templates, XML-Telefonbuch, BLF, Feature-Codes, MWI | ✅ (Test mit echten Geräten offen) |
 | 3 | Voicemail & TTS: ESL-Voicemail, Piper, Mehrsprachigkeit, Mail | geplant |
 | 4 | Gruppen & Logik: Rufgruppen, Queues, IVR-Editor, Zeitsteuerung/Feiertage, Parken/Pickup | geplant |
 | 5 | Recording & Transkription: Hinweisansage, Whisper, Suche, Retention | geplant |

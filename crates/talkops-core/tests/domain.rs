@@ -390,6 +390,7 @@ async fn cdr_and_audit(pool: PgPool) {
         caller_name: "A".into(),
         destination: "21".into(),
         extension_id: Some(Uuid::new_v4()), // unknown -> stored as NULL
+        dest_extension_id: None,
         trunk_id: None,
         number_id: None,
         started_at: now,

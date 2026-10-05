@@ -373,5 +373,35 @@ async fn cdr_ingestion(db: PgPool) {
     assert_eq!(calls.len(), 1, "duplicate posts are ignored");
     assert_eq!(calls[0]["destination"], "+4930123456");
     assert_eq!(calls[0]["extension_id"], ext_id);
-    let _ = &f.ext21;
+
+    // The called extension's owner sees internal calls too.
+    let (_, bob) = f.admin.post("/api/v1/users", json!({"username": "bob", "display_name": "Bob", "role": "user", "password": "bob-password-1"})).await;
+    let mut e21 = f.ext21.clone();
+    e21["user_id"] = bob["id"].clone();
+    f.admin
+        .put(
+            &format!("/api/v1/extensions/{}", e21["id"].as_str().unwrap()),
+            e21.clone(),
+        )
+        .await;
+    let internal = xml
+        .replace("call-1", "call-2")
+        .replace("<talkops_direction>outbound", "<talkops_direction>internal")
+        .replace(
+            "</talkops_extension_id>",
+            &format!(
+                "</talkops_extension_id><talkops_dest_extension_id>{}</talkops_dest_extension_id>",
+                e21["id"].as_str().unwrap()
+            ),
+        );
+    fs_post(&router, "/fs/cdr", &[("cdr", &internal)]).await;
+    let bob_client = login(&router, "bob", "bob-password-1").await.unwrap();
+    let (_, calls) = bob_client.get("/api/v1/calls").await;
+    let calls = calls.as_array().unwrap();
+    assert_eq!(
+        calls.len(),
+        1,
+        "bob sees only the internal call to his extension"
+    );
+    assert_eq!(calls[0]["call_uuid"], "call-2");
 }

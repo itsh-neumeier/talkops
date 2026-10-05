@@ -29,6 +29,8 @@ pub struct Cdr {
     pub caller_name: String,
     pub destination: String,
     pub extension_id: Option<Uuid>,
+    #[serde(default)]
+    pub dest_extension_id: Option<Uuid>,
     pub trunk_id: Option<Uuid>,
     pub number_id: Option<Uuid>,
     pub started_at: DateTime<Utc>,
@@ -40,16 +42,17 @@ pub struct Cdr {
 }
 
 const COLUMNS: &str = "id, call_uuid, direction, caller_number, caller_name, destination, extension_id, \
-                       trunk_id, number_id, started_at, answered_at, ended_at, duration_secs, billsec, hangup_cause";
+                       dest_extension_id, trunk_id, number_id, started_at, answered_at, ended_at, duration_secs, billsec, hangup_cause";
 
 /// Inserts a CDR; duplicates (same call UUID, e.g. retried posts) are ignored.
 pub async fn insert<'e>(db: impl PgExecutor<'e>, tenant: TenantId, c: &Cdr) -> CoreResult<bool> {
     let res = sqlx::query(
         "INSERT INTO cdr (tenant_id, call_uuid, direction, caller_number, caller_name, destination,
-                          extension_id, trunk_id, number_id, started_at, answered_at, ended_at,
-                          duration_secs, billsec, hangup_cause)
+                          extension_id, dest_extension_id, trunk_id, number_id, started_at, answered_at,
+                          ended_at, duration_secs, billsec, hangup_cause)
          VALUES ($1, $2, $3, $4, $5, $6,
                  (SELECT id FROM extensions WHERE id = $7 AND tenant_id = $1),
+                 (SELECT id FROM extensions WHERE id = $16 AND tenant_id = $1),
                  (SELECT id FROM trunks WHERE id = $8 AND tenant_id = $1),
                  (SELECT id FROM numbers WHERE id = $9 AND tenant_id = $1),
                  $10, $11, $12, $13, $14, $15)
@@ -70,6 +73,7 @@ pub async fn insert<'e>(db: impl PgExecutor<'e>, tenant: TenantId, c: &Cdr) -> C
     .bind(c.duration_secs)
     .bind(c.billsec)
     .bind(&c.hangup_cause)
+    .bind(c.dest_extension_id)
     .execute(db)
     .await?;
     Ok(res.rows_affected() == 1)
@@ -77,7 +81,7 @@ pub async fn insert<'e>(db: impl PgExecutor<'e>, tenant: TenantId, c: &Cdr) -> C
 
 #[derive(Debug, Clone, Default, Deserialize, utoipa::IntoParams)]
 pub struct CdrQuery {
-    /// Only calls of this extension.
+    /// Only calls from or to this extension.
     pub extension_id: Option<Uuid>,
     /// Matches caller or destination number (substring).
     pub search: Option<String>,
@@ -93,7 +97,7 @@ pub async fn list<'e>(
     let sql = format!(
         "SELECT {COLUMNS} FROM cdr
          WHERE tenant_id = $1
-           AND ($2::uuid IS NULL OR extension_id = $2)
+           AND ($2::uuid IS NULL OR extension_id = $2 OR dest_extension_id = $2)
            AND ($3::text IS NULL OR caller_number ILIKE '%' || $3 || '%' OR destination ILIKE '%' || $3 || '%')
            AND ($4::timestamptz IS NULL OR started_at < $4)
          ORDER BY started_at DESC

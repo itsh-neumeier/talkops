@@ -155,7 +155,10 @@ CREATE TABLE cdr (
     caller_number    TEXT NOT NULL DEFAULT '',
     caller_name      TEXT NOT NULL DEFAULT '',
     destination      TEXT NOT NULL DEFAULT '',
+    -- Calling extension (outbound/internal) or ringing extension (inbound).
     extension_id     UUID REFERENCES extensions (id) ON DELETE SET NULL,
+    -- Called extension of internal calls.
+    dest_extension_id UUID REFERENCES extensions (id) ON DELETE SET NULL,
     trunk_id         UUID REFERENCES trunks (id) ON DELETE SET NULL,
     number_id        UUID REFERENCES numbers (id) ON DELETE SET NULL,
     started_at       TIMESTAMPTZ NOT NULL,
@@ -169,6 +172,7 @@ CREATE TABLE cdr (
 CREATE UNIQUE INDEX cdr_call_uuid_idx ON cdr (call_uuid);
 CREATE INDEX cdr_tenant_started_idx ON cdr (tenant_id, started_at DESC);
 CREATE INDEX cdr_extension_idx ON cdr (extension_id, started_at DESC);
+CREATE INDEX cdr_dest_extension_idx ON cdr (dest_extension_id, started_at DESC);
 
 CREATE TABLE audit_log (
     id           BIGSERIAL PRIMARY KEY,

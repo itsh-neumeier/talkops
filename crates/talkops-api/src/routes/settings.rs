@@ -124,7 +124,9 @@ pub async fn list_calls(
         };
         out.extend(cdr::list(&state.db, auth.tenant, &q).await?);
     }
+    // An internal call between two own extensions appears twice.
     out.sort_by_key(|c| std::cmp::Reverse(c.started_at));
+    out.dedup_by_key(|c| c.id);
     out.truncate(query.limit.unwrap_or(100).clamp(1, 500) as usize);
     Ok(Json(out))
 }

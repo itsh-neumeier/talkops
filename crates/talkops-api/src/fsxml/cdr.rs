@@ -50,6 +50,7 @@ pub fn parse(xml: &str) -> Result<Option<(TenantId, Cdr)>, String> {
         caller_name: var("talkops_caller_name").unwrap_or_default(),
         destination: var("talkops_destination").unwrap_or_default(),
         extension_id: uuid_var("talkops_extension_id"),
+        dest_extension_id: uuid_var("talkops_dest_extension_id"),
         trunk_id: uuid_var("talkops_trunk_id"),
         number_id: uuid_var("talkops_number_id"),
         started_at,

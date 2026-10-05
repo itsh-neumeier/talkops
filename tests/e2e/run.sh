@@ -3,7 +3,8 @@
 #
 # Creates an admin, two extensions with one device each, registers device
 # 21-1 with SIPp, calls it from 20-1 and checks the call record. Also checks
-# that a wrong SIP password is rejected.
+# that a wrong SIP password is rejected, that DND rejects calls as busy and
+# that a provisioned Yealink phone gets its configuration.
 #
 #   BASE=http://127.0.0.1:8080 SIP_HOST=192.168.1.10 tests/e2e/run.sh
 set -euo pipefail
@@ -84,5 +85,31 @@ for _ in $(seq 1 15); do
 done
 api GET /api/v1/calls | jq -e '.[] | select(.direction == "internal" and .destination == "21" and .billsec >= 1 and .billsec <= 10)' \
     || fail "no CDR for the call"
+
+log "do not disturb rejects calls with 486"
+EXT21=$(api GET /api/v1/extensions | jq -r '.[] | select(.number == "21") | .id')
+api PUT "/api/v1/extensions/$EXT21/call-settings" '{"dnd":true}' >/dev/null || fail "enable DND"
+sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/call_busy.xml" -inf "$WORK/dest.csv" -s "$CALLER" -au "$CALLER" -ap "$CALLER_PW" \
+    -m 1 -p 5095 -min_rtp_port 16200 -max_rtp_port 16250 -i "$SIP_HOST" -timeout 30 -timeout_error -trace_err -error_file "$WORK/busy.log" >/dev/null \
+    || { cat "$WORK/busy.log" 2>/dev/null; fail "DND call was not rejected as busy"; }
+api PUT "/api/v1/extensions/$EXT21/call-settings" '{"dnd":false}' >/dev/null
+
+log "Yealink provisioning"
+PHONE=$(api POST /api/v1/phones '{"mac":"80:5e:c0:00:e2:e2","model":"t54w","name":"E2E","line_keys":[{"key":3,"type":"blf","value":"21","label":"E2E 21"}]}' | jq -r .id) \
+    || fail "create phone"
+api POST "/api/v1/extensions/$EXT21/devices" "{\"name\":\"Yealink\",\"kind\":\"desk\",\"phone_id\":\"$PHONE\"}" >/dev/null || fail "place device on phone"
+PROV=$(api GET /api/v1/provisioning)
+PUSER=$(echo "$PROV" | jq -r .username)
+PPASS=$(echo "$PROV" | jq -r .password)
+curl -sf -u "$PUSER:$PPASS" "$BASE/provisioning/y000000000068.cfg" | grep -q '^auto_provision.server.url = ' \
+    || fail "common configuration"
+CFG=$(curl -sf -u "$PUSER:$PPASS" -A "Yealink SIP-T54W 96.86.0.100 80:5e:c0:00:e2:e2" "$BASE/provisioning/805ec000e2e2.cfg") \
+    || fail "phone configuration"
+echo "$CFG" | grep -q '^account.1.user_name = 21-2$' || fail "account missing in phone configuration"
+echo "$CFG" | grep -q '^linekey.3.type = 16$' || fail "BLF key missing in phone configuration"
+[ "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/provisioning/805ec000e2e2.cfg")" = 401 ] \
+    || fail "provisioning without credentials must be rejected"
+curl -sf -u "$PUSER:$PPASS" "$BASE/provisioning/phonebook/internal.xml" | grep -q '<Name>E2E 21</Name>' \
+    || fail "internal phonebook"
 
 log "all end-to-end checks passed"

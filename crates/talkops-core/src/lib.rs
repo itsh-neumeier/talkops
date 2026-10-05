@@ -9,6 +9,7 @@ pub mod dialing;
 pub mod error;
 pub mod extensions;
 pub mod jobs;
+pub mod phones;
 pub mod presets;
 pub mod settings;
 pub mod telemetry;

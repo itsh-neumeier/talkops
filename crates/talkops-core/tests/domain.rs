@@ -8,6 +8,7 @@ use sqlx::PgPool;
 use talkops_core::crypto::SecretBox;
 use talkops_core::error::CoreError;
 use talkops_core::extensions::{self, DeviceInput, DeviceKind, ExtensionInput};
+use talkops_core::phones::{self, ContactInput, PhoneInput};
 use talkops_core::presets::PresetCatalog;
 use talkops_core::tenant::TenantId;
 use talkops_core::trunks::{self, AccountInput, NumberDestination, NumberInput, TrunkInput};
@@ -32,6 +33,8 @@ fn ext(number: &str) -> ExtensionInput {
         hide_caller_id: false,
         ring_timeout_secs: 30,
         enabled: true,
+        dnd: false,
+        forward_all: None,
     }
 }
 
@@ -130,28 +133,18 @@ async fn extensions_and_devices(pool: PgPool) {
         name: "Desk".into(),
         kind: DeviceKind::Desk,
         sip_username: None,
-        mac: Some("80:5E:C0:00:00:01".into()),
-        model: Some("T54W".into()),
+        phone_id: None,
+        account_index: None,
         enabled: true,
     };
     let (dev, password) = extensions::create_device(&pool, T, &sb, &e, &input)
         .await
         .unwrap();
     assert_eq!(dev.sip_username, "20-1");
-    assert_eq!(dev.mac.as_deref(), Some("805ec0000001"));
     assert_eq!(sb.decrypt(&dev.sip_password_enc).unwrap(), password);
-    let (dev2, _) = extensions::create_device(
-        &pool,
-        T,
-        &sb,
-        &e,
-        &DeviceInput {
-            mac: None,
-            ..input.clone()
-        },
-    )
-    .await
-    .unwrap();
+    let (dev2, _) = extensions::create_device(&pool, T, &sb, &e, &input)
+        .await
+        .unwrap();
     assert_eq!(dev2.sip_username, "20-2");
 
     let auth = extensions::device_auth(&pool, "20-1")
@@ -449,4 +442,233 @@ async fn cdr_and_audit(pool: PgPool) {
     let log = audit::list(&pool, T, 10).await.unwrap();
     assert_eq!(log.len(), 1);
     assert_eq!(log[0].action, "create");
+}
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn phones_accounts_firmware_contacts(pool: PgPool) {
+    let sb = SecretBox::from_hex(KEY).unwrap();
+    let phone = phones::create(
+        &pool,
+        T,
+        &PhoneInput {
+            mac: "80:5E:C0:AA:BB:CC".into(),
+            model: "t54w".into(),
+            name: "Desk".into(),
+            line_keys: json!([]),
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(phone.mac, "805ec0aabbcc");
+    assert!(
+        phones::create(
+            &pool,
+            T,
+            &PhoneInput {
+                mac: "805ec0aabbcc".into(),
+                model: "t54w".into(),
+                name: "Dup".into(),
+                line_keys: json!([])
+            }
+        )
+        .await
+        .is_err()
+    );
+    assert!(
+        phones::create(
+            &pool,
+            T,
+            &PhoneInput {
+                mac: "xyz".into(),
+                model: "t54w".into(),
+                name: "Bad".into(),
+                line_keys: json!([])
+            }
+        )
+        .await
+        .is_err()
+    );
+
+    let e20 = extensions::create(&pool, T, &ext("20"), &emergency())
+        .await
+        .unwrap();
+    let e21 = extensions::create(&pool, T, &ext("21"), &emergency())
+        .await
+        .unwrap();
+    let on_phone = |name: &str| DeviceInput {
+        name: name.into(),
+        kind: DeviceKind::Desk,
+        sip_username: None,
+        phone_id: Some(phone.id),
+        account_index: None,
+        enabled: true,
+    };
+    let (d1, _) = extensions::create_device(&pool, T, &sb, &e20, &on_phone("A"))
+        .await
+        .unwrap();
+    let (d2, _) = extensions::create_device(&pool, T, &sb, &e21, &on_phone("B"))
+        .await
+        .unwrap();
+    assert_eq!(
+        (d1.account_index, d2.account_index),
+        (Some(1), Some(2)),
+        "slots are assigned in order"
+    );
+    let clash = DeviceInput {
+        account_index: Some(1),
+        ..on_phone("C")
+    };
+    assert!(
+        extensions::create_device(&pool, T, &sb, &e21, &clash)
+            .await
+            .is_err(),
+        "slot already taken"
+    );
+
+    let accounts = phones::accounts(&pool, phone.id).await.unwrap();
+    assert_eq!(
+        accounts
+            .iter()
+            .map(|a| a.extension_number.as_str())
+            .collect::<Vec<_>>(),
+        ["20", "21"]
+    );
+    let (tenant, found) = phones::find_by_mac(&pool, "805ec0aabbcc")
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!((tenant, found.id), (T, phone.id));
+    phones::record_seen(&pool, phone.id, Some("10.0.0.5"), Some("96.86.0.70"))
+        .await
+        .unwrap();
+    assert_eq!(
+        phones::get(&pool, T, phone.id)
+            .await
+            .unwrap()
+            .last_firmware
+            .as_deref(),
+        Some("96.86.0.70")
+    );
+
+    // Deleting the phone keeps the devices (unplaced).
+    phones::delete(&pool, T, phone.id).await.unwrap();
+    assert_eq!(
+        extensions::get_device(&pool, T, d1.id)
+            .await
+            .unwrap()
+            .phone_id,
+        None
+    );
+
+    // Provisioning secrets are generated once and stay stable.
+    let s1 = phones::provisioning_secrets(&pool, T, &sb, false)
+        .await
+        .unwrap();
+    let s2 = phones::provisioning_secrets(&pool, T, &sb, false)
+        .await
+        .unwrap();
+    assert_eq!(s1.password, s2.password);
+    assert_eq!(s1.username, "provision");
+    let s3 = phones::provisioning_secrets(&pool, T, &sb, true)
+        .await
+        .unwrap();
+    assert_ne!(s1.password, s3.password);
+
+    // Only one active firmware per model.
+    let f1 = phones::create_firmware(
+        &pool,
+        T,
+        uuid::Uuid::new_v4(),
+        "t54w",
+        "T54W-1.rom",
+        10,
+        "aa",
+    )
+    .await
+    .unwrap();
+    let f2 = phones::create_firmware(
+        &pool,
+        T,
+        uuid::Uuid::new_v4(),
+        "t54w",
+        "T54W-2.rom",
+        10,
+        "bb",
+    )
+    .await
+    .unwrap();
+    phones::set_firmware_active(&pool, T, f1.id, true)
+        .await
+        .unwrap();
+    phones::set_firmware_active(&pool, T, f2.id, true)
+        .await
+        .unwrap();
+    assert_eq!(
+        phones::active_firmware(&pool, T, "t54w")
+            .await
+            .unwrap()
+            .unwrap()
+            .id,
+        f2.id
+    );
+    assert!(!phones::get_firmware(&pool, T, f1.id).await.unwrap().active);
+
+    let c = phones::create_contact(
+        &pool,
+        T,
+        &ContactInput {
+            name: "Taxi".into(),
+            company: String::new(),
+            phone_work: "089 / 12 34-5".into(),
+            phone_mobile: String::new(),
+            phone_other: String::new(),
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(c.phone_work, "08912345");
+    assert!(
+        phones::create_contact(
+            &pool,
+            T,
+            &ContactInput {
+                name: "X".into(),
+                company: String::new(),
+                phone_work: String::new(),
+                phone_mobile: String::new(),
+                phone_other: String::new()
+            }
+        )
+        .await
+        .is_err()
+    );
+    assert!(
+        phones::create_contact(
+            &pool,
+            T,
+            &ContactInput {
+                name: "X".into(),
+                company: String::new(),
+                phone_work: "abc".into(),
+                phone_mobile: String::new(),
+                phone_other: String::new()
+            }
+        )
+        .await
+        .is_err()
+    );
+
+    // DND and forwarding via feature codes.
+    extensions::set_dnd(&pool, T, e20.id, true).await.unwrap();
+    extensions::set_forward_all(&pool, T, e20.id, Some("030123"))
+        .await
+        .unwrap();
+    let e = extensions::get(&pool, T, e20.id).await.unwrap();
+    assert!(e.dnd);
+    assert_eq!(e.forward_all.as_deref(), Some("030123"));
+    assert!(
+        extensions::set_forward_all(&pool, T, e20.id, Some("x"))
+            .await
+            .is_err()
+    );
 }

@@ -18,6 +18,8 @@ pub struct TenantSettings {
     pub external_ip: String,
     pub default_language: String,
     pub default_number_id: Option<Uuid>,
+    /// IANA time zone, used for phone provisioning.
+    pub timezone: String,
 }
 
 impl TenantSettings {
@@ -33,7 +35,7 @@ impl TenantSettings {
 }
 
 const COLUMNS: &str = "country_code, area_code, national_prefix, international_prefix, \
-                       emergency_numbers, external_ip, default_language, default_number_id";
+                       emergency_numbers, external_ip, default_language, default_number_id, timezone";
 
 pub async fn get<'e>(db: impl PgExecutor<'e>, tenant: TenantId) -> CoreResult<TenantSettings> {
     let sql = format!("SELECT {COLUMNS} FROM tenant_settings WHERE tenant_id = $1");
@@ -48,7 +50,7 @@ pub async fn update<'e>(
     let sql = format!(
         "UPDATE tenant_settings SET country_code = $2, area_code = $3, national_prefix = $4,
              international_prefix = $5, emergency_numbers = $6, external_ip = $7,
-             default_language = $8, default_number_id = $9, updated_at = now()
+             default_language = $8, default_number_id = $9, timezone = $10, updated_at = now()
          WHERE tenant_id = $1 RETURNING {COLUMNS}"
     );
     Ok(sqlx::query_as(&sql)
@@ -61,6 +63,7 @@ pub async fn update<'e>(
         .bind(&s.external_ip)
         .bind(&s.default_language)
         .bind(s.default_number_id)
+        .bind(&s.timezone)
         .fetch_one(db)
         .await?)
 }

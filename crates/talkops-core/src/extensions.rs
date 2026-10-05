@@ -22,6 +22,10 @@ pub struct Extension {
     pub hide_caller_id: bool,
     pub ring_timeout_secs: i32,
     pub enabled: bool,
+    /// Do not disturb: calls to the extension are rejected as busy.
+    pub dnd: bool,
+    /// Unconditional call forwarding target (extension or external number).
+    pub forward_all: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, utoipa::ToSchema)]
@@ -38,6 +42,10 @@ pub struct ExtensionInput {
     pub ring_timeout_secs: i32,
     #[serde(default = "yes")]
     pub enabled: bool,
+    #[serde(default)]
+    pub dnd: bool,
+    #[serde(default)]
+    pub forward_all: Option<String>,
 }
 
 fn default_ring_timeout() -> i32 {
@@ -47,7 +55,7 @@ fn yes() -> bool {
     true
 }
 
-const EXT_COLUMNS: &str = "id, number, display_name, user_id, outbound_number_id, hide_caller_id, ring_timeout_secs, enabled";
+const EXT_COLUMNS: &str = "id, number, display_name, user_id, outbound_number_id, hide_caller_id, ring_timeout_secs, enabled, dnd, forward_all";
 
 pub async fn list<'e>(db: impl PgExecutor<'e>, tenant: TenantId) -> CoreResult<Vec<Extension>> {
     let sql = format!("SELECT {EXT_COLUMNS} FROM extensions WHERE tenant_id = $1 ORDER BY number");
@@ -116,7 +124,29 @@ fn validate(input: &ExtensionInput, emergency: &[String]) -> CoreResult<()> {
     if input.display_name.trim().is_empty() {
         return Err(CoreError::Validation("display name is required".into()));
     }
+    if let Some(f) = input.forward_all.as_deref().filter(|f| !f.is_empty()) {
+        if !valid_forward_target(f) || f == n {
+            return Err(CoreError::Validation(
+                "forwarding target must be a number other than the extension itself".into(),
+            ));
+        }
+    }
     Ok(())
+}
+
+/// Forwarding targets are extension or external numbers (digits, optional '+').
+pub fn valid_forward_target(target: &str) -> bool {
+    let digits = target.strip_prefix('+').unwrap_or(target);
+    (2..=20).contains(&digits.len()) && digits.bytes().all(|b| b.is_ascii_digit())
+}
+
+fn forward_value(input: &ExtensionInput) -> Option<String> {
+    input
+        .forward_all
+        .as_deref()
+        .map(str::trim)
+        .filter(|f| !f.is_empty())
+        .map(str::to_owned)
 }
 
 pub async fn create<'e>(
@@ -128,8 +158,8 @@ pub async fn create<'e>(
     validate(input, emergency)?;
     let sql = format!(
         "INSERT INTO extensions (tenant_id, number, display_name, user_id, outbound_number_id,
-                                 hide_caller_id, ring_timeout_secs, enabled)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING {EXT_COLUMNS}"
+                                 hide_caller_id, ring_timeout_secs, enabled, dnd, forward_all)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING {EXT_COLUMNS}"
     );
     Ok(sqlx::query_as(&sql)
         .bind(tenant)
@@ -140,6 +170,8 @@ pub async fn create<'e>(
         .bind(input.hide_caller_id)
         .bind(input.ring_timeout_secs)
         .bind(input.enabled)
+        .bind(input.dnd)
+        .bind(forward_value(input))
         .fetch_one(db)
         .await?)
 }
@@ -154,7 +186,8 @@ pub async fn update<'e>(
     validate(input, emergency)?;
     let sql = format!(
         "UPDATE extensions SET number = $3, display_name = $4, user_id = $5, outbound_number_id = $6,
-             hide_caller_id = $7, ring_timeout_secs = $8, enabled = $9, updated_at = now()
+             hide_caller_id = $7, ring_timeout_secs = $8, enabled = $9, dnd = $10, forward_all = $11,
+             updated_at = now()
          WHERE tenant_id = $1 AND id = $2 RETURNING {EXT_COLUMNS}"
     );
     Ok(sqlx::query_as(&sql)
@@ -167,8 +200,47 @@ pub async fn update<'e>(
         .bind(input.hide_caller_id)
         .bind(input.ring_timeout_secs)
         .bind(input.enabled)
+        .bind(input.dnd)
+        .bind(forward_value(input))
         .fetch_one(db)
         .await?)
+}
+
+/// Sets do-not-disturb (feature codes, phone DND key).
+pub async fn set_dnd<'e>(
+    db: impl PgExecutor<'e>,
+    tenant: TenantId,
+    id: Uuid,
+    dnd: bool,
+) -> CoreResult<()> {
+    sqlx::query(
+        "UPDATE extensions SET dnd = $3, updated_at = now() WHERE tenant_id = $1 AND id = $2",
+    )
+    .bind(tenant)
+    .bind(id)
+    .bind(dnd)
+    .execute(db)
+    .await?;
+    Ok(())
+}
+
+/// Sets or clears unconditional forwarding (feature codes).
+pub async fn set_forward_all<'e>(
+    db: impl PgExecutor<'e>,
+    tenant: TenantId,
+    id: Uuid,
+    target: Option<&str>,
+) -> CoreResult<()> {
+    if target.is_some_and(|t| !valid_forward_target(t)) {
+        return Err(CoreError::Validation("invalid forwarding target".into()));
+    }
+    sqlx::query("UPDATE extensions SET forward_all = $3, updated_at = now() WHERE tenant_id = $1 AND id = $2")
+        .bind(tenant)
+        .bind(id)
+        .bind(target)
+        .execute(db)
+        .await?;
+    Ok(())
 }
 
 pub async fn delete<'e>(db: impl PgExecutor<'e>, tenant: TenantId, id: Uuid) -> CoreResult<()> {
@@ -208,8 +280,10 @@ pub struct Device {
     pub sip_username: String,
     #[serde(skip)]
     pub sip_password_enc: String,
-    pub mac: Option<String>,
-    pub model: Option<String>,
+    /// Provisioned phone the device is an account of.
+    pub phone_id: Option<Uuid>,
+    /// Account slot on the phone (DECT: handset number).
+    pub account_index: Option<i16>,
     pub enabled: bool,
 }
 
@@ -220,35 +294,54 @@ pub struct DeviceInput {
     /// SIP username; generated (`<extension>-<n>`) when empty.
     #[serde(default)]
     pub sip_username: Option<String>,
+    /// Place the device on a provisioned phone as account `account_index`
+    /// (next free slot when omitted).
     #[serde(default)]
-    pub mac: Option<String>,
+    pub phone_id: Option<Uuid>,
     #[serde(default)]
-    pub model: Option<String>,
+    pub account_index: Option<i16>,
     #[serde(default = "yes")]
     pub enabled: bool,
 }
 
-const DEV_COLUMNS: &str =
-    "id, extension_id, name, kind, sip_username, sip_password_enc, mac, model, enabled";
+const DEV_COLUMNS: &str = "id, extension_id, name, kind, sip_username, sip_password_enc, phone_id, account_index, enabled";
 
-fn normalize_mac(mac: Option<&str>) -> CoreResult<Option<String>> {
-    let Some(mac) = mac.map(str::trim).filter(|m| !m.is_empty()) else {
+/// Resolves the account slot for a device on a phone: the requested one, or
+/// the lowest free slot. Checks that the phone exists.
+async fn phone_slot(
+    pool: &sqlx::PgPool,
+    tenant: TenantId,
+    phone_id: Option<Uuid>,
+    requested: Option<i16>,
+    device_id: Option<Uuid>,
+) -> CoreResult<Option<i16>> {
+    let Some(phone_id) = phone_id else {
         return Ok(None);
     };
-    let hex: String = mac
-        .chars()
-        .filter(|c| c.is_ascii_hexdigit())
-        .collect::<String>()
-        .to_ascii_lowercase();
-    let separators_ok = mac
-        .chars()
-        .all(|c| c.is_ascii_hexdigit() || matches!(c, ':' | '-' | '.'));
-    if hex.len() != 12 || !separators_ok {
-        return Err(CoreError::Validation(
-            "MAC address must have 12 hex digits".into(),
-        ));
+    let exists: bool =
+        sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM phones WHERE tenant_id = $1 AND id = $2)")
+            .bind(tenant)
+            .bind(phone_id)
+            .fetch_one(pool)
+            .await?;
+    if !exists {
+        return Err(CoreError::Validation("unknown phone".into()));
     }
-    Ok(Some(hex))
+    if let Some(slot) = requested {
+        if !(1..=100).contains(&slot) {
+            return Err(CoreError::Validation("account index must be 1-100".into()));
+        }
+        return Ok(Some(slot));
+    }
+    let used: Vec<i16> = sqlx::query_scalar(
+        "SELECT account_index FROM devices
+         WHERE phone_id = $1 AND account_index IS NOT NULL AND id IS DISTINCT FROM $2",
+    )
+    .bind(phone_id)
+    .bind(device_id)
+    .fetch_all(pool)
+    .await?;
+    Ok((1..=100).find(|i| !used.contains(i)))
 }
 
 pub async fn list_devices<'e>(
@@ -333,7 +426,7 @@ pub async fn create_device(
     extension: &Extension,
     input: &DeviceInput,
 ) -> CoreResult<(Device, String)> {
-    let mac = normalize_mac(input.mac.as_deref())?;
+    let slot = phone_slot(pool, tenant, input.phone_id, input.account_index, None).await?;
     let username = match input
         .sip_username
         .as_deref()
@@ -352,8 +445,9 @@ pub async fn create_device(
     };
     let password = crypto::random_password(20)?;
     let sql = format!(
-        "INSERT INTO devices (tenant_id, extension_id, name, kind, sip_username, sip_password_enc, mac, model, enabled)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, NULLIF($8, ''), $9) RETURNING {DEV_COLUMNS}"
+        "INSERT INTO devices (tenant_id, extension_id, name, kind, sip_username, sip_password_enc,
+                              phone_id, account_index, enabled)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING {DEV_COLUMNS}"
     );
     let device = sqlx::query_as(&sql)
         .bind(tenant)
@@ -362,23 +456,24 @@ pub async fn create_device(
         .bind(input.kind)
         .bind(&username)
         .bind(secrets.encrypt(&password)?)
-        .bind(mac)
-        .bind(input.model.as_deref().map(str::trim))
+        .bind(input.phone_id)
+        .bind(slot)
         .bind(input.enabled)
         .fetch_one(pool)
         .await?;
     Ok((device, password))
 }
 
-pub async fn update_device<'e>(
-    db: impl PgExecutor<'e>,
+pub async fn update_device(
+    pool: &sqlx::PgPool,
     tenant: TenantId,
     id: Uuid,
     input: &DeviceInput,
 ) -> CoreResult<Device> {
-    let mac = normalize_mac(input.mac.as_deref())?;
+    let slot = phone_slot(pool, tenant, input.phone_id, input.account_index, Some(id)).await?;
     let sql = format!(
-        "UPDATE devices SET name = $3, kind = $4, mac = $5, model = NULLIF($6, ''), enabled = $7, updated_at = now()
+        "UPDATE devices SET name = $3, kind = $4, phone_id = $5, account_index = $6, enabled = $7,
+             updated_at = now()
          WHERE tenant_id = $1 AND id = $2 RETURNING {DEV_COLUMNS}"
     );
     Ok(sqlx::query_as(&sql)
@@ -386,10 +481,10 @@ pub async fn update_device<'e>(
         .bind(id)
         .bind(input.name.trim())
         .bind(input.kind)
-        .bind(mac)
-        .bind(input.model.as_deref().map(str::trim))
+        .bind(input.phone_id)
+        .bind(slot)
         .bind(input.enabled)
-        .fetch_one(db)
+        .fetch_one(pool)
         .await?)
 }
 
@@ -434,21 +529,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn mac_normalization() {
-        assert_eq!(
-            normalize_mac(Some("80:5E:C0:12:34:56")).unwrap().as_deref(),
-            Some("805ec0123456")
-        );
-        assert_eq!(
-            normalize_mac(Some("805e.c012.3456")).unwrap().as_deref(),
-            Some("805ec0123456")
-        );
-        assert_eq!(normalize_mac(Some("")).unwrap(), None);
-        assert!(normalize_mac(Some("80:5E:C0")).is_err());
-        assert!(normalize_mac(Some("80:5E:C0:12:34:5Z")).is_err());
-    }
-
-    #[test]
     fn extension_validation() {
         let emergency = vec!["110".to_string(), "112".to_string()];
         let mk = |n: &str| ExtensionInput {
@@ -459,8 +539,40 @@ mod tests {
             hide_caller_id: false,
             ring_timeout_secs: 30,
             enabled: true,
+            dnd: false,
+            forward_all: None,
         };
         assert!(validate(&mk("20"), &emergency).is_ok());
+        assert!(
+            validate(
+                &ExtensionInput {
+                    forward_all: Some("21".into()),
+                    ..mk("20")
+                },
+                &emergency
+            )
+            .is_ok()
+        );
+        assert!(
+            validate(
+                &ExtensionInput {
+                    forward_all: Some("20".into()),
+                    ..mk("20")
+                },
+                &emergency
+            )
+            .is_err()
+        );
+        assert!(
+            validate(
+                &ExtensionInput {
+                    forward_all: Some("abc".into()),
+                    ..mk("20")
+                },
+                &emergency
+            )
+            .is_err()
+        );
         assert!(validate(&mk("2001"), &emergency).is_ok());
         assert!(validate(&mk("0123"), &emergency).is_err());
         assert!(validate(&mk("11"), &emergency).is_err());

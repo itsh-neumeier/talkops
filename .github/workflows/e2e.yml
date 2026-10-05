@@ -51,13 +51,14 @@ jobs:
 
       - name: Start stack
         run: |
-          cat > ci.env <<ENV
+          # .env is read by every later `docker compose` call (ps, logs).
+          cat > .env <<ENV
           POSTGRES_PASSWORD=ci$(openssl rand -hex 8)
           TALKOPS_SECRET_KEY=$(openssl rand -hex 32)
           TALKOPS_ESL_PASSWORD=$(openssl rand -hex 12)
           TALKOPS_XMLCURL_PASSWORD=$(openssl rand -hex 12)
           ENV
-          docker compose --env-file ci.env up -d --pull missing --quiet-pull
+          docker compose up -d --pull missing --quiet-pull
           for i in $(seq 1 60); do
             healthy=$(docker compose ps --format '{{.Health}}' | grep -c '^healthy' || true)
             [ "$healthy" -ge 4 ] && break

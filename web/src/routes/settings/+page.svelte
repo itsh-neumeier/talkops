@@ -13,6 +13,17 @@
 	let saved = $state(false);
 	let pw = $state({ current_password: '', new_password: '' });
 	let pwError = $state('');
+	// Zones with a matching Yealink time zone entry (talkops-provisioning).
+	const timezones = [
+		'Europe/Berlin',
+		'Europe/Vienna',
+		'Europe/Zurich',
+		'Europe/Amsterdam',
+		'Europe/Paris',
+		'Europe/Rome',
+		'Europe/Madrid',
+		'Europe/London'
+	];
 
 	onMount(async () => {
 		try {
@@ -116,6 +127,13 @@
 					placeholder="203.0.113.10"
 				/>
 				<p class="hint">{t('settings.externalIpHint')}</p>
+			</div>
+			<div>
+				<label for="s-tz">{t('settings.timezone')}</label>
+				<select id="s-tz" class="input" bind:value={settings.timezone}>
+					{#each timezones as tz (tz)}<option value={tz}>{tz}</option>{/each}
+				</select>
+				<p class="hint">{t('settings.timezoneHint')}</p>
 			</div>
 			<div class="flex justify-end">
 				<button class="btn btn-primary">{t('common.save')}</button>

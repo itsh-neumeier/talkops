@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { api, type ExtensionWithDevices } from '#lib/api.ts';
+	import CallSettings from '#lib/components/CallSettings.svelte';
 	import DeviceList from '#lib/components/DeviceList.svelte';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
 	import { t } from '#lib/i18n/index.svelte.ts';
@@ -28,6 +29,7 @@
 	{#each phones ?? [] as ext (ext.id)}
 		<section class="card space-y-3">
 			<h2><span class="font-mono">{ext.number}</span> · {ext.display_name}</h2>
+			<CallSettings extension={ext} />
 			<DeviceList extensionId={ext.id} devices={ext.devices} onchange={load} />
 		</section>
 	{/each}

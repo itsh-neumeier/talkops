@@ -26,7 +26,10 @@
 		outbound_number_id: extension?.outbound_number_id ?? '',
 		hide_caller_id: extension?.hide_caller_id ?? false,
 		ring_timeout_secs: extension?.ring_timeout_secs ?? 30,
-		enabled: extension?.enabled ?? true
+		enabled: extension?.enabled ?? true,
+		// edited separately (CallSettings), passed through unchanged
+		dnd: extension?.dnd ?? false,
+		forward_all: extension?.forward_all ?? null
 	});
 	let error = $state('');
 

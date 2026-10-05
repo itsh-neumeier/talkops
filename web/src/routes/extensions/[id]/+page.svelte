@@ -9,6 +9,7 @@
 		type PhoneNumber,
 		type User
 	} from '#lib/api.ts';
+	import CallSettings from '#lib/components/CallSettings.svelte';
 	import DeviceList from '#lib/components/DeviceList.svelte';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
 	import ExtensionForm from '#lib/components/ExtensionForm.svelte';
@@ -66,6 +67,9 @@
 				</div>
 			{/if}
 		</div>
+		<section class="card">
+			<CallSettings extension={ext} onchange={load} />
+		</section>
 		<section class="card">
 			<DeviceList
 				extensionId={ext.id}

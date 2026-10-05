@@ -88,6 +88,8 @@ export interface Extension {
 	hide_caller_id: boolean;
 	ring_timeout_secs: number;
 	enabled: boolean;
+	dnd: boolean;
+	forward_all: string | null;
 }
 
 export type DeviceKind = 'desk' | 'dect' | 'softphone' | 'mobile' | 'door' | 'other';
@@ -98,8 +100,8 @@ export interface Device {
 	name: string;
 	kind: DeviceKind;
 	sip_username: string;
-	mac: string | null;
-	model: string | null;
+	phone_id: string | null;
+	account_index: number | null;
 	enabled: boolean;
 }
 
@@ -198,6 +200,7 @@ export interface Settings {
 	external_ip: string;
 	default_language: string;
 	default_number_id: string | null;
+	timezone: string;
 }
 
 export interface Registration {
@@ -241,6 +244,103 @@ export interface AuditEntry {
 	details: Record<string, unknown>;
 	ip: string | null;
 	created_at: string;
+}
+
+export type KeyType = 'none' | 'line' | 'blf' | 'speed_dial';
+
+export interface LineKey {
+	key: number;
+	type: KeyType;
+	value: string;
+	label: string;
+	account: number;
+}
+
+export interface Phone {
+	id: string;
+	mac: string;
+	model: string;
+	name: string;
+	line_keys: LineKey[];
+	last_seen_at: string | null;
+	last_ip: string | null;
+	last_firmware: string | null;
+}
+
+export interface PhoneAccount {
+	account_index: number;
+	device_id: string;
+	extension_id: string;
+	extension_number: string;
+	display_name: string;
+}
+
+export interface PhoneDetail extends Phone {
+	accounts: PhoneAccount[];
+}
+
+export interface PhoneModel {
+	id: string;
+	name: string;
+	vendor: string;
+	family: 'desk' | 'dect' | 'conference';
+	accounts: number;
+	line_keys: number;
+	video: boolean;
+}
+
+export interface Firmware {
+	id: string;
+	model: string;
+	filename: string;
+	size_bytes: number;
+	sha256: string;
+	active: boolean;
+	uploaded_at: string;
+}
+
+export interface Contact {
+	id: string;
+	name: string;
+	company: string;
+	phone_work: string;
+	phone_mobile: string;
+	phone_other: string;
+}
+
+export interface ProvisioningInfo {
+	url: string;
+	url_with_credentials: string;
+	username: string;
+	password: string;
+	phone_admin_password: string;
+}
+
+/** Uploads a file with multipart/form-data (firmware). */
+export async function upload<T>(path: string, form: FormData): Promise<T> {
+	const res = await fetch(`/api/v1${path}`, {
+		method: 'POST',
+		headers: { 'X-Requested-With': 'TalkOps', 'X-CSRF-Token': csrfToken },
+		body: form,
+		credentials: 'same-origin'
+	});
+	const data = await res.json().catch(() => ({}));
+	if (!res.ok)
+		throw new ApiError(res.status, data.error ?? 'error', data.message ?? res.statusText);
+	return data as T;
+}
+
+/** Fetches a plain-text API resource (phone configuration preview). */
+export async function getText(path: string): Promise<string> {
+	const res = await fetch(`/api/v1${path}`, {
+		headers: { 'X-Requested-With': 'TalkOps' },
+		credentials: 'same-origin'
+	});
+	if (!res.ok) {
+		const data = await res.json().catch(() => ({}));
+		throw new ApiError(res.status, data.error ?? 'error', data.message ?? res.statusText);
+	}
+	return res.text();
 }
 
 export function fetchStatus(): Promise<SystemStatus> {

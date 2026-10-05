@@ -94,11 +94,15 @@ impl EslClient {
         })
     }
 
-    /// Sends a raw command (without the trailing blank line) and returns the reply frame.
+    /// Sends a single-line command (without the trailing blank line) and returns the reply frame.
     pub async fn send(&self, command: &str) -> Result<Frame, EslError> {
         if command.contains('\n') {
             return Err(EslError::Protocol("command must be a single line".into()));
         }
+        self.send_raw(command).await
+    }
+
+    async fn send_raw(&self, command: &str) -> Result<Frame, EslError> {
         let (tx, rx) = oneshot::channel();
         {
             // Register and write under the same lock so replies stay in order.
@@ -115,6 +119,26 @@ impl EslClient {
             .await
             .map_err(|_| EslError::Timeout)?
             .map_err(|_| EslError::Closed)
+    }
+
+    /// Fires an event into FreeSWITCH (`sendevent`), e.g. `MESSAGE_WAITING`
+    /// for message-waiting indication. Header names and values must not
+    /// contain line breaks.
+    pub async fn sendevent(&self, name: &str, headers: &[(&str, &str)]) -> Result<(), EslError> {
+        let mut command = format!("sendevent {name}");
+        for (key, value) in headers {
+            if [key, value].iter().any(|s| s.contains(['\n', '\r'])) || key.contains(':') {
+                return Err(EslError::Protocol("invalid event header".into()));
+            }
+            command.push_str(&format!("\n{key}: {value}"));
+        }
+        let reply = self.send_raw(&command).await?;
+        let text = reply.headers.get("Reply-Text").unwrap_or_default();
+        if text.starts_with("+OK") {
+            Ok(())
+        } else {
+            Err(EslError::CommandFailed(text.to_owned()))
+        }
     }
 
     /// Runs a synchronous FreeSWITCH API command (`api <cmd>`) and returns its output.
@@ -193,7 +217,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tokio::io::{AsyncBufReadExt, AsyncReadExt};
+    use tokio::io::AsyncBufReadExt;
     use tokio::net::TcpListener;
 
     /// Fake FreeSWITCH that accepts `secret`, answers `api status` and emits one event.
@@ -208,13 +232,19 @@ mod tests {
                 .await
                 .unwrap();
             loop {
-                let mut line = String::new();
-                if r.read_line(&mut line).await.unwrap() == 0 {
-                    return;
+                // A command is one or more lines terminated by an empty line.
+                let mut block = String::new();
+                loop {
+                    let mut line = String::new();
+                    if r.read_line(&mut line).await.unwrap() == 0 {
+                        return;
+                    }
+                    if line == "\n" {
+                        break;
+                    }
+                    block.push_str(&line);
                 }
-                let mut blank = [0u8; 1];
-                r.read_exact(&mut blank).await.unwrap();
-                let cmd = line.trim_end();
+                let cmd = block.lines().next().unwrap_or_default();
                 let out = if cmd == "auth secret" {
                     "Content-Type: command/reply\nReply-Text: +OK accepted\n\n".to_string()
                 } else if cmd.starts_with("auth ") {
@@ -225,6 +255,10 @@ mod tests {
                         "Content-Type: api/response\nContent-Length: {}\n\n{body}",
                         body.len()
                     )
+                } else if cmd == "sendevent MESSAGE_WAITING"
+                    && block.contains("MWI-Messages-Waiting: yes")
+                {
+                    "Content-Type: command/reply\nReply-Text: +OK 1234\n\n".to_string()
                 } else if cmd.starts_with("event plain") {
                     let ev = "Event-Name: HEARTBEAT\nUp-Time: 0%20years\n\n";
                     format!(
@@ -257,6 +291,18 @@ mod tests {
             client.api("bogus").await,
             Err(EslError::CommandFailed(_))
         ));
+
+        client
+            .sendevent(
+                "MESSAGE_WAITING",
+                &[
+                    ("MWI-Messages-Waiting", "yes"),
+                    ("MWI-Message-Account", "sip:20-1@x"),
+                ],
+            )
+            .await
+            .unwrap();
+        assert!(client.sendevent("X", &[("Bad", "a\nb")]).await.is_err());
 
         let mut events = client.events();
         client.subscribe(&["HEARTBEAT"]).await.unwrap();

@@ -189,6 +189,13 @@ impl LoginLimiter {
         entry.0 <= self.max
     }
 
+    /// True if `key` is over the limit, without recording an attempt.
+    pub fn blocked(&self, key: &str) -> bool {
+        let map = self.attempts.lock().expect("limiter lock poisoned");
+        map.get(key)
+            .is_some_and(|(n, start)| *n >= self.max && start.elapsed() < self.window)
+    }
+
     pub fn reset(&self, key: &str) {
         self.attempts
             .lock()

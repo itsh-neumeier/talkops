@@ -3,12 +3,12 @@
 use axum::Json;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use talkops_core::audit;
 use talkops_core::extensions::{self, Device, DeviceInput, Extension, ExtensionInput};
-use talkops_core::settings;
 use talkops_core::users::Role;
+use talkops_core::{phones, settings};
 use utoipa::ToSchema;
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
@@ -28,6 +28,35 @@ pub fn router() -> OpenApiRouter<AppState> {
         .routes(routes!(device_credentials))
         .routes(routes!(reset_device_password))
         .routes(routes!(my_phones))
+        .routes(routes!(update_call_settings))
+}
+
+/// Settings users change themselves (also via feature codes on the phone).
+#[derive(Deserialize, ToSchema)]
+pub struct CallSettings {
+    /// Do not disturb (`*78` / `*79`).
+    pub dnd: bool,
+    /// Unconditional forwarding target (`*72<number>` / `*73`); empty = off.
+    #[serde(default)]
+    pub forward_all: Option<String>,
+}
+
+/// Rejects account slots the phone model does not have.
+async fn check_phone_slot(state: &AppState, auth: &AuthUser, input: &DeviceInput) -> ApiResult<()> {
+    let (Some(phone_id), Some(slot)) = (input.phone_id, input.account_index) else {
+        return Ok(());
+    };
+    let phone = phones::get(&state.db, auth.tenant, phone_id).await?;
+    let max = state
+        .phone_catalog
+        .get(&phone.model)
+        .map_or(1, |m| m.accounts);
+    if slot < 1 || slot as u16 > max {
+        return Err(ApiError::BadRequest(format!(
+            "account slot must be between 1 and {max}"
+        )));
+    }
+    Ok(())
 }
 
 /// SIP credentials of a device, for manual phone setup.
@@ -183,6 +212,7 @@ pub async fn create_device(
     Json(input): Json<DeviceInput>,
 ) -> ApiResult<Json<DeviceCredentials>> {
     auth.require(Role::Admin)?;
+    check_phone_slot(&state, &auth, &input).await?;
     let ext = extensions::get(&state.db, auth.tenant, id).await?;
     let (device, password) =
         extensions::create_device(&state.db, auth.tenant, &state.secrets, &ext, &input).await?;
@@ -212,6 +242,7 @@ pub async fn update_device(
     Json(input): Json<DeviceInput>,
 ) -> ApiResult<Json<Device>> {
     auth.require(Role::Admin)?;
+    check_phone_slot(&state, &auth, &input).await?;
     let device = extensions::update_device(&state.db, auth.tenant, id, &input).await?;
     audit::record(
         &state.db,
@@ -319,4 +350,40 @@ pub async fn my_phones(
         out.push(ExtensionWithDevices { extension, devices });
     }
     Ok(Json(out))
+}
+
+/// Sets DND and unconditional forwarding (admin or the owning user).
+#[utoipa::path(put, path = "/api/v1/extensions/{id}/call-settings", tag = "extensions", params(("id" = Uuid, Path)), request_body = CallSettings, responses((status = 200, body = Extension)))]
+pub async fn update_call_settings(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<Uuid>,
+    Json(input): Json<CallSettings>,
+) -> ApiResult<Json<Extension>> {
+    let ext = extensions::get(&state.db, auth.tenant, id).await?;
+    check_owner(&state, &auth, &ext, true).await?;
+    let forward = input
+        .forward_all
+        .as_deref()
+        .map(str::trim)
+        .filter(|f| !f.is_empty());
+    if forward == Some(ext.number.as_str()) {
+        return Err(ApiError::BadRequest(
+            "an extension cannot forward to itself".into(),
+        ));
+    }
+    let mut tx = state.db.begin().await?;
+    extensions::set_dnd(&mut *tx, auth.tenant, id, input.dnd).await?;
+    extensions::set_forward_all(&mut *tx, auth.tenant, id, forward).await?;
+    tx.commit().await?;
+    audit::record(
+        &state.db,
+        &auth.actor(),
+        "update_call_settings",
+        "extension",
+        Some(id.to_string()),
+        json!({"number": ext.number, "dnd": input.dnd, "forward_all": forward}),
+    )
+    .await?;
+    Ok(Json(extensions::get(&state.db, auth.tenant, id).await?))
 }

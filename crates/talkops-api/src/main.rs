@@ -7,6 +7,7 @@ use talkops_api::fsxml::sofia::ProfileSettings;
 use talkops_api::{AppState, app};
 use talkops_core::crypto::SecretBox;
 use talkops_core::presets::PresetCatalog;
+use talkops_provisioning::PhoneCatalog;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 #[derive(Debug, Parser)]
@@ -75,6 +76,12 @@ async fn serve(config: Config) -> anyhow::Result<()> {
         )
     })?;
     tracing::info!(presets = catalog.len(), "trunk presets loaded");
+    let phone_catalog = PhoneCatalog::load_dir(&config.phones_dir).with_context(|| {
+        format!(
+            "cannot load phone models from {}",
+            config.phones_dir.display()
+        )
+    })?;
 
     let profile = ProfileSettings {
         sip_ip: config.sip_ip.clone(),
@@ -86,6 +93,8 @@ async fn serve(config: Config) -> anyhow::Result<()> {
         db.clone(),
         secrets,
         catalog,
+        phone_catalog,
+        config.provisioning_dir.clone(),
         profile,
         &config.xmlcurl_password,
     );

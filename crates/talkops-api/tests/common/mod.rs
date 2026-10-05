@@ -13,6 +13,7 @@ use talkops_api::fsxml::sofia::ProfileSettings;
 use talkops_api::{AppState, app};
 use talkops_core::crypto::SecretBox;
 use talkops_core::presets::PresetCatalog;
+use talkops_provisioning::PhoneCatalog;
 use tower::ServiceExt;
 
 pub const KEY: &str = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
@@ -23,10 +24,16 @@ pub fn state(db: PgPool) -> AppState {
         &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../presets/trunks"),
     )
     .unwrap();
+    let phones =
+        PhoneCatalog::load_dir(&Path::new(env!("CARGO_MANIFEST_DIR")).join("../../presets/phones"))
+            .unwrap();
+    let dir = std::env::temp_dir().join(format!("talkops-test-{}", uuid::Uuid::new_v4()));
     AppState::new(
         db,
         SecretBox::from_hex(KEY).unwrap(),
         catalog,
+        phones,
+        dir,
         ProfileSettings::default(),
         "s3cret",
     )

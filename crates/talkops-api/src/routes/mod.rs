@@ -2,6 +2,8 @@ pub mod auth;
 pub mod extensions;
 pub mod fs;
 pub mod health;
+pub mod phones;
+pub mod provisioning;
 pub mod settings;
 pub mod trunks;
 pub mod users;

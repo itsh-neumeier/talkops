@@ -176,7 +176,7 @@ async fn extensions_devices_and_self_service(db: PgPool) {
     let (status, creds) = admin
         .post(
             &format!("/api/v1/extensions/{ext_id}/devices"),
-            json!({"name": "Desk", "kind": "desk", "mac": "80:5e:c0:aa:bb:cc"}),
+            json!({"name": "Desk", "kind": "desk"}),
         )
         .await;
     assert_eq!(status, StatusCode::OK);

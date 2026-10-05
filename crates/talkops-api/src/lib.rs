@@ -9,13 +9,14 @@ pub mod routes;
 pub mod telephony;
 pub mod util;
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use axum::Router;
 use sqlx::PgPool;
 use talkops_core::crypto::SecretBox;
 use talkops_core::presets::PresetCatalog;
+use talkops_provisioning::PhoneCatalog;
 use tower_http::services::{ServeDir, ServeFile};
 use tower_http::trace::TraceLayer;
 use utoipa::OpenApi;
@@ -32,6 +33,9 @@ pub struct AppState {
     pub telephony: Telephony,
     pub secrets: SecretBox,
     pub catalog: Arc<PresetCatalog>,
+    pub phone_catalog: Arc<PhoneCatalog>,
+    /// Writable provisioning data directory (firmware images).
+    pub provisioning_dir: Arc<PathBuf>,
     pub profile: Arc<ProfileSettings>,
     pub xmlcurl_password: Arc<str>,
     pub limiter: Arc<LoginLimiter>,
@@ -42,6 +46,8 @@ impl AppState {
         db: PgPool,
         secrets: SecretBox,
         catalog: PresetCatalog,
+        phone_catalog: PhoneCatalog,
+        provisioning_dir: PathBuf,
         profile: ProfileSettings,
         xmlcurl_password: &str,
     ) -> Self {
@@ -50,6 +56,8 @@ impl AppState {
             telephony: Telephony::default(),
             secrets,
             catalog: Arc::new(catalog),
+            phone_catalog: Arc::new(phone_catalog),
+            provisioning_dir: Arc::new(provisioning_dir),
             profile: Arc::new(profile),
             xmlcurl_password: Arc::from(xmlcurl_password),
             limiter: Arc::new(LoginLimiter::default()),
@@ -69,6 +77,7 @@ impl AppState {
         (name = "extensions", description = "Extensions and devices"),
         (name = "trunks", description = "SIP trunks, accounts, numbers and presets"),
         (name = "settings", description = "Telephony settings, call log and audit log"),
+        (name = "phones", description = "Provisioned phones, firmware and phonebook"),
     )
 )]
 pub struct ApiDoc;
@@ -82,6 +91,7 @@ pub fn api_router() -> (Router<AppState>, utoipa::openapi::OpenApi) {
         .merge(routes::extensions::router())
         .merge(routes::trunks::router())
         .merge(routes::settings::router())
+        .merge(routes::phones::router())
         .split_for_parts();
     (router, api)
 }
@@ -102,6 +112,10 @@ pub fn app(state: AppState, web_dir: Option<&Path>) -> Router {
         )
         .route("/fs/xml", axum::routing::post(routes::fs::xml_curl))
         .route("/fs/cdr", axum::routing::post(routes::fs::xml_cdr))
+        .route(
+            "/provisioning/{*path}",
+            axum::routing::get(routes::provisioning::serve),
+        )
         .with_state(state);
 
     if let Some(dir) = web_dir.filter(|d| d.join("index.html").is_file()) {

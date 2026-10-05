@@ -42,6 +42,22 @@ pub struct Config {
     )]
     pub presets_dir: PathBuf,
 
+    /// Directory with the phone model catalog (`*.yaml`).
+    #[arg(
+        long,
+        env = "TALKOPS_PHONES_DIR",
+        default_value = "/usr/share/talkops/presets/phones"
+    )]
+    pub phones_dir: PathBuf,
+
+    /// Writable directory for provisioning data (firmware images).
+    #[arg(
+        long,
+        env = "TALKOPS_PROVISIONING_DIR",
+        default_value = "/var/lib/talkops/provisioning"
+    )]
+    pub provisioning_dir: PathBuf,
+
     /// FreeSWITCH Event Socket address.
     #[arg(long, env = "TALKOPS_ESL_ADDR", default_value = "127.0.0.1:8021")]
     pub esl_addr: String,

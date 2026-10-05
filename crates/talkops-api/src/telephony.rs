@@ -109,6 +109,47 @@ impl Telephony {
         }
     }
 
+    /// Asks a device to re-provision (SIP NOTIFY `check-sync`). Yealink phones
+    /// reboot and fetch their configuration (`sip.notify_reboot_enable = 1`).
+    pub async fn check_sync(&self, sip_user: &str) -> bool {
+        let Some(client) = self.esl.get().await else {
+            return false;
+        };
+        let cmd = format!(
+            "sofia profile internal check_sync {sip_user}@{}",
+            crate::fsxml::SIP_DOMAIN
+        );
+        match client.api(&cmd).await {
+            Ok(_) => true,
+            Err(err) => {
+                tracing::warn!(user = sip_user, error = %err, "check_sync failed");
+                false
+            }
+        }
+    }
+
+    /// Updates the message-waiting indicator (MWI LED) of a device.
+    pub async fn send_mwi(&self, sip_user: &str, new: u32, saved: u32) -> bool {
+        let Some(client) = self.esl.get().await else {
+            return false;
+        };
+        let account = format!("{sip_user}@{}", crate::fsxml::SIP_DOMAIN);
+        let waiting = if new > 0 { "yes" } else { "no" };
+        let counts = format!("{new}/{saved} (0/0)");
+        let headers = [
+            ("MWI-Messages-Waiting", waiting),
+            ("MWI-Message-Account", account.as_str()),
+            ("MWI-Voice-Message", counts.as_str()),
+        ];
+        match client.sendevent("MESSAGE_WAITING", &headers).await {
+            Ok(()) => true,
+            Err(err) => {
+                tracing::warn!(user = sip_user, error = %err, "MWI update failed");
+                false
+            }
+        }
+    }
+
     /// Restarts the external profile (needed when its own parameters change,
     /// e.g. the public IP). Interrupts active trunk calls.
     pub async fn restart_external_profile(&self) {

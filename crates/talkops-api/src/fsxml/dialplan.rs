@@ -80,7 +80,7 @@ fn reject(code: &str) -> Vec<Action> {
 pub async fn plan(pool: &PgPool, catalog: &PresetCatalog, req: &CallRequest) -> Vec<Action> {
     let result = match req.context.as_str() {
         CONTEXT_INTERNAL => plan_internal(pool, catalog, req).await,
-        CONTEXT_PUBLIC => plan_public(pool, req).await,
+        CONTEXT_PUBLIC => plan_public(pool, catalog, req).await,
         other => {
             tracing::warn!(context = other, "dialplan request for unknown context");
             Ok(reject("403 Forbidden"))
@@ -122,9 +122,14 @@ async fn plan_internal(
         set("talkops_caller_name", sanitize_value(&caller.display_name)),
     ];
 
+    if let Some(feature) = feature_code(pool, tenant, &caller, &dest).await? {
+        actions.extend(feature);
+        return Ok(actions);
+    }
+
     if let Some(target) = extensions::find_by_number(pool, tenant, &dest).await? {
         actions.push(set("talkops_direction", "internal"));
-        actions.extend(ring_extension(pool, &target).await?);
+        actions.extend(ring_extension(pool, catalog, tenant, &target).await?);
         return Ok(actions);
     }
 
@@ -183,14 +188,114 @@ async fn plan_internal(
     Ok(actions)
 }
 
-async fn ring_extension(pool: &PgPool, target: &Extension) -> CoreResult<Vec<Action>> {
+/// Confirmation tone for feature codes (rising two-tone beep).
+const CONFIRM_TONE: &str = "tone_stream://%(200,100,800);%(300,0,1200)";
+
+fn confirm() -> Vec<Action> {
+    vec![
+        ("answer", String::new()),
+        ("sleep", "300".to_owned()),
+        ("playback", CONFIRM_TONE.to_owned()),
+        ("hangup", String::new()),
+    ]
+}
+
+/// Name of the pickup group every extension's calls are registered in, so
+/// `**<ext>` and BLF keys can grab them.
+fn pickup_group(ext: &Extension) -> String {
+    format!("ext-{}", ext.id.simple())
+}
+
+/// Feature codes dialed from a phone. Returns `None` for ordinary numbers.
+///
+/// - `*78` / `*79`: do not disturb on / off
+/// - `*72<number>` / `*73`: unconditional call forwarding on / off
+/// - `**<ext>`: pick up a call ringing at `<ext>`
+async fn feature_code(
+    pool: &PgPool,
+    tenant: TenantId,
+    caller: &Extension,
+    dest: &str,
+) -> CoreResult<Option<Vec<Action>>> {
+    // Toggles are not calls: no `talkops_direction`, so no CDR is written.
+    let mut a = Vec::new();
+    if dest == "*78" || dest == "*79" {
+        extensions::set_dnd(pool, tenant, caller.id, dest == "*78").await?;
+        a.extend(confirm());
+        return Ok(Some(a));
+    }
+    if dest == "*73" {
+        extensions::set_forward_all(pool, tenant, caller.id, None).await?;
+        a.extend(confirm());
+        return Ok(Some(a));
+    }
+    if let Some(target) = dest.strip_prefix("*72") {
+        if !extensions::valid_forward_target(target) || target == caller.number {
+            return Ok(Some(reject("484 Address Incomplete")));
+        }
+        extensions::set_forward_all(pool, tenant, caller.id, Some(target)).await?;
+        a.extend(confirm());
+        return Ok(Some(a));
+    }
+    if let Some(number) = dest.strip_prefix("**") {
+        let Some(target) = extensions::find_by_number(pool, tenant, number).await? else {
+            return Ok(Some(reject("404 Not Found")));
+        };
+        a.push(set("talkops_direction", "internal"));
+        a.push(set("talkops_destination", target.number.clone()));
+        a.push(("pickup", pickup_group(&target)));
+        a.push(("hangup", String::new()));
+        return Ok(Some(a));
+    }
+    Ok(None)
+}
+
+/// Rings all devices of `target`, honouring DND and unconditional
+/// forwarding (one hop only, so forwarding loops are impossible).
+async fn ring_extension(
+    pool: &PgPool,
+    catalog: &PresetCatalog,
+    tenant: TenantId,
+    target: &Extension,
+) -> CoreResult<Vec<Action>> {
+    if !target.enabled {
+        return Ok(reject("480 Temporarily Unavailable"));
+    }
+    if target.dnd {
+        return Ok(reject("486 Busy Here"));
+    }
+    if let Some(forward) = target.forward_all.as_deref() {
+        let mut a = vec![set("talkops_forwarded_from", target.number.clone())];
+        if let Some(next) = extensions::find_by_number(pool, tenant, forward).await? {
+            if next.id != target.id {
+                if next.dnd || !next.enabled {
+                    return Ok(reject("486 Busy Here"));
+                }
+                a.extend(bridge_devices(pool, &next).await?);
+                return Ok(a);
+            }
+        } else {
+            match forward_external(pool, catalog, tenant, target, forward).await? {
+                Some(out) => {
+                    a.extend(out);
+                    return Ok(a);
+                }
+                None => return Ok(reject("480 Temporarily Unavailable")),
+            }
+        }
+    }
+    bridge_devices(pool, target).await
+}
+
+async fn bridge_devices(pool: &PgPool, target: &Extension) -> CoreResult<Vec<Action>> {
     let devices = extensions::ring_targets(pool, target.id).await?;
-    if devices.is_empty() || !target.enabled {
+    if devices.is_empty() {
         return Ok(reject("480 Temporarily Unavailable"));
     }
     let dial = devices
         .iter()
         .map(|d| format!("user/{}@{SIP_DOMAIN}", sanitize_value(d)))
+        .chain(std::iter::once(format!("pickup/{}", pickup_group(target))))
         .collect::<Vec<_>>()
         .join(",");
     Ok(vec![
@@ -202,6 +307,41 @@ async fn ring_extension(pool: &PgPool, target: &Extension) -> CoreResult<Vec<Act
         ("bridge", dial),
         ("hangup", String::new()),
     ])
+}
+
+/// Forwards a call to an external number through the forwarding
+/// extension's outbound number (or the tenant default).
+async fn forward_external(
+    pool: &PgPool,
+    catalog: &PresetCatalog,
+    tenant: TenantId,
+    ext: &Extension,
+    number: &str,
+) -> CoreResult<Option<Vec<Action>>> {
+    let settings = settings::get(pool, tenant).await?;
+    let dial_plan = settings.dial_plan();
+    let (dialed_e164, raw) = match dial_plan.classify(number) {
+        Dialed::External(e164) => (Some(e164.clone()), e164),
+        Dialed::Service(n) => (None, n),
+        Dialed::Emergency(_) | Dialed::Invalid => return Ok(None),
+    };
+    let Some(number_id) = ext.outbound_number_id.or(settings.default_number_id) else {
+        return Ok(None);
+    };
+    let Some(route) = trunks::outbound_route(pool, tenant, number_id).await? else {
+        return Ok(None);
+    };
+    // The call keeps its original direction for the call log.
+    outbound_actions(
+        catalog,
+        &dial_plan,
+        &route,
+        &route.e164,
+        dialed_e164.as_deref(),
+        &raw,
+        false,
+    )
+    .map(Some)
 }
 
 fn codec_string(codecs: &[String]) -> String {
@@ -300,7 +440,11 @@ fn outbound_actions(
     Ok(a)
 }
 
-async fn plan_public(pool: &PgPool, req: &CallRequest) -> CoreResult<Vec<Action>> {
+async fn plan_public(
+    pool: &PgPool,
+    catalog: &PresetCatalog,
+    req: &CallRequest,
+) -> CoreResult<Vec<Action>> {
     let gw_tenant = req
         .uuid_var("talkops_tenant_id")
         .map(TenantId)
@@ -370,7 +514,7 @@ async fn plan_public(pool: &PgPool, req: &CallRequest) -> CoreResult<Vec<Action>
             match extensions::get(pool, tenant, ext_id).await {
                 Ok(target) => {
                     actions.push(set("talkops_extension_id", target.id.to_string()));
-                    actions.extend(ring_extension(pool, &target).await?);
+                    actions.extend(ring_extension(pool, catalog, tenant, &target).await?);
                     Ok(actions)
                 }
                 Err(_) => Ok(reject("480 Temporarily Unavailable")),

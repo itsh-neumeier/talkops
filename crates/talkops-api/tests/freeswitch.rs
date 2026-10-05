@@ -78,6 +78,14 @@ fn actions(xml: &str) -> Vec<(String, String)> {
         .collect()
 }
 
+/// Bridge string ringing both devices of extension 20 plus its pickup group.
+fn ring20(f: &Fixture) -> String {
+    format!(
+        "user/20-1@talkops.local,user/20-2@talkops.local,pickup/ext-{}",
+        f.ext20["id"].as_str().unwrap().replace('-', "")
+    )
+}
+
 fn has(actions: &[(String, String)], app: &str, data: &str) -> bool {
     actions.iter().any(|(a, d)| a == app && d == data)
 }
@@ -212,14 +220,7 @@ async fn internal_routing(db: PgPool) {
 
     // Extension to extension rings all devices.
     let a = internal_call(&router, &f.ext21, "20").await;
-    assert!(
-        has(
-            &a,
-            "bridge",
-            "user/20-1@talkops.local,user/20-2@talkops.local"
-        ),
-        "{a:?}"
-    );
+    assert!(has(&a, "bridge", &ring20(&f)), "{a:?}");
     assert!(has(&a, "set", "talkops_direction=internal"));
     // Extension without devices.
     let a = internal_call(&router, &f.ext20, "21").await;
@@ -246,6 +247,41 @@ async fn internal_routing(db: PgPool) {
     // Injection attempt in the dialed number is stripped to digits.
     let a = internal_call(&router, &f.ext20, "030${system(id)}123").await;
     assert!(a.iter().all(|(_, d)| !d.contains("system")), "{a:?}");
+
+    // Feature codes: DND on/off. Toggles write no CDR.
+    let a = internal_call(&router, &f.ext20, "*78").await;
+    assert!(has(&a, "answer", ""), "{a:?}");
+    assert!(
+        !a.iter().any(|(_, d)| d.starts_with("talkops_direction")),
+        "{a:?}"
+    );
+    let a = internal_call(&router, &f.ext21, "20").await;
+    assert!(has(&a, "respond", "486 Busy Here"), "{a:?}");
+    internal_call(&router, &f.ext20, "*79").await;
+    let a = internal_call(&router, &f.ext21, "20").await;
+    assert!(has(&a, "bridge", &ring20(&f)), "{a:?}");
+
+    // Call forwarding to another extension (21 has no devices) and outside.
+    internal_call(&router, &f.ext20, "*7221").await;
+    let a = internal_call(&router, &f.ext21, "20").await;
+    assert!(has(&a, "respond", "480 Temporarily Unavailable"), "{a:?}");
+    internal_call(&router, &f.ext20, "*72030123456").await;
+    let a = internal_call(&router, &f.ext21, "20").await;
+    assert!(has(&a, "bridge", &format!("{gw}/030123456")), "{a:?}");
+    assert!(has(&a, "set", "talkops_forwarded_from=20"), "{a:?}");
+    // Forwarding to itself is refused, *73 clears it.
+    let a = internal_call(&router, &f.ext20, "*7220").await;
+    assert!(has(&a, "respond", "484 Address Incomplete"), "{a:?}");
+    internal_call(&router, &f.ext20, "*73").await;
+    let a = internal_call(&router, &f.ext21, "20").await;
+    assert!(has(&a, "bridge", &ring20(&f)), "{a:?}");
+
+    // Directed pickup.
+    let a = internal_call(&router, &f.ext21, "**20").await;
+    let group = format!("ext-{}", f.ext20["id"].as_str().unwrap().replace('-', ""));
+    assert!(has(&a, "pickup", &group), "{a:?}");
+    let a = internal_call(&router, &f.ext21, "**99").await;
+    assert!(has(&a, "respond", "404 Not Found"), "{a:?}");
 
     // CLIR is applied for normal calls but never for emergency calls.
     let mut e = f.ext20.clone();
@@ -319,14 +355,7 @@ async fn inbound_routing(db: PgPool) {
     };
     for dest in ["+49891234567", "0891234567", "49891234567"] {
         let a = inbound(dest, vec![]).await;
-        assert!(
-            has(
-                &a,
-                "bridge",
-                "user/20-1@talkops.local,user/20-2@talkops.local"
-            ),
-            "{dest}: {a:?}"
-        );
+        assert!(has(&a, "bridge", &ring20(&f)), "{dest}: {a:?}");
         assert!(
             has(&a, "set", "effective_caller_id_number=030999888"),
             "{a:?}"

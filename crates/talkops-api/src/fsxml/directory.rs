@@ -21,6 +21,13 @@ pub fn render_user(device: &DeviceAuth, password: &str) -> String {
     w.open("user", &[("id", &device.sip_username)]);
     w.open("params", &[]);
     w.param("password", password);
+    // Presence (BLF) is reported per extension number, not per device: busy
+    // lamps watch "20", whichever of the extension's devices is in a call.
+    let presence = format!("{}@{SIP_DOMAIN}", sanitize_value(&device.extension_number));
+    w.raw_param(
+        "dial-string",
+        &format!("{{^^:sip_invite_domain=${{dialed_domain}}:presence_id={presence}}}${{sofia_contact(*/${{dialed_user}}@${{dialed_domain}})}}"),
+    );
     w.close("params");
     w.open("variables", &[]);
     let vars = [
@@ -36,6 +43,10 @@ pub fn render_user(device: &DeviceAuth, password: &str) -> String {
         ("talkops_tenant_id", device.tenant_id.to_string()),
         ("talkops_extension_id", device.extension_id.to_string()),
         ("talkops_device_id", device.device_id.to_string()),
+        (
+            "presence_id",
+            format!("{}@{SIP_DOMAIN}", sanitize_value(&device.extension_number)),
+        ),
     ];
     for (name, value) in &vars {
         w.empty("variable", &[("name", name), ("value", value)]);
@@ -81,5 +92,10 @@ mod tests {
             .unwrap();
         assert_eq!(pw.attribute("value"), Some("pw&1"));
         assert!(xml.contains("${sofia_contact("));
+        assert_eq!(var("presence_id"), Some("20@talkops.local"));
+        assert!(
+            xml.contains("presence_id=20@talkops.local}"),
+            "user dial-string reports the extension"
+        );
     }
 }

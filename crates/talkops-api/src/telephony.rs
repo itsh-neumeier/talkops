@@ -1,12 +1,15 @@
 //! Live telephony state from FreeSWITCH (registrations, gateway states) and
 //! reload commands after configuration changes.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Duration;
 
 use chrono::{DateTime, Utc};
 use serde::Serialize;
+use sqlx::PgPool;
+use talkops_core::error::CoreResult;
+use talkops_core::{extensions, voicemail};
 use tokio::sync::RwLock;
 
 use crate::esl::EslHandle;
@@ -51,16 +54,48 @@ impl Telephony {
         self.status.read().await.clone()
     }
 
-    /// Polls FreeSWITCH every `interval`.
-    pub fn spawn_poller(&self, interval: Duration) {
+    /// Polls FreeSWITCH every `interval`. Devices that newly registered get
+    /// their voicemail indicator (MWI) right away.
+    pub fn spawn_poller(&self, interval: Duration, db: PgPool) {
         let this = self.clone();
         tokio::spawn(async move {
+            let mut known: HashSet<String> = HashSet::new();
             loop {
                 let status = this.poll().await;
+                let current: HashSet<String> = status
+                    .registrations
+                    .iter()
+                    .map(|r| r.user.to_lowercase())
+                    .collect();
+                let fresh: Vec<String> = current.difference(&known).cloned().collect();
+                known = current;
                 *this.status.write().await = status;
+                for user in fresh {
+                    this.initial_mwi(&db, &user).await;
+                }
                 tokio::time::sleep(interval).await;
             }
         });
+    }
+
+    async fn initial_mwi(&self, db: &PgPool, user: &str) {
+        let result = async {
+            let Some(device) = extensions::device_auth(db, user).await? else {
+                return CoreResult::Ok(());
+            };
+            if voicemail::get_box(db, device.tenant_id, device.extension_id)
+                .await?
+                .enabled
+            {
+                let (new, saved) = voicemail::counts(db, device.extension_id).await?;
+                self.send_mwi(&device.sip_username, new, saved).await;
+            }
+            Ok(())
+        }
+        .await;
+        if let Err(err) = result {
+            tracing::debug!(user, error = %err, "initial MWI failed");
+        }
     }
 
     async fn poll(&self) -> LiveStatus {

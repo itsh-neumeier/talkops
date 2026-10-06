@@ -4,7 +4,8 @@ use anyhow::Context;
 use clap::{Parser, Subcommand};
 use talkops_api::config::Config;
 use talkops_api::fsxml::sofia::ProfileSettings;
-use talkops_api::{AppState, app};
+use talkops_api::voicemail::VmContext;
+use talkops_api::{AppState, MediaPaths, app};
 use talkops_core::crypto::SecretBox;
 use talkops_core::presets::PresetCatalog;
 use talkops_provisioning::PhoneCatalog;
@@ -97,12 +98,27 @@ async fn serve(config: Config) -> anyhow::Result<()> {
         config.provisioning_dir.clone(),
         profile,
         &config.xmlcurl_password,
-    );
+    )
+    .with_media(MediaPaths {
+        voicemail: config.voicemail_dir.clone(),
+        sounds: config.sounds_dir.clone(),
+    })
+    .with_outbound_socket(&config.esl_outbound_listen);
     state
         .telephony
         .esl
         .spawn_supervisor(config.esl_addr.clone(), config.esl_password.clone());
-    state.telephony.spawn_poller(Duration::from_secs(10));
+    state
+        .telephony
+        .spawn_poller(Duration::from_secs(10), db.clone());
+    let outbound = tokio::net::TcpListener::bind(&config.esl_outbound_listen)
+        .await
+        .with_context(|| format!("cannot bind {}", config.esl_outbound_listen))?;
+    let vm_ctx = VmContext::from(&state);
+    tokio::spawn(talkops_esl::outbound::serve(outbound, move |session| {
+        talkops_api::voicemail::handle(session, vm_ctx.clone())
+    }));
+    talkops_api::mailer::spawn(state.db.clone(), state.secrets.clone(), state.media.clone());
     spawn_session_cleanup(db);
     let router = app(state, Some(&config.web_dir));
 

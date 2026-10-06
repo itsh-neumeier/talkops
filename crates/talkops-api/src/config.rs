@@ -58,6 +58,31 @@ pub struct Config {
     )]
     pub provisioning_dir: PathBuf,
 
+    /// Shared voicemail volume (messages, greetings).
+    #[arg(
+        long,
+        env = "TALKOPS_VOICEMAIL_DIR",
+        default_value = "/var/lib/talkops/voicemail"
+    )]
+    pub voicemail_dir: PathBuf,
+
+    /// Shared sounds volume (system prompts rendered by the media worker).
+    #[arg(
+        long,
+        env = "TALKOPS_SOUNDS_DIR",
+        default_value = "/var/lib/talkops/sounds"
+    )]
+    pub sounds_dir: PathBuf,
+
+    /// Address of the outbound Event Socket server FreeSWITCH hands
+    /// interactive calls (voicemail) to.
+    #[arg(
+        long,
+        env = "TALKOPS_ESL_OUTBOUND_LISTEN",
+        default_value = "127.0.0.1:8084"
+    )]
+    pub esl_outbound_listen: String,
+
     /// FreeSWITCH Event Socket address.
     #[arg(long, env = "TALKOPS_ESL_ADDR", default_value = "127.0.0.1:8021")]
     pub esl_addr: String,

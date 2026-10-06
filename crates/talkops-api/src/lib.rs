@@ -5,9 +5,11 @@ pub mod config;
 pub mod error;
 pub mod esl;
 pub mod fsxml;
+pub mod mailer;
 pub mod routes;
 pub mod telephony;
 pub mod util;
+pub mod voicemail;
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -36,6 +38,9 @@ pub struct AppState {
     pub phone_catalog: Arc<PhoneCatalog>,
     /// Writable provisioning data directory (firmware images).
     pub provisioning_dir: Arc<PathBuf>,
+    pub media: Arc<MediaPaths>,
+    /// `host:port` FreeSWITCH connects to for interactive calls (`socket`).
+    pub outbound_socket: Arc<str>,
     pub profile: Arc<ProfileSettings>,
     pub xmlcurl_password: Arc<str>,
     pub limiter: Arc<LoginLimiter>,
@@ -58,10 +63,40 @@ impl AppState {
             catalog: Arc::new(catalog),
             phone_catalog: Arc::new(phone_catalog),
             provisioning_dir: Arc::new(provisioning_dir),
+            media: Arc::new(MediaPaths::default()),
+            outbound_socket: Arc::from("127.0.0.1:8084"),
             profile: Arc::new(profile),
             xmlcurl_password: Arc::from(xmlcurl_password),
             limiter: Arc::new(LoginLimiter::default()),
         }
+    }
+}
+
+/// Shared media volumes (same paths in the FreeSWITCH container).
+#[derive(Debug, Clone)]
+pub struct MediaPaths {
+    pub voicemail: PathBuf,
+    pub sounds: PathBuf,
+}
+
+impl Default for MediaPaths {
+    fn default() -> Self {
+        Self {
+            voicemail: PathBuf::from("/var/lib/talkops/voicemail"),
+            sounds: PathBuf::from("/var/lib/talkops/sounds"),
+        }
+    }
+}
+
+impl AppState {
+    pub fn with_media(mut self, media: MediaPaths) -> Self {
+        self.media = Arc::new(media);
+        self
+    }
+
+    pub fn with_outbound_socket(mut self, addr: &str) -> Self {
+        self.outbound_socket = Arc::from(addr);
+        self
     }
 }
 
@@ -78,6 +113,7 @@ impl AppState {
         (name = "trunks", description = "SIP trunks, accounts, numbers and presets"),
         (name = "settings", description = "Telephony settings, call log and audit log"),
         (name = "phones", description = "Provisioned phones, firmware and phonebook"),
+        (name = "voicemail", description = "Voicemail boxes and messages"),
     )
 )]
 pub struct ApiDoc;
@@ -92,6 +128,7 @@ pub fn api_router() -> (Router<AppState>, utoipa::openapi::OpenApi) {
         .merge(routes::trunks::router())
         .merge(routes::settings::router())
         .merge(routes::phones::router())
+        .merge(routes::voicemail::router())
         .split_for_parts();
     (router, api)
 }

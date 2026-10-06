@@ -155,6 +155,16 @@ const PROMPTS: &[Prompt] = &[
         en: "This call is being recorded.",
     },
     Prompt {
+        key: "door_opened",
+        de: "Die Tür wurde geöffnet.",
+        en: "The door has been opened.",
+    },
+    Prompt {
+        key: "door_failed",
+        de: "Die Tür konnte nicht geöffnet werden.",
+        en: "The door could not be opened.",
+    },
+    Prompt {
         key: "vm_goodbye",
         de: "Auf Wiederhören.",
         en: "Goodbye.",

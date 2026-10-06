@@ -990,3 +990,106 @@ async fn voicemail_boxes_messages_and_smtp(pool: PgPool) {
         .is_err()
     );
 }
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn door_stations_and_events(pool: PgPool) {
+    use talkops_core::doors::{self, DoorStationInput};
+    let secrets = SecretBox::from_hex(KEY).unwrap();
+    let door = extensions::create(&pool, T, &ext("8001"), &emergency())
+        .await
+        .unwrap();
+    let input = DoorStationInput {
+        name: "Gate".into(),
+        extension_id: door.id,
+        host: "192.168.1.20".into(),
+        port: 80,
+        username: "admin".into(),
+        password: Some("pw".into()),
+        doors: 2,
+        destination_type: NumberDestination::None,
+        destination_id: None,
+        buttons: vec![],
+        events_enabled: true,
+        snapshots: true,
+        webhook_url: Some("https://ha.local/api/webhook/abc".into()),
+        enabled: true,
+    };
+    let s = doors::create(&pool, T, &secrets, &input).await.unwrap();
+    // None keeps password and webhook, "" removes them.
+    let s2 = doors::update(
+        &pool,
+        T,
+        &secrets,
+        s.id,
+        &DoorStationInput {
+            password: None,
+            webhook_url: Some(String::new()),
+            name: "Gate 2".into(),
+            ..input.clone()
+        },
+    )
+    .await
+    .unwrap();
+    assert!(s2.has_password && !s2.has_webhook);
+    assert_eq!(s2.name, "Gate 2");
+    let conn = doors::connection(&pool, &secrets, s.id)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(conn.password, "pw");
+    assert_eq!(doors::with_api(&pool).await.unwrap().len(), 1);
+    assert_eq!(
+        doors::for_extension(&pool, door.id)
+            .await
+            .unwrap()
+            .unwrap()
+            .id,
+        s.id
+    );
+    // Online state changes are reported once.
+    assert!(
+        doors::set_online(&pool, s.id, true, Some("VTO2202F-P"))
+            .await
+            .unwrap()
+    );
+    assert!(!doors::set_online(&pool, s.id, true, None).await.unwrap());
+    let s3 = doors::get(&pool, T, s.id).await.unwrap();
+    assert!(s3.online && s3.last_seen.is_some());
+    assert_eq!(s3.model, "VTO2202F-P");
+    assert!(doors::set_online(&pool, s.id, false, None).await.unwrap());
+    // Unknown kinds are rejected; old events are purged with the recording
+    // retention (default 90 days).
+    assert!(
+        doors::add_event(&pool, T, s.id, "nope", serde_json::json!({}))
+            .await
+            .is_err()
+    );
+    let e = doors::add_event(&pool, T, s.id, "ring", serde_json::json!({}))
+        .await
+        .unwrap();
+    doors::set_snapshot(&pool, e.id, "t/2026-01/x.jpg")
+        .await
+        .unwrap();
+    doors::add_event(&pool, T, s.id, "opened", serde_json::json!({}))
+        .await
+        .unwrap();
+    sqlx::query("UPDATE door_events SET created_at = now() - interval '91 days' WHERE id = $1")
+        .bind(e.id)
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert_eq!(
+        doors::purge_events(&pool, 100).await.unwrap(),
+        ["t/2026-01/x.jpg"]
+    );
+    assert_eq!(
+        doors::list_events(&pool, T, Some(s.id), 10)
+            .await
+            .unwrap()
+            .len(),
+        1
+    );
+    // Deleting the extension removes the station.
+    extensions::delete(&pool, T, door.id).await.unwrap();
+    assert!(doors::list(&pool, T).await.unwrap().is_empty());
+}

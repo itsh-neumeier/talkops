@@ -6,6 +6,7 @@ pub mod cdr;
 pub mod crypto;
 pub mod db;
 pub mod dialing;
+pub mod doors;
 pub mod error;
 pub mod extensions;
 pub mod holidays;

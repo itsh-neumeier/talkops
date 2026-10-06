@@ -96,11 +96,15 @@ impl OutboundSession {
             .await
             .map_err(|_| EslError::Timeout)?
             .ok_or(EslError::Hangup)?;
-        let text = reply.headers.get("Reply-Text").unwrap_or_default();
+        // The `connect` reply carries channel data and is URL-encoded
+        // throughout, including `Reply-Text` (`%2BOK`).
+        let text = percent_decode_str(reply.headers.get("Reply-Text").unwrap_or_default())
+            .decode_utf8_lossy()
+            .into_owned();
         if text.starts_with("+OK") {
             Ok(reply)
         } else {
-            Err(EslError::CommandFailed(text.to_owned()))
+            Err(EslError::CommandFailed(text.trim_end().to_owned()))
         }
     }
 
@@ -266,7 +270,8 @@ mod tests {
             };
             let ok = "Content-Type: command/reply\nReply-Text: +OK\n\n";
             let out = match block.lines().next().unwrap() {
-                "connect" => "Content-Type: command/reply\nReply-Text: +OK\n\
+                // As FreeSWITCH 1.10 sends it: every value URL-encoded.
+                "connect" => "Content-Type: command/reply\nReply-Text: %2BOK%0A\n\
                     Unique-ID: abc\nCaller-Caller-ID-Name: M%C3%BCller\n\
                     variable_talkops_app: vm_deposit\n\n"
                     .to_string(),

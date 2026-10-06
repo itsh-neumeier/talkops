@@ -33,10 +33,14 @@ pub fn state(db: PgPool) -> AppState {
         SecretBox::from_hex(KEY).unwrap(),
         catalog,
         phones,
-        dir,
+        dir.clone(),
         ProfileSettings::default(),
         "s3cret",
     )
+    .with_media(talkops_api::MediaPaths {
+        voicemail: dir.join("voicemail"),
+        sounds: dir.join("sounds"),
+    })
 }
 
 pub fn router(db: PgPool) -> Router {

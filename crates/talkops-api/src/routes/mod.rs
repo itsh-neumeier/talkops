@@ -7,3 +7,4 @@ pub mod provisioning;
 pub mod settings;
 pub mod trunks;
 pub mod users;
+pub mod voicemail;

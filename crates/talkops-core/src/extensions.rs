@@ -101,26 +101,7 @@ pub async fn find_by_number<'e>(
 
 fn validate(input: &ExtensionInput, emergency: &[String]) -> CoreResult<()> {
     let n = &input.number;
-    if !(2..=8).contains(&n.len()) || !n.bytes().all(|b| b.is_ascii_digit()) {
-        return Err(CoreError::Validation(
-            "extension number must have 2-8 digits".into(),
-        ));
-    }
-    // Extensions must not shadow dialing prefixes or emergency numbers.
-    if n.starts_with('0') {
-        return Err(CoreError::Validation(
-            "extension numbers must not start with 0 (trunk prefix)".into(),
-        ));
-    }
-    if emergency
-        .iter()
-        .any(|e| n.starts_with(e.as_str()) || e.starts_with(n.as_str()))
-        || n.starts_with("11")
-    {
-        return Err(CoreError::Validation(
-            "extension number collides with emergency or service numbers".into(),
-        ));
-    }
+    crate::numbering::validate_number(n, emergency)?;
     if input.display_name.trim().is_empty() {
         return Err(CoreError::Validation("display name is required".into()));
     }
@@ -149,13 +130,14 @@ fn forward_value(input: &ExtensionInput) -> Option<String> {
         .map(str::to_owned)
 }
 
-pub async fn create<'e>(
-    db: impl PgExecutor<'e>,
+pub async fn create(
+    db: &sqlx::PgPool,
     tenant: TenantId,
     input: &ExtensionInput,
     emergency: &[String],
 ) -> CoreResult<Extension> {
     validate(input, emergency)?;
+    crate::numbering::ensure_free(db, tenant, &input.number, None).await?;
     let sql = format!(
         "INSERT INTO extensions (tenant_id, number, display_name, user_id, outbound_number_id,
                                  hide_caller_id, ring_timeout_secs, enabled, dnd, forward_all)
@@ -176,14 +158,15 @@ pub async fn create<'e>(
         .await?)
 }
 
-pub async fn update<'e>(
-    db: impl PgExecutor<'e>,
+pub async fn update(
+    db: &sqlx::PgPool,
     tenant: TenantId,
     id: Uuid,
     input: &ExtensionInput,
     emergency: &[String],
 ) -> CoreResult<Extension> {
     validate(input, emergency)?;
+    crate::numbering::ensure_free(db, tenant, &input.number, Some(id)).await?;
     let sql = format!(
         "UPDATE extensions SET number = $3, display_name = $4, user_id = $5, outbound_number_id = $6,
              hide_caller_id = $7, ring_timeout_secs = $8, enabled = $9, dnd = $10, forward_all = $11,

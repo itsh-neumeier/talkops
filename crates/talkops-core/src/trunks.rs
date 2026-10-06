@@ -307,11 +307,17 @@ pub async fn active_gateways(pool: &PgPool) -> CoreResult<Vec<GatewayRow>> {
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, utoipa::ToSchema,
 )]
-#[sqlx(type_name = "number_destination", rename_all = "lowercase")]
-#[serde(rename_all = "lowercase")]
+#[sqlx(type_name = "number_destination", rename_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
 pub enum NumberDestination {
     None,
     Extension,
+    RingGroup,
+    /// Straight to the voicemail of an extension.
+    Voicemail,
+    TimeCondition,
+    Ivr,
+    Queue,
 }
 
 #[derive(Debug, Clone, FromRow, Serialize, utoipa::ToSchema)]
@@ -355,10 +361,8 @@ fn validate_number(input: &NumberInput) -> CoreResult<()> {
             "number must be in E.164 format, e.g. +49891234567".into(),
         ));
     }
-    if input.destination_type == NumberDestination::Extension && input.destination_id.is_none() {
-        return Err(CoreError::Validation(
-            "destination extension is required".into(),
-        ));
+    if input.destination_type != NumberDestination::None && input.destination_id.is_none() {
+        return Err(CoreError::Validation("destination is required".into()));
     }
     Ok(())
 }
@@ -427,12 +431,8 @@ async fn check_refs(pool: &PgPool, tenant: TenantId, input: &NumberInput) -> Cor
             ));
         }
     }
-    if input.destination_type == NumberDestination::Extension {
-        let id = input.destination_id.unwrap_or_default();
-        crate::extensions::get(pool, tenant, id)
-            .await
-            .map_err(|_| CoreError::Validation("unknown extension".into()))?;
-    }
+    crate::numbering::check_destination(pool, tenant, input.destination_type, input.destination_id)
+        .await?;
     Ok(())
 }
 

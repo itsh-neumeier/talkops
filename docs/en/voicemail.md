@@ -18,7 +18,9 @@ the extension page:
     takes a few seconds after saving, then it can be played in the browser.
   - *Own recording* – dial `*97` on the phone and press **5**.
 - **Send by e-mail** – to the e-mail address of the extension's user,
-  optionally with the recording attached as WAV.
+  optionally with the recording attached as WAV. With transcription switched
+  on, the mail also contains the text of the message (see
+  [recording & transcription](recording.md)).
 
 ## Listening on the phone
 

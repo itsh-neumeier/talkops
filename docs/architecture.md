@@ -1,6 +1,6 @@
 # TalkOps – Architektur
 
-> Status: Phase 4 (Gruppen & Logik). Entscheidungen mit Begründung stehen in den
+> Status: Phase 5 (Recording & Transkription). Entscheidungen mit Begründung stehen in den
 > [ADRs](adr/README.md); dieses Dokument beschreibt das Zusammenspiel.
 
 ## Überblick
@@ -145,6 +145,27 @@ Blind-Transfers (SIP REFER) dort landen und wie gewählte Nummern geroutet
 werden – interne Nummern, Parkplätze, externe Nummern über die
 Standardrufnummer.
 
+## Aufzeichnung & Transkription (Phase 5, [ADR 0012](adr/0012-aufzeichnung-und-transkription.md))
+
+- Richtlinie: Mandanten-Vorgabe je Richtung, je Nebenstelle `inherit`/`always`/
+  `never` (`never` gewinnt), ausgewertet in `talkops_core::recordings::should_record`.
+- `fsxml::dialplan::plan` fügt vor dem ersten `bridge`/`callcenter` ein:
+  `talkops_recording=<mandant>/<jjjj-mm>/${uuid}.wav`, `RECORD_STEREO`,
+  `RECORD_ANSWER_REQ`, `record_session`; Hinweisansage per
+  `bridge_pre_execute_{a,b}leg_app=playback` (Queue: `playback` vorab);
+  `stop_record_session` vor Ausweichzielen.
+- Der CDR (`/fs/cdr`) trägt `talkops_recording`; TalkOps legt den Datensatz in
+  `recordings` an (Länge aus dem WAV-Header, unter 1 s verworfen) und – falls
+  eingeschaltet – den Job `transcribe`.
+- Media-Worker: zwei Job-Spuren (TTS, Transkription). `transcribe` trennt die
+  Stereokanäle, rechnet auf 16 kHz um, ruft `whisper-cli` je Kanal auf und
+  führt die Segmente nach Zeit zusammen (`transcripts`, `tsvector` 'simple'
+  mit GIN-Index). Voicemails: die Mail (`mail.voicemail`) wird erst nach dem
+  Transkript eingeplant.
+- Suche: `websearch_to_tsquery`, Ausschnitte per `ts_headline`; Benutzer sehen
+  nur Treffer ihrer Nebenstellen. Löschfrist: stündlicher Lauf
+  (`talkops_api::retention`).
+
 ## Voicemail & Sprachausgabe (Phase 3, [ADR 0010](adr/0010-voicemail-und-sprachausgabe.md))
 
 - Der Dialplan setzt `talkops_app` (`vm_deposit`, `vm_check`, `vm_login`) und
@@ -259,7 +280,7 @@ Phase 8.
 
 ## Verzeichnisstruktur
 
-Ist-Stand Phase 4 plus geplante Ergänzungen (P2 … P8):
+Ist-Stand Phase 5 plus geplante Ergänzungen (P6 … P8):
 
 ```
 talkops/
@@ -274,18 +295,18 @@ talkops/
 │   │   └── src/  db · jobs · tenant · telemetry · crypto · users · extensions
 │   │             trunks · settings · dialing · presets · cdr · audit · phones
 │   │             voicemail · prompts · mail · numbering · ring_groups
-│   │             time_conditions · holidays · ivr · queues
+│   │             time_conditions · holidays · ivr · queues · recordings
 │   ├── talkops-api/
 │   │   └── src/  main · config · auth · error · esl · telephony · mailer
-│   │             menu · callcenter
+│   │             menu · callcenter · retention
 │   │             voicemail/{mod,ivr}
 │   │             fsxml/{sofia,directory,dialplan,cdr,callcenter}
 │   │             routes/{health,auth,users,extensions,trunks,settings,fs,
 │   │                     phones,provisioning,voicemail,groups,
-│   │                     time_conditions,ivr,queues}
+│   │                     time_conditions,ivr,queues,recordings}
 │   ├── talkops-esl/              Event-Socket-Client (inbound) und outbound-Server
 │   ├── talkops-provisioning/     Yealink-Templates, Modellkatalog, XML-Telefonbuch
-│   ├── talkops-media-worker/     Piper (Ansagen, Begrüßungen); P5: Whisper-Handler
+│   ├── talkops-media-worker/     Piper (Ansagen, Begrüßungen), whisper.cpp (Transkription)
 │   └── talkops-doorbell/         P6: Dahua-HTTP-API/CGI, MQTT/Webhooks
 ├── migrations/                   sqlx-Migrationen (ein Satz für alle Dienste)
 ├── presets/
@@ -296,7 +317,7 @@ talkops/
 ├── docker/
 │   ├── freeswitch/               Dockerfile, build-modules.conf, conf/ (Bootstrap), patches/
 │   ├── talkops/                  Dockerfile (Rust + Web-UI)
-│   └── media-worker/             Dockerfile (Piper + Stimmen; P5: whisper.cpp, CUDA-Variante)
+│   └── media-worker/             Dockerfile (Piper + Stimmen, whisper.cpp)
 ├── tests/
 │   ├── sipp/                     register, call, call_busy, call_voicemail, call_ivr,
 │   │                             call_hold, bad_password, tone.ulaw
@@ -304,7 +325,7 @@ talkops/
 ├── docs/
 │   ├── architecture.md · adr/
 │   ├── de/  installation.md · portainer.md · erste-schritte.md · leonet.md · yealink.md
-│   │        voicemail.md · anrufsteuerung.md
+│   │        voicemail.md · anrufsteuerung.md · aufzeichnung.md
 │   │        (P3+: dahua.md, ldap.md, backup.md)
 │   ├── en/  (gleiche Inhalte auf Englisch)
 │   └── trunk-presets.md          Format & Beitragsregeln für Vorlagen
@@ -320,7 +341,7 @@ talkops/
 | 2 | Yealink: Provisioning, Templates, XML-Telefonbuch, BLF, Feature-Codes, MWI | ✅ (Test mit echten Geräten offen) |
 | 3 | Voicemail & TTS: ESL-Voicemail, Piper, Mehrsprachigkeit, Mail | ✅ |
 | 4 | Gruppen & Logik: Rufgruppen, Queues, IVR-Editor, Zeitsteuerung/Feiertage, Parken/Pickup | ✅ |
-| 5 | Recording & Transkription: Hinweisansage, Whisper, Suche, Retention | geplant |
+| 5 | Recording & Transkription: Hinweisansage, Whisper, Suche, Retention | ✅ |
 | 6 | Türsprechstelle: Dahua VTO, Video, Türöffner, Snapshots, Home Assistant | geplant |
 | 7 | WebRTC & Identität: Softphone mit Video, LDAP/AD, OIDC, 2FA | geplant |
 | 8 | Betrieb: Backup/Restore, Metriken, Hardening, Setup-Assistent, Release 1.0 | geplant |

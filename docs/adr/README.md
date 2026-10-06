@@ -18,5 +18,6 @@ nächste freie Nummer; überholte ADRs werden nicht gelöscht, sondern auf
 | [0009](0009-basis-images-debian-trixie.md) | Basis-Images: Debian 13 „Trixie“ (FreeSWITCH mit PCRE2-Backport) | Angenommen |
 | [0010](0010-voicemail-und-sprachausgabe.md) | Voicemail in Rust, Sprachausgabe mit Piper, Mail aus dem TalkOps-Dienst | Angenommen |
 | [0011](0011-warteschlangen-mod-callcenter.md) | Warteschlangen mit mod_callcenter, Konfiguration aus TalkOps | Angenommen |
+| [0012](0012-aufzeichnung-und-transkription.md) | Gesprächsaufzeichnung mit record_session, lokale Transkription mit whisper.cpp | Angenommen |
 
 Vorlage: [`template.md`](template.md)

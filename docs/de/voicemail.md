@@ -19,7 +19,9 @@ auf der Seite der Nebenstelle:
     Browser anhören.
   - *Eigene Aufnahme* – am Telefon `*97` wählen und die **5** drücken.
 - **Per E-Mail senden** – an die E-Mail-Adresse des Benutzers der Nebenstelle,
-  optional mit Aufnahme als WAV-Anhang.
+  optional mit Aufnahme als WAV-Anhang. Bei eingeschalteter Transkription
+  enthält die Mail auch den Text der Nachricht (siehe
+  [Aufzeichnung & Transkription](aufzeichnung.md)).
 
 ## Am Telefon abhören
 

@@ -4,14 +4,15 @@
 set of UniFi Talk plus video door stations, call recording, local
 transcription and LDAP/AD, packaged as a Docker Compose stack.
 
-> **Status: early development (phase 4 – groups & logic).** Extensions with
+> **Status: early development (phase 5 – recording & transcription).** Extensions with
 > multiple devices, SIP trunks from 28 provider presets, internal and external
 > calls, emergency routing, a call log, Yealink auto-provisioning (desk phones
 > and DECT), BLF keys, XML phonebook, DND/forwarding feature codes and
 > firmware management, voicemail with TTS greetings (Piper, German/English)
 > and e-mail notification, ring groups, opening hours with German public
-> holidays, voice menus, queues and call parking work; recording and
-> transcription follow. See the [roadmap](docs/architecture.md#roadmap).
+> holidays, voice menus, queues, call parking, call recording with
+> announcement and local transcription (whisper.cpp) with full-text search
+> work; door stations follow. See the [roadmap](docs/architecture.md#roadmap).
 
 ## Highlights (planned)
 
@@ -59,6 +60,7 @@ LEONET [EN](docs/en/leonet.md) / [DE](docs/de/leonet.md) ·
 Yealink phones [EN](docs/en/yealink.md) / [DE](docs/de/yealink.md) ·
 voicemail [EN](docs/en/voicemail.md) / [DE](docs/de/voicemail.md) ·
 call routing [EN](docs/en/call-routing.md) / [DE](docs/de/anrufsteuerung.md) ·
+recording & transcription [EN](docs/en/recording.md) / [DE](docs/de/aufzeichnung.md) ·
 [trunk presets](docs/trunk-presets.md).
 
 ## Development

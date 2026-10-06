@@ -11,7 +11,9 @@ use sqlx::PgPool;
 use talkops_core::dialing::{DialPlanSettings, Dialed, NumberFormat};
 use talkops_core::error::CoreResult;
 use talkops_core::extensions::{self, Extension};
+use talkops_core::numbering;
 use talkops_core::presets::{CallerIdHeader, Dtmf, PresetCatalog, Srtp};
+use talkops_core::ring_groups::{self, RingGroup};
 use talkops_core::settings::{self, TenantSettings};
 use talkops_core::tenant::TenantId;
 use talkops_core::trunks::{self, NumberDestination, OutboundRoute, gateway_name};
@@ -134,9 +136,10 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
         return Ok(actions);
     }
 
-    if let Some(target) = extensions::find_by_number(pool, tenant, &dest).await? {
+    if let Some((kind, id)) = numbering::resolve(pool, tenant, &dest).await? {
         actions.push(set("talkops_direction", "internal"));
-        actions.extend(ring_extension(r, tenant, &target).await?);
+        let name = sanitize_value(&caller.display_name);
+        actions.extend(route_to(r, tenant, kind, Some(id), &name, 0).await?);
         return Ok(actions);
     }
 
@@ -573,21 +576,171 @@ async fn plan_public(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Actio
         ),
         set("talkops_caller_name", name.clone()),
         set("effective_caller_id_number", display),
-        set("effective_caller_id_name", name),
+        set("effective_caller_id_name", name.clone()),
     ];
-    match (number.destination_type, number.destination_id) {
-        (NumberDestination::Extension, Some(ext_id)) => {
-            match extensions::get(pool, tenant, ext_id).await {
-                Ok(target) => {
-                    actions.push(set("talkops_extension_id", target.id.to_string()));
-                    actions.extend(ring_extension(r, tenant, &target).await?);
-                    Ok(actions)
-                }
-                Err(_) => Ok(reject("480 Temporarily Unavailable")),
-            }
+    if number.destination_type == NumberDestination::Extension {
+        if let Some(ext) = number.destination_id {
+            actions.push(set("talkops_extension_id", ext.to_string()));
         }
-        _ => Ok(reject("480 Temporarily Unavailable")),
     }
+    let routed = route_to(
+        r,
+        tenant,
+        number.destination_type,
+        number.destination_id,
+        &name,
+        0,
+    )
+    .await?;
+    // A bare rejection needs no call variables.
+    if routed.first().is_some_and(|(app, _)| *app == "respond") {
+        return Ok(routed);
+    }
+    actions.extend(routed);
+    Ok(actions)
+}
+
+/// Destinations may point to each other (group → fallback → menu …); this
+/// bounds the chain so misconfigurations cannot loop.
+const MAX_DEPTH: u8 = 5;
+
+type Planned<'a> =
+    std::pin::Pin<Box<dyn std::future::Future<Output = CoreResult<Vec<Action>>> + Send + 'a>>;
+
+/// Actions sending the call to a destination. `caller_name` is the name
+/// shown to the called phones (ring groups may prefix it).
+pub fn route_to<'a>(
+    r: &'a Routing<'a>,
+    tenant: TenantId,
+    kind: NumberDestination,
+    id: Option<Uuid>,
+    caller_name: &'a str,
+    depth: u8,
+) -> Planned<'a> {
+    Box::pin(async move {
+        let unavailable = || Ok(reject("480 Temporarily Unavailable"));
+        if depth > MAX_DEPTH {
+            tracing::warn!("destination chain too long, rejecting call");
+            return unavailable();
+        }
+        let Some(id) = id else {
+            return unavailable();
+        };
+        match kind {
+            NumberDestination::Extension => match extensions::get(r.pool, tenant, id).await {
+                Ok(ext) => ring_extension(r, tenant, &ext).await,
+                Err(_) => unavailable(),
+            },
+            NumberDestination::Voicemail => match extensions::get(r.pool, tenant, id).await {
+                Ok(ext) => Ok(voicemail_of(r, tenant, &ext)
+                    .await?
+                    .unwrap_or_else(|| reject("480 Temporarily Unavailable"))),
+                Err(_) => unavailable(),
+            },
+            NumberDestination::RingGroup => match ring_groups::get(r.pool, tenant, id).await {
+                Ok(group) => ring_group(r, tenant, &group, caller_name, depth).await,
+                Err(_) => unavailable(),
+            },
+            _ => unavailable(),
+        }
+    })
+}
+
+/// Rings the members of a group; unanswered calls go to its fallback.
+async fn ring_group(
+    r: &Routing<'_>,
+    tenant: TenantId,
+    group: &RingGroup,
+    caller_name: &str,
+    depth: u8,
+) -> CoreResult<Vec<Action>> {
+    let fallback = || {
+        route_to(
+            r,
+            tenant,
+            group.fallback_type,
+            group.fallback_id,
+            caller_name,
+            depth + 1,
+        )
+    };
+    if !group.enabled {
+        return fallback().await;
+    }
+    let timeout = group.ring_timeout_secs;
+    let mut legs: Vec<Vec<String>> = Vec::new();
+    for member in &group.members {
+        let Ok(ext) = extensions::get(r.pool, tenant, *member).await else {
+            continue;
+        };
+        if !ext.enabled || ext.dnd {
+            continue;
+        }
+        let mut endpoints: Vec<String> = extensions::ring_targets(r.pool, ext.id)
+            .await?
+            .iter()
+            .map(|d| format!("user/{}@{SIP_DOMAIN}", sanitize_value(d)))
+            .collect();
+        if endpoints.is_empty() {
+            continue;
+        }
+        endpoints.push(format!("pickup/{}", pickup_group(&ext)));
+        legs.push(endpoints);
+    }
+    if legs.is_empty() {
+        return fallback().await;
+    }
+    let dial = if group.strategy == "sequential" {
+        legs.iter()
+            .map(|eps| {
+                eps.iter()
+                    .map(|e| format!("[leg_timeout={timeout}]{e}"))
+                    .collect::<Vec<_>>()
+                    .join(",")
+            })
+            .collect::<Vec<_>>()
+            .join("|")
+    } else {
+        legs.concat().join(",")
+    };
+    let mut a = vec![
+        set(
+            "talkops_destination",
+            group
+                .number
+                .clone()
+                .unwrap_or_else(|| sanitize_value(&group.name)),
+        ),
+        set("talkops_ring_group_id", group.id.to_string()),
+    ];
+    if !group.caller_id_prefix.is_empty() {
+        a.push(set(
+            "effective_caller_id_name",
+            format!(
+                "{}{}{caller_name}",
+                sanitize_value(&group.caller_id_prefix),
+                // Keep the separator space sanitizing trims away.
+                if group.caller_id_prefix.ends_with(' ') {
+                    " "
+                } else {
+                    ""
+                }
+            ),
+        ));
+    }
+    if group.strategy != "sequential" {
+        a.push(set("call_timeout", timeout.to_string()));
+    }
+    a.push(set("hangup_after_bridge", "true"));
+    a.push(set("continue_on_fail", "true"));
+    a.push(("bridge", dial));
+    let after = fallback().await?;
+    if after.first().is_some_and(|(app, _)| *app == "respond") {
+        a.push(("hangup", String::new()));
+    } else {
+        a.extend(after);
+    }
+    Ok(a)
 }
 
 /// Renders the dialplan response for `context`.

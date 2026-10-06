@@ -114,6 +114,7 @@ impl AppState {
         (name = "settings", description = "Telephony settings, call log and audit log"),
         (name = "phones", description = "Provisioned phones, firmware and phonebook"),
         (name = "voicemail", description = "Voicemail boxes and messages"),
+        (name = "routing", description = "Ring groups, time conditions, menus and queues"),
     )
 )]
 pub struct ApiDoc;
@@ -129,6 +130,7 @@ pub fn api_router() -> (Router<AppState>, utoipa::openapi::OpenApi) {
         .merge(routes::settings::router())
         .merge(routes::phones::router())
         .merge(routes::voicemail::router())
+        .merge(routes::groups::router())
         .split_for_parts();
     (router, api)
 }

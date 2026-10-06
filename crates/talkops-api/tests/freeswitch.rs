@@ -498,3 +498,135 @@ async fn voicemail_routing(db: PgPool) {
     assert!(has(&a, "set", "talkops_app=vm_login"), "{a:?}");
     assert!(has(&a, "socket", socket));
 }
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn ring_group_routing(db: PgPool) {
+    let router = router(db);
+    let f = fixture(&router).await;
+    let id = |e: &Value| e["id"].as_str().unwrap().to_owned();
+    let pickup20 = format!("pickup/ext-{}", id(&f.ext20).replace('-', ""));
+
+    // Number space is shared with extensions.
+    let (status, _) = f
+        .admin
+        .post(
+            "/api/v1/ring-groups",
+            json!({"number": "20", "name": "Clash", "members": [id(&f.ext20)]}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::CONFLICT);
+    let (status, g) = f
+        .admin
+        .post(
+            "/api/v1/ring-groups",
+            json!({"number": "50", "name": "Support", "caller_id_prefix": "Support: ",
+                   "members": [id(&f.ext21), id(&f.ext20)]}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{g}");
+    let group_id = id(&g);
+    let (status, _) = f
+        .admin
+        .post(
+            "/api/v1/extensions",
+            json!({"number": "50", "display_name": "Clash"}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::CONFLICT);
+
+    // Simultaneous: 21 has no devices and is skipped.
+    let a = internal_call(&router, &f.ext21, "50").await;
+    assert!(
+        has(
+            &a,
+            "bridge",
+            &format!("user/20-1@talkops.local,user/20-2@talkops.local,{pickup20}")
+        ),
+        "{a:?}"
+    );
+    assert!(has(&a, "set", "call_timeout=25"));
+    assert!(
+        has(&a, "set", "effective_caller_id_name=Support: Lab"),
+        "{a:?}"
+    );
+    assert!(has(&a, "set", "talkops_destination=50"));
+    assert!(has(&a, "hangup", ""));
+
+    // Sequential with a fallback to the voicemail of 21.
+    let (status, _) = f
+        .admin
+        .put(
+            &format!("/api/v1/extensions/{}/voicemail", id(&f.ext21)),
+            json!({"enabled": true}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK);
+    let (status, g) = f
+        .admin
+        .put(
+            &format!("/api/v1/ring-groups/{group_id}"),
+            json!({"number": "50", "name": "Support", "strategy": "sequential", "ring_timeout_secs": 15,
+                   "caller_id_prefix": "Support: ",
+                   "members": [id(&f.ext20), id(&f.ext21)],
+                   "fallback_type": "voicemail", "fallback_id": id(&f.ext21)}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{g}");
+    let a = internal_call(&router, &f.ext21, "50").await;
+    assert!(
+        has(
+            &a,
+            "bridge",
+            &format!(
+                "[leg_timeout=15]user/20-1@talkops.local,[leg_timeout=15]user/20-2@talkops.local,\
+                 [leg_timeout=15]{pickup20}"
+            )
+        ),
+        "{a:?}"
+    );
+    assert!(has(&a, "set", "talkops_app=vm_deposit"), "{a:?}");
+    assert!(!has(&a, "hangup", ""));
+
+    // Nobody available (20 on DND): straight to the fallback.
+    internal_call(&router, &f.ext20, "*78").await;
+    let a = internal_call(&router, &f.ext21, "50").await;
+    assert!(!a.iter().any(|(app, _)| app == "bridge"), "{a:?}");
+    assert!(has(&a, "set", "talkops_app=vm_deposit"));
+    internal_call(&router, &f.ext20, "*79").await;
+
+    // A phone number can point to the group.
+    let mut n = f.number.clone();
+    n["destination_type"] = json!("ring_group");
+    n["destination_id"] = json!(group_id);
+    let (status, body) = f
+        .admin
+        .put(&format!("/api/v1/numbers/{}", id(&f.number)), n)
+        .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    let (_, xml) = fs_post(
+        &router,
+        "/fs/xml",
+        &[
+            ("section", "dialplan"),
+            ("Caller-Context", "public"),
+            ("Caller-Destination-Number", "+49891234567"),
+            ("Caller-Caller-ID-Number", "+4930999888"),
+            ("Caller-Caller-ID-Name", "Anna"),
+        ],
+    )
+    .await;
+    let a = actions(&xml);
+    assert!(
+        has(&a, "set", "effective_caller_id_name=Support: Anna"),
+        "{a:?}"
+    );
+    assert!(has(&a, "set", "talkops_direction=inbound"));
+    assert!(a.iter().any(|(app, _)| app == "bridge"));
+
+    // Members of a deleted extension disappear; deleting the group works.
+    let (status, _) = f
+        .admin
+        .call("DELETE", &format!("/api/v1/ring-groups/{group_id}"), None)
+        .await;
+    assert_eq!(status, StatusCode::NO_CONTENT);
+}

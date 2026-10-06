@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { api, type PhoneNumber, type Settings } from '#lib/api.ts';
+	import { api, type PhoneNumber, type Settings, type SmtpSettings } from '#lib/api.ts';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import { hasRole, logout } from '#lib/session.svelte.ts';
@@ -13,6 +13,11 @@
 	let saved = $state(false);
 	let pw = $state({ current_password: '', new_password: '' });
 	let pwError = $state('');
+	let smtp = $state<SmtpSettings | null>(null);
+	let smtpPassword = $state('');
+	let smtpError = $state('');
+	let smtpInfo = $state('');
+	let testTo = $state('');
 	// Zones with a matching Yealink time zone entry (talkops-provisioning).
 	const timezones = [
 		'Europe/Berlin',
@@ -30,6 +35,7 @@
 			settings = await api.get<Settings>('/settings');
 			emergency = settings.emergency_numbers.join(', ');
 			if (hasRole('operator')) numbers = await api.get<PhoneNumber[]>('/numbers');
+			if (hasRole('admin')) smtp = await api.get<SmtpSettings>('/settings/smtp');
 		} catch (err) {
 			error = errorMessage(err);
 		}
@@ -51,6 +57,34 @@
 			saved = true;
 		} catch (err) {
 			error = errorMessage(err);
+		}
+	}
+
+	async function saveSmtp(e: SubmitEvent) {
+		e.preventDefault();
+		smtpError = '';
+		smtpInfo = '';
+		try {
+			smtp = await api.put<SmtpSettings>('/settings/smtp', {
+				...smtp,
+				port: Number(smtp!.port),
+				password: smtpPassword === '' ? null : smtpPassword
+			});
+			smtpPassword = '';
+			smtpInfo = t('common.saved');
+		} catch (err) {
+			smtpError = errorMessage(err);
+		}
+	}
+
+	async function testSmtp() {
+		smtpError = '';
+		smtpInfo = '';
+		try {
+			await api.post('/settings/smtp/test', { to: testTo });
+			smtpInfo = t('smtp.testSent');
+		} catch (err) {
+			smtpError = errorMessage(err);
 		}
 	}
 
@@ -136,6 +170,81 @@
 				<p class="hint">{t('settings.timezoneHint')}</p>
 			</div>
 			<div class="flex justify-end">
+				<button class="btn btn-primary">{t('common.save')}</button>
+			</div>
+		</form>
+	{/if}
+
+	{#if smtp && hasRole('admin')}
+		<form class="card space-y-3" onsubmit={saveSmtp}>
+			<h2>{t('smtp.title')}</h2>
+			<p class="text-sm text-slate-600 dark:text-slate-300">{t('smtp.hint')}</p>
+			<ErrorBox error={smtpError} />
+			{#if smtpInfo}<p class="text-sm text-emerald-700 dark:text-emerald-400">{smtpInfo}</p>{/if}
+			<div class="grid gap-3 sm:grid-cols-3">
+				<div class="sm:col-span-2">
+					<label for="smtp-host">{t('smtp.host')}</label>
+					<input
+						id="smtp-host"
+						class="input font-mono"
+						bind:value={smtp.host}
+						placeholder="smtp.example.com"
+					/>
+				</div>
+				<div>
+					<label for="smtp-port">{t('smtp.port')}</label>
+					<input
+						id="smtp-port"
+						class="input"
+						type="number"
+						min="1"
+						max="65535"
+						bind:value={smtp.port}
+					/>
+				</div>
+				<div>
+					<label for="smtp-sec">{t('smtp.security')}</label>
+					<select id="smtp-sec" class="input" bind:value={smtp.security}>
+						<option value="starttls">STARTTLS (587)</option>
+						<option value="tls">TLS (465)</option>
+						<option value="none">{t('smtp.none')}</option>
+					</select>
+				</div>
+				<div>
+					<label for="smtp-user">{t('smtp.username')}</label>
+					<input id="smtp-user" class="input" autocomplete="off" bind:value={smtp.username} />
+				</div>
+				<div>
+					<label for="smtp-pw">{t('login.password')}</label>
+					<input
+						id="smtp-pw"
+						class="input"
+						type="password"
+						autocomplete="new-password"
+						bind:value={smtpPassword}
+						placeholder={smtp.has_password ? t('trunks.passwordKeep') : ''}
+					/>
+				</div>
+			</div>
+			<div>
+				<label for="smtp-from">{t('smtp.from')}</label>
+				<input
+					id="smtp-from"
+					class="input"
+					bind:value={smtp.from}
+					placeholder="TalkOps <pbx@example.com>"
+				/>
+			</div>
+			<div class="flex flex-wrap items-end justify-between gap-2">
+				<div class="flex items-end gap-2">
+					<div>
+						<label for="smtp-to">{t('smtp.testTo')}</label>
+						<input id="smtp-to" class="input" type="email" bind:value={testTo} />
+					</div>
+					<button type="button" class="btn" disabled={!testTo} onclick={testSmtp}
+						>{t('smtp.test')}</button
+					>
+				</div>
 				<button class="btn btn-primary">{t('common.save')}</button>
 			</div>
 		</form>

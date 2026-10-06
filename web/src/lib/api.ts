@@ -316,6 +316,41 @@ export interface ProvisioningInfo {
 	phone_admin_password: string;
 }
 
+export interface VoicemailBox {
+	extension_id: string;
+	enabled: boolean;
+	has_pin: boolean;
+	email_notify: boolean;
+	attach_audio: boolean;
+	language: 'de' | 'en' | null;
+	greeting: 'default' | 'tts' | 'recorded';
+	greeting_text: string;
+	greeting_status: 'none' | 'pending' | 'ready' | 'failed';
+	max_message_secs: number;
+	new_messages: number;
+	saved_messages: number;
+}
+
+export interface VoicemailMessage {
+	id: string;
+	extension_id: string;
+	caller_number: string;
+	caller_name: string;
+	duration_secs: number;
+	status: 'new' | 'saved';
+	created_at: string;
+	heard_at: string | null;
+}
+
+export interface SmtpSettings {
+	host: string;
+	port: number;
+	security: 'starttls' | 'tls' | 'none';
+	username: string;
+	has_password: boolean;
+	from: string;
+}
+
 /** Uploads a file with multipart/form-data (firmware). */
 export async function upload<T>(path: string, form: FormData): Promise<T> {
 	const res = await fetch(`/api/v1${path}`, {

@@ -14,6 +14,7 @@
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
 	import ExtensionForm from '#lib/components/ExtensionForm.svelte';
 	import Modal from '#lib/components/Modal.svelte';
+	import VoicemailSettings from '#lib/components/VoicemailSettings.svelte';
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import { hasRole } from '#lib/session.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
@@ -70,6 +71,11 @@
 		<section class="card">
 			<CallSettings extension={ext} onchange={load} />
 		</section>
+		{#if hasRole('admin')}
+			<section class="card">
+				<VoicemailSettings extensionId={ext.id} displayName={ext.display_name} />
+			</section>
+		{/if}
 		<section class="card">
 			<DeviceList
 				extensionId={ext.id}

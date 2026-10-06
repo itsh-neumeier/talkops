@@ -9,13 +9,16 @@ pub mod dialing;
 pub mod error;
 pub mod extensions;
 pub mod jobs;
+pub mod mail;
 pub mod phones;
 pub mod presets;
+pub mod prompts;
 pub mod settings;
 pub mod telemetry;
 pub mod tenant;
 pub mod trunks;
 pub mod users;
+pub mod voicemail;
 
 /// Version of the TalkOps build, taken from the workspace manifest.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

@@ -13,7 +13,8 @@ use talkops_core::presets::PresetCatalog;
 use talkops_core::tenant::TenantId;
 use talkops_core::trunks::{self, AccountInput, NumberDestination, NumberInput, TrunkInput};
 use talkops_core::users::{self, NewUser, Role};
-use talkops_core::{audit, cdr, settings};
+use talkops_core::voicemail::{self, NewMessage, VoicemailBoxInput};
+use talkops_core::{audit, cdr, jobs, mail, settings};
 use uuid::Uuid;
 
 const T: TenantId = TenantId::DEFAULT;
@@ -670,5 +671,250 @@ async fn phones_accounts_firmware_contacts(pool: PgPool) {
         extensions::set_forward_all(&pool, T, e20.id, Some("x"))
             .await
             .is_err()
+    );
+}
+
+fn vm_input() -> VoicemailBoxInput {
+    VoicemailBoxInput {
+        enabled: true,
+        pin: Some("1234".into()),
+        email_notify: true,
+        attach_audio: true,
+        language: None,
+        greeting: "default".into(),
+        greeting_text: String::new(),
+        max_message_secs: 120,
+    }
+}
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn voicemail_boxes_messages_and_smtp(pool: PgPool) {
+    let e = extensions::create(&pool, T, &ext("20"), &[]).await.unwrap();
+
+    // Unconfigured boxes are disabled.
+    let b = voicemail::get_box(&pool, T, e.id).await.unwrap();
+    assert!(!b.enabled && !b.has_pin());
+
+    // Validation.
+    for bad in [
+        VoicemailBoxInput {
+            pin: Some("12".into()),
+            ..vm_input()
+        },
+        VoicemailBoxInput {
+            pin: Some("12ab".into()),
+            ..vm_input()
+        },
+        VoicemailBoxInput {
+            language: Some("fr".into()),
+            ..vm_input()
+        },
+        VoicemailBoxInput {
+            greeting: "tts".into(),
+            ..vm_input()
+        },
+        VoicemailBoxInput {
+            greeting: "recorded".into(),
+            ..vm_input()
+        },
+        VoicemailBoxInput {
+            max_message_secs: 5,
+            ..vm_input()
+        },
+    ] {
+        assert!(matches!(
+            voicemail::update_box(&pool, T, e.id, &bad, "de").await,
+            Err(CoreError::Validation(_))
+        ));
+    }
+    assert!(matches!(
+        voicemail::update_box(&pool, T, Uuid::new_v4(), &vm_input(), "de").await,
+        Err(CoreError::NotFound)
+    ));
+
+    let b = voicemail::update_box(&pool, T, e.id, &vm_input(), "de")
+        .await
+        .unwrap();
+    assert!(b.enabled && b.verify_pin("1234") && !b.verify_pin("4321"));
+    // null keeps the PIN.
+    let b = voicemail::update_box(
+        &pool,
+        T,
+        e.id,
+        &VoicemailBoxInput {
+            pin: None,
+            ..vm_input()
+        },
+        "de",
+    )
+    .await
+    .unwrap();
+    assert!(b.verify_pin("1234"));
+
+    // TTS greeting: queued once, status follows the worker.
+    let tts = VoicemailBoxInput {
+        pin: None,
+        greeting: "tts".into(),
+        greeting_text: "Hallo, hier ist die Mailbox von Anna.".into(),
+        ..vm_input()
+    };
+    let b = voicemail::update_box(&pool, T, e.id, &tts, "en")
+        .await
+        .unwrap();
+    assert_eq!(b.greeting_status, "pending");
+    assert!(!b.uses_custom_greeting());
+    voicemail::update_box(&pool, T, e.id, &tts, "en")
+        .await
+        .unwrap();
+    let job = jobs::claim(&pool, "w", &[voicemail::JOB_TTS_GREETING])
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(job.payload["language"], "en");
+    assert_eq!(job.payload["file"], voicemail::greeting_file(T, e.id));
+    assert!(
+        jobs::claim(&pool, "w", &[voicemail::JOB_TTS_GREETING])
+            .await
+            .unwrap()
+            .is_none()
+    );
+    voicemail::set_greeting_status(&pool, e.id, "Hallo, hier ist die Mailbox von Anna.", true)
+        .await
+        .unwrap();
+    assert!(
+        voicemail::get_box(&pool, T, e.id)
+            .await
+            .unwrap()
+            .uses_custom_greeting()
+    );
+    voicemail::set_recorded_greeting(&pool, T, e.id)
+        .await
+        .unwrap();
+    assert_eq!(
+        voicemail::get_box(&pool, T, e.id).await.unwrap().greeting,
+        "recorded"
+    );
+
+    // Messages: create queues the mail, list orders new first.
+    let first = voicemail::create_message(
+        &pool,
+        T,
+        &NewMessage {
+            id: Uuid::new_v4(),
+            extension_id: e.id,
+            caller_number: "+4930123".into(),
+            caller_name: "Anna".into(),
+            duration_secs: 7,
+            call_uuid: None,
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(first.file, voicemail::message_file(T, e.id, first.id));
+    let second = voicemail::create_message(
+        &pool,
+        T,
+        &NewMessage {
+            id: Uuid::new_v4(),
+            extension_id: e.id,
+            caller_number: "21".into(),
+            caller_name: String::new(),
+            duration_secs: 3,
+            call_uuid: Some("abc".into()),
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(voicemail::counts(&pool, e.id).await.unwrap(), (2, 0));
+    let heard = voicemail::set_message_status(&pool, T, first.id, true)
+        .await
+        .unwrap();
+    assert!(heard.heard_at.is_some());
+    let list = voicemail::list_messages(&pool, T, e.id).await.unwrap();
+    assert_eq!(list[0].id, second.id);
+    assert_eq!(voicemail::counts(&pool, e.id).await.unwrap(), (1, 1));
+
+    let info = voicemail::mail_info(&pool, first.id)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(info.extension_number, "20");
+    assert!(info.email.is_none());
+    let mails = jobs::claim(&pool, "w", &[voicemail::JOB_MAIL])
+        .await
+        .unwrap();
+    assert!(mails.is_some());
+
+    voicemail::delete_message(&pool, T, first.id).await.unwrap();
+    assert!(matches!(
+        voicemail::get_message(&pool, T, first.id).await,
+        Err(CoreError::Db(_)) | Err(CoreError::NotFound)
+    ));
+    assert_eq!(voicemail::counts(&pool, e.id).await.unwrap(), (1, 0));
+
+    // SMTP settings: password encrypted, kept on null, removed on "".
+    let secrets = SecretBox::from_hex(KEY).unwrap();
+    assert!(mail::config(&pool, T, &secrets).await.unwrap().is_none());
+    let input = mail::SmtpInput {
+        host: "smtp.example.com".into(),
+        port: 587,
+        security: "starttls".into(),
+        username: "pbx".into(),
+        password: Some("s3cret".into()),
+        from: "TalkOps <pbx@example.com>".into(),
+    };
+    let s = mail::update(&pool, T, &secrets, &input).await.unwrap();
+    assert!(s.has_password);
+    let s = mail::update(
+        &pool,
+        T,
+        &secrets,
+        &mail::SmtpInput {
+            password: None,
+            ..input.clone()
+        },
+    )
+    .await
+    .unwrap();
+    assert!(s.has_password);
+    let c = mail::config(&pool, T, &secrets).await.unwrap().unwrap();
+    assert_eq!(c.password.as_deref(), Some("s3cret"));
+    let s = mail::update(
+        &pool,
+        T,
+        &secrets,
+        &mail::SmtpInput {
+            password: Some(String::new()),
+            ..input.clone()
+        },
+    )
+    .await
+    .unwrap();
+    assert!(!s.has_password);
+    assert!(
+        mail::update(
+            &pool,
+            T,
+            &secrets,
+            &mail::SmtpInput {
+                security: "ssl".into(),
+                ..input.clone()
+            }
+        )
+        .await
+        .is_err()
+    );
+    assert!(
+        mail::update(
+            &pool,
+            T,
+            &secrets,
+            &mail::SmtpInput {
+                from: "nobody".into(),
+                ..input
+            }
+        )
+        .await
+        .is_err()
     );
 }

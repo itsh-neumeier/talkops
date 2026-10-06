@@ -16,6 +16,7 @@ use talkops_core::presets::{CallerIdHeader, Dtmf, PresetCatalog, Srtp};
 use talkops_core::ring_groups::{self, RingGroup};
 use talkops_core::settings::{self, TenantSettings};
 use talkops_core::tenant::TenantId;
+use talkops_core::time_conditions;
 use talkops_core::trunks::{self, NumberDestination, OutboundRoute, gateway_name};
 use talkops_core::voicemail;
 use uuid::Uuid;
@@ -201,6 +202,9 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
 /// Confirmation tone for feature codes (rising two-tone beep).
 const CONFIRM_TONE: &str = "tone_stream://%(200,100,800);%(300,0,1200)";
 
+/// Falling two-tone beep: a time condition is now forced closed.
+const CLOSED_TONE: &str = "tone_stream://%(300,100,1200);%(400,0,600)";
+
 fn confirm() -> Vec<Action> {
     vec![
         ("answer", String::new()),
@@ -222,6 +226,7 @@ fn pickup_group(ext: &Extension) -> String {
 /// - `*72<number>` / `*73`: unconditional call forwarding on / off
 /// - `**<ext>`: pick up a call ringing at `<ext>`
 /// - `*97` / `*98`: own voicemail / any voicemail with PIN
+/// - `*30<number>`: toggle a time condition between schedule and closed
 async fn feature_code(
     r: &Routing<'_>,
     tenant: TenantId,
@@ -237,6 +242,33 @@ async fn feature_code(
             return Ok(Some(reject("404 Not Found")));
         }
         a.extend(vm_socket(r, "vm_check", caller.id));
+        return Ok(Some(a));
+    }
+    if let Some(number) = dest.strip_prefix("*30") {
+        // Toggle a time condition between its schedule and "closed".
+        let Some((NumberDestination::TimeCondition, id)) =
+            numbering::resolve(pool, tenant, number).await?
+        else {
+            return Ok(Some(reject("404 Not Found")));
+        };
+        let tc = time_conditions::get(pool, tenant, id).await?;
+        let next = if tc.r#override == "auto" {
+            "closed"
+        } else {
+            "auto"
+        };
+        time_conditions::set_override(pool, tenant, id, next).await?;
+        tracing::info!(time_condition = %tc.name, state = next, "override toggled by feature code");
+        if next == "closed" {
+            a.extend([
+                ("answer", String::new()),
+                ("sleep", "300".to_owned()),
+                ("playback", CLOSED_TONE.to_owned()),
+                ("hangup", String::new()),
+            ]);
+        } else {
+            a.extend(confirm());
+        }
         return Ok(Some(a));
     }
     if dest == "*98" {
@@ -641,6 +673,20 @@ pub fn route_to<'a>(
                 Ok(group) => ring_group(r, tenant, &group, caller_name, depth).await,
                 Err(_) => unavailable(),
             },
+            NumberDestination::TimeCondition => {
+                let Ok(tc) = time_conditions::get(r.pool, tenant, id).await else {
+                    return unavailable();
+                };
+                let zone = settings::get(r.pool, tenant).await?.timezone;
+                let state = tc.state(chrono::Utc::now(), &zone);
+                let (kind, target) = tc.destination(state.open);
+                let mut a = vec![set(
+                    "talkops_time_condition",
+                    if state.open { "open" } else { "closed" },
+                )];
+                a.extend(route_to(r, tenant, kind, target, caller_name, depth + 1).await?);
+                Ok(a)
+            }
             _ => unavailable(),
         }
     })

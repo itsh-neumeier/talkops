@@ -6,6 +6,7 @@ pub mod health;
 pub mod phones;
 pub mod provisioning;
 pub mod settings;
+pub mod time_conditions;
 pub mod trunks;
 pub mod users;
 pub mod voicemail;

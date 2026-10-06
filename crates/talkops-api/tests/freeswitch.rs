@@ -630,3 +630,80 @@ async fn ring_group_routing(db: PgPool) {
         .await;
     assert_eq!(status, StatusCode::NO_CONTENT);
 }
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn time_condition_routing(db: PgPool) {
+    let router = router(db);
+    let f = fixture(&router).await;
+    let id = |e: &Value| e["id"].as_str().unwrap().to_owned();
+    let all_day: Value = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+        .iter()
+        .map(|d| (d.to_string(), json!([["00:00", "24:00"]])))
+        .collect::<serde_json::Map<_, _>>()
+        .into();
+    let (status, _) = f
+        .admin
+        .post(
+            "/api/v1/time-conditions",
+            json!({"name": "Bad", "schedule": {"mon": [["17:00", "08:00"]]},
+                   "open_type": "none", "closed_type": "none"}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    let (status, tc) = f
+        .admin
+        .post(
+            "/api/v1/time-conditions",
+            json!({"number": "60", "name": "Office hours", "schedule": all_day,
+                   "open_type": "extension", "open_id": id(&f.ext20),
+                   "closed_type": "none"}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{tc}");
+    assert_eq!(tc["state"]["open"], true);
+    let tc_id = id(&tc);
+
+    // Open: rings extension 20.
+    let a = internal_call(&router, &f.ext21, "60").await;
+    assert!(has(&a, "set", "talkops_time_condition=open"), "{a:?}");
+    assert!(has(&a, "bridge", &ring20(&f)), "{a:?}");
+
+    // *30<number> forces it closed (no closed destination: rejected) and back.
+    let a = internal_call(&router, &f.ext21, "*3060").await;
+    assert!(has(&a, "answer", ""), "{a:?}");
+    let (_, tc) = f
+        .admin
+        .get(&format!("/api/v1/time-conditions/{tc_id}"))
+        .await;
+    assert_eq!(tc["override"], "closed");
+    assert_eq!(tc["state"]["reason"], "override");
+    let a = internal_call(&router, &f.ext21, "60").await;
+    assert!(has(&a, "respond", "480 Temporarily Unavailable"), "{a:?}");
+    internal_call(&router, &f.ext21, "*3060").await;
+    let (_, tc) = f
+        .admin
+        .get(&format!("/api/v1/time-conditions/{tc_id}"))
+        .await;
+    assert_eq!(tc["override"], "auto");
+    let a = internal_call(&router, &f.ext21, "*3099").await;
+    assert!(has(&a, "respond", "404 Not Found"));
+
+    // Operators may switch the override in the UI.
+    let (status, tc) = f
+        .admin
+        .put(
+            &format!("/api/v1/time-conditions/{tc_id}/override"),
+            json!({"override": "closed"}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(tc["state"]["open"], false);
+
+    // Holiday calendar.
+    let (status, cal) = f.admin.get("/api/v1/holidays?region=DE-BY&year=2026").await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(cal["holidays"].as_array().unwrap().len(), 12);
+    assert_eq!(cal["regions"].as_array().unwrap().len(), 17);
+    let (status, _) = f.admin.get("/api/v1/holidays?region=XX").await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+}

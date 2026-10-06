@@ -131,6 +131,7 @@ pub fn api_router() -> (Router<AppState>, utoipa::openapi::OpenApi) {
         .merge(routes::phones::router())
         .merge(routes::voicemail::router())
         .merge(routes::groups::router())
+        .merge(routes::time_conditions::router())
         .split_for_parts();
     (router, api)
 }

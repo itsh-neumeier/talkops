@@ -9,7 +9,11 @@ use crate::tenant::TenantId;
 use crate::trunks::NumberDestination;
 
 /// Tables with an internal `number` column and the destination they represent.
-const NUMBERED: &[(&str, &str)] = &[("extensions", "extension"), ("ring_groups", "ring_group")];
+const NUMBERED: &[(&str, &str)] = &[
+    ("extensions", "extension"),
+    ("ring_groups", "ring_group"),
+    ("time_conditions", "time_condition"),
+];
 
 /// Table holding the targets of a destination kind.
 fn table(kind: NumberDestination) -> Option<&'static str> {

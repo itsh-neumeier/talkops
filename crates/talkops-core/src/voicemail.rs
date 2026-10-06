@@ -475,17 +475,20 @@ pub struct MailInfo {
     pub email: Option<String>,
     pub attach_audio: bool,
     pub language: Option<String>,
+    /// Transcript text, if transcription is enabled and succeeded.
+    pub transcript: Option<String>,
 }
 
 pub async fn mail_info(pool: &PgPool, message: Uuid) -> CoreResult<Option<MailInfo>> {
     Ok(sqlx::query_as(
         "SELECT m.id AS message_id, m.file, m.caller_number, m.caller_name, m.duration_secs,
                 m.created_at, e.number AS extension_number, e.display_name AS extension_name,
-                u.email, b.attach_audio, b.language
+                u.email, b.attach_audio, b.language, t.text AS transcript
          FROM voicemail_messages m
          JOIN extensions e ON e.id = m.extension_id
          JOIN voicemail_boxes b ON b.extension_id = m.extension_id
          LEFT JOIN users u ON u.id = e.user_id
+         LEFT JOIN transcripts t ON t.voicemail_id = m.id
          WHERE m.id = $1 AND b.email_notify",
     )
     .bind(message)

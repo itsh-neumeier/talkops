@@ -14,7 +14,7 @@ use talkops_core::tenant::TenantId;
 use talkops_core::trunks::{self, AccountInput, NumberDestination, NumberInput, TrunkInput};
 use talkops_core::users::{self, NewUser, Role};
 use talkops_core::voicemail::{self, NewMessage, VoicemailBoxInput};
-use talkops_core::{audit, cdr, jobs, mail, settings};
+use talkops_core::{audit, cdr, jobs, mail, recordings, settings};
 use uuid::Uuid;
 
 const T: TenantId = TenantId::DEFAULT;
@@ -853,6 +853,76 @@ async fn voicemail_boxes_messages_and_smtp(pool: PgPool) {
         Err(CoreError::Db(_)) | Err(CoreError::NotFound)
     ));
     assert_eq!(voicemail::counts(&pool, e.id).await.unwrap(), (1, 0));
+
+    // With transcription, the mail waits for the transcript.
+    while jobs::claim(&pool, "w", &[voicemail::JOB_MAIL])
+        .await
+        .unwrap()
+        .is_some()
+    {}
+    sqlx::query("UPDATE tenant_settings SET transcription_enabled = true")
+        .execute(&pool)
+        .await
+        .unwrap();
+    let third = voicemail::create_message(
+        &pool,
+        T,
+        &NewMessage {
+            id: Uuid::new_v4(),
+            extension_id: e.id,
+            caller_number: "22".into(),
+            caller_name: String::new(),
+            duration_secs: 4,
+            call_uuid: None,
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(third.transcript_status, "pending");
+    assert!(
+        jobs::claim(&pool, "w", &[voicemail::JOB_MAIL])
+            .await
+            .unwrap()
+            .is_none()
+    );
+    let job = jobs::claim(&pool, "w", &[recordings::JOB_TRANSCRIBE])
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(job.payload["voicemail_id"], third.id.to_string());
+    recordings::save_transcript(
+        &pool,
+        T,
+        recordings::Source::Voicemail(third.id),
+        "de",
+        &[recordings::Segment {
+            start: 0.0,
+            end: 2.0,
+            speaker: String::new(),
+            text: " Ruf mich zurück.".into(),
+        }],
+    )
+    .await
+    .unwrap();
+    let third = voicemail::get_message(&pool, T, third.id).await.unwrap();
+    assert_eq!(third.transcript_status, "done");
+    let info = voicemail::mail_info(&pool, third.id)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(info.transcript.as_deref(), Some("Ruf mich zurück."));
+    let hits = recordings::search(&pool, T, "zurück", Some(&[e.id]), 10)
+        .await
+        .unwrap();
+    assert_eq!(hits.len(), 1);
+    assert_eq!(hits[0].voicemail_id, Some(third.id));
+    assert_eq!(hits[0].destination.as_deref(), Some("20"));
+    assert!(
+        recordings::search(&pool, T, "zurück", Some(&[]), 10)
+            .await
+            .unwrap()
+            .is_empty()
+    );
 
     // SMTP settings: password encrypted, kept on null, removed on "".
     let secrets = SecretBox::from_hex(KEY).unwrap();

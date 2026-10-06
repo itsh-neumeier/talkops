@@ -96,15 +96,24 @@ pub fn voicemail_text(info: &MailInfo, caller: &str, at: &str, lang: &str) -> Vo
     } else {
         format!("{} ({caller})", info.caller_name)
     };
+    let transcript = |label: &str| {
+        info.transcript
+            .as_deref()
+            .map(str::trim)
+            .filter(|t| !t.is_empty())
+            .map(|t| format!("{label}\n{t}\n\n"))
+            .unwrap_or_default()
+    };
     if lang == "en" {
         VoicemailText {
             subject: format!("New voicemail from {caller_line}"),
             body: format!(
                 "Hello {name},\n\nthere is a new voicemail for extension {number}.\n\n\
                  From:     {caller_line}\nReceived: {at}\nLength:   {duration}\n\n\
-                 Listen to it in the TalkOps web interface or by dialing *97.\n\n-- \nTalkOps\n",
+                 {transcript}Listen to it in the TalkOps web interface or by dialing *97.\n\n-- \nTalkOps\n",
                 name = info.extension_name,
                 number = info.extension_number,
+                transcript = transcript("Transcript (automatic):"),
             ),
         }
     } else {
@@ -113,9 +122,10 @@ pub fn voicemail_text(info: &MailInfo, caller: &str, at: &str, lang: &str) -> Vo
             body: format!(
                 "Hallo {name},\n\nfür die Nebenstelle {number} ist eine neue Sprachnachricht eingegangen.\n\n\
                  Von:     {caller_line}\nZeit:    {at}\nLänge:   {duration}\n\n\
-                 Abhören in der TalkOps-Weboberfläche oder per Anruf auf *97.\n\n-- \nTalkOps\n",
+                 {transcript}Abhören in der TalkOps-Weboberfläche oder per Anruf auf *97.\n\n-- \nTalkOps\n",
                 name = info.extension_name,
                 number = info.extension_number,
+                transcript = transcript("Transkript (automatisch):"),
             ),
         }
     }
@@ -266,6 +276,7 @@ mod tests {
             email: Some("anna@example.com".into()),
             attach_audio: true,
             language: None,
+            transcript: None,
         }
     }
 
@@ -278,6 +289,18 @@ mod tests {
         assert!(text.body.contains("Länge:   1:15"));
         let text = voicemail_text(&info(), "030 123456", &at, "en");
         assert!(text.body.contains("extension 20"));
+        assert!(!text.body.contains("Transcript"));
+        let with = MailInfo {
+            transcript: Some(" Bitte ruf zurück. ".into()),
+            ..info()
+        };
+        let text = voicemail_text(&with, "030 123456", &at, "de");
+        assert!(
+            text.body
+                .contains("Transkript (automatisch):\nBitte ruf zurück.\n\nAbhören"),
+            "{}",
+            text.body
+        );
 
         let msg = build_voicemail_mail(
             "TalkOps <pbx@example.com>",

@@ -874,3 +874,86 @@ async fn parking_and_blind_transfers(db: PgPool) {
     assert!(has(&a, "bridge", &format!("{gw}/030123456")), "{a:?}");
     assert!(has(&transfer("0").await, "respond", "404 Not Found"));
 }
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn queue_routing_and_callcenter_conf(db: PgPool) {
+    let router = router(db);
+    let f = fixture(&router).await;
+    let id = |e: &Value| e["id"].as_str().unwrap().to_owned();
+    let (status, _) = f
+        .admin
+        .post(
+            "/api/v1/queues",
+            json!({"name": "Bad", "strategy": "fastest", "members": [id(&f.ext20)]}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    let (status, q) = f
+        .admin
+        .post(
+            "/api/v1/queues",
+            json!({"number": "80", "name": "Support", "strategy": "ring-all",
+                   "members": [id(&f.ext20), id(&f.ext21)],
+                   "timeout_type": "extension", "timeout_id": id(&f.ext21)}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{q}");
+    let cc_name = format!("q-{}", id(&q).replace('-', ""));
+
+    let a = internal_call(&router, &f.ext21, "80").await;
+    assert!(has(&a, "callcenter", &cc_name), "{a:?}");
+    assert!(has(&a, "answer", ""));
+    // Unanswered: overflow to extension 21 (no devices: rejected → hangup).
+    assert!(has(&a, "hangup", ""), "{a:?}");
+
+    // mod_callcenter fetches its configuration from TalkOps.
+    let (status, xml) = fs_post(
+        &router,
+        "/fs/xml",
+        &[
+            ("section", "configuration"),
+            ("key_value", "callcenter.conf"),
+        ],
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let doc = roxmltree::Document::parse(&xml).unwrap();
+    let queue = doc.descendants().find(|n| n.has_tag_name("queue")).unwrap();
+    assert_eq!(queue.attribute("name"), Some(cc_name.as_str()));
+    let agents: Vec<_> = doc
+        .descendants()
+        .filter(|n| n.has_tag_name("agent"))
+        .collect();
+    assert_eq!(agents.len(), 2);
+    let agent20 = format!("a-{}", id(&f.ext20).replace('-', ""));
+    let a20 = agents
+        .iter()
+        .find(|a| a.attribute("name") == Some(agent20.as_str()))
+        .unwrap();
+    assert_eq!(a20.attribute("status"), Some("Available"));
+    assert_eq!(
+        a20.attribute("contact"),
+        Some("[leg_timeout=20]user/20-1@talkops.local,[leg_timeout=20]user/20-2@talkops.local")
+    );
+    // 21 has no devices and is on break.
+    assert!(
+        agents
+            .iter()
+            .any(|a| a.attribute("status") == Some("On Break"))
+    );
+    assert_eq!(
+        doc.descendants().filter(|n| n.has_tag_name("tier")).count(),
+        2
+    );
+
+    // Disabled queues send callers straight to the overflow.
+    let mut input = q.clone();
+    input["enabled"] = json!(false);
+    let (status, _) = f
+        .admin
+        .put(&format!("/api/v1/queues/{}", id(&q)), input)
+        .await;
+    assert_eq!(status, StatusCode::OK);
+    let a = internal_call(&router, &f.ext21, "80").await;
+    assert!(!a.iter().any(|(app, _)| app == "callcenter"), "{a:?}");
+}

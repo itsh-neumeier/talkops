@@ -62,6 +62,7 @@ pub async fn xml_curl(
 
     let body = match section {
         "configuration" if get("key_value") == "sofia.conf" => sofia_conf(&state).await,
+        "configuration" if get("key_value") == "callcenter.conf" => callcenter_conf(&state).await,
         "directory" => directory_user(&state, &params).await,
         "dialplan" => {
             let req = dialplan::CallRequest::from_params(&params);
@@ -76,6 +77,23 @@ pub async fn xml_curl(
         _ => None,
     };
     xml(body.unwrap_or_else(|| NOT_FOUND.to_owned()))
+}
+
+async fn callcenter_conf(state: &AppState) -> Option<String> {
+    let loaded = async {
+        let queues = talkops_core::queues::list_all(&state.db).await?;
+        let (agents, tiers) =
+            talkops_core::queues::desired_agents(&state.db, fsxml::SIP_DOMAIN).await?;
+        talkops_core::error::CoreResult::Ok(fsxml::callcenter::render(&queues, &agents, &tiers))
+    }
+    .await;
+    match loaded {
+        Ok(xml) => Some(xml),
+        Err(err) => {
+            tracing::error!(error = %err, "cannot load queues");
+            None
+        }
+    }
 }
 
 async fn sofia_conf(state: &AppState) -> Option<String> {

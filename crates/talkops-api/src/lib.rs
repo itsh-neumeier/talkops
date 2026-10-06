@@ -1,6 +1,7 @@
 //! TalkOps control plane HTTP server.
 
 pub mod auth;
+pub mod callcenter;
 pub mod config;
 pub mod error;
 pub mod esl;
@@ -42,6 +43,8 @@ pub struct AppState {
     pub media: Arc<MediaPaths>,
     /// `host:port` FreeSWITCH connects to for interactive calls (`socket`).
     pub outbound_socket: Arc<str>,
+    /// Wakes the queue (mod_callcenter) sync after changes.
+    pub queue_sync: Arc<tokio::sync::Notify>,
     pub profile: Arc<ProfileSettings>,
     pub xmlcurl_password: Arc<str>,
     pub limiter: Arc<LoginLimiter>,
@@ -66,6 +69,7 @@ impl AppState {
             provisioning_dir: Arc::new(provisioning_dir),
             media: Arc::new(MediaPaths::default()),
             outbound_socket: Arc::from("127.0.0.1:8084"),
+            queue_sync: Arc::new(tokio::sync::Notify::new()),
             profile: Arc::new(profile),
             xmlcurl_password: Arc::from(xmlcurl_password),
             limiter: Arc::new(LoginLimiter::default()),
@@ -92,6 +96,11 @@ impl Default for MediaPaths {
 impl AppState {
     pub fn with_media(mut self, media: MediaPaths) -> Self {
         self.media = Arc::new(media);
+        self
+    }
+
+    pub fn with_queue_sync(mut self, trigger: Arc<tokio::sync::Notify>) -> Self {
+        self.queue_sync = trigger;
         self
     }
 
@@ -134,6 +143,7 @@ pub fn api_router() -> (Router<AppState>, utoipa::openapi::OpenApi) {
         .merge(routes::groups::router())
         .merge(routes::time_conditions::router())
         .merge(routes::ivr::router())
+        .merge(routes::queues::router())
         .split_for_parts();
     (router, api)
 }

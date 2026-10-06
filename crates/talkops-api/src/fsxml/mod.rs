@@ -5,6 +5,7 @@
 //! - `directory`: SIP users (devices) for authentication and bridging
 //! - `dialplan`: one generated extension per call, routing decided in Rust
 
+pub mod callcenter;
 pub mod cdr;
 pub mod dialplan;
 pub mod directory;

@@ -16,6 +16,7 @@ pub mod numbering;
 pub mod phones;
 pub mod presets;
 pub mod prompts;
+pub mod queues;
 pub mod ring_groups;
 pub mod settings;
 pub mod telemetry;

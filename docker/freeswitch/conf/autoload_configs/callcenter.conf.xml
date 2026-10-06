@@ -1,0 +1,8 @@
+<configuration name="callcenter.conf" description="Queues (served by TalkOps)">
+  <!-- Fallback only: TalkOps answers the xml_curl lookup with all queues,
+       agents and tiers from its database. -->
+  <settings/>
+  <queues/>
+  <agents/>
+  <tiers/>
+</configuration>

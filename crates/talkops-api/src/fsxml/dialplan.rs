@@ -15,10 +15,10 @@ use talkops_core::presets::{CallerIdHeader, Dtmf, PresetCatalog, Srtp};
 use talkops_core::ring_groups::{self, RingGroup};
 use talkops_core::settings::{self, TenantSettings};
 use talkops_core::tenant::TenantId;
-use talkops_core::time_conditions;
 use talkops_core::trunks::{self, NumberDestination, OutboundRoute, gateway_name};
 use talkops_core::voicemail;
 use talkops_core::{ivr, numbering};
+use talkops_core::{queues, time_conditions};
 use uuid::Uuid;
 
 use super::{
@@ -808,6 +808,48 @@ pub fn route_to<'a>(
                     ("socket", format!("{} async full", r.socket)),
                 ])
             }
+            NumberDestination::Queue => match queues::get(r.pool, tenant, id).await {
+                Ok(q) if q.enabled => {
+                    let mut a = vec![
+                        set(
+                            "talkops_destination",
+                            q.number.clone().unwrap_or_else(|| sanitize_value(&q.name)),
+                        ),
+                        set("talkops_queue_id", q.id.to_string()),
+                        set("hangup_after_bridge", "true"),
+                        ("answer", String::new()),
+                        ("callcenter", q.cc_name()),
+                    ];
+                    // Back here only if the caller left the queue unanswered.
+                    let after = route_to(
+                        r,
+                        tenant,
+                        q.timeout_type,
+                        q.timeout_id,
+                        caller_name,
+                        depth + 1,
+                    )
+                    .await?;
+                    if after.first().is_some_and(|(app, _)| *app == "respond") {
+                        a.push(("hangup", String::new()));
+                    } else {
+                        a.extend(after);
+                    }
+                    Ok(a)
+                }
+                Ok(q) => {
+                    route_to(
+                        r,
+                        tenant,
+                        q.timeout_type,
+                        q.timeout_id,
+                        caller_name,
+                        depth + 1,
+                    )
+                    .await
+                }
+                Err(_) => unavailable(),
+            },
             NumberDestination::TimeCondition => {
                 let Ok(tc) = time_conditions::get(r.pool, tenant, id).await else {
                     return unavailable();

@@ -104,6 +104,8 @@ async fn serve(config: Config) -> anyhow::Result<()> {
         sounds: config.sounds_dir.clone(),
     })
     .with_outbound_socket(&config.esl_outbound_listen);
+    let queue_sync = talkops_api::callcenter::spawn(db.clone(), state.telephony.esl.clone());
+    let state = state.with_queue_sync(queue_sync);
     state
         .telephony
         .esl

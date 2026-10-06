@@ -14,6 +14,7 @@ const NUMBERED: &[(&str, &str)] = &[
     ("ring_groups", "ring_group"),
     ("time_conditions", "time_condition"),
     ("ivr_menus", "ivr"),
+    ("queues", "queue"),
 ];
 
 /// Table holding the targets of a destination kind.

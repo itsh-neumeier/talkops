@@ -13,6 +13,7 @@
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
 	import Modal from '#lib/components/Modal.svelte';
 	import NumberDestination from '#lib/components/NumberDestination.svelte';
+	import { loadTargets } from '#lib/destinations.svelte.ts';
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import { presetHint, presetLabel, presetNotes, statusClass, statusKey } from '#lib/presets.ts';
 	import { hasRole } from '#lib/session.svelte.ts';
@@ -58,6 +59,7 @@
 			]);
 			preset = presets.find((p) => p.id === trunk!.preset);
 			extensions = exts;
+			await loadTargets();
 		} catch (err) {
 			error = errorMessage(err);
 		}
@@ -290,8 +292,7 @@
 						<tr>
 							<td class="font-mono">{n.e164}</td>
 							<td>{n.label}</td>
-							<td><NumberDestination number={n} {extensions} editable={admin} onchange={load} /></td
-							>
+							<td><NumberDestination number={n} editable={admin} onchange={load} /></td>
 							<td class="text-right"
 								>{#if admin}<button class="btn btn-sm btn-danger" onclick={() => removeNumber(n)}
 										>{t('common.delete')}</button

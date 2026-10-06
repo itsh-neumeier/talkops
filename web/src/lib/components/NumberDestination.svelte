@@ -1,37 +1,43 @@
 <script lang="ts">
-	import { api, type Extension, type PhoneNumber } from '#lib/api.ts';
+	import { api, type PhoneNumber } from '#lib/api.ts';
+	import DestinationSelect from '#lib/components/DestinationSelect.svelte';
+	import { describe } from '#lib/destinations.svelte.ts';
 	import { t } from '#lib/i18n/index.svelte.ts';
+	import { errorMessage } from '#lib/util.ts';
 
 	let {
 		number,
-		extensions,
 		editable = false,
 		onchange
 	}: {
 		number: PhoneNumber;
-		extensions: Extension[];
 		editable?: boolean;
 		onchange: () => void;
 	} = $props();
 
 	let busy = $state(false);
-	const current = $derived(
-		number.destination_type === 'extension' ? (number.destination_id ?? '') : ''
-	);
+	let error = $state('');
+	// svelte-ignore state_referenced_locally
+	let type = $state(number.destination_type);
+	// svelte-ignore state_referenced_locally
+	let id = $state(number.destination_id);
 
-	async function change(value: string) {
+	async function save() {
 		busy = true;
+		error = '';
 		try {
 			await api.put(`/numbers/${number.id}`, {
 				trunk_id: number.trunk_id,
 				account_id: number.account_id,
 				e164: number.e164,
 				label: number.label,
-				destination_type: value ? 'extension' : 'none',
-				destination_id: value || null,
+				destination_type: type,
+				destination_id: id,
 				enabled: number.enabled
 			});
 			onchange();
+		} catch (err) {
+			error = errorMessage(err);
 		} finally {
 			busy = false;
 		}
@@ -39,17 +45,14 @@
 </script>
 
 {#if editable}
-	<select
-		class="input mt-0 py-1"
-		value={current}
+	<DestinationSelect
+		bind:type
+		bind:id
 		disabled={busy}
-		onchange={(e) => change(e.currentTarget.value)}
-		aria-label={t('trunks.destination')}
-	>
-		<option value="">{t('trunks.noDestination')}</option>
-		{#each extensions as e (e.id)}<option value={e.id}>{e.number} {e.display_name}</option>{/each}
-	</select>
+		noneLabel={t('trunks.noDestination')}
+		onchange={save}
+	/>
+	{#if error}<p class="text-sm text-red-600">{error}</p>{/if}
 {:else}
-	{@const ext = extensions.find((e) => e.id === current)}
-	{ext ? `${ext.number} ${ext.display_name}` : t('trunks.noDestination')}
+	{describe(number.destination_type, number.destination_id)?.label ?? t('trunks.noDestination')}
 {/if}

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { api, type Extension, type PhoneNumber, type Trunk } from '#lib/api.ts';
+	import { api, type PhoneNumber, type Trunk } from '#lib/api.ts';
+	import { loadTargets } from '#lib/destinations.svelte.ts';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
 	import NumberDestination from '#lib/components/NumberDestination.svelte';
 	import { t } from '#lib/i18n/index.svelte.ts';
@@ -9,15 +10,14 @@
 
 	let numbers = $state<PhoneNumber[]>([]);
 	let trunks = $state<Trunk[]>([]);
-	let extensions = $state<Extension[]>([]);
 	let error = $state('');
 
 	async function load() {
 		try {
-			[numbers, trunks, extensions] = await Promise.all([
+			[numbers, trunks] = await Promise.all([
 				api.get<PhoneNumber[]>('/numbers'),
 				api.get<Trunk[]>('/trunks'),
-				api.get<Extension[]>('/extensions')
+				loadTargets()
 			]);
 		} catch (err) {
 			error = errorMessage(err);
@@ -44,14 +44,7 @@
 						<td class="font-mono">{n.e164}</td>
 						<td>{n.label}</td>
 						<td><a class="hover:underline" href="/trunks/{n.trunk_id}">{trunk?.name ?? '—'}</a></td>
-						<td
-							><NumberDestination
-								number={n}
-								{extensions}
-								editable={hasRole('admin')}
-								onchange={load}
-							/></td
-						>
+						<td><NumberDestination number={n} editable={hasRole('admin')} onchange={load} /></td>
 					</tr>
 				{/each}
 			</tbody>

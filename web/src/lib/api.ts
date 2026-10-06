@@ -181,7 +181,7 @@ export interface PhoneNumber {
 	account_id: string | null;
 	e164: string;
 	label: string;
-	destination_type: 'none' | 'extension';
+	destination_type: DestinationType;
 	destination_id: string | null;
 	enabled: boolean;
 }
@@ -349,6 +349,84 @@ export interface SmtpSettings {
 	username: string;
 	has_password: boolean;
 	from: string;
+}
+
+export type DestinationType =
+	'none' | 'extension' | 'voicemail' | 'ring_group' | 'time_condition' | 'ivr' | 'queue';
+
+export interface RingGroup {
+	id: string;
+	number: string | null;
+	name: string;
+	strategy: 'simultaneous' | 'sequential';
+	ring_timeout_secs: number;
+	caller_id_prefix: string;
+	fallback_type: DestinationType;
+	fallback_id: string | null;
+	enabled: boolean;
+	members: string[];
+}
+
+export interface TimeConditionState {
+	open: boolean;
+	reason: 'override' | 'holiday' | 'closed_date' | 'schedule';
+	holiday: string | null;
+}
+
+export interface TimeCondition {
+	id: string;
+	number: string | null;
+	name: string;
+	schedule: Record<string, [string, string][]>;
+	holiday_region: string | null;
+	closed_dates: string[];
+	override: 'auto' | 'open' | 'closed';
+	open_type: DestinationType;
+	open_id: string | null;
+	closed_type: DestinationType;
+	closed_id: string | null;
+	state: TimeConditionState;
+}
+
+export interface MenuOption {
+	digit: string;
+	type: DestinationType;
+	id: string | null;
+}
+
+export interface IvrMenu {
+	id: string;
+	number: string | null;
+	name: string;
+	language: 'de' | 'en' | null;
+	greeting: 'tts' | 'upload';
+	greeting_text: string;
+	greeting_status: 'none' | 'pending' | 'ready' | 'failed';
+	timeout_secs: number;
+	max_tries: number;
+	direct_dial: boolean;
+	options: MenuOption[];
+	timeout_type: DestinationType;
+	timeout_id: string | null;
+}
+
+export interface Queue {
+	id: string;
+	number: string | null;
+	name: string;
+	strategy: string;
+	max_wait_secs: number;
+	agent_timeout_secs: number;
+	wrap_up_secs: number;
+	timeout_type: DestinationType;
+	timeout_id: string | null;
+	enabled: boolean;
+	members: string[];
+}
+
+export interface HolidayCalendar {
+	regions: [string, string][];
+	holidays: { date: string; name: string }[];
 }
 
 /** Uploads a file with multipart/form-data (firmware). */

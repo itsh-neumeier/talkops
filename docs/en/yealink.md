@@ -68,7 +68,7 @@ at night between 2 and 4 am.
 | `*78` / `*79` | do not disturb on / off |
 | `*72<number>` / `*73` | forward all calls (extension or external number) / off |
 | `**<extension>` | pick up a ringing call |
-| `*97` | voicemail (phase 3) |
+| `*97` / `*98` | own voicemail / any voicemail with PIN ([voicemail](voicemail.md)) |
 
 The phone's DND key toggles *do not disturb* of the extension on account 1.
 Both settings are also available in the web UI on the extension page and

@@ -1,6 +1,6 @@
 # TalkOps – Architektur
 
-> Status: Phase 2 (Yealink). Entscheidungen mit Begründung stehen in den
+> Status: Phase 3 (Voicemail & TTS). Entscheidungen mit Begründung stehen in den
 > [ADRs](adr/README.md); dieses Dokument beschreibt das Zusammenspiel.
 
 ## Überblick
@@ -96,6 +96,7 @@ Jede Anfrage im Kontext `internal` (authentifizierte Geräte) bzw. `public`
 | internal | `*78` / `*79` | Nicht stören an/aus (Bestätigungston, kein CDR) |
 | internal | `*72<Nummer>` / `*73` | Rufumleitung sofort an/aus (Ziel: Nebenstelle oder externe Nummer) |
 | internal | `**<Nebenstelle>` | gezieltes Heranholen (`pickup ext-<uuid>`) |
+| internal | `*97` / `*98` | eigene Mailbox / beliebige Mailbox mit PIN (ESL outbound) |
 
 Beim Klingeln einer Nebenstelle gilt (Phase 2): deaktiviert → `480`,
 **Nicht stören** → `486 Busy Here`, **Rufumleitung** → genau ein Sprung (keine
@@ -116,6 +117,26 @@ Trunk-Accounts werden zu Gateways `gw-<uuid>` im Profil `external`; nach
 Bei Anbietern mit Zugangsdaten je Rufnummer (`per_number`) setzt TalkOps
 `extension`/`extension-in-contact`, damit eingehende Anrufe der Nummer
 zugeordnet werden können.
+
+Ist die Mailbox der Nebenstelle aktiv (Phase 3), gehen Anrufe statt `480`/`486`
+an die Voicemail: bei „Nicht stören“ sofort, ohne Geräte sofort, sonst nach dem
+erfolglosen `bridge` (keine Annahme, besetzt, nicht erreichbar).
+
+## Voicemail & Sprachausgabe (Phase 3, [ADR 0010](adr/0010-voicemail-und-sprachausgabe.md))
+
+- Der Dialplan setzt `talkops_app` (`vm_deposit`, `vm_check`, `vm_login`) und
+  übergibt per `socket 127.0.0.1:8084 async full` an TalkOps
+  (`talkops_esl::outbound`). Jede Applikation läuft per `sendmsg` mit
+  `event-lock` und `Event-UUID`; `linger` sorgt dafür, dass eine laufende
+  Aufnahme nach dem Auflegen noch gemeldet wird.
+- Aufnahmen: `voicemail/<tenant>/<nebenstelle>/<nachricht>.wav`, Begrüßung
+  `…/greeting.wav`; Länge aus dem WAV-Header, unter 1 s wird verworfen.
+- Systemansagen (`talkops_core::prompts`) rendert der Media-Worker mit Piper
+  nach `sounds/system/<sprache>/<key>-<hash>.wav`; Text-Begrüßungen als Job
+  `tts.greeting`.
+- Neue Nachricht → Job `mail.voicemail` (im TalkOps-Dienst, SMTP via `lettre`)
+  und MWI an alle Geräte der Nebenstelle; neu registrierte Geräte bekommen den
+  aktuellen Stand sofort.
 
 ## Provisioning (Phase 2)
 
@@ -215,7 +236,7 @@ Phase 8.
 
 ## Verzeichnisstruktur
 
-Ist-Stand Phase 2 plus geplante Ergänzungen (P2 … P8):
+Ist-Stand Phase 3 plus geplante Ergänzungen (P2 … P8):
 
 ```
 talkops/
@@ -229,14 +250,16 @@ talkops/
 │   ├── talkops-core/
 │   │   └── src/  db · jobs · tenant · telemetry · crypto · users · extensions
 │   │             trunks · settings · dialing · presets · cdr · audit · phones
+│   │             voicemail · prompts · mail
 │   ├── talkops-api/
-│   │   └── src/  main · config · auth · error · esl · telephony
+│   │   └── src/  main · config · auth · error · esl · telephony · mailer
+│   │             voicemail/{mod,ivr}
 │   │             fsxml/{sofia,directory,dialplan,cdr}
 │   │             routes/{health,auth,users,extensions,trunks,settings,fs,
-│   │                     phones,provisioning}
-│   ├── talkops-esl/              Event-Socket-Client (inbound; P3: outbound-Server)
+│   │                     phones,provisioning,voicemail}
+│   ├── talkops-esl/              Event-Socket-Client (inbound) und outbound-Server
 │   ├── talkops-provisioning/     Yealink-Templates, Modellkatalog, XML-Telefonbuch
-│   ├── talkops-media-worker/     P3: Piper-Handler, P5: Whisper-Handler
+│   ├── talkops-media-worker/     Piper (Ansagen, Begrüßungen); P5: Whisper-Handler
 │   └── talkops-doorbell/         P6: Dahua-HTTP-API/CGI, MQTT/Webhooks
 ├── migrations/                   sqlx-Migrationen (ein Satz für alle Dienste)
 ├── presets/
@@ -247,13 +270,14 @@ talkops/
 ├── docker/
 │   ├── freeswitch/               Dockerfile, build-modules.conf, conf/ (Bootstrap), patches/
 │   ├── talkops/                  Dockerfile (Rust + Web-UI)
-│   └── media-worker/             Dockerfile (P3/P5: Piper, whisper.cpp, CUDA-Variante)
+│   └── media-worker/             Dockerfile (Piper + Stimmen; P5: whisper.cpp, CUDA-Variante)
 ├── tests/
-│   ├── sipp/                     register.xml, call.xml, bad_password.xml (P3+: voicemail, transfer)
+│   ├── sipp/                     register, call, call_busy, call_voicemail, bad_password
 │   └── e2e/run.sh                Ende-zu-Ende-Test gegen den laufenden Stack
 ├── docs/
 │   ├── architecture.md · adr/
 │   ├── de/  installation.md · portainer.md · erste-schritte.md · leonet.md · yealink.md
+│   │        voicemail.md
 │   │        (P3+: dahua.md, ldap.md, backup.md)
 │   ├── en/  (gleiche Inhalte auf Englisch)
 │   └── trunk-presets.md          Format & Beitragsregeln für Vorlagen
@@ -267,7 +291,7 @@ talkops/
 | 0 | Fundament: Workspace, ADRs, CI, Compose, FreeSWITCH-Image, Postgres, Healthchecks | ✅ |
 | 1 | Grundtelefonie: xml_curl-Directory/Dialplan, Nebenstellen, Trunk-Presets (LEONET u. a.), Web-UI Login/User/Trunks, CDR | ✅ (LEONET-Livetest offen) |
 | 2 | Yealink: Provisioning, Templates, XML-Telefonbuch, BLF, Feature-Codes, MWI | ✅ (Test mit echten Geräten offen) |
-| 3 | Voicemail & TTS: ESL-Voicemail, Piper, Mehrsprachigkeit, Mail | geplant |
+| 3 | Voicemail & TTS: ESL-Voicemail, Piper, Mehrsprachigkeit, Mail | ✅ |
 | 4 | Gruppen & Logik: Rufgruppen, Queues, IVR-Editor, Zeitsteuerung/Feiertage, Parken/Pickup | geplant |
 | 5 | Recording & Transkription: Hinweisansage, Whisper, Suche, Retention | geplant |
 | 6 | Türsprechstelle: Dahua VTO, Video, Türöffner, Snapshots, Home Assistant | geplant |

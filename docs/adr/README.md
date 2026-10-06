@@ -16,5 +16,6 @@ nächste freie Nummer; überholte ADRs werden nicht gelöscht, sondern auf
 | [0007](0007-deployment-und-netzwerk.md) | Deployment: Docker Compose mit Host-Networking | Angenommen |
 | [0008](0008-secrets-at-rest.md) | Verschlüsselung von SIP- und Trunk-Zugangsdaten | Angenommen |
 | [0009](0009-basis-images-debian-trixie.md) | Basis-Images: Debian 13 „Trixie“ (FreeSWITCH mit PCRE2-Backport) | Angenommen |
+| [0010](0010-voicemail-und-sprachausgabe.md) | Voicemail in Rust, Sprachausgabe mit Piper, Mail aus dem TalkOps-Dienst | Angenommen |
 
 Vorlage: [`template.md`](template.md)

@@ -69,7 +69,7 @@ nächsten Start bzw. nachts zwischen 2 und 4 Uhr.
 | `*78` / `*79` | Nicht stören an / aus |
 | `*72<Nummer>` / `*73` | alle Anrufe umleiten (Nebenstelle oder externe Nummer) / aus |
 | `**<Nebenstelle>` | klingelnden Anruf heranholen |
-| `*97` | Voicemail (ab Phase 3) |
+| `*97` / `*98` | eigene Voicemail / beliebige Voicemail mit PIN ([Voicemail](voicemail.md)) |
 
 Die DND-Taste des Telefons schaltet *Nicht stören* der Nebenstelle auf
 Konto 1. Beides lässt sich auch in der Weboberfläche bei der Nebenstelle bzw.

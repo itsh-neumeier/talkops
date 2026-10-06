@@ -39,6 +39,10 @@ pub struct Cdr {
     pub duration_secs: i32,
     pub billsec: i32,
     pub hangup_cause: String,
+    /// Recording of the call, if any.
+    #[sqlx(default)]
+    #[serde(default)]
+    pub recording_id: Option<Uuid>,
 }
 
 const COLUMNS: &str = "id, call_uuid, direction, caller_number, caller_name, destination, extension_id, \
@@ -95,7 +99,9 @@ pub async fn list<'e>(
     q: &CdrQuery,
 ) -> CoreResult<Vec<Cdr>> {
     let sql = format!(
-        "SELECT {COLUMNS} FROM cdr
+        "SELECT {COLUMNS},
+                (SELECT r.id FROM recordings r WHERE r.call_uuid = cdr.call_uuid) AS recording_id
+         FROM cdr
          WHERE tenant_id = $1
            AND ($2::uuid IS NULL OR extension_id = $2 OR dest_extension_id = $2)
            AND ($3::text IS NULL OR caller_number ILIKE '%' || $3 || '%' OR destination ILIKE '%' || $3 || '%')

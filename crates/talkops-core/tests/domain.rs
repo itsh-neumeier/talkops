@@ -36,6 +36,7 @@ fn ext(number: &str) -> ExtensionInput {
         enabled: true,
         dnd: false,
         forward_all: None,
+        record_calls: "inherit".into(),
     }
 }
 
@@ -393,6 +394,7 @@ async fn cdr_and_audit(pool: PgPool) {
         duration_secs: 5,
         billsec: 4,
         hangup_cause: "NORMAL_CLEARING".into(),
+        recording_id: None,
     };
     assert!(cdr::insert(&pool, T, &c).await.unwrap());
     assert!(

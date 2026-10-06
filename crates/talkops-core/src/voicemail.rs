@@ -294,6 +294,8 @@ pub struct Message {
     pub status: String,
     pub created_at: DateTime<Utc>,
     pub heard_at: Option<DateTime<Utc>>,
+    /// `none`, `pending`, `done` or `failed`.
+    pub transcript_status: String,
 }
 
 #[derive(Debug, Clone)]
@@ -306,7 +308,8 @@ pub struct NewMessage {
     pub call_uuid: Option<String>,
 }
 
-const MSG_COLUMNS: &str = "id, extension_id, caller_number, caller_name, duration_secs, file, status, created_at, heard_at";
+const MSG_COLUMNS: &str = "id, extension_id, caller_number, caller_name, duration_secs, file, status, created_at, heard_at, \
+                           transcript_status";
 
 /// Stores a new message; queues the e-mail notification if enabled.
 pub async fn create_message(
@@ -331,16 +334,52 @@ pub async fn create_message(
         .bind(&msg.call_uuid)
         .fetch_one(&mut *tx)
         .await?;
-    if get_box(&mut *tx, tenant, msg.extension_id)
+    let transcribe: bool = sqlx::query_scalar(
+        "SELECT transcription_enabled FROM tenant_settings WHERE tenant_id = $1",
+    )
+    .bind(tenant)
+    .fetch_optional(&mut *tx)
+    .await?
+    .unwrap_or(false);
+    let saved = if transcribe {
+        // The e-mail follows once the transcript is ready (or failed).
+        let saved: Message = sqlx::query_as(&format!(
+            "UPDATE voicemail_messages SET transcript_status = 'pending' WHERE id = $1
+             RETURNING {MSG_COLUMNS}"
+        ))
+        .bind(saved.id)
+        .fetch_one(&mut *tx)
+        .await?;
+        let mut job = NewJob::new(
+            crate::recordings::JOB_TRANSCRIBE,
+            serde_json::json!({ "voicemail_id": saved.id }),
+        );
+        job.tenant_id = tenant;
+        jobs::enqueue(&mut *tx, job).await?;
+        saved
+    } else {
+        enqueue_mail(&mut tx, tenant, &saved).await?;
+        saved
+    };
+    tx.commit().await?;
+    Ok(saved)
+}
+
+/// Queues the e-mail notification for a message if its box wants one.
+pub async fn enqueue_mail(
+    conn: &mut sqlx::PgConnection,
+    tenant: TenantId,
+    msg: &Message,
+) -> CoreResult<()> {
+    if get_box(&mut *conn, tenant, msg.extension_id)
         .await?
         .email_notify
     {
-        let mut job = NewJob::new(JOB_MAIL, serde_json::json!({ "message_id": saved.id }));
+        let mut job = NewJob::new(JOB_MAIL, serde_json::json!({ "message_id": msg.id }));
         job.tenant_id = tenant;
-        jobs::enqueue(&mut *tx, job).await?;
+        jobs::enqueue(&mut *conn, job).await?;
     }
-    tx.commit().await?;
-    Ok(saved)
+    Ok(())
 }
 
 /// Messages of a box: new ones first, oldest first within each group.

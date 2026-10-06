@@ -150,6 +150,11 @@ const PROMPTS: &[Prompt] = &[
         en: "Invalid entry.",
     },
     Prompt {
+        key: "rec_announcement",
+        de: "Dieses Gespräch wird aufgezeichnet.",
+        en: "This call is being recorded.",
+    },
+    Prompt {
         key: "vm_goodbye",
         de: "Auf Wiederhören.",
         en: "Goodbye.",

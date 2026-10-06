@@ -26,6 +26,8 @@ pub struct Extension {
     pub dnd: bool,
     /// Unconditional call forwarding target (extension or external number).
     pub forward_all: Option<String>,
+    /// Call recording: `inherit` (tenant defaults), `always` or `never`.
+    pub record_calls: String,
 }
 
 #[derive(Debug, Clone, Deserialize, utoipa::ToSchema)]
@@ -46,6 +48,12 @@ pub struct ExtensionInput {
     pub dnd: bool,
     #[serde(default)]
     pub forward_all: Option<String>,
+    #[serde(default = "inherit")]
+    pub record_calls: String,
+}
+
+fn inherit() -> String {
+    "inherit".into()
 }
 
 fn default_ring_timeout() -> i32 {
@@ -55,7 +63,7 @@ fn yes() -> bool {
     true
 }
 
-const EXT_COLUMNS: &str = "id, number, display_name, user_id, outbound_number_id, hide_caller_id, ring_timeout_secs, enabled, dnd, forward_all";
+const EXT_COLUMNS: &str = "id, number, display_name, user_id, outbound_number_id, hide_caller_id, ring_timeout_secs, enabled, dnd, forward_all, record_calls";
 
 pub async fn list<'e>(db: impl PgExecutor<'e>, tenant: TenantId) -> CoreResult<Vec<Extension>> {
     let sql = format!("SELECT {EXT_COLUMNS} FROM extensions WHERE tenant_id = $1 ORDER BY number");
@@ -102,6 +110,9 @@ pub async fn find_by_number<'e>(
 fn validate(input: &ExtensionInput, emergency: &[String]) -> CoreResult<()> {
     let n = &input.number;
     crate::numbering::validate_number(n, emergency)?;
+    if !["inherit", "always", "never"].contains(&input.record_calls.as_str()) {
+        return Err(CoreError::Validation("invalid recording setting".into()));
+    }
     if input.display_name.trim().is_empty() {
         return Err(CoreError::Validation("display name is required".into()));
     }
@@ -140,8 +151,9 @@ pub async fn create(
     crate::numbering::ensure_free(db, tenant, &input.number, None).await?;
     let sql = format!(
         "INSERT INTO extensions (tenant_id, number, display_name, user_id, outbound_number_id,
-                                 hide_caller_id, ring_timeout_secs, enabled, dnd, forward_all)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING {EXT_COLUMNS}"
+                                 hide_caller_id, ring_timeout_secs, enabled, dnd, forward_all,
+                                 record_calls)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING {EXT_COLUMNS}"
     );
     Ok(sqlx::query_as(&sql)
         .bind(tenant)
@@ -154,6 +166,7 @@ pub async fn create(
         .bind(input.enabled)
         .bind(input.dnd)
         .bind(forward_value(input))
+        .bind(&input.record_calls)
         .fetch_one(db)
         .await?)
 }
@@ -170,7 +183,7 @@ pub async fn update(
     let sql = format!(
         "UPDATE extensions SET number = $3, display_name = $4, user_id = $5, outbound_number_id = $6,
              hide_caller_id = $7, ring_timeout_secs = $8, enabled = $9, dnd = $10, forward_all = $11,
-             updated_at = now()
+             record_calls = $12, updated_at = now()
          WHERE tenant_id = $1 AND id = $2 RETURNING {EXT_COLUMNS}"
     );
     Ok(sqlx::query_as(&sql)
@@ -185,6 +198,7 @@ pub async fn update(
         .bind(input.enabled)
         .bind(input.dnd)
         .bind(forward_value(input))
+        .bind(&input.record_calls)
         .fetch_one(db)
         .await?)
 }
@@ -524,6 +538,7 @@ mod tests {
             enabled: true,
             dnd: false,
             forward_all: None,
+            record_calls: "inherit".into(),
         };
         assert!(validate(&mk("20"), &emergency).is_ok());
         assert!(

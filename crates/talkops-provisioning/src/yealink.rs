@@ -263,7 +263,7 @@ pub fn render_phone(setup: &PhoneSetup<'_>) -> Result<String, RenderError> {
                 key: k.key,
                 type_code: k.kind.code(),
                 account: k.account.clamp(1, setup.model.accounts),
-                pickup_value: if k.kind == KeyType::Blf {
+                pickup_value: if k.kind == KeyType::Blf && !value.starts_with("park+") {
                     format!("**{value}")
                 } else {
                     String::new()

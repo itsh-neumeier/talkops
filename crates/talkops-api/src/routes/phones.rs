@@ -133,7 +133,12 @@ fn validate_phone(state: &AppState, input: &PhoneInput) -> ApiResult<()> {
             && k.value
                 .chars()
                 .all(|c| c.is_ascii_digit() || matches!(c, '*' | '#' | '+'));
-        if matches!(k.kind, KeyType::Blf | KeyType::SpeedDial) && !dialable {
+        // BLF keys may also watch a park slot (`park+*51` … `park+*59`).
+        let park = k.kind == KeyType::Blf
+            && k.value
+                .strip_prefix("park+*7")
+                .is_some_and(|n| n.len() == 1 && n.chars().all(|c| ('1'..='9').contains(&c)));
+        if matches!(k.kind, KeyType::Blf | KeyType::SpeedDial) && !dialable && !park {
             return Err(ApiError::BadRequest(format!(
                 "key {}: invalid number",
                 k.key

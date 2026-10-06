@@ -822,3 +822,55 @@ async fn ivr_routing_and_transfers(db: PgPool) {
         .await;
     assert_eq!(status, StatusCode::OK);
 }
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn parking_and_blind_transfers(db: PgPool) {
+    let router = router(db);
+    let f = fixture(&router).await;
+    let tenant = "00000000-0000-4000-8000-000000000001";
+
+    // Calls carry the tenant to bridged legs and route transfers privately.
+    let a = internal_call(&router, &f.ext21, "20").await;
+    assert!(
+        has(&a, "export", &format!("talkops_tenant_id={tenant}")),
+        "{a:?}"
+    );
+    assert!(has(&a, "export", "force_transfer_context=talkops"));
+
+    // Park slots *51 … *59 (also dialed by BLF keys as park+*5N).
+    for dest in ["*51", "park+*59"] {
+        let a = internal_call(&router, &f.ext21, dest).await;
+        let slot = dest.trim_start_matches("park+");
+        assert!(has(&a, "valet_park", &format!("talkops {slot}")), "{a:?}");
+    }
+    let a = internal_call(&router, &f.ext21, "*50").await;
+    assert!(!a.iter().any(|(app, _)| app == "valet_park"), "{a:?}");
+
+    // A phone blind-transfers a caller: internal number, park slot, external.
+    let transfer = |dest: &'static str| {
+        let router = router.clone();
+        async move {
+            let (_, xml) = fs_post(
+                &router,
+                "/fs/xml",
+                &[
+                    ("section", "dialplan"),
+                    ("Caller-Context", "talkops"),
+                    ("Caller-Destination-Number", dest),
+                    ("variable_talkops_tenant_id", tenant),
+                ],
+            )
+            .await;
+            actions(&xml)
+        }
+    };
+    assert!(has(&transfer("20").await, "bridge", &ring20(&f)));
+    assert!(has(&transfer("*52").await, "valet_park", "talkops *52"));
+    let gw = format!(
+        "sofia/gateway/gw-{}",
+        f.number["account_id"].as_str().unwrap().replace('-', "")
+    );
+    let a = transfer("030123456").await;
+    assert!(has(&a, "bridge", &format!("{gw}/030123456")), "{a:?}");
+    assert!(has(&transfer("0").await, "respond", "404 Not Found"));
+}

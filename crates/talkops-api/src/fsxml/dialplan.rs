@@ -122,14 +122,23 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
         return Ok(reject("403 Forbidden"));
     };
     let settings = settings::get(pool, tenant).await?;
-    let dest: String = req
+    // BLF keys monitoring a park slot dial `park+*51`.
+    let raw_dest = req
         .destination
+        .strip_prefix("park+")
+        .unwrap_or(&req.destination);
+    let dest: String = raw_dest
         .chars()
         .filter(|c| c.is_ascii_digit() || *c == '+' || *c == '*' || *c == '#')
         .collect();
 
     let mut actions = vec![
-        set("talkops_tenant_id", tenant.to_string()),
+        ("export", format!("talkops_tenant_id={tenant}")),
+        // Blind transfers (SIP REFER) are routed by TalkOps, see plan_transfer.
+        (
+            "export",
+            format!("force_transfer_context={CONTEXT_TRANSFER}"),
+        ),
         set("talkops_extension_id", caller.id.to_string()),
         set("talkops_caller_number", caller.number.clone()),
         set("talkops_caller_name", sanitize_value(&caller.display_name)),
@@ -205,6 +214,25 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
 /// Confirmation tone for feature codes (rising two-tone beep).
 const CONFIRM_TONE: &str = "tone_stream://%(200,100,800);%(300,0,1200)";
 
+/// Parking lot used for all slots.
+const PARK_LOT: &str = "talkops";
+
+/// `*51` … `*59`: call park slots.
+fn park_slot(dest: &str) -> Option<&str> {
+    let n = dest.strip_prefix("*5")?;
+    (n.len() == 1 && ('1'..='9').contains(&n.chars().next()?)).then_some(dest)
+}
+
+/// Parks the call in `slot`, or picks up the call parked there.
+fn park(slot: &str) -> Vec<Action> {
+    vec![
+        // Parked calls ring back nobody but give up after 10 minutes.
+        set("valet_parking_timeout", "600"),
+        ("valet_park", format!("{PARK_LOT} {slot}")),
+        ("hangup", String::new()),
+    ]
+}
+
 /// Falling two-tone beep: a time condition is now forced closed.
 const CLOSED_TONE: &str = "tone_stream://%(300,100,1200);%(400,0,600)";
 
@@ -230,6 +258,7 @@ fn pickup_group(ext: &Extension) -> String {
 /// - `**<ext>`: pick up a call ringing at `<ext>`
 /// - `*97` / `*98`: own voicemail / any voicemail with PIN
 /// - `*30<number>`: toggle a time condition between schedule and closed
+/// - `*51` … `*59`: park in / pick up from a park slot
 async fn feature_code(
     r: &Routing<'_>,
     tenant: TenantId,
@@ -245,6 +274,10 @@ async fn feature_code(
             return Ok(Some(reject("404 Not Found")));
         }
         a.extend(vm_socket(r, "vm_check", caller.id));
+        return Ok(Some(a));
+    }
+    if let Some(slot) = park_slot(dest) {
+        a.extend(park(slot));
         return Ok(Some(a));
     }
     if let Some(number) = dest.strip_prefix("*30") {
@@ -601,7 +634,11 @@ async fn plan_public(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Actio
         .unwrap_or_else(|| display.clone());
 
     let mut actions = vec![
-        set("talkops_tenant_id", tenant.to_string()),
+        ("export", format!("talkops_tenant_id={tenant}")),
+        (
+            "export",
+            format!("force_transfer_context={CONTEXT_TRANSFER}"),
+        ),
         set("talkops_direction", "inbound"),
         set("talkops_trunk_id", number.trunk_id.to_string()),
         set("talkops_number_id", number.id.to_string()),
@@ -659,8 +696,23 @@ async fn plan_transfer(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
         kind.zip(id.parse::<Uuid>().ok())
     } else if let Some(number) = req.destination.strip_prefix("dial:") {
         numbering::resolve(r.pool, tenant, number).await?
+    } else if let Some(slot) = park_slot(
+        req.destination
+            .strip_prefix("park+")
+            .unwrap_or(&req.destination),
+    ) {
+        return Ok(park(slot));
     } else {
-        None
+        // Blind transfer by a phone: an internal or an external number.
+        let dest: String = req
+            .destination
+            .chars()
+            .filter(|c| c.is_ascii_digit() || *c == '+')
+            .collect();
+        match numbering::resolve(r.pool, tenant, &dest).await? {
+            Some(target) => Some(target),
+            None => return transfer_external(r, tenant, &dest).await,
+        }
     };
     let Some((kind, id)) = target else {
         tracing::warn!(destination = %sanitize_value(&req.destination), "invalid transfer target");
@@ -672,6 +724,36 @@ async fn plan_transfer(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
     }
     a.extend(route_to(r, tenant, kind, Some(id), &sanitize_value(&name), 1).await?);
     Ok(a)
+}
+
+/// Blind transfer to an external number, via the tenant's default number.
+async fn transfer_external(
+    r: &Routing<'_>,
+    tenant: TenantId,
+    dest: &str,
+) -> CoreResult<Vec<Action>> {
+    let settings = settings::get(r.pool, tenant).await?;
+    let dial_plan = settings.dial_plan();
+    let (dialed_e164, raw) = match dial_plan.classify(dest) {
+        Dialed::External(e164) => (Some(e164.clone()), e164),
+        Dialed::Service(n) | Dialed::Emergency(n) => (None, n),
+        Dialed::Invalid => return Ok(reject("404 Not Found")),
+    };
+    let Some(number_id) = settings.default_number_id else {
+        return Ok(reject("503 Service Unavailable"));
+    };
+    let Some(route) = trunks::outbound_route(r.pool, tenant, number_id).await? else {
+        return Ok(reject("503 Service Unavailable"));
+    };
+    outbound_actions(
+        r.catalog,
+        &dial_plan,
+        &route,
+        &route.e164,
+        dialed_e164.as_deref(),
+        &raw,
+        false,
+    )
 }
 
 /// Destinations may point to each other (group → fallback → menu …); this

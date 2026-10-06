@@ -3,6 +3,7 @@
 pub mod auth;
 pub mod callcenter;
 pub mod config;
+pub mod doors;
 pub mod error;
 pub mod esl;
 pub mod fsxml;
@@ -84,6 +85,8 @@ pub struct MediaPaths {
     pub voicemail: PathBuf,
     pub sounds: PathBuf,
     pub recordings: PathBuf,
+    /// Door station snapshots.
+    pub snapshots: PathBuf,
 }
 
 impl Default for MediaPaths {
@@ -92,6 +95,7 @@ impl Default for MediaPaths {
             voicemail: PathBuf::from("/var/lib/talkops/voicemail"),
             sounds: PathBuf::from("/var/lib/talkops/sounds"),
             recordings: PathBuf::from("/var/lib/talkops/recordings"),
+            snapshots: PathBuf::from("/var/lib/talkops/snapshots"),
         }
     }
 }
@@ -129,6 +133,7 @@ impl AppState {
         (name = "voicemail", description = "Voicemail boxes and messages"),
         (name = "routing", description = "Ring groups, time conditions, menus and queues"),
         (name = "recordings", description = "Call recordings, transcripts and search"),
+        (name = "doors", description = "Door stations: opener, live picture, events"),
     )
 )]
 pub struct ApiDoc;
@@ -149,6 +154,7 @@ pub fn api_router() -> (Router<AppState>, utoipa::openapi::OpenApi) {
         .merge(routes::ivr::router())
         .merge(routes::queues::router())
         .merge(routes::recordings::router())
+        .merge(routes::doors::router())
         .split_for_parts();
     (router, api)
 }
@@ -169,6 +175,10 @@ pub fn app(state: AppState, web_dir: Option<&Path>) -> Router {
         )
         .route("/fs/xml", axum::routing::post(routes::fs::xml_curl))
         .route("/fs/cdr", axum::routing::post(routes::fs::xml_cdr))
+        .route(
+            "/hooks/door/{id}/open",
+            axum::routing::post(routes::doors::hook_open),
+        )
         .route(
             "/provisioning/{*path}",
             axum::routing::get(routes::provisioning::serve),

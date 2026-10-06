@@ -74,6 +74,19 @@ pub async fn xml_curl(
                 sounds: &state.media.sounds,
             };
             let actions = dialplan::plan(&routing, &req).await;
+            if let (Some(station), Some(tenant)) = (
+                dialplan::planned_var(&actions, "talkops_door_id").and_then(|v| v.parse().ok()),
+                dialplan::planned_var(&actions, "talkops_tenant_id")
+                    .and_then(|v| v.parse().ok())
+                    .map(talkops_core::tenant::TenantId),
+            ) {
+                // Log the ring and take a snapshot without delaying the call.
+                let ctx = crate::doors::DoorCtx::from(&state);
+                let dialed = dialplan::planned_var(&actions, "talkops_door_dialed")
+                    .unwrap_or_default()
+                    .to_owned();
+                tokio::spawn(async move { ctx.ring(tenant, station, &dialed).await });
+            }
             Some(dialplan::render(&req.context, &actions))
         }
         _ => None,

@@ -56,6 +56,7 @@ services:
       - voicemail:/var/lib/talkops/voicemail
       - sounds:/var/lib/talkops/sounds
       - provisioning:/var/lib/talkops/provisioning
+      - snapshots:/var/lib/talkops/snapshots
 
   freeswitch:
     image: ghcr.io/itsh-neumeier/talkops-freeswitch:${TALKOPS_VERSION:-latest}
@@ -115,6 +116,7 @@ volumes:
   voicemail:
   sounds:
   provisioning:
+  snapshots:
   models:
   freeswitch-db:
   caddy-data:

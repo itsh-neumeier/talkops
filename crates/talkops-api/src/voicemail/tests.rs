@@ -104,10 +104,15 @@ async fn setup(pool: &PgPool) -> (VmContext, Uuid, std::path::PathBuf) {
     let dir = std::env::temp_dir().join(format!("talkops-vm-{}", Uuid::new_v4()));
     let ctx = VmContext {
         db: pool.clone(),
+        secrets: talkops_core::crypto::SecretBox::from_hex(
+            "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+        )
+        .unwrap(),
         media: Arc::new(MediaPaths {
             voicemail: dir.join("voicemail"),
             sounds: dir.join("sounds"),
             recordings: dir.join("recordings"),
+            snapshots: dir.join("snapshots"),
         }),
         telephony: Telephony::default(),
     };

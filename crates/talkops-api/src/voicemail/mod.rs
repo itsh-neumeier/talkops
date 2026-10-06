@@ -36,6 +36,7 @@ const MIN_MESSAGE_SECS: u32 = 1;
 #[derive(Clone)]
 pub struct VmContext {
     pub db: PgPool,
+    pub secrets: talkops_core::crypto::SecretBox,
     pub media: Arc<MediaPaths>,
     pub telephony: Telephony,
 }
@@ -44,6 +45,7 @@ impl From<&AppState> for VmContext {
     fn from(state: &AppState) -> Self {
         Self {
             db: state.db.clone(),
+            secrets: state.secrets.clone(),
             media: state.media.clone(),
             telephony: state.telephony.clone(),
         }
@@ -66,6 +68,7 @@ pub async fn handle(mut session: OutboundSession, ctx: VmContext) {
             run(&mut session, &ctx, &app).await.map(|()| Outcome::Done)
         }
         "ivr" => run_menu(&mut session, &ctx).await,
+        "door_open" => open_door(&mut session, &ctx).await.map(|()| Outcome::Done),
         other => {
             tracing::warn!(%uuid, app = other, "unknown interactive application");
             Ok(Outcome::Done)
@@ -108,6 +111,44 @@ async fn run_menu<C: Call>(call: &mut C, ctx: &VmContext) -> FlowResult<Outcome>
         .and_then(|v| v.parse::<Uuid>().ok())
         .ok_or_else(|| FlowError::Other("call without menu".into()))?;
     crate::menu::run(call, ctx, tenant, menu).await
+}
+
+/// `*85`/`*86`: opens a door and says whether it worked.
+async fn open_door<C: Call>(call: &mut C, ctx: &VmContext) -> FlowResult<()> {
+    let var = |c: &C, n: &str| c.var(n).and_then(|v| v.parse::<Uuid>().ok());
+    let (Some(tenant), Some(station), Some(caller)) = (
+        var(call, "talkops_tenant_id").map(TenantId),
+        var(call, "talkops_open_door_id"),
+        var(call, "talkops_extension_id"),
+    ) else {
+        return Err(FlowError::Other("door open without tenant/station".into()));
+    };
+    let door: i16 = call
+        .var("talkops_door")
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(1);
+    let station = talkops_core::doors::get(&ctx.db, tenant, station).await?;
+    let lang = settings::get(&ctx.db, tenant).await?.default_language;
+    let door_ctx = crate::doors::DoorCtx {
+        db: ctx.db.clone(),
+        secrets: ctx.secrets.clone(),
+        media: ctx.media.clone(),
+    };
+    let ok = door_ctx
+        .open(
+            tenant,
+            &station,
+            door,
+            serde_json::json!({ "extension_id": caller }),
+        )
+        .await
+        .is_ok();
+    call.execute("answer", "").await?;
+    call.execute("playback", "silence_stream://300").await?;
+    let mut ivr = Ivr::new(call, &ctx.media.sounds, &lang);
+    let seq = ivr.keys(&[if ok { "door_opened" } else { "door_failed" }]);
+    ivr.play(&seq).await?;
+    Ok(())
 }
 
 /// Runs one voicemail application on `call`.

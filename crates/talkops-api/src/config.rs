@@ -74,6 +74,14 @@ pub struct Config {
     )]
     pub recordings_dir: PathBuf,
 
+    /// Door station snapshots.
+    #[arg(
+        long,
+        env = "TALKOPS_SNAPSHOTS_DIR",
+        default_value = "/var/lib/talkops/snapshots"
+    )]
+    pub snapshots_dir: PathBuf,
+
     /// Shared sounds volume (system prompts rendered by the media worker).
     #[arg(
         long,

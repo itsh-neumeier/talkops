@@ -41,6 +41,7 @@ pub fn state(db: PgPool) -> AppState {
         voicemail: dir.join("voicemail"),
         sounds: dir.join("sounds"),
         recordings: dir.join("recordings"),
+        snapshots: dir.join("snapshots"),
     })
 }
 

@@ -33,7 +33,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
     && groupadd --system --gid 10001 talkops \
     && useradd --system --uid 10001 --gid talkops --no-create-home --shell /usr/sbin/nologin talkops \
     && mkdir -p /var/lib/talkops/recordings /var/lib/talkops/voicemail /var/lib/talkops/sounds \
-                /var/lib/talkops/provisioning \
+                /var/lib/talkops/provisioning /var/lib/talkops/snapshots \
     && chown -R talkops:talkops /var/lib/talkops
 
 COPY --from=build /usr/local/bin/talkops /usr/local/bin/talkops

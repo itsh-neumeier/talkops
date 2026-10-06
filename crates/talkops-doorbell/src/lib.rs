@@ -58,8 +58,18 @@ pub struct Vto {
     challenge: Mutex<Option<Challenge>>,
 }
 
+/// reqwest is built without a bundled TLS provider (no aws-lc); this
+/// registers ring as the process default once, before any client is built.
+pub fn ensure_tls_provider() {
+    static ONCE: std::sync::OnceLock<()> = std::sync::OnceLock::new();
+    ONCE.get_or_init(|| {
+        let _ = rustls::crypto::ring::default_provider().install_default();
+    });
+}
+
 impl Vto {
     pub fn new(cfg: Config) -> Result<Self> {
+        ensure_tls_provider();
         let http = reqwest::Client::builder()
             .connect_timeout(Duration::from_secs(5))
             .build()?;

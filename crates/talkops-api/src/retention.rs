@@ -1,12 +1,15 @@
-//! Deletes call recordings (file, row and transcript) once they are older
-//! than their tenant's retention period.
+//! Deletes call recordings (file, row and transcript) and door events (with
+//! snapshots) once they are older than their tenant's retention period.
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
+use std::sync::Arc;
 use std::time::Duration;
 
 use sqlx::PgPool;
 use talkops_core::error::CoreResult;
 use talkops_core::recordings;
+
+use crate::MediaPaths;
 
 const INTERVAL: Duration = Duration::from_secs(3600);
 const BATCH: i64 = 500;
@@ -25,11 +28,11 @@ pub async fn purge(db: &PgPool, dir: &Path) -> CoreResult<usize> {
     Ok(expired.len())
 }
 
-pub fn spawn(db: PgPool, dir: PathBuf) {
+pub fn spawn(db: PgPool, media: Arc<MediaPaths>) {
     tokio::spawn(async move {
         loop {
             loop {
-                match purge(&db, &dir).await {
+                match purge(&db, &media.recordings).await {
                     Ok(0) => break,
                     Ok(n) => {
                         tracing::info!(count = n, "expired recordings deleted");
@@ -42,6 +45,11 @@ pub fn spawn(db: PgPool, dir: PathBuf) {
                         break;
                     }
                 }
+            }
+            match crate::doors::purge(&db, &media.snapshots).await {
+                Ok(0) => {}
+                Ok(n) => tracing::info!(count = n, "expired door events deleted"),
+                Err(err) => tracing::warn!(error = %err, "door event retention failed"),
             }
             tokio::time::sleep(INTERVAL).await;
         }

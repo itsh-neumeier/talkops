@@ -14,6 +14,8 @@ pub enum ApiError {
     Conflict(String),
     BadRequest(String),
     TooManyRequests,
+    /// A device TalkOps talks to (door station) failed.
+    Device(String),
     Internal(String),
 }
 
@@ -46,6 +48,7 @@ impl IntoResponse for ApiError {
                 "rate_limited",
                 "too many attempts, try again later".to_owned(),
             ),
+            ApiError::Device(m) => (StatusCode::BAD_GATEWAY, "device", m),
             ApiError::Internal(m) => {
                 tracing::error!(error = %m, "internal error");
                 (

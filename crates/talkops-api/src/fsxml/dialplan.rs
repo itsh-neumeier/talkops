@@ -18,7 +18,7 @@ use talkops_core::settings::{self, TenantSettings};
 use talkops_core::tenant::TenantId;
 use talkops_core::trunks::{self, NumberDestination, OutboundRoute, gateway_name};
 use talkops_core::voicemail;
-use talkops_core::{ivr, numbering, prompts, recordings};
+use talkops_core::{doors, ivr, numbering, prompts, recordings};
 use talkops_core::{queues, time_conditions};
 use uuid::Uuid;
 
@@ -118,7 +118,7 @@ pub async fn plan(r: &Routing<'_>, req: &CallRequest) -> Vec<Action> {
 }
 
 /// Value of a variable the plan sets (`set`/`export name=value`).
-fn planned_var<'a>(actions: &'a [Action], name: &str) -> Option<&'a str> {
+pub fn planned_var<'a>(actions: &'a [Action], name: &str) -> Option<&'a str> {
     actions.iter().rev().find_map(|(app, data)| {
         (*app == "set" || *app == "export")
             .then(|| data.strip_prefix(name)?.strip_prefix('='))
@@ -242,6 +242,17 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
         set("talkops_caller_number", caller.number.clone()),
         set("talkops_caller_name", sanitize_value(&caller.display_name)),
     ];
+
+    // A door station rings: whatever it dials goes to its configured target.
+    if let Some(station) = doors::for_extension(pool, caller.id).await? {
+        let (kind, id) = station.route(&dest);
+        actions.push(set("talkops_direction", "internal"));
+        actions.push(set("talkops_door_id", station.id.to_string()));
+        actions.push(set("talkops_door_dialed", dest.clone()));
+        let name = sanitize_value(&station.name);
+        actions.extend(route_to(r, tenant, kind, id, &name, 0).await?);
+        return Ok(actions);
+    }
 
     if let Some(feature) = feature_code(r, tenant, &caller, &dest).await? {
         actions.extend(feature);
@@ -404,6 +415,34 @@ async fn feature_code(
         } else {
             a.extend(confirm());
         }
+        return Ok(Some(a));
+    }
+    if let Some((door, number)) = dest
+        .strip_prefix("*85")
+        .map(|n| (1, n))
+        .or_else(|| dest.strip_prefix("*86").map(|n| (2, n)))
+    {
+        // Open the door of a station: `*85` (first station) or `*85<number>`;
+        // `*86…` for the second lock.
+        let station = if number.is_empty() {
+            doors::list(pool, tenant)
+                .await?
+                .into_iter()
+                .find(|s| s.enabled && s.has_api())
+        } else {
+            match extensions::find_by_number(pool, tenant, number).await? {
+                Some(ext) => doors::for_extension(pool, ext.id).await?,
+                None => None,
+            }
+        };
+        let Some(station) = station.filter(|s| s.has_api() && door <= s.doors) else {
+            return Ok(Some(reject("404 Not Found")));
+        };
+        a.push(set("talkops_app", "door_open"));
+        // Not `talkops_door_id`: that marks a ring.
+        a.push(set("talkops_open_door_id", station.id.to_string()));
+        a.push(set("talkops_door", door.to_string()));
+        a.push(("socket", format!("{} async full", r.socket)));
         return Ok(Some(a));
     }
     if dest == "*98" {

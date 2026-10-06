@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod doors;
 pub mod extensions;
 pub mod fs;
 pub mod groups;

@@ -8,6 +8,7 @@ pub mod esl;
 pub mod fsxml;
 pub mod mailer;
 pub mod menu;
+pub mod retention;
 pub mod routes;
 pub mod telephony;
 pub mod util;
@@ -82,6 +83,7 @@ impl AppState {
 pub struct MediaPaths {
     pub voicemail: PathBuf,
     pub sounds: PathBuf,
+    pub recordings: PathBuf,
 }
 
 impl Default for MediaPaths {
@@ -89,6 +91,7 @@ impl Default for MediaPaths {
         Self {
             voicemail: PathBuf::from("/var/lib/talkops/voicemail"),
             sounds: PathBuf::from("/var/lib/talkops/sounds"),
+            recordings: PathBuf::from("/var/lib/talkops/recordings"),
         }
     }
 }
@@ -125,6 +128,7 @@ impl AppState {
         (name = "phones", description = "Provisioned phones, firmware and phonebook"),
         (name = "voicemail", description = "Voicemail boxes and messages"),
         (name = "routing", description = "Ring groups, time conditions, menus and queues"),
+        (name = "recordings", description = "Call recordings, transcripts and search"),
     )
 )]
 pub struct ApiDoc;
@@ -144,6 +148,7 @@ pub fn api_router() -> (Router<AppState>, utoipa::openapi::OpenApi) {
         .merge(routes::time_conditions::router())
         .merge(routes::ivr::router())
         .merge(routes::queues::router())
+        .merge(routes::recordings::router())
         .split_for_parts();
     (router, api)
 }

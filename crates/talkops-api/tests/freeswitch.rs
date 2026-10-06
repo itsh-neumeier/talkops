@@ -957,3 +957,212 @@ async fn queue_routing_and_callcenter_conf(db: PgPool) {
     let a = internal_call(&router, &f.ext21, "80").await;
     assert!(!a.iter().any(|(app, _)| app == "callcenter"), "{a:?}");
 }
+
+fn write_wav(path: &std::path::Path, secs: u32) {
+    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    let spec = hound::WavSpec {
+        channels: 2,
+        sample_rate: 8000,
+        bits_per_sample: 16,
+        sample_format: hound::SampleFormat::Int,
+    };
+    let mut w = hound::WavWriter::create(path, spec).unwrap();
+    for _ in 0..secs * 8000 * 2 {
+        w.write_sample(0i16).unwrap();
+    }
+    w.finalize().unwrap();
+}
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn call_recording(db: PgPool) {
+    let state = state(db.clone());
+    let dir = state.media.recordings.clone();
+    let router = talkops_api::app(state, None);
+    let f = fixture(&router).await;
+    let id = |e: &Value| e["id"].as_str().unwrap().to_owned();
+
+    // Nothing is recorded by default.
+    let a = internal_call(&router, &f.ext21, "20").await;
+    assert!(!a.iter().any(|(app, _)| app == "record_session"), "{a:?}");
+
+    let (_, mut s) = f.admin.get("/api/v1/settings").await;
+    s["record_internal"] = json!(true);
+    s["transcription_enabled"] = json!(true);
+    s["recording_retention_days"] = json!(30);
+    let (status, s) = f.admin.put("/api/v1/settings", s).await;
+    assert_eq!(status, StatusCode::OK, "{s}");
+    let a = internal_call(&router, &f.ext21, "20").await;
+    let rec = a
+        .iter()
+        .position(|(app, _)| app == "record_session")
+        .expect("recorded");
+    let bridge = a.iter().position(|(app, _)| app == "bridge").unwrap();
+    assert!(rec < bridge, "{a:?}");
+    assert!(has(&a, "set", "RECORD_STEREO=true"));
+    let file = a
+        .iter()
+        .find_map(|(app, d)| {
+            (app == "set")
+                .then(|| d.strip_prefix("talkops_recording="))
+                .flatten()
+        })
+        .unwrap()
+        .to_owned();
+    assert!(
+        file.starts_with(TENANT) && file.ends_with("/${uuid}.wav"),
+        "{file}"
+    );
+    assert_eq!(a[rec].1, dir.join(&file).display().to_string());
+    // Unanswered calls go on to voicemail without recording it.
+    assert_eq!(a[bridge + 1].0, "stop_record_session", "{a:?}");
+
+    // An extension that is never recorded wins over the tenant setting.
+    let mut e20 = f.ext20.clone();
+    e20["record_calls"] = json!("never");
+    let (status, _) = f
+        .admin
+        .put(&format!("/api/v1/extensions/{}", id(&e20)), e20.clone())
+        .await;
+    assert_eq!(status, StatusCode::OK);
+    let a = internal_call(&router, &f.ext21, "20").await;
+    assert!(!a.iter().any(|(app, _)| app == "record_session"), "{a:?}");
+
+    // FreeSWITCH wrote the file; the CDR registers it.
+    let file = file.replace("${uuid}", "call-rec");
+    write_wav(&dir.join(&file), 3);
+    let xml = format!(
+        r#"<?xml version="1.0"?><cdr><variables>
+        <uuid>call-rec</uuid><talkops_direction>internal</talkops_direction>
+        <talkops_tenant_id>{TENANT}</talkops_tenant_id><talkops_extension_id>{}</talkops_extension_id>
+        <talkops_dest_extension_id>{}</talkops_dest_extension_id>
+        <talkops_caller_number>21</talkops_caller_number><talkops_destination>20</talkops_destination>
+        <talkops_recording>{}</talkops_recording>
+        <start_epoch>1791150000</start_epoch><answer_epoch>1791150003</answer_epoch><end_epoch>1791150033</end_epoch>
+        <duration>33</duration><billsec>30</billsec><hangup_cause>NORMAL_CLEARING</hangup_cause>
+        </variables></cdr>"#,
+        id(&f.ext21),
+        id(&f.ext20),
+        file.replace('/', "%2F")
+    );
+    let (status, _) = fs_post(&router, "/fs/cdr", &[("cdr", &xml)]).await;
+    assert_eq!(status, StatusCode::OK);
+    let (_, calls) = f.admin.get("/api/v1/calls").await;
+    let rec_id = calls[0]["recording_id"]
+        .as_str()
+        .expect("linked")
+        .to_owned();
+    let (status, r) = f.admin.get(&format!("/api/v1/recordings/{rec_id}")).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(r["duration_secs"], 3);
+    assert_eq!(r["transcript_status"], "pending");
+    let jobs: i64 = sqlx::query_scalar("SELECT count(*) FROM jobs WHERE kind = 'transcribe'")
+        .fetch_one(&db)
+        .await
+        .unwrap();
+    assert_eq!(jobs, 1);
+    // A path outside the volume is ignored.
+    let evil = xml
+        .replace("call-rec", "call-evil")
+        .replace(&file.replace('/', "%2F"), "..%2F..%2Fetc%2Fpasswd.wav");
+    fs_post(&router, "/fs/cdr", &[("cdr", &evil)]).await;
+    let count: i64 = sqlx::query_scalar("SELECT count(*) FROM recordings")
+        .fetch_one(&db)
+        .await
+        .unwrap();
+    assert_eq!(count, 1);
+
+    // Access: the owner of an involved extension, admins; nobody else.
+    for (name, ext) in [("bob", Some(&f.ext21)), ("carol", None)] {
+        let (_, u) = f.admin.post("/api/v1/users", json!({"username": name, "display_name": name, "role": "operator", "password": "a-long-password-1"})).await;
+        if let Some(ext) = ext {
+            let mut e = ext.clone();
+            e["user_id"] = u["id"].clone();
+            f.admin
+                .put(&format!("/api/v1/extensions/{}", id(&e)), e)
+                .await;
+        }
+    }
+    let bob = login(&router, "bob", "a-long-password-1").await.unwrap();
+    let carol = login(&router, "carol", "a-long-password-1").await.unwrap();
+    let audio = format!("/api/v1/recordings/{rec_id}/audio");
+    let res = raw(
+        &router,
+        axum::http::Request::get(&audio)
+            .header(axum::http::header::COOKIE, &bob.cookie)
+            .body(axum::body::Body::empty())
+            .unwrap(),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.headers()[axum::http::header::CONTENT_TYPE], "audio/wav");
+    assert_eq!(carol.get(&audio).await.0, StatusCode::NOT_FOUND);
+    assert_eq!(f.admin.get(&audio).await.0, StatusCode::OK);
+    let (_, log) = f.admin.get("/api/v1/audit").await;
+    assert!(
+        log.as_array()
+            .unwrap()
+            .iter()
+            .any(|e| e["action"] == "listen" && e["entity_type"] == "recording"),
+        "{log}"
+    );
+
+    // Transcript and search.
+    let transcript = format!("/api/v1/recordings/{rec_id}/transcript");
+    assert_eq!(bob.get(&transcript).await.0, StatusCode::NOT_FOUND);
+    use talkops_core::recordings::{self, Segment, Source};
+    let seg = |speaker: &str, text: &str| Segment {
+        start: 0.0,
+        end: 1.0,
+        speaker: speaker.into(),
+        text: text.into(),
+    };
+    recordings::save_transcript(
+        &db,
+        talkops_core::tenant::TenantId::DEFAULT,
+        Source::Recording(rec_id.parse().unwrap()),
+        "de",
+        &[
+            seg("caller", " Hallo, wegen der Rechnung 4711."),
+            seg("called", " Die Rechnung ist bezahlt."),
+        ],
+    )
+    .await
+    .unwrap();
+    let (status, t) = bob.get(&transcript).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(
+        t["text"],
+        "Hallo, wegen der Rechnung 4711. Die Rechnung ist bezahlt."
+    );
+    assert_eq!(t["segments"][1]["speaker"], "called");
+    let (_, r) = bob.get(&format!("/api/v1/recordings/{rec_id}")).await;
+    assert_eq!(r["transcript_status"], "done");
+    let (_, hits) = bob.get("/api/v1/search?q=rechnung%204711").await;
+    assert_eq!(hits.as_array().unwrap().len(), 1, "{hits}");
+    assert_eq!(hits[0]["recording_id"], rec_id.as_str());
+    assert!(hits[0]["snippet"].as_str().unwrap().contains("[Rechnung]"));
+    let (_, hits) = carol.get("/api/v1/search?q=rechnung").await;
+    assert!(hits.as_array().unwrap().is_empty());
+    let (_, hits) = f.admin.get("/api/v1/search?q=bezahlt%20-rechnung").await;
+    assert!(hits.as_array().unwrap().is_empty());
+
+    // Retention removes old recordings with file and transcript.
+    sqlx::query("UPDATE recordings SET created_at = now() - interval '31 days'")
+        .execute(&db)
+        .await
+        .unwrap();
+    assert_eq!(talkops_api::retention::purge(&db, &dir).await.unwrap(), 1);
+    assert!(!dir.join(&file).exists());
+    let (status, _) = f.admin.get(&format!("/api/v1/recordings/{rec_id}")).await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+    let (_, calls) = f.admin.get("/api/v1/calls").await;
+    assert!(calls[0]["recording_id"].is_null());
+
+    // Only admins delete.
+    assert_eq!(
+        bob.call("DELETE", &format!("/api/v1/recordings/{rec_id}"), None)
+            .await
+            .0,
+        StatusCode::FORBIDDEN
+    );
+}

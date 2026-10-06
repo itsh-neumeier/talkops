@@ -7,6 +7,7 @@ pub mod ivr;
 pub mod phones;
 pub mod provisioning;
 pub mod queues;
+pub mod recordings;
 pub mod settings;
 pub mod time_conditions;
 pub mod trunks;

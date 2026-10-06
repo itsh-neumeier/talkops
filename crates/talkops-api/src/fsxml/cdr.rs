@@ -7,7 +7,8 @@ use uuid::Uuid;
 
 /// Extracts a CDR from the XML document. Returns `None` for calls TalkOps did
 /// not route (no `talkops_direction` variable), e.g. rejected scanner INVITEs.
-pub fn parse(xml: &str) -> Result<Option<(TenantId, Cdr)>, String> {
+/// Parses a CDR; also returns the call's recording file (`talkops_recording`).
+pub fn parse(xml: &str) -> Result<Option<(TenantId, Cdr, Option<String>)>, String> {
     let doc = roxmltree::Document::parse(xml).map_err(|e| e.to_string())?;
     let vars = doc
         .descendants()
@@ -59,8 +60,9 @@ pub fn parse(xml: &str) -> Result<Option<(TenantId, Cdr)>, String> {
         duration_secs: num("duration"),
         billsec: num("billsec"),
         hangup_cause: var("hangup_cause").unwrap_or_default(),
+        recording_id: None,
     };
-    Ok(Some((tenant, cdr)))
+    Ok(Some((tenant, cdr, var("talkops_recording"))))
 }
 
 /// mod_xml_cdr URL-encodes variable values.
@@ -111,7 +113,8 @@ mod tests {
 
     #[test]
     fn parses_routed_call() {
-        let (tenant, cdr) = parse(SAMPLE).unwrap().unwrap();
+        let (tenant, cdr, recording) = parse(SAMPLE).unwrap().unwrap();
+        assert!(recording.is_none());
         assert_eq!(tenant, TenantId::DEFAULT);
         assert_eq!(cdr.direction, Direction::Outbound);
         assert_eq!(cdr.caller_name, "Müller");

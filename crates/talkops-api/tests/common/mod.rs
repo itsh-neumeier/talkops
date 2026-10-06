@@ -40,6 +40,7 @@ pub fn state(db: PgPool) -> AppState {
     .with_media(talkops_api::MediaPaths {
         voicemail: dir.join("voicemail"),
         sounds: dir.join("sounds"),
+        recordings: dir.join("recordings"),
     })
 }
 

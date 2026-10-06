@@ -66,6 +66,14 @@ pub struct Config {
     )]
     pub voicemail_dir: PathBuf,
 
+    /// Shared recordings volume (call recordings).
+    #[arg(
+        long,
+        env = "TALKOPS_RECORDINGS_DIR",
+        default_value = "/var/lib/talkops/recordings"
+    )]
+    pub recordings_dir: PathBuf,
+
     /// Shared sounds volume (system prompts rendered by the media worker).
     #[arg(
         long,

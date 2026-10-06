@@ -70,6 +70,8 @@ pub async fn xml_curl(
                 pool: &state.db,
                 catalog: &state.catalog,
                 socket: &state.outbound_socket,
+                recordings: &state.media.recordings,
+                sounds: &state.media.sounds,
             };
             let actions = dialplan::plan(&routing, &req).await;
             Some(dialplan::render(&req.context, &actions))
@@ -93,6 +95,42 @@ async fn callcenter_conf(state: &AppState) -> Option<String> {
             tracing::error!(error = %err, "cannot load queues");
             None
         }
+    }
+}
+
+/// Registers the recording of a finished call (and queues its transcript).
+async fn store_recording(
+    state: &AppState,
+    tenant: talkops_core::tenant::TenantId,
+    call_uuid: &str,
+    file: &str,
+) {
+    if file.split('/').any(|p| p == ".." || p.is_empty()) || !file.ends_with(".wav") {
+        tracing::warn!(file, "ignoring invalid recording path");
+        return;
+    }
+    let path = state.media.recordings.join(file);
+    let size = match tokio::fs::metadata(&path).await {
+        Ok(m) => m.len() as i64,
+        Err(_) => {
+            // Unanswered calls leave no file.
+            return;
+        }
+    };
+    let secs = crate::voicemail::ivr::wav_seconds(&path).unwrap_or(0) as i32;
+    if secs < 1 {
+        let _ = tokio::fs::remove_file(&path).await;
+        return;
+    }
+    let transcribe = talkops_core::settings::get(&state.db, tenant)
+        .await
+        .map(|s| s.transcription_enabled)
+        .unwrap_or(false);
+    if let Err(err) =
+        talkops_core::recordings::create(&state.db, tenant, call_uuid, file, secs, size, transcribe)
+            .await
+    {
+        tracing::error!(error = %err, "cannot store recording");
     }
 }
 
@@ -150,14 +188,21 @@ pub async fn xml_cdr(
         return StatusCode::BAD_REQUEST.into_response();
     };
     match fsxml::cdr::parse(doc) {
-        Ok(Some((tenant, cdr))) => match talkops_core::cdr::insert(&state.db, tenant, &cdr).await {
-            Ok(_) => StatusCode::OK.into_response(),
-            Err(err) => {
-                // A non-2xx answer makes mod_xml_cdr retry later.
-                tracing::error!(error = %err, "cannot store CDR");
-                StatusCode::SERVICE_UNAVAILABLE.into_response()
+        Ok(Some((tenant, cdr, recording))) => {
+            match talkops_core::cdr::insert(&state.db, tenant, &cdr).await {
+                Ok(_) => {
+                    if let Some(file) = recording {
+                        store_recording(&state, tenant, &cdr.call_uuid, &file).await;
+                    }
+                    StatusCode::OK.into_response()
+                }
+                Err(err) => {
+                    // A non-2xx answer makes mod_xml_cdr retry later.
+                    tracing::error!(error = %err, "cannot store CDR");
+                    StatusCode::SERVICE_UNAVAILABLE.into_response()
+                }
             }
-        },
+        }
         Ok(None) => StatusCode::OK.into_response(),
         Err(err) => {
             tracing::warn!(error = %err, "malformed CDR");

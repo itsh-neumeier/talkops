@@ -8,6 +8,7 @@
 use std::collections::HashMap;
 
 use sqlx::PgPool;
+use talkops_core::cdr::Direction;
 use talkops_core::dialing::{DialPlanSettings, Dialed, NumberFormat};
 use talkops_core::error::CoreResult;
 use talkops_core::extensions::{self, Extension};
@@ -17,7 +18,7 @@ use talkops_core::settings::{self, TenantSettings};
 use talkops_core::tenant::TenantId;
 use talkops_core::trunks::{self, NumberDestination, OutboundRoute, gateway_name};
 use talkops_core::voicemail;
-use talkops_core::{ivr, numbering};
+use talkops_core::{ivr, numbering, prompts, recordings};
 use talkops_core::{queues, time_conditions};
 use uuid::Uuid;
 
@@ -89,6 +90,10 @@ pub struct Routing<'a> {
     pub catalog: &'a PresetCatalog,
     /// Outbound Event Socket address for interactive calls (voicemail).
     pub socket: &'a str,
+    /// Shared recordings volume.
+    pub recordings: &'a std::path::Path,
+    /// Shared sounds volume (system prompts).
+    pub sounds: &'a std::path::Path,
 }
 
 /// Decides how to handle a call. Never fails open: errors become rejections.
@@ -102,10 +107,104 @@ pub async fn plan(r: &Routing<'_>, req: &CallRequest) -> Vec<Action> {
             Ok(reject("403 Forbidden"))
         }
     };
+    let result = match result {
+        Ok(actions) if req.context != CONTEXT_TRANSFER => with_recording(r, actions).await,
+        other => other,
+    };
     result.unwrap_or_else(|err| {
         tracing::error!(error = %err, "dialplan routing failed");
         reject("500 Server Internal Error")
     })
+}
+
+/// Value of a variable the plan sets (`set`/`export name=value`).
+fn planned_var<'a>(actions: &'a [Action], name: &str) -> Option<&'a str> {
+    actions.iter().rev().find_map(|(app, data)| {
+        (*app == "set" || *app == "export")
+            .then(|| data.strip_prefix(name)?.strip_prefix('='))
+            .flatten()
+    })
+}
+
+/// Adds call recording (and the announcement) in front of the first
+/// `bridge`/`callcenter` if the tenant or an involved extension wants it.
+async fn with_recording(r: &Routing<'_>, mut actions: Vec<Action>) -> CoreResult<Vec<Action>> {
+    let Some(pos) = actions
+        .iter()
+        .position(|(app, _)| *app == "bridge" || *app == "callcenter")
+    else {
+        return Ok(actions);
+    };
+    let (Some(tenant), Some(direction)) = (
+        planned_var(&actions, "talkops_tenant_id")
+            .and_then(|v| v.parse().ok())
+            .map(TenantId),
+        planned_var(&actions, "talkops_direction"),
+    ) else {
+        return Ok(actions);
+    };
+    let direction = match direction {
+        "inbound" => Direction::Inbound,
+        "outbound" => Direction::Outbound,
+        _ => Direction::Internal,
+    };
+    let mut involved = Vec::new();
+    for var in ["talkops_extension_id", "talkops_dest_extension_id"] {
+        if let Some(id) = planned_var(&actions, var).and_then(|v| v.parse().ok()) {
+            if let Ok(ext) = extensions::get(r.pool, tenant, id).await {
+                involved.push(ext);
+            }
+        }
+    }
+    let settings = settings::get(r.pool, tenant).await?;
+    if !recordings::should_record(&settings, direction, &involved.iter().collect::<Vec<_>>()) {
+        return Ok(actions);
+    }
+    let file = recordings::recording_file(tenant, chrono::Utc::now(), "${uuid}");
+    if let Some(dir) = r.recordings.join(&file).parent() {
+        if let Err(err) = std::fs::create_dir_all(dir) {
+            tracing::error!(error = %err, "cannot create recording directory; not recording");
+            return Ok(actions);
+        }
+    }
+    let mut rec = vec![
+        set("talkops_recording", file.clone()),
+        set("RECORD_STEREO", "true"),
+        set("RECORD_ANSWER_REQ", "true"),
+        (
+            "record_session",
+            r.recordings.join(&file).display().to_string(),
+        ),
+    ];
+    let announcement = settings
+        .recording_announcement
+        .then(|| prompts::path(r.sounds, "rec_announcement", &settings.default_language))
+        .flatten()
+        .filter(|p| p.is_file())
+        .map(|p| p.display().to_string());
+    if let Some(prompt) = announcement {
+        if actions[pos].0 == "callcenter" {
+            // The queue answered already: tell the caller before waiting.
+            rec.push(("playback", prompt));
+        } else {
+            // Both parties hear it once the call is answered.
+            for leg in ["aleg", "bleg"] {
+                rec.push(set(&format!("bridge_pre_execute_{leg}_app"), "playback"));
+                rec.push(set(
+                    &format!("bridge_pre_execute_{leg}_data"),
+                    prompt.clone(),
+                ));
+            }
+        }
+    }
+    let path = r.recordings.join(&file).display().to_string();
+    let after = pos + rec.len() + 1;
+    actions.splice(pos..pos, rec);
+    // Unanswered: whatever follows (voicemail, fallback) is not part of it.
+    if after < actions.len() && actions[after - 1].0 == "bridge" {
+        actions.insert(after, ("stop_record_session", path));
+    }
+    Ok(actions)
 }
 
 async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Action>> {

@@ -107,6 +107,7 @@ async fn setup(pool: &PgPool) -> (VmContext, Uuid, std::path::PathBuf) {
         media: Arc::new(MediaPaths {
             voicemail: dir.join("voicemail"),
             sounds: dir.join("sounds"),
+            recordings: dir.join("recordings"),
         }),
         telephony: Telephony::default(),
     };
@@ -123,6 +124,7 @@ async fn setup(pool: &PgPool) -> (VmContext, Uuid, std::path::PathBuf) {
             enabled: true,
             dnd: false,
             forward_all: None,
+            record_calls: "inherit".into(),
         },
         &[],
     )

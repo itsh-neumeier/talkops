@@ -102,6 +102,7 @@ async fn serve(config: Config) -> anyhow::Result<()> {
     .with_media(MediaPaths {
         voicemail: config.voicemail_dir.clone(),
         sounds: config.sounds_dir.clone(),
+        recordings: config.recordings_dir.clone(),
     })
     .with_outbound_socket(&config.esl_outbound_listen);
     let queue_sync = talkops_api::callcenter::spawn(db.clone(), state.telephony.esl.clone());
@@ -121,6 +122,7 @@ async fn serve(config: Config) -> anyhow::Result<()> {
         talkops_api::voicemail::handle(session, vm_ctx.clone())
     }));
     talkops_api::mailer::spawn(state.db.clone(), state.secrets.clone(), state.media.clone());
+    talkops_api::retention::spawn(db.clone(), state.media.recordings.clone());
     spawn_session_cleanup(db);
     let router = app(state, Some(&config.web_dir));
 

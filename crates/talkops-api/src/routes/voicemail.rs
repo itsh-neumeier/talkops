@@ -29,6 +29,7 @@ pub fn router() -> OpenApiRouter<AppState> {
         .routes(routes!(list_messages))
         .routes(routes!(update_message, delete_message))
         .routes(routes!(message_audio))
+        .routes(routes!(message_transcript))
         .routes(routes!(get_smtp, update_smtp))
         .routes(routes!(test_smtp))
 }
@@ -107,7 +108,7 @@ pub async fn update_box(
     }))
 }
 
-async fn wav(path: std::path::PathBuf) -> ApiResult<Response> {
+pub(crate) async fn wav(path: std::path::PathBuf) -> ApiResult<Response> {
     let file = tokio::fs::File::open(&path)
         .await
         .map_err(|_| ApiError::NotFound)?;
@@ -204,6 +205,25 @@ pub async fn message_audio(
     let (msg, ext) = owned_message(&state, &auth, id).await?;
     audit_foreign(&state, &auth, &ext, "listen", id).await?;
     wav(state.media.voicemail.join(&msg.file)).await
+}
+
+/// A message's transcript.
+#[utoipa::path(get, path = "/api/v1/voicemail/messages/{id}/transcript", tag = "voicemail", params(("id" = Uuid, Path)), responses((status = 200, body = talkops_core::recordings::Transcript)))]
+pub async fn message_transcript(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<Uuid>,
+) -> ApiResult<Json<talkops_core::recordings::Transcript>> {
+    let (msg, ext) = owned_message(&state, &auth, id).await?;
+    audit_foreign(&state, &auth, &ext, "read_transcript", id).await?;
+    Ok(Json(
+        talkops_core::recordings::transcript_of(
+            &state.db,
+            auth.tenant,
+            talkops_core::recordings::Source::Voicemail(msg.id),
+        )
+        .await?,
+    ))
 }
 
 #[derive(Deserialize, ToSchema)]

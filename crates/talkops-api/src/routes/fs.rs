@@ -65,7 +65,12 @@ pub async fn xml_curl(
         "directory" => directory_user(&state, &params).await,
         "dialplan" => {
             let req = dialplan::CallRequest::from_params(&params);
-            let actions = dialplan::plan(&state.db, &state.catalog, &req).await;
+            let routing = dialplan::Routing {
+                pool: &state.db,
+                catalog: &state.catalog,
+                socket: &state.outbound_socket,
+            };
+            let actions = dialplan::plan(&routing, &req).await;
             Some(dialplan::render(&req.context, &actions))
         }
         _ => None,

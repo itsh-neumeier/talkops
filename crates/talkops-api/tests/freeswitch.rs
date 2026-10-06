@@ -434,3 +434,67 @@ async fn cdr_ingestion(db: PgPool) {
     );
     assert_eq!(calls[0]["call_uuid"], "call-2");
 }
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn voicemail_routing(db: PgPool) {
+    let router = router(db);
+    let f = fixture(&router).await;
+    let id = |e: &Value| e["id"].as_str().unwrap().to_owned();
+    let socket = "127.0.0.1:8084 async full";
+    let enable = |ext: String| {
+        let admin = &f.admin;
+        async move {
+            let (status, b) = admin
+                .put(
+                    &format!("/api/v1/extensions/{ext}/voicemail"),
+                    json!({"enabled": true, "pin": "1234"}),
+                )
+                .await;
+            assert_eq!(status, StatusCode::OK, "{b}");
+        }
+    };
+
+    // Without a box: unreachable and *97 are rejected as before.
+    let a = internal_call(&router, &f.ext20, "21").await;
+    assert!(has(&a, "respond", "480 Temporarily Unavailable"));
+    let a = internal_call(&router, &f.ext20, "*97").await;
+    assert!(has(&a, "respond", "404 Not Found"));
+
+    // 21 has no devices: straight to voicemail.
+    enable(id(&f.ext21)).await;
+    let a = internal_call(&router, &f.ext20, "21").await;
+    assert!(has(&a, "set", "talkops_app=vm_deposit"), "{a:?}");
+    assert!(has(
+        &a,
+        "set",
+        &format!("talkops_vm_extension_id={}", id(&f.ext21))
+    ));
+    assert!(has(&a, "socket", socket));
+
+    // 20 rings first; unanswered calls continue to voicemail.
+    enable(id(&f.ext20)).await;
+    let a = internal_call(&router, &f.ext21, "20").await;
+    let bridge = a.iter().position(|(app, _)| app == "bridge").unwrap();
+    let sock = a.iter().position(|(app, _)| app == "socket").unwrap();
+    assert!(bridge < sock, "{a:?}");
+    assert!(!has(&a, "hangup", ""));
+
+    // DND sends callers to voicemail instead of busy.
+    internal_call(&router, &f.ext20, "*78").await;
+    let a = internal_call(&router, &f.ext21, "20").await;
+    assert!(!a.iter().any(|(app, _)| app == "bridge"), "{a:?}");
+    assert!(has(&a, "set", "talkops_app=vm_deposit"));
+    internal_call(&router, &f.ext20, "*79").await;
+
+    // Mailbox access.
+    let a = internal_call(&router, &f.ext20, "*97").await;
+    assert!(has(&a, "set", "talkops_app=vm_check"), "{a:?}");
+    assert!(has(
+        &a,
+        "set",
+        &format!("talkops_vm_extension_id={}", id(&f.ext20))
+    ));
+    let a = internal_call(&router, &f.ext21, "*98").await;
+    assert!(has(&a, "set", "talkops_app=vm_login"), "{a:?}");
+    assert!(has(&a, "socket", socket));
+}

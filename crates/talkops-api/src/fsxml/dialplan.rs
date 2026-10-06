@@ -15,6 +15,7 @@ use talkops_core::presets::{CallerIdHeader, Dtmf, PresetCatalog, Srtp};
 use talkops_core::settings::{self, TenantSettings};
 use talkops_core::tenant::TenantId;
 use talkops_core::trunks::{self, NumberDestination, OutboundRoute, gateway_name};
+use talkops_core::voicemail;
 use uuid::Uuid;
 
 use super::{CONTEXT_INTERNAL, CONTEXT_PUBLIC, SIP_DOMAIN, XmlWriter, sanitize_value};
@@ -76,11 +77,20 @@ fn reject(code: &str) -> Vec<Action> {
     vec![("respond", code.to_owned())]
 }
 
+/// What routing decisions need.
+#[derive(Clone, Copy)]
+pub struct Routing<'a> {
+    pub pool: &'a PgPool,
+    pub catalog: &'a PresetCatalog,
+    /// Outbound Event Socket address for interactive calls (voicemail).
+    pub socket: &'a str,
+}
+
 /// Decides how to handle a call. Never fails open: errors become rejections.
-pub async fn plan(pool: &PgPool, catalog: &PresetCatalog, req: &CallRequest) -> Vec<Action> {
+pub async fn plan(r: &Routing<'_>, req: &CallRequest) -> Vec<Action> {
     let result = match req.context.as_str() {
-        CONTEXT_INTERNAL => plan_internal(pool, catalog, req).await,
-        CONTEXT_PUBLIC => plan_public(pool, catalog, req).await,
+        CONTEXT_INTERNAL => plan_internal(r, req).await,
+        CONTEXT_PUBLIC => plan_public(r, req).await,
         other => {
             tracing::warn!(context = other, "dialplan request for unknown context");
             Ok(reject("403 Forbidden"))
@@ -92,11 +102,8 @@ pub async fn plan(pool: &PgPool, catalog: &PresetCatalog, req: &CallRequest) -> 
     })
 }
 
-async fn plan_internal(
-    pool: &PgPool,
-    catalog: &PresetCatalog,
-    req: &CallRequest,
-) -> CoreResult<Vec<Action>> {
+async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Action>> {
+    let (pool, catalog) = (r.pool, r.catalog);
     let (Some(tenant), Some(ext_id)) = (
         req.uuid_var("talkops_tenant_id"),
         req.uuid_var("talkops_extension_id"),
@@ -122,14 +129,14 @@ async fn plan_internal(
         set("talkops_caller_name", sanitize_value(&caller.display_name)),
     ];
 
-    if let Some(feature) = feature_code(pool, tenant, &caller, &dest).await? {
+    if let Some(feature) = feature_code(r, tenant, &caller, &dest).await? {
         actions.extend(feature);
         return Ok(actions);
     }
 
     if let Some(target) = extensions::find_by_number(pool, tenant, &dest).await? {
         actions.push(set("talkops_direction", "internal"));
-        actions.extend(ring_extension(pool, catalog, tenant, &target).await?);
+        actions.extend(ring_extension(r, tenant, &target).await?);
         return Ok(actions);
     }
 
@@ -211,14 +218,30 @@ fn pickup_group(ext: &Extension) -> String {
 /// - `*78` / `*79`: do not disturb on / off
 /// - `*72<number>` / `*73`: unconditional call forwarding on / off
 /// - `**<ext>`: pick up a call ringing at `<ext>`
+/// - `*97` / `*98`: own voicemail / any voicemail with PIN
 async fn feature_code(
-    pool: &PgPool,
+    r: &Routing<'_>,
     tenant: TenantId,
     caller: &Extension,
     dest: &str,
 ) -> CoreResult<Option<Vec<Action>>> {
+    let pool = r.pool;
     // Toggles are not calls: no `talkops_direction`, so no CDR is written.
     let mut a = Vec::new();
+    if dest == "*97" {
+        // Own mailbox, no PIN needed from the extension's own devices.
+        if !voicemail::get_box(pool, tenant, caller.id).await?.enabled {
+            return Ok(Some(reject("404 Not Found")));
+        }
+        a.extend(vm_socket(r, "vm_check", caller.id));
+        return Ok(Some(a));
+    }
+    if dest == "*98" {
+        a.push(set("talkops_app", "vm_login"));
+        a.push(set("verbose_events", "true"));
+        a.push(("socket", format!("{} async full", r.socket)));
+        return Ok(Some(a));
+    }
     if dest == "*78" || dest == "*79" {
         extensions::set_dnd(pool, tenant, caller.id, dest == "*78").await?;
         a.extend(confirm());
@@ -253,25 +276,34 @@ async fn feature_code(
 /// Rings all devices of `target`, honouring DND and unconditional
 /// forwarding (one hop only, so forwarding loops are impossible).
 async fn ring_extension(
-    pool: &PgPool,
-    catalog: &PresetCatalog,
+    r: &Routing<'_>,
     tenant: TenantId,
     target: &Extension,
 ) -> CoreResult<Vec<Action>> {
+    let (pool, catalog) = (r.pool, r.catalog);
     if !target.enabled {
         return Ok(reject("480 Temporarily Unavailable"));
     }
     if target.dnd {
-        return Ok(reject("486 Busy Here"));
+        return Ok(match voicemail_of(r, tenant, target).await? {
+            Some(vm) => vm,
+            None => reject("486 Busy Here"),
+        });
     }
     if let Some(forward) = target.forward_all.as_deref() {
         let mut a = vec![set("talkops_forwarded_from", target.number.clone())];
         if let Some(next) = extensions::find_by_number(pool, tenant, forward).await? {
             if next.id != target.id {
-                if next.dnd || !next.enabled {
-                    return Ok(reject("486 Busy Here"));
+                if !next.enabled {
+                    return Ok(reject("480 Temporarily Unavailable"));
                 }
-                a.extend(bridge_devices(pool, &next).await?);
+                if next.dnd {
+                    return Ok(match voicemail_of(r, tenant, &next).await? {
+                        Some(vm) => vm,
+                        None => reject("486 Busy Here"),
+                    });
+                }
+                a.extend(bridge_devices(r, tenant, &next).await?);
                 return Ok(a);
             }
         } else {
@@ -284,13 +316,48 @@ async fn ring_extension(
             }
         }
     }
-    bridge_devices(pool, target).await
+    bridge_devices(r, tenant, target).await
 }
 
-async fn bridge_devices(pool: &PgPool, target: &Extension) -> CoreResult<Vec<Action>> {
-    let devices = extensions::ring_targets(pool, target.id).await?;
+/// Hands the call to the TalkOps voicemail application.
+fn vm_socket(r: &Routing<'_>, app: &str, extension: Uuid) -> Vec<Action> {
+    vec![
+        set("talkops_app", app),
+        set("talkops_vm_extension_id", extension.to_string()),
+        // Channel variables in CHANNEL_EXECUTE_COMPLETE (DTMF results).
+        set("verbose_events", "true"),
+        ("socket", format!("{} async full", r.socket)),
+    ]
+}
+
+/// Voicemail deposit for `target`, if its box is enabled.
+async fn voicemail_of(
+    r: &Routing<'_>,
+    tenant: TenantId,
+    target: &Extension,
+) -> CoreResult<Option<Vec<Action>>> {
+    if !voicemail::get_box(r.pool, tenant, target.id).await?.enabled {
+        return Ok(None);
+    }
+    let mut a = vec![
+        set("talkops_destination", target.number.clone()),
+        set("talkops_dest_extension_id", target.id.to_string()),
+    ];
+    a.extend(vm_socket(r, "vm_deposit", target.id));
+    Ok(Some(a))
+}
+
+/// Rings all devices; unanswered, busy or unreachable calls go to voicemail
+/// if the box is enabled.
+async fn bridge_devices(
+    r: &Routing<'_>,
+    tenant: TenantId,
+    target: &Extension,
+) -> CoreResult<Vec<Action>> {
+    let devices = extensions::ring_targets(r.pool, target.id).await?;
+    let vm = voicemail_of(r, tenant, target).await?;
     if devices.is_empty() {
-        return Ok(reject("480 Temporarily Unavailable"));
+        return Ok(vm.unwrap_or_else(|| reject("480 Temporarily Unavailable")));
     }
     let dial = devices
         .iter()
@@ -298,15 +365,17 @@ async fn bridge_devices(pool: &PgPool, target: &Extension) -> CoreResult<Vec<Act
         .chain(std::iter::once(format!("pickup/{}", pickup_group(target))))
         .collect::<Vec<_>>()
         .join(",");
-    Ok(vec![
+    Ok([
         set("talkops_destination", target.number.clone()),
         set("talkops_dest_extension_id", target.id.to_string()),
         set("call_timeout", target.ring_timeout_secs.to_string()),
         set("hangup_after_bridge", "true"),
         set("continue_on_fail", "true"),
         ("bridge", dial),
-        ("hangup", String::new()),
-    ])
+    ]
+    .into_iter()
+    .chain(vm.unwrap_or_else(|| vec![("hangup", String::new())]))
+    .collect())
 }
 
 /// Forwards a call to an external number through the forwarding
@@ -440,11 +509,8 @@ fn outbound_actions(
     Ok(a)
 }
 
-async fn plan_public(
-    pool: &PgPool,
-    catalog: &PresetCatalog,
-    req: &CallRequest,
-) -> CoreResult<Vec<Action>> {
+async fn plan_public(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Action>> {
+    let pool = r.pool;
     let gw_tenant = req
         .uuid_var("talkops_tenant_id")
         .map(TenantId)
@@ -514,7 +580,7 @@ async fn plan_public(
             match extensions::get(pool, tenant, ext_id).await {
                 Ok(target) => {
                     actions.push(set("talkops_extension_id", target.id.to_string()));
-                    actions.extend(ring_extension(pool, catalog, tenant, &target).await?);
+                    actions.extend(ring_extension(r, tenant, &target).await?);
                     Ok(actions)
                 }
                 Err(_) => Ok(reject("480 Temporarily Unavailable")),

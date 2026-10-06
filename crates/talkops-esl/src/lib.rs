@@ -1,12 +1,14 @@
 //! Minimal async client for the FreeSWITCH Event Socket Library (ESL) protocol
 //! in inbound mode: TalkOps connects to FreeSWITCH, authenticates, sends
-//! commands and receives events.
+//! commands and receives events. [`outbound`] implements the other direction
+//! (FreeSWITCH connects per call).
 //!
 //! A background task reads frames from the socket. Command replies are matched
 //! to callers in FIFO order (FreeSWITCH answers commands strictly in order);
 //! events are fanned out through a broadcast channel.
 
 mod frame;
+pub mod outbound;
 
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
@@ -33,6 +35,8 @@ pub enum EslError {
     Closed,
     #[error("timed out")]
     Timeout,
+    #[error("call hung up")]
+    Hangup,
 }
 
 type Pending = Arc<Mutex<VecDeque<oneshot::Sender<Frame>>>>;

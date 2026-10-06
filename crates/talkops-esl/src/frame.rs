@@ -21,6 +21,10 @@ impl Headers {
             .map(|(_, v)| v.as_str())
     }
 
+    pub fn push(&mut self, name: String, value: String) {
+        self.0.push((name, value));
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
         self.0.iter().map(|(k, v)| (k.as_str(), v.as_str()))
     }

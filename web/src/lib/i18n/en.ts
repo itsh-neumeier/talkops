@@ -374,5 +374,36 @@ export default {
 	'queues.s.round-robin': 'Round robin',
 	'queues.s.top-down': 'In order',
 	'queues.s.agent-with-fewest-calls': 'Fewest calls',
-	'queues.s.random': 'Random'
+	'queues.s.random': 'Random',
+	'nav.search': 'Search',
+	'search.placeholder': 'Words from calls and voicemails …',
+	'search.hint': 'Searches the automatic transcripts. "Exact phrase", -excluded word, or.',
+	'search.empty': 'Nothing found.',
+	'search.play': 'Play',
+	'rec.title': 'Call recording and transcription',
+	'rec.hint':
+		'Recordings are stored in stereo (caller left, called party right) and are only accessible to the users of the extensions involved and to admins. Check the legal requirements: in Germany all parties must consent to a recording.',
+	'rec.record': 'Record calls',
+	'rec.recordHint': 'Default for all extensions; can be overridden per extension.',
+	'rec.announcement': 'Announce the recording',
+	'rec.announcementHint':
+		'Both parties hear "This call is being recorded" when the call is answered.',
+	'rec.retention': 'Keep recordings (days)',
+	'rec.retentionHint':
+		'Older recordings and their transcripts are deleted automatically. 0 = keep forever.',
+	'rec.transcription': 'Transcribe recordings and voicemails',
+	'rec.transcriptionHint':
+		'Runs locally with Whisper on this server; no audio leaves the system. The first transcription downloads the speech model (about 150 MB).',
+	'rec.extensionPolicy': 'Call recording',
+	'rec.inherit': 'Default (settings)',
+	'rec.always': 'Always record',
+	'rec.never': 'Never record',
+	'rec.recording': 'Recording',
+	'rec.deleteConfirm': 'Delete this recording and its transcript?',
+	'rec.transcriptPending': 'Transcription in progress …',
+	'rec.transcriptFailed': 'Transcription failed.',
+	'rec.transcriptEmpty': 'No speech recognized.',
+	'rec.transcriptHint': 'Automatic transcript, may contain errors.',
+	'rec.speaker.caller': 'Caller',
+	'rec.speaker.called': 'Called party'
 } as const;

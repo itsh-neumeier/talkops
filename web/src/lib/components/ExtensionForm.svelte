@@ -27,6 +27,7 @@
 		hide_caller_id: extension?.hide_caller_id ?? false,
 		ring_timeout_secs: extension?.ring_timeout_secs ?? 30,
 		enabled: extension?.enabled ?? true,
+		record_calls: extension?.record_calls ?? 'inherit',
 		// edited separately (CallSettings), passed through unchanged
 		dnd: extension?.dnd ?? false,
 		forward_all: extension?.forward_all ?? null
@@ -96,6 +97,14 @@
 			max="300"
 			bind:value={form.ring_timeout_secs}
 		/>
+	</div>
+	<div>
+		<label for="e-rec">{t('rec.extensionPolicy')}</label>
+		<select id="e-rec" class="input" bind:value={form.record_calls}>
+			<option value="inherit">{t('rec.inherit')}</option>
+			<option value="always">{t('rec.always')}</option>
+			<option value="never">{t('rec.never')}</option>
+		</select>
 	</div>
 	<label class="flex items-center gap-2"
 		><input type="checkbox" bind:checked={form.hide_caller_id} /> {t('ext.hideCallerId')}</label

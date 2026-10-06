@@ -11,6 +11,8 @@
 	let emergency = $state('');
 	let error = $state('');
 	let saved = $state(false);
+	let recError = $state('');
+	let recSaved = $state(false);
 	let pw = $state({ current_password: '', new_password: '' });
 	let pwError = $state('');
 	let smtp = $state<SmtpSettings | null>(null);
@@ -57,6 +59,21 @@
 			saved = true;
 		} catch (err) {
 			error = errorMessage(err);
+		}
+	}
+
+	async function saveRecording(e: SubmitEvent) {
+		e.preventDefault();
+		recError = '';
+		recSaved = false;
+		try {
+			settings = await api.put<Settings>('/settings', {
+				...settings,
+				recording_retention_days: Number(settings!.recording_retention_days)
+			});
+			recSaved = true;
+		} catch (err) {
+			recError = errorMessage(err);
 		}
 	}
 
@@ -169,6 +186,58 @@
 				</select>
 				<p class="hint">{t('settings.timezoneHint')}</p>
 			</div>
+			<div class="flex justify-end">
+				<button class="btn btn-primary">{t('common.save')}</button>
+			</div>
+		</form>
+	{/if}
+
+	{#if settings && hasRole('admin')}
+		<form class="card space-y-3" onsubmit={saveRecording}>
+			<h2>{t('rec.title')}</h2>
+			<p class="text-sm text-slate-600 dark:text-slate-300">{t('rec.hint')}</p>
+			<ErrorBox error={recError} />
+			{#if recSaved}<p class="text-sm text-emerald-700 dark:text-emerald-400">
+					{t('common.saved')}
+				</p>{/if}
+			<fieldset class="space-y-1">
+				<legend class="text-sm font-medium">{t('rec.record')}</legend>
+				<label class="flex items-center gap-2"
+					><input type="checkbox" bind:checked={settings.record_inbound} />
+					{t('dir.inbound')}</label
+				>
+				<label class="flex items-center gap-2"
+					><input type="checkbox" bind:checked={settings.record_outbound} />
+					{t('dir.outbound')}</label
+				>
+				<label class="flex items-center gap-2"
+					><input type="checkbox" bind:checked={settings.record_internal} />
+					{t('dir.internal')}</label
+				>
+				<p class="hint">{t('rec.recordHint')}</p>
+			</fieldset>
+			<label class="flex items-center gap-2"
+				><input type="checkbox" bind:checked={settings.recording_announcement} />
+				{t('rec.announcement')}</label
+			>
+			<p class="hint">{t('rec.announcementHint')}</p>
+			<div>
+				<label for="rec-days">{t('rec.retention')}</label>
+				<input
+					id="rec-days"
+					class="input w-32"
+					type="number"
+					min="0"
+					max="3650"
+					bind:value={settings.recording_retention_days}
+				/>
+				<p class="hint">{t('rec.retentionHint')}</p>
+			</div>
+			<label class="flex items-center gap-2"
+				><input type="checkbox" bind:checked={settings.transcription_enabled} />
+				{t('rec.transcription')}</label
+			>
+			<p class="hint">{t('rec.transcriptionHint')}</p>
 			<div class="flex justify-end">
 				<button class="btn btn-primary">{t('common.save')}</button>
 			</div>

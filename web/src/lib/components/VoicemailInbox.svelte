@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { api, type VoicemailMessage } from '#lib/api.ts';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
+	import TranscriptView from '#lib/components/TranscriptView.svelte';
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
 
@@ -92,6 +93,12 @@
 					src="/api/v1/voicemail/messages/{m.id}/audio"
 					onplay={() => played(m)}
 				></audio>
+				{#if m.transcript_status !== 'none'}
+					<TranscriptView
+						url="/voicemail/messages/{m.id}/transcript"
+						status={m.transcript_status}
+					/>
+				{/if}
 			</li>
 		{/each}
 	</ul>

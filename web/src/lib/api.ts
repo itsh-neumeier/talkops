@@ -90,6 +90,7 @@ export interface Extension {
 	enabled: boolean;
 	dnd: boolean;
 	forward_all: string | null;
+	record_calls: 'inherit' | 'always' | 'never';
 }
 
 export type DeviceKind = 'desk' | 'dect' | 'softphone' | 'mobile' | 'door' | 'other';
@@ -201,6 +202,12 @@ export interface Settings {
 	default_language: string;
 	default_number_id: string | null;
 	timezone: string;
+	record_inbound: boolean;
+	record_outbound: boolean;
+	record_internal: boolean;
+	recording_announcement: boolean;
+	recording_retention_days: number;
+	transcription_enabled: boolean;
 }
 
 export interface Registration {
@@ -233,6 +240,49 @@ export interface Call {
 	duration_secs: number;
 	billsec: number;
 	hangup_cause: string;
+	recording_id: string | null;
+}
+
+export type TranscriptStatus = 'none' | 'pending' | 'done' | 'failed';
+
+export interface Recording {
+	id: string;
+	call_uuid: string;
+	cdr_id: string | null;
+	duration_secs: number;
+	size_bytes: number;
+	transcript_status: TranscriptStatus;
+	created_at: string;
+}
+
+export interface TranscriptSegment {
+	start: number;
+	end: number;
+	/** `caller`, `called` or empty (voicemail). */
+	speaker: string;
+	text: string;
+}
+
+export interface Transcript {
+	id: string;
+	recording_id: string | null;
+	voicemail_id: string | null;
+	language: string;
+	text: string;
+	segments: TranscriptSegment[];
+	created_at: string;
+}
+
+export interface SearchHit {
+	transcript_id: string;
+	recording_id: string | null;
+	voicemail_id: string | null;
+	/** Matches are wrapped in `[` `]`. */
+	snippet: string;
+	created_at: string;
+	caller_number: string | null;
+	destination: string | null;
+	rank: number;
 }
 
 export interface AuditEntry {
@@ -340,6 +390,7 @@ export interface VoicemailMessage {
 	status: 'new' | 'saved';
 	created_at: string;
 	heard_at: string | null;
+	transcript_status: TranscriptStatus;
 }
 
 export interface SmtpSettings {

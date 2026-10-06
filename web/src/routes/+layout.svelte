@@ -32,6 +32,7 @@
 		{ href: '/phones', key: 'nav.phones', role: 'operator' },
 		{ href: '/phonebook', key: 'nav.phonebook', role: 'user' },
 		{ href: '/calls', key: 'nav.calls', role: 'user' },
+		{ href: '/search', key: 'nav.search', role: 'user' },
 		{ href: '/settings', key: 'nav.settings', role: 'user' },
 		{ href: '/audit', key: 'nav.audit', role: 'admin' }
 	];

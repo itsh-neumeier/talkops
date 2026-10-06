@@ -1,13 +1,39 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { api, type Call } from '#lib/api.ts';
+	import { api, type Call, type Recording } from '#lib/api.ts';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
+	import TranscriptView from '#lib/components/TranscriptView.svelte';
+	import { hasRole } from '#lib/session.svelte.ts';
 	import { formatDateTime, formatDuration, t } from '#lib/i18n/index.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
 
 	let calls = $state<Call[] | null>(null);
 	let search = $state('');
 	let error = $state('');
+	let open = $state<Recording | null>(null);
+
+	async function toggle(c: Call) {
+		if (!c.recording_id || open?.id === c.recording_id) {
+			open = null;
+			return;
+		}
+		try {
+			open = await api.get<Recording>(`/recordings/${c.recording_id}`);
+		} catch (err) {
+			error = errorMessage(err);
+		}
+	}
+
+	async function remove(r: Recording) {
+		if (!confirm(t('rec.deleteConfirm'))) return;
+		try {
+			await api.del(`/recordings/${r.id}`);
+			open = null;
+			await load();
+		} catch (err) {
+			error = errorMessage(err);
+		}
+	}
 
 	async function load() {
 		try {
@@ -51,7 +77,9 @@
 					<tr
 						><th>{t('calls.time')}</th><th>{t('calls.direction')}</th><th>{t('calls.from')}</th><th
 							>{t('calls.to')}</th
-						><th>{t('calls.duration')}</th><th>{t('calls.result')}</th></tr
+						><th>{t('calls.duration')}</th><th>{t('calls.result')}</th><th
+							><span class="sr-only">{t('rec.recording')}</span></th
+						></tr
 					>
 				</thead>
 				<tbody>
@@ -76,7 +104,42 @@
 										>{t('calls.missed')}</span
 									>{/if}
 							</td>
+							<td>
+								{#if c.recording_id}
+									<button
+										class="btn btn-sm"
+										aria-expanded={open?.id === c.recording_id}
+										onclick={() => toggle(c)}>▶ {t('rec.recording')}</button
+									>
+								{/if}
+							</td>
 						</tr>
+						{#if open && open.id === c.recording_id}
+							<tr>
+								<td colspan="7" class="space-y-3 bg-slate-50 dark:bg-slate-900/40">
+									<audio
+										class="w-full"
+										controls
+										preload="none"
+										src="/api/v1/recordings/{open.id}/audio"
+									></audio>
+									<TranscriptView
+										url="/recordings/{open.id}/transcript"
+										status={open.transcript_status}
+									/>
+									<div class="flex justify-end gap-1">
+										<a class="btn btn-sm" href="/api/v1/recordings/{open.id}/audio" download
+											>{t('vm.download')}</a
+										>
+										{#if hasRole('admin')}
+											<button class="btn btn-sm btn-danger" onclick={() => remove(open!)}
+												>{t('common.delete')}</button
+											>
+										{/if}
+									</div>
+								</td>
+							</tr>
+						{/if}
 					{/each}
 				</tbody>
 			</table>

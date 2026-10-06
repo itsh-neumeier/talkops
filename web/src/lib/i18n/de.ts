@@ -368,7 +368,39 @@ const de: Record<keyof typeof en, string> = {
 	'queues.s.round-robin': 'Reihum',
 	'queues.s.top-down': 'Der Reihe nach',
 	'queues.s.agent-with-fewest-calls': 'Wenigste Gespräche',
-	'queues.s.random': 'Zufällig'
+	'queues.s.random': 'Zufällig',
+	'nav.search': 'Suche',
+	'search.placeholder': 'Wörter aus Gesprächen und Sprachnachrichten …',
+	'search.hint':
+		'Durchsucht die automatischen Transkripte. "Genaue Phrase", -ausgeschlossenes Wort, or.',
+	'search.empty': 'Nichts gefunden.',
+	'search.play': 'Abspielen',
+	'rec.title': 'Gesprächsaufzeichnung und Transkription',
+	'rec.hint':
+		'Aufnahmen werden in Stereo gespeichert (links Anrufer, rechts Angerufener) und sind nur für die Benutzer der beteiligten Nebenstellen und für Admins abrufbar. Rechtliches beachten: In Deutschland müssen alle Gesprächspartner einer Aufzeichnung zustimmen.',
+	'rec.record': 'Gespräche aufzeichnen',
+	'rec.recordHint': 'Vorgabe für alle Nebenstellen; je Nebenstelle änderbar.',
+	'rec.announcement': 'Aufzeichnung ansagen',
+	'rec.announcementHint':
+		'Beide Gesprächspartner hören beim Annehmen „Dieses Gespräch wird aufgezeichnet“.',
+	'rec.retention': 'Aufnahmen aufbewahren (Tage)',
+	'rec.retentionHint':
+		'Ältere Aufnahmen samt Transkript werden automatisch gelöscht. 0 = unbegrenzt.',
+	'rec.transcription': 'Aufnahmen und Sprachnachrichten transkribieren',
+	'rec.transcriptionHint':
+		'Läuft lokal mit Whisper auf diesem Server; kein Audio verlässt das System. Die erste Transkription lädt das Sprachmodell (ca. 150 MB).',
+	'rec.extensionPolicy': 'Gesprächsaufzeichnung',
+	'rec.inherit': 'Vorgabe (Einstellungen)',
+	'rec.always': 'Immer aufzeichnen',
+	'rec.never': 'Nie aufzeichnen',
+	'rec.recording': 'Aufnahme',
+	'rec.deleteConfirm': 'Diese Aufnahme samt Transkript löschen?',
+	'rec.transcriptPending': 'Transkription läuft …',
+	'rec.transcriptFailed': 'Transkription fehlgeschlagen.',
+	'rec.transcriptEmpty': 'Keine Sprache erkannt.',
+	'rec.transcriptHint': 'Automatisches Transkript, kann Fehler enthalten.',
+	'rec.speaker.caller': 'Anrufer',
+	'rec.speaker.called': 'Angerufener'
 };
 
 export default de;

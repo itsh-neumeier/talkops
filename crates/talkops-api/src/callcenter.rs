@@ -49,6 +49,13 @@ pub fn plan(
     current_agents: &str,
     current_tiers: &str,
 ) -> Vec<String> {
+    let mut cmds = plan_queues(queues, current_queues);
+    cmds.extend(plan_members(agents, tiers, current_agents, current_tiers));
+    cmds
+}
+
+/// Loads, reloads and unloads queues.
+pub fn plan_queues(queues: &[Queue], current_queues: &str) -> Vec<String> {
     let mut cmds = Vec::new();
 
     let loaded: Vec<String> = parse_list(current_queues)
@@ -70,6 +77,18 @@ pub fn plan(
         }
     }
 
+    cmds
+}
+
+/// Adds, updates and removes agents and tiers. Loading a queue also loads
+/// the agents and tiers of `callcenter.conf`, so this runs on a fresh list.
+pub fn plan_members(
+    agents: &[Agent],
+    tiers: &[Tier],
+    current_agents: &str,
+    current_tiers: &str,
+) -> Vec<String> {
+    let mut cmds = Vec::new();
     let current: HashMap<String, HashMap<String, String>> = parse_list(current_agents)
         .into_iter()
         .filter_map(|a| Some((a.get("name")?.clone(), a)))
@@ -150,32 +169,35 @@ async fn sync(db: &PgPool, esl: &EslHandle) -> anyhow::Result<usize> {
         // Nothing configured: do not touch (or require) mod_callcenter.
         return Ok(0);
     }
-    let current_queues = client
-        .api("callcenter_config queue list")
-        .await
-        .unwrap_or_default();
-    let current_agents = client
-        .api("callcenter_config agent list")
-        .await
-        .unwrap_or_default();
-    let current_tiers = client
-        .api("callcenter_config tier list")
-        .await
-        .unwrap_or_default();
-    let cmds = plan(
-        &queues,
+    let list = |what: &'static str| {
+        let client = client.clone();
+        async move {
+            client
+                .api(&format!("callcenter_config {what} list"))
+                .await
+                .unwrap_or_default()
+        }
+    };
+    let run = |cmds: Vec<String>| {
+        let client = client.clone();
+        async move {
+            for cmd in &cmds {
+                if let Err(err) = client.api(cmd).await {
+                    tracing::warn!(command = %cmd, error = %err, "callcenter sync command failed");
+                }
+            }
+            cmds.len()
+        }
+    };
+    let mut count = run(plan_queues(&queues, &list("queue").await)).await;
+    count += run(plan_members(
         &agents,
         &tiers,
-        &current_queues,
-        &current_agents,
-        &current_tiers,
-    );
-    for cmd in &cmds {
-        if let Err(err) = client.api(cmd).await {
-            tracing::warn!(command = %cmd, error = %err, "callcenter sync command failed");
-        }
-    }
-    Ok(cmds.len())
+        &list("agent").await,
+        &list("tier").await,
+    ))
+    .await;
+    Ok(count)
 }
 
 /// Starts the background sync; `trigger` requests an immediate run.

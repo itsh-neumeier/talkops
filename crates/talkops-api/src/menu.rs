@@ -42,7 +42,11 @@ async fn transfer<C: Call>(call: &mut C, target: &str) -> Result<Outcome, FlowEr
         .execute("transfer", &format!("{target} XML {CONTEXT_TRANSFER}"))
         .await
     {
-        Ok(_) | Err(EslError::Hangup) => Ok(Outcome::Transferred),
+        Ok(_) => {
+            call.release().await;
+            Ok(Outcome::Transferred)
+        }
+        Err(EslError::Hangup) => Ok(Outcome::Transferred),
         Err(err) => Err(err.into()),
     }
 }

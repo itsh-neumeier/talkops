@@ -77,6 +77,11 @@ impl Call for FakeCall {
     fn is_hung_up(&self) -> bool {
         self.hung_up
     }
+
+    fn release(&mut self) -> impl Future<Output = ()> + Send {
+        self.hung_up = true;
+        std::future::ready(())
+    }
 }
 
 fn call(app: &str, ext: Option<Uuid>) -> FakeCall {

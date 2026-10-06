@@ -163,6 +163,14 @@ impl OutboundSession {
         }
     }
 
+    /// Lets go of a call that left TalkOps' control (e.g. after `transfer`):
+    /// waits until FreeSWITCH closes the connection. Closing it ourselves
+    /// would make FreeSWITCH hang up the call.
+    pub async fn release(&mut self) {
+        while self.events.recv().await.is_some() {}
+        self.hung_up = true;
+    }
+
     /// Sets a channel variable.
     pub async fn set(&mut self, name: &str, value: &str) -> Result<(), EslError> {
         self.execute("set", &format!("{name}={value}"))

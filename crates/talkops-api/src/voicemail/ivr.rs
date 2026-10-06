@@ -20,6 +20,8 @@ pub trait Call: Send {
         arg: &str,
     ) -> impl Future<Output = Result<Event, EslError>> + Send;
     fn is_hung_up(&self) -> bool;
+    /// Hands the call back to FreeSWITCH after a transfer.
+    fn release(&mut self) -> impl Future<Output = ()> + Send;
 }
 
 impl Call for OutboundSession {
@@ -37,6 +39,10 @@ impl Call for OutboundSession {
 
     fn is_hung_up(&self) -> bool {
         OutboundSession::is_hung_up(self)
+    }
+
+    fn release(&mut self) -> impl Future<Output = ()> + Send {
+        OutboundSession::release(self)
     }
 }
 

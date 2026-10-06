@@ -7,7 +7,8 @@
 # that a provisioned Yealink phone gets its configuration and that an
 # unreachable extension's voicemail answers and stores the message, that a
 # ring group falls back, an IVR menu routes a pressed key and a queue
-# offers its caller to a registered agent.
+# offers its caller to a registered agent, and that answered calls are
+# recorded.
 #
 #   BASE=http://127.0.0.1:8080 SIP_HOST=192.168.1.10 tests/e2e/run.sh
 set -euo pipefail
@@ -179,5 +180,29 @@ printf 'SEQUENTIAL\n80;\n' > "$WORK/queue.csv"
     -m 1 -p 5099 -min_rtp_port 16700 -max_rtp_port 16750 -i "$SIP_HOST" -timeout 60 -timeout_error -trace_err -error_file "$WORK/queue.log" >/dev/null) \
     || { cat "$WORK/queue.log" 2>/dev/null; fail "queue call failed"; }
 wait "$AGENT_PID" || { cat "$WORK/agent.log" 2>/dev/null; fail "agent did not receive the queue call"; }
+
+log "answered calls are recorded"
+SETTINGS=$(api GET /api/v1/settings | jq '.record_internal = true') || fail "read settings"
+api PUT /api/v1/settings "$SETTINGS" >/dev/null || fail "enable recording"
+sipp -sn uas -p 5094 -i "$SIP_HOST" -m 1 -min_rtp_port 16800 -max_rtp_port 16850 -timeout 60 -timeout_error \
+    -trace_err -error_file "$WORK/rec-callee.log" >"$WORK/rec-callee.out" 2>&1 &
+REC_PID=$!
+sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/register.xml" -set contact_port 5094 -s "$CALLEE" -au "$CALLEE" -ap "$CALLEE_PW" \
+    -m 1 -p 5092 -i "$SIP_HOST" -timeout 20 -timeout_error -trace_err -error_file "$WORK/register3.log" >/dev/null \
+    || { cat "$WORK/register3.log" 2>/dev/null; fail "registration for the recorded call failed"; }
+(cd "$DIR" && sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/call_hold.xml" -inf "$WORK/dest.csv" -s "$CALLER" -au "$CALLER" -ap "$CALLER_PW" \
+    -m 1 -p 5097 -min_rtp_port 16900 -max_rtp_port 16950 -i "$SIP_HOST" -timeout 60 -timeout_error -trace_err -error_file "$WORK/rec.log" >/dev/null) \
+    || { cat "$WORK/rec.log" 2>/dev/null; fail "recorded call failed"; }
+wait "$REC_PID" || { cat "$WORK/rec-callee.log" 2>/dev/null; fail "callee of the recorded call failed"; }
+REC=""
+for _ in $(seq 1 15); do
+    REC=$(api GET /api/v1/calls | jq -r '[.[] | select(.destination == "21" and .recording_id != null)][0].recording_id // empty')
+    [ -n "$REC" ] && break
+    sleep 1
+done
+[ -n "$REC" ] || fail "no recording linked to the call"
+api GET "/api/v1/recordings/$REC" | jq -e '.duration_secs >= 5' >/dev/null || fail "recording too short"
+api GET "/api/v1/recordings/$REC/audio" > "$WORK/rec.wav" || fail "download recording"
+[ "$(head -c 4 "$WORK/rec.wav")" = RIFF ] || fail "recording is not a WAV file"
 
 log "all end-to-end checks passed"

@@ -128,6 +128,7 @@ impl OutboundSession {
         if !arg.is_empty() {
             msg.push_str(&format!("\nexecute-app-arg: {arg}"));
         }
+        tracing::debug!(app, arg, id = %id, "outbound execute");
         self.command(&msg).await?;
 
         loop {
@@ -143,6 +144,13 @@ impl OutboundSession {
                 self.hung_up = true;
                 return Err(EslError::Hangup);
             };
+            tracing::debug!(
+                event = ?event.name(),
+                application = ?event.headers.get("Application"),
+                application_uuid = ?event.headers.get("Application-UUID"),
+                waiting_for = %id,
+                "outbound event"
+            );
             match event.name() {
                 Some("CHANNEL_EXECUTE_COMPLETE")
                     if event.headers.get("Application-UUID") == Some(id.as_str()) =>

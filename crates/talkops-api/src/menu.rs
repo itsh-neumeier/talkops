@@ -60,7 +60,7 @@ pub async fn run<C: Call>(
         None => settings::get(&ctx.db, tenant).await?.default_language,
     };
     call.execute("answer", "").await?;
-    call.execute("sleep", "500").await?;
+    call.execute("playback", "silence_stream://500").await?;
 
     let mut ivr = Ivr::new(call, &ctx.media.sounds, &lang);
     let mut greeting = Seq::default();

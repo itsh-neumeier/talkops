@@ -127,7 +127,7 @@ pub async fn run<C: Call>(call: &mut C, ctx: &VmContext, app: &str) -> FlowResul
             let vbox = voicemail::get_box(&ctx.db, tenant, ext).await?;
             let lang = vbox.language.clone().unwrap_or(default_lang);
             call.execute("answer", "").await?;
-            call.execute("sleep", "500").await?;
+            call.execute("playback", "silence_stream://500").await?;
             mailbox(call, ctx, tenant, ext, &vbox, &lang).await
         }
         ("vm_login", _) => login(call, ctx, tenant, &default_lang).await,
@@ -150,7 +150,7 @@ async fn deposit<C: Call>(
     let lang = vbox.language.clone().unwrap_or(default_lang.to_owned());
     let mut ivr = Ivr::new(call, &ctx.media.sounds, &lang);
     ivr.call.execute("answer", "").await?;
-    ivr.call.execute("sleep", "500").await?;
+    ivr.call.execute("playback", "silence_stream://500").await?;
     // `#` skips the greeting.
     ivr.set("playback_terminators", "#").await?;
     let mut greeting = Seq::default();
@@ -213,7 +213,7 @@ async fn login<C: Call>(
     lang: &str,
 ) -> FlowResult<()> {
     call.execute("answer", "").await?;
-    call.execute("sleep", "500").await?;
+    call.execute("playback", "silence_stream://500").await?;
     for _ in 0..3 {
         let mut ivr = Ivr::new(call, &ctx.media.sounds, lang);
         let ask_box = ivr.keys(&["vm_enter_box"]);

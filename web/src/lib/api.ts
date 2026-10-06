@@ -510,3 +510,51 @@ export async function getText(path: string): Promise<string> {
 export function fetchStatus(): Promise<SystemStatus> {
 	return api.get<SystemStatus>('/status');
 }
+
+export interface DoorButton {
+	number: string;
+	type: DestinationType;
+	id: string | null;
+}
+
+export interface DoorStation {
+	id: string;
+	name: string;
+	extension_id: string;
+	host: string;
+	port: number;
+	username: string;
+	has_password: boolean;
+	doors: number;
+	destination_type: DestinationType;
+	destination_id: string | null;
+	buttons: DoorButton[];
+	events_enabled: boolean;
+	snapshots: boolean;
+	has_webhook: boolean;
+	has_api_token: boolean;
+	online: boolean;
+	model: string;
+	last_seen: string | null;
+	enabled: boolean;
+}
+
+export type DoorEventKind =
+	| 'ring'
+	| 'open_command'
+	| 'opened'
+	| 'door_open'
+	| 'door_closed'
+	| 'unlock_failed'
+	| 'alarm'
+	| 'online'
+	| 'offline';
+
+export interface DoorEvent {
+	id: string;
+	door_station_id: string;
+	kind: DoorEventKind;
+	detail: Record<string, unknown>;
+	has_snapshot: boolean;
+	created_at: string;
+}

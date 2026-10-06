@@ -9,12 +9,14 @@
 	}: { title: string; open?: boolean; children: Snippet } = $props();
 </script>
 
+<!-- Escape closes the dialog wherever the focus is. -->
+<svelte:window onkeydown={(e) => open && e.key === 'Escape' && (open = false)} />
+
 {#if open}
 	<div
 		class="fixed inset-0 z-40 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4"
 		role="presentation"
 		onclick={(e) => e.target === e.currentTarget && (open = false)}
-		onkeydown={(e) => e.key === 'Escape' && (open = false)}
 	>
 		<div
 			class="max-h-[90vh] w-full overflow-y-auto rounded-t-xl bg-white p-4 shadow-xl sm:max-w-lg sm:rounded-xl dark:bg-slate-900"

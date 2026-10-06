@@ -69,6 +69,8 @@ nächsten Start bzw. nachts zwischen 2 und 4 Uhr.
 | `*78` / `*79` | Nicht stören an / aus |
 | `*72<Nummer>` / `*73` | alle Anrufe umleiten (Nebenstelle oder externe Nummer) / aus |
 | `**<Nebenstelle>` | klingelnden Anruf heranholen |
+| `*51` … `*59` | Anruf parken / geparkten Anruf holen ([Anrufsteuerung](anrufsteuerung.md)) |
+| `*30<Nummer>` | Zeitsteuerung „geschlossen“ ein/aus |
 | `*97` / `*98` | eigene Voicemail / beliebige Voicemail mit PIN ([Voicemail](voicemail.md)) |
 
 Die DND-Taste des Telefons schaltet *Nicht stören* der Nebenstelle auf

@@ -1,6 +1,6 @@
 # TalkOps – Architektur
 
-> Status: Phase 3 (Voicemail & TTS). Entscheidungen mit Begründung stehen in den
+> Status: Phase 4 (Gruppen & Logik). Entscheidungen mit Begründung stehen in den
 > [ADRs](adr/README.md); dieses Dokument beschreibt das Zusammenspiel.
 
 ## Überblick
@@ -97,6 +97,8 @@ Jede Anfrage im Kontext `internal` (authentifizierte Geräte) bzw. `public`
 | internal | `*72<Nummer>` / `*73` | Rufumleitung sofort an/aus (Ziel: Nebenstelle oder externe Nummer) |
 | internal | `**<Nebenstelle>` | gezieltes Heranholen (`pickup ext-<uuid>`) |
 | internal | `*97` / `*98` | eigene Mailbox / beliebige Mailbox mit PIN (ESL outbound) |
+| internal | `*30<Nummer>` | Zeitsteuerung zwischen Automatik und „geschlossen“ umschalten |
+| internal | `*51` … `*59` | Parkplatz: parken bzw. abholen (`valet_park talkops *5N`) |
 
 Beim Klingeln einer Nebenstelle gilt (Phase 2): deaktiviert → `480`,
 **Nicht stören** → `486 Busy Here`, **Rufumleitung** → genau ein Sprung (keine
@@ -121,6 +123,27 @@ zugeordnet werden können.
 Ist die Mailbox der Nebenstelle aktiv (Phase 3), gehen Anrufe statt `480`/`486`
 an die Voicemail: bei „Nicht stören“ sofort, ohne Geräte sofort, sonst nach dem
 erfolglosen `bridge` (keine Annahme, besetzt, nicht erreichbar).
+
+## Ziele und Anrufsteuerung (Phase 4)
+
+Alle Routing-Ziele sind ein Paar `(art, id)` mit `art` ∈ {`extension`,
+`voicemail`, `ring_group`, `time_condition`, `ivr`, `queue`} (Postgres-Enum
+`number_destination`). `fsxml::dialplan::route_to` löst sie rekursiv auf;
+Ketten (Gruppe → Ausweichziel → Zeitsteuerung → …) sind auf 5 Stufen begrenzt.
+Interne Nummern sind über alle Arten eindeutig (`talkops_core::numbering`).
+
+| Ziel | Umsetzung |
+|---|---|
+| Rufgruppe | ein `bridge`: gleichzeitig `a,b,…` (+ `pickup/ext-*`), nacheinander `[leg_timeout=N]a\|[leg_timeout=N]b`; danach Ausweichziel |
+| Zeitsteuerung | Auswertung beim Routing in der Mandanten-Zeitzone: Override → Feiertag (`talkops_core::holidays`, Osterformel, Bundesländer) → Schließtag → Wochenplan |
+| Sprachmenü | ESL outbound (`talkops_app=ivr`), `play_and_get_digits`, Auswahl per `transfer dest:<art>:<id> XML talkops` |
+| Warteschlange | `callcenter q-<id>` (mod_callcenter); `callcenter.conf` per xml_curl, Agenten/Tiers per `callcenter_config` abgeglichen (diff-basiert, alle 30 s und nach Änderungen) |
+
+Der Kontext `talkops` ist nur über `transfer` erreichbar (keinem Profil
+zugeordnet). Alle Anrufe exportieren `force_transfer_context=talkops`, damit
+Blind-Transfers (SIP REFER) dort landen und wie gewählte Nummern geroutet
+werden – interne Nummern, Parkplätze, externe Nummern über die
+Standardrufnummer.
 
 ## Voicemail & Sprachausgabe (Phase 3, [ADR 0010](adr/0010-voicemail-und-sprachausgabe.md))
 
@@ -236,7 +259,7 @@ Phase 8.
 
 ## Verzeichnisstruktur
 
-Ist-Stand Phase 3 plus geplante Ergänzungen (P2 … P8):
+Ist-Stand Phase 4 plus geplante Ergänzungen (P2 … P8):
 
 ```
 talkops/
@@ -250,13 +273,16 @@ talkops/
 │   ├── talkops-core/
 │   │   └── src/  db · jobs · tenant · telemetry · crypto · users · extensions
 │   │             trunks · settings · dialing · presets · cdr · audit · phones
-│   │             voicemail · prompts · mail
+│   │             voicemail · prompts · mail · numbering · ring_groups
+│   │             time_conditions · holidays · ivr · queues
 │   ├── talkops-api/
 │   │   └── src/  main · config · auth · error · esl · telephony · mailer
+│   │             menu · callcenter
 │   │             voicemail/{mod,ivr}
-│   │             fsxml/{sofia,directory,dialplan,cdr}
+│   │             fsxml/{sofia,directory,dialplan,cdr,callcenter}
 │   │             routes/{health,auth,users,extensions,trunks,settings,fs,
-│   │                     phones,provisioning,voicemail}
+│   │                     phones,provisioning,voicemail,groups,
+│   │                     time_conditions,ivr,queues}
 │   ├── talkops-esl/              Event-Socket-Client (inbound) und outbound-Server
 │   ├── talkops-provisioning/     Yealink-Templates, Modellkatalog, XML-Telefonbuch
 │   ├── talkops-media-worker/     Piper (Ansagen, Begrüßungen); P5: Whisper-Handler
@@ -272,12 +298,13 @@ talkops/
 │   ├── talkops/                  Dockerfile (Rust + Web-UI)
 │   └── media-worker/             Dockerfile (Piper + Stimmen; P5: whisper.cpp, CUDA-Variante)
 ├── tests/
-│   ├── sipp/                     register, call, call_busy, call_voicemail, bad_password
+│   ├── sipp/                     register, call, call_busy, call_voicemail, call_ivr,
+│   │                             call_hold, bad_password, tone.ulaw
 │   └── e2e/run.sh                Ende-zu-Ende-Test gegen den laufenden Stack
 ├── docs/
 │   ├── architecture.md · adr/
 │   ├── de/  installation.md · portainer.md · erste-schritte.md · leonet.md · yealink.md
-│   │        voicemail.md
+│   │        voicemail.md · anrufsteuerung.md
 │   │        (P3+: dahua.md, ldap.md, backup.md)
 │   ├── en/  (gleiche Inhalte auf Englisch)
 │   └── trunk-presets.md          Format & Beitragsregeln für Vorlagen
@@ -292,7 +319,7 @@ talkops/
 | 1 | Grundtelefonie: xml_curl-Directory/Dialplan, Nebenstellen, Trunk-Presets (LEONET u. a.), Web-UI Login/User/Trunks, CDR | ✅ (LEONET-Livetest offen) |
 | 2 | Yealink: Provisioning, Templates, XML-Telefonbuch, BLF, Feature-Codes, MWI | ✅ (Test mit echten Geräten offen) |
 | 3 | Voicemail & TTS: ESL-Voicemail, Piper, Mehrsprachigkeit, Mail | ✅ |
-| 4 | Gruppen & Logik: Rufgruppen, Queues, IVR-Editor, Zeitsteuerung/Feiertage, Parken/Pickup | geplant |
+| 4 | Gruppen & Logik: Rufgruppen, Queues, IVR-Editor, Zeitsteuerung/Feiertage, Parken/Pickup | ✅ |
 | 5 | Recording & Transkription: Hinweisansage, Whisper, Suche, Retention | geplant |
 | 6 | Türsprechstelle: Dahua VTO, Video, Türöffner, Snapshots, Home Assistant | geplant |
 | 7 | WebRTC & Identität: Softphone mit Video, LDAP/AD, OIDC, 2FA | geplant |

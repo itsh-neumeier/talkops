@@ -7,8 +7,8 @@
 # that a provisioned Yealink phone gets its configuration and that an
 # unreachable extension's voicemail answers and stores the message, that a
 # ring group falls back, an IVR menu routes a pressed key and a queue
-# offers its caller to a registered agent, and that answered calls are
-# recorded.
+# offers its caller to a registered agent, that answered calls are
+# recorded and that a door station's ring reaches a phone with video.
 #
 #   BASE=http://127.0.0.1:8080 SIP_HOST=192.168.1.10 tests/e2e/run.sh
 set -euo pipefail
@@ -204,5 +204,24 @@ done
 api GET "/api/v1/recordings/$REC" | jq -e '.duration_secs >= 5' >/dev/null || fail "recording too short"
 api GET "/api/v1/recordings/$REC/audio" > "$WORK/rec.wav" || fail "download recording"
 [ "$(head -c 4 "$WORK/rec.wav")" = RIFF ] || fail "recording is not a WAV file"
+
+log "door station rings with video"
+read -r DOOR DOOR_PW <<<"$(device 8001)"
+EXT8001=$(api GET /api/v1/extensions | jq -r '.[] | select(.number == "8001") | .id')
+api POST /api/v1/door-stations "{\"name\":\"E2E door\",\"extension_id\":\"$EXT8001\",\"destination_type\":\"extension\",\"destination_id\":\"$EXT21\"}" >/dev/null \
+    || fail "create door station"
+sipp -sf "$DIR/uas_video.xml" -p 5094 -i "$SIP_HOST" -m 1 -min_rtp_port 17000 -max_rtp_port 17050 -timeout 60 -timeout_error \
+    -trace_err -error_file "$WORK/door-callee.log" >"$WORK/door-callee.out" 2>&1 &
+DOOR_PID=$!
+sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/register.xml" -set contact_port 5094 -s "$CALLEE" -au "$CALLEE" -ap "$CALLEE_PW" \
+    -m 1 -p 5092 -i "$SIP_HOST" -timeout 20 -timeout_error -trace_err -error_file "$WORK/register4.log" >/dev/null \
+    || { cat "$WORK/register4.log" 2>/dev/null; fail "registration for the door call failed"; }
+printf 'SEQUENTIAL\n9901;\n' > "$WORK/door.csv"
+sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/call_video.xml" -inf "$WORK/door.csv" -s "$DOOR" -au "$DOOR" -ap "$DOOR_PW" \
+    -m 1 -p 5096 -min_rtp_port 17100 -max_rtp_port 17150 -i "$SIP_HOST" -timeout 30 -timeout_error -trace_err -error_file "$WORK/door.log" >/dev/null \
+    || { cat "$WORK/door.log" 2>/dev/null; fail "door station call failed"; }
+wait "$DOOR_PID" || { cat "$WORK/door-callee.log" 2>/dev/null; fail "the door call did not reach the phone with video"; }
+api GET /api/v1/door-events | jq -e '.[] | select(.kind == "ring" and .detail.dialed == "9901")' >/dev/null \
+    || fail "door ring not logged"
 
 log "all end-to-end checks passed"

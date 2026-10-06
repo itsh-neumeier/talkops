@@ -47,7 +47,10 @@ jobs:
           cache-from: type=gha,scope=talkops-media-worker-amd64
 
       - name: Install SIPp
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq sip-tester jq
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq sip-tester jq
+          # DTMF is replayed from a pcap, which needs a raw socket.
+          sudo setcap cap_net_raw,cap_net_admin+ep "$(command -v sipp)"
 
       - name: Start stack
         run: |

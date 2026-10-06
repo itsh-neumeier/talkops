@@ -13,6 +13,7 @@ const NUMBERED: &[(&str, &str)] = &[
     ("extensions", "extension"),
     ("ring_groups", "ring_group"),
     ("time_conditions", "time_condition"),
+    ("ivr_menus", "ivr"),
 ];
 
 /// Table holding the targets of a destination kind.

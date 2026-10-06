@@ -138,13 +138,25 @@ impl<'a, C: Call> Ivr<'a, C> {
     }
 
     /// Plays `seq` and collects up to `max` digits matching `regex`
-    /// (3 tries). `#` ends multi-digit input; for single-digit menus it is a
-    /// regular choice. Returns `None` if nothing valid was entered.
+    /// (3 tries, 5 s). `#` ends multi-digit input; for single-digit menus it
+    /// is a regular choice. Returns `None` if nothing valid was entered.
     pub async fn ask(
         &mut self,
         seq: &Seq,
         max: u32,
         regex: &str,
+    ) -> Result<Option<String>, EslError> {
+        self.ask_with(seq, max, regex, 3, 5000).await
+    }
+
+    /// [`Ivr::ask`] with explicit tries and timeout (milliseconds).
+    pub async fn ask_with(
+        &mut self,
+        seq: &Seq,
+        max: u32,
+        regex: &str,
+        tries: u32,
+        timeout_ms: u32,
     ) -> Result<Option<String>, EslError> {
         self.seq += 1;
         let var = format!("talkops_digits_{}", self.seq);
@@ -158,7 +170,9 @@ impl<'a, C: Call> Ivr<'a, C> {
             .call
             .execute(
                 "play_and_get_digits",
-                &format!("1 {max} 3 5000 {terminators} {file} {invalid} {var} {regex} 3000"),
+                &format!(
+                    "1 {max} {tries} {timeout_ms} {terminators} {file} {invalid} {var} {regex} 3000"
+                ),
             )
             .await?;
         Ok(event

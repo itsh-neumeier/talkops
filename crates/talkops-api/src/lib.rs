@@ -6,6 +6,7 @@ pub mod error;
 pub mod esl;
 pub mod fsxml;
 pub mod mailer;
+pub mod menu;
 pub mod routes;
 pub mod telephony;
 pub mod util;
@@ -132,6 +133,7 @@ pub fn api_router() -> (Router<AppState>, utoipa::openapi::OpenApi) {
         .merge(routes::voicemail::router())
         .merge(routes::groups::router())
         .merge(routes::time_conditions::router())
+        .merge(routes::ivr::router())
         .split_for_parts();
     (router, api)
 }

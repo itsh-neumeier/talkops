@@ -15,12 +15,12 @@ use sqlx::PgPool;
 use sqlx::postgres::PgListener;
 use talkops_core::jobs::{self, Job};
 use talkops_core::telemetry::{self, LogFormat};
-use talkops_core::voicemail;
+use talkops_core::{ivr, voicemail};
 
 use crate::tts::Piper;
 
 /// Job kinds this worker can execute.
-const SUPPORTED_KINDS: &[&str] = &[voicemail::JOB_TTS_GREETING];
+const SUPPORTED_KINDS: &[&str] = &[voicemail::JOB_TTS_GREETING, ivr::JOB_TTS_IVR];
 
 /// Running jobs without a heartbeat for this long are handed to another worker.
 const LEASE_TIMEOUT_SECS: i64 = 30 * 60;
@@ -125,6 +125,7 @@ async fn main() -> anyhow::Result<()> {
             voices_dir: args.voices_dir.clone(),
         },
         voicemail_dir: args.voicemail_dir.clone(),
+        sounds_dir: args.sounds_dir.clone(),
     };
     match tts::ensure_prompts(&ctx.piper, &args.sounds_dir).await {
         Ok(0) => {}
@@ -160,6 +161,7 @@ struct Ctx {
     pool: PgPool,
     piper: Piper,
     voicemail_dir: PathBuf,
+    sounds_dir: PathBuf,
 }
 
 async fn drain_queue(ctx: &Ctx, worker_id: &str) -> anyhow::Result<()> {
@@ -187,32 +189,20 @@ async fn drain_queue(ctx: &Ctx, worker_id: &str) -> anyhow::Result<()> {
 async fn run(ctx: &Ctx, job: &Job) -> anyhow::Result<()> {
     match job.kind.as_str() {
         voicemail::JOB_TTS_GREETING => tts_greeting(ctx, job).await,
+        ivr::JOB_TTS_IVR => tts_ivr(ctx, job).await,
         other => anyhow::bail!("no handler for job kind `{other}`"),
     }
 }
 
 /// Renders a voicemail greeting; the box status tells the UI the outcome.
 async fn tts_greeting(ctx: &Ctx, job: &Job) -> anyhow::Result<()> {
-    #[derive(serde::Deserialize)]
-    struct Payload {
-        extension_id: uuid::Uuid,
-        text: String,
-        language: String,
-        file: String,
-    }
-    let p: Payload = serde_json::from_value(job.payload.clone()).context("invalid payload")?;
-    anyhow::ensure!(
-        !p.file
-            .split('/')
-            .any(|part| part == ".." || part.is_empty()),
-        "invalid greeting path"
-    );
+    let p = TtsPayload::parse(job)?;
     let path = ctx.voicemail_dir.join(&p.file);
     let result = ctx
         .piper
         .render(&p.language, &[(p.text.clone(), path)])
         .await;
-    voicemail::set_greeting_status(&ctx.pool, p.extension_id, &p.text, result.is_ok()).await?;
+    voicemail::set_greeting_status(&ctx.pool, p.owner, &p.text, result.is_ok()).await?;
     result
 }
 
@@ -244,4 +234,41 @@ async fn shutdown_signal() {
     }
     #[cfg(not(unix))]
     let _ = ctrl_c.await;
+}
+
+/// Payload of the TTS jobs: text to render into a file below a media volume.
+#[derive(serde::Deserialize)]
+struct TtsPayload {
+    #[serde(alias = "extension_id", alias = "menu_id")]
+    owner: uuid::Uuid,
+    text: String,
+    language: String,
+    file: String,
+}
+
+impl TtsPayload {
+    fn parse(job: &Job) -> anyhow::Result<Self> {
+        let p: Self = serde_json::from_value(job.payload.clone()).context("invalid payload")?;
+        anyhow::ensure!(
+            !p.file
+                .split('/')
+                .any(|part| part == ".." || part.is_empty()),
+            "invalid output path"
+        );
+        Ok(p)
+    }
+}
+
+/// Renders an IVR greeting into the sounds volume.
+async fn tts_ivr(ctx: &Ctx, job: &Job) -> anyhow::Result<()> {
+    let p = TtsPayload::parse(job)?;
+    let result = ctx
+        .piper
+        .render(
+            &p.language,
+            &[(p.text.clone(), ctx.sounds_dir.join(&p.file))],
+        )
+        .await;
+    ivr::set_greeting_status(&ctx.pool, p.owner, &p.text, result.is_ok()).await?;
+    result
 }

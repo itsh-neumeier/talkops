@@ -3,6 +3,7 @@ pub mod extensions;
 pub mod fs;
 pub mod groups;
 pub mod health;
+pub mod ivr;
 pub mod phones;
 pub mod provisioning;
 pub mod settings;

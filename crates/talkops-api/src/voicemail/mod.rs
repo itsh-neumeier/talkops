@@ -4,6 +4,8 @@
 //! - `vm_check` (`*97`): the caller's own box, no PIN.
 //! - `vm_login` (`*98`): any box after extension number and PIN.
 //!
+//! [`handle`] also dispatches IVR menus (`ivr`, see [`crate::menu`]).
+//!
 //! Prompts come from the media worker (`talkops_core::prompts`); missing
 //! prompt files are skipped, so a box keeps working without TTS.
 
@@ -22,6 +24,7 @@ use talkops_esl::outbound::OutboundSession;
 use uuid::Uuid;
 
 use crate::fsxml::sanitize_value;
+use crate::menu::Outcome;
 use crate::telephony::Telephony;
 use crate::{AppState, MediaPaths};
 use ivr::{Call, Ivr, Seq};
@@ -59,15 +62,19 @@ pub async fn handle(mut session: OutboundSession, ctx: VmContext) {
     let uuid = session.uuid().to_owned();
     tracing::info!(%uuid, app, "interactive call");
     let result = match app.as_str() {
-        "vm_deposit" | "vm_check" | "vm_login" => run(&mut session, &ctx, &app).await,
+        "vm_deposit" | "vm_check" | "vm_login" => {
+            run(&mut session, &ctx, &app).await.map(|()| Outcome::Done)
+        }
+        "ivr" => run_menu(&mut session, &ctx).await,
         other => {
             tracing::warn!(%uuid, app = other, "unknown interactive application");
-            Ok(())
+            Ok(Outcome::Done)
         }
     };
     match result {
-        Ok(()) | Err(FlowError::Esl(EslError::Hangup)) => {}
-        Err(err) => tracing::error!(%uuid, error = %err, "voicemail flow failed"),
+        Ok(Outcome::Transferred) => return,
+        Ok(Outcome::Done) | Err(FlowError::Esl(EslError::Hangup)) => {}
+        Err(err) => tracing::error!(%uuid, app, error = %err, "interactive call failed"),
     }
     session.hangup("NORMAL_CLEARING").await;
 }
@@ -89,6 +96,19 @@ impl From<std::io::Error> for FlowError {
 }
 
 type FlowResult<T> = Result<T, FlowError>;
+
+async fn run_menu<C: Call>(call: &mut C, ctx: &VmContext) -> FlowResult<Outcome> {
+    let tenant = call
+        .var("talkops_tenant_id")
+        .and_then(|v| v.parse().ok())
+        .map(TenantId)
+        .ok_or_else(|| FlowError::Other("call without tenant".into()))?;
+    let menu = call
+        .var("talkops_ivr_id")
+        .and_then(|v| v.parse::<Uuid>().ok())
+        .ok_or_else(|| FlowError::Other("call without menu".into()))?;
+    crate::menu::run(call, ctx, tenant, menu).await
+}
 
 /// Runs one voicemail application on `call`.
 pub async fn run<C: Call>(call: &mut C, ctx: &VmContext, app: &str) -> FlowResult<()> {

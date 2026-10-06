@@ -707,3 +707,118 @@ async fn time_condition_routing(db: PgPool) {
     let (status, _) = f.admin.get("/api/v1/holidays?region=XX").await;
     assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
 }
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn ivr_routing_and_transfers(db: PgPool) {
+    let router = router(db);
+    let f = fixture(&router).await;
+    let id = |e: &Value| e["id"].as_str().unwrap().to_owned();
+
+    let (status, _) = f
+        .admin
+        .post(
+            "/api/v1/ivr-menus",
+            json!({"name": "Bad", "greeting_text": "x",
+                   "options": [{"digit": "12", "type": "extension", "id": id(&f.ext20)}]}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    let (status, menu) = f
+        .admin
+        .post(
+            "/api/v1/ivr-menus",
+            json!({"number": "70", "name": "Main", "greeting_text": "Willkommen bei Beispiel.",
+                   "options": [{"digit": "1", "type": "extension", "id": id(&f.ext20)}]}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{menu}");
+    assert_eq!(menu["greeting_status"], "pending");
+
+    // Calling the menu hands the call to TalkOps.
+    let a = internal_call(&router, &f.ext21, "70").await;
+    assert!(has(&a, "set", "talkops_app=ivr"), "{a:?}");
+    assert!(has(&a, "set", &format!("talkops_ivr_id={}", id(&menu))));
+    assert!(has(&a, "socket", "127.0.0.1:8084 async full"));
+
+    // Choices come back through the transfer context.
+    let transfer = |dest: String, tenant: bool| {
+        let router = router.clone();
+        async move {
+            let mut form = vec![
+                ("section", "dialplan".to_owned()),
+                ("Caller-Context", "talkops".to_owned()),
+                ("Caller-Destination-Number", dest),
+                ("variable_talkops_caller_name", "Anna".to_owned()),
+            ];
+            if tenant {
+                form.push((
+                    "variable_talkops_tenant_id",
+                    "00000000-0000-4000-8000-000000000001".to_owned(),
+                ));
+            }
+            let form: Vec<(&str, &str)> = form.iter().map(|(k, v)| (*k, v.as_str())).collect();
+            let (_, xml) = fs_post(&router, "/fs/xml", &form).await;
+            actions(&xml)
+        }
+    };
+    let a = transfer(format!("dest:extension:{}", id(&f.ext20)), true).await;
+    assert!(has(&a, "bridge", &ring20(&f)), "{a:?}");
+    let a = transfer("dial:20".into(), true).await;
+    assert!(has(&a, "bridge", &ring20(&f)), "{a:?}");
+    let a = transfer("dest:bogus:x".into(), true).await;
+    assert!(has(&a, "respond", "404 Not Found"));
+    let a = transfer("dial:20".into(), false).await;
+    assert!(has(&a, "respond", "403 Forbidden"));
+
+    // WAV upload replaces the TTS greeting.
+    let mut wav = Vec::new();
+    {
+        let spec = hound::WavSpec {
+            channels: 1,
+            sample_rate: 8000,
+            bits_per_sample: 16,
+            sample_format: hound::SampleFormat::Int,
+        };
+        let mut w = hound::WavWriter::new(std::io::Cursor::new(&mut wav), spec).unwrap();
+        for _ in 0..800 {
+            w.write_sample(0i16).unwrap();
+        }
+        w.finalize().unwrap();
+    }
+    let upload = |data: Vec<u8>| {
+        let router = router.clone();
+        let admin = (f.admin.cookie.clone(), f.admin.csrf.clone());
+        let path = format!("/api/v1/ivr-menus/{}/greeting", id(&menu));
+        async move {
+            let mut body =
+                b"--b\r\nContent-Disposition: form-data; name=\"file\"; filename=\"g.wav\"\r\n\r\n"
+                    .to_vec();
+            body.extend(data);
+            body.extend(b"\r\n--b--\r\n");
+            let res = raw(
+                &router,
+                axum::http::Request::post(path)
+                    .header("cookie", admin.0)
+                    .header("x-requested-with", "TalkOps")
+                    .header("x-csrf-token", admin.1)
+                    .header("content-type", "multipart/form-data; boundary=b")
+                    .body(axum::body::Body::from(body))
+                    .unwrap(),
+            )
+            .await;
+            let status = res.status();
+            (status, body_json(res).await)
+        }
+    };
+    let (status, _) = upload(b"not a wav".to_vec()).await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    let (status, m) = upload(wav).await;
+    assert_eq!(status, StatusCode::OK, "{m}");
+    assert_eq!(m["greeting"], "upload");
+    assert_eq!(m["greeting_status"], "ready");
+    let (status, _) = f
+        .admin
+        .get(&format!("/api/v1/ivr-menus/{}/greeting", id(&menu)))
+        .await;
+    assert_eq!(status, StatusCode::OK);
+}

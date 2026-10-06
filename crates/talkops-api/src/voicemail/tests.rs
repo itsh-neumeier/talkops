@@ -265,3 +265,94 @@ async fn login_with_pin_and_record_greeting(pool: PgPool) {
     );
     std::fs::remove_dir_all(dir).unwrap();
 }
+
+mod menus {
+    use super::*;
+    use crate::menu::{Outcome, run as run_menu};
+    use talkops_core::ivr::{self, IvrMenuInput, MenuOption};
+    use talkops_core::trunks::NumberDestination;
+
+    async fn menu(pool: &PgPool, ext: Uuid, direct: bool, timeout: bool) -> Uuid {
+        ivr::save(
+            pool,
+            T,
+            None,
+            &IvrMenuInput {
+                number: None,
+                name: "Main".into(),
+                language: None,
+                greeting: "tts".into(),
+                greeting_text: "Willkommen".into(),
+                timeout_secs: 4,
+                max_tries: 2,
+                direct_dial: direct,
+                options: vec![MenuOption {
+                    digit: "1".into(),
+                    kind: NumberDestination::Extension,
+                    id: Some(ext),
+                }],
+                timeout_type: if timeout {
+                    NumberDestination::Voicemail
+                } else {
+                    NumberDestination::None
+                },
+                timeout_id: timeout.then_some(ext),
+            },
+            &[],
+            "de",
+        )
+        .await
+        .unwrap()
+        .id
+    }
+
+    fn transfers(c: &FakeCall) -> Vec<String> {
+        c.executed
+            .iter()
+            .filter(|(a, _)| a == "transfer")
+            .map(|(_, d)| d.clone())
+            .collect()
+    }
+
+    #[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+    async fn choices_direct_dial_and_timeout(pool: PgPool) {
+        let (ctx, ext, dir) = setup(&pool).await;
+
+        // Option 1 → extension.
+        let id = menu(&pool, ext, false, false).await;
+        let mut c = call("ivr", None);
+        c.digits.push_back("1");
+        assert_eq!(
+            run_menu(&mut c, &ctx, T, id).await.unwrap(),
+            Outcome::Transferred
+        );
+        assert_eq!(transfers(&c), [format!("dest:extension:{ext} XML talkops")]);
+        let pgd = c
+            .executed
+            .iter()
+            .find(|(a, _)| a == "play_and_get_digits")
+            .unwrap();
+        assert!(pgd.1.starts_with("1 1 2 4000 none "), "{}", pgd.1);
+        assert!(pgd.1.contains("^[1]$"));
+
+        // No input, no timeout destination: goodbye, caller is hung up.
+        let mut c = call("ivr", None);
+        assert_eq!(run_menu(&mut c, &ctx, T, id).await.unwrap(), Outcome::Done);
+        assert!(transfers(&c).is_empty());
+
+        // Direct dial of an existing number; unknown numbers time out.
+        let id = menu(&pool, ext, true, true).await;
+        let mut c = call("ivr", None);
+        c.digits.push_back("20");
+        assert_eq!(
+            run_menu(&mut c, &ctx, T, id).await.unwrap(),
+            Outcome::Transferred
+        );
+        assert_eq!(transfers(&c), ["dial:20 XML talkops"]);
+        let mut c = call("ivr", None);
+        c.digits.push_back("99");
+        run_menu(&mut c, &ctx, T, id).await.unwrap();
+        assert_eq!(transfers(&c), [format!("dest:voicemail:{ext} XML talkops")]);
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+}

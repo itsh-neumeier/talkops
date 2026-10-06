@@ -9,6 +9,7 @@ pub mod dialing;
 pub mod error;
 pub mod extensions;
 pub mod holidays;
+pub mod ivr;
 pub mod jobs;
 pub mod mail;
 pub mod numbering;

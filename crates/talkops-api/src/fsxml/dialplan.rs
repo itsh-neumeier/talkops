@@ -11,7 +11,6 @@ use sqlx::PgPool;
 use talkops_core::dialing::{DialPlanSettings, Dialed, NumberFormat};
 use talkops_core::error::CoreResult;
 use talkops_core::extensions::{self, Extension};
-use talkops_core::numbering;
 use talkops_core::presets::{CallerIdHeader, Dtmf, PresetCatalog, Srtp};
 use talkops_core::ring_groups::{self, RingGroup};
 use talkops_core::settings::{self, TenantSettings};
@@ -19,9 +18,12 @@ use talkops_core::tenant::TenantId;
 use talkops_core::time_conditions;
 use talkops_core::trunks::{self, NumberDestination, OutboundRoute, gateway_name};
 use talkops_core::voicemail;
+use talkops_core::{ivr, numbering};
 use uuid::Uuid;
 
-use super::{CONTEXT_INTERNAL, CONTEXT_PUBLIC, SIP_DOMAIN, XmlWriter, sanitize_value};
+use super::{
+    CONTEXT_INTERNAL, CONTEXT_PUBLIC, CONTEXT_TRANSFER, SIP_DOMAIN, XmlWriter, sanitize_value,
+};
 
 /// The relevant parts of a dialplan lookup request.
 #[derive(Debug, Clone, Default)]
@@ -94,6 +96,7 @@ pub async fn plan(r: &Routing<'_>, req: &CallRequest) -> Vec<Action> {
     let result = match req.context.as_str() {
         CONTEXT_INTERNAL => plan_internal(r, req).await,
         CONTEXT_PUBLIC => plan_public(r, req).await,
+        CONTEXT_TRANSFER => plan_transfer(r, req).await,
         other => {
             tracing::warn!(context = other, "dialplan request for unknown context");
             Ok(reject("403 Forbidden"))
@@ -632,6 +635,45 @@ async fn plan_public(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Actio
     Ok(actions)
 }
 
+/// Target of a transfer from a TalkOps application:
+/// `dest:<kind>:<uuid>` or `dial:<internal number>`.
+pub fn transfer_target(kind: NumberDestination, id: Uuid) -> String {
+    let kind = serde_json::to_value(kind)
+        .ok()
+        .and_then(|v| v.as_str().map(str::to_owned))
+        .unwrap_or_default();
+    format!("dest:{kind}:{id}")
+}
+
+async fn plan_transfer(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Action>> {
+    let Some(tenant) = req.uuid_var("talkops_tenant_id").map(TenantId) else {
+        return Ok(reject("403 Forbidden"));
+    };
+    let name = req
+        .var("talkops_caller_name")
+        .unwrap_or_default()
+        .to_owned();
+    let target = if let Some(rest) = req.destination.strip_prefix("dest:") {
+        let (kind, id) = rest.split_once(':').unwrap_or_default();
+        let kind: Option<NumberDestination> = serde_json::from_value(serde_json::json!(kind)).ok();
+        kind.zip(id.parse::<Uuid>().ok())
+    } else if let Some(number) = req.destination.strip_prefix("dial:") {
+        numbering::resolve(r.pool, tenant, number).await?
+    } else {
+        None
+    };
+    let Some((kind, id)) = target else {
+        tracing::warn!(destination = %sanitize_value(&req.destination), "invalid transfer target");
+        return Ok(reject("404 Not Found"));
+    };
+    let mut a = vec![set("talkops_tenant_id", tenant.to_string())];
+    if kind == NumberDestination::Extension {
+        a.push(set("talkops_dest_extension_id", id.to_string()));
+    }
+    a.extend(route_to(r, tenant, kind, Some(id), &sanitize_value(&name), 1).await?);
+    Ok(a)
+}
+
 /// Destinations may point to each other (group → fallback → menu …); this
 /// bounds the chain so misconfigurations cannot loop.
 const MAX_DEPTH: u8 = 5;
@@ -673,6 +715,17 @@ pub fn route_to<'a>(
                 Ok(group) => ring_group(r, tenant, &group, caller_name, depth).await,
                 Err(_) => unavailable(),
             },
+            NumberDestination::Ivr => {
+                if ivr::get(r.pool, tenant, id).await.is_err() {
+                    return unavailable();
+                }
+                Ok(vec![
+                    set("talkops_app", "ivr"),
+                    set("talkops_ivr_id", id.to_string()),
+                    set("verbose_events", "true"),
+                    ("socket", format!("{} async full", r.socket)),
+                ])
+            }
             NumberDestination::TimeCondition => {
                 let Ok(tc) = time_conditions::get(r.pool, tenant, id).await else {
                     return unavailable();

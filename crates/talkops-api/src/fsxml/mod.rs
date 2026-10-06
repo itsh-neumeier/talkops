@@ -20,6 +20,9 @@ pub const SIP_DOMAIN: &str = "talkops.local";
 pub const CONTEXT_INTERNAL: &str = "internal";
 /// Context for calls arriving from trunks.
 pub const CONTEXT_PUBLIC: &str = "public";
+/// Transfers from TalkOps applications (IVR choices) to a destination;
+/// never assigned to incoming calls, so callers cannot select it.
+pub const CONTEXT_TRANSFER: &str = "talkops";
 
 pub const NOT_FOUND: &str = r#"<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <document type="freeswitch/xml">

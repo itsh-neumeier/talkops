@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE scenario SYSTEM "sipp.dtd">
+<!-- Calls the IVR menu [field0], presses 1 (RFC 2833) after the greeting,
+     then talks until TalkOps hangs up or 40 s have passed. -->
+<scenario name="ivr call">
+  <send retrans="500">
+    <![CDATA[
+      INVITE sip:[field0]@talkops.local SIP/2.0
+      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]
+      From: <sip:[service]@talkops.local>;tag=[pid]SIPpTag09[call_number]
+      To: <sip:[field0]@talkops.local>
+      Call-ID: [call_id]
+      CSeq: 1 INVITE
+      Contact: <sip:[service]@[local_ip]:[local_port];transport=[transport]>
+      Max-Forwards: 70
+      User-Agent: SIPp
+      Content-Type: application/sdp
+      Content-Length: [len]
+
+      v=0
+      o=user1 53655765 2353687637 IN IP[local_ip_type] [local_ip]
+      s=-
+      c=IN IP[media_ip_type] [media_ip]
+      t=0 0
+      m=audio [media_port] RTP/AVP 0 8 101
+      a=rtpmap:0 PCMU/8000
+      a=rtpmap:8 PCMA/8000
+      a=rtpmap:101 telephone-event/8000
+      a=fmtp:101 0-15
+
+    ]]>
+  </send>
+  <recv response="100" optional="true"/>
+  <recv response="407" auth="true"/>
+  <send>
+    <![CDATA[
+      ACK sip:[field0]@talkops.local SIP/2.0
+      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]
+      From: <sip:[service]@talkops.local>;tag=[pid]SIPpTag09[call_number]
+      To: <sip:[field0]@talkops.local>[peer_tag_param]
+      Call-ID: [call_id]
+      CSeq: 1 ACK
+      Max-Forwards: 70
+      Content-Length: 0
+
+    ]]>
+  </send>
+  <send retrans="500">
+    <![CDATA[
+      INVITE sip:[field0]@talkops.local SIP/2.0
+      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]
+      From: <sip:[service]@talkops.local>;tag=[pid]SIPpTag09[call_number]
+      To: <sip:[field0]@talkops.local>
+      Call-ID: [call_id]
+      CSeq: 2 INVITE
+      Contact: <sip:[service]@[local_ip]:[local_port];transport=[transport]>
+      [authentication]
+      Max-Forwards: 70
+      User-Agent: SIPp
+      Content-Type: application/sdp
+      Content-Length: [len]
+
+      v=0
+      o=user1 53655765 2353687637 IN IP[local_ip_type] [local_ip]
+      s=-
+      c=IN IP[media_ip_type] [media_ip]
+      t=0 0
+      m=audio [media_port] RTP/AVP 0 8 101
+      a=rtpmap:0 PCMU/8000
+      a=rtpmap:8 PCMA/8000
+      a=rtpmap:101 telephone-event/8000
+      a=fmtp:101 0-15
+
+    ]]>
+  </send>
+  <recv response="100" optional="true"/>
+  <recv response="180" optional="true"/>
+  <recv response="183" optional="true"/>
+  <recv response="200" rtd="true" rrs="true"/>
+  <send>
+    <![CDATA[
+      ACK [next_url] SIP/2.0
+      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]
+      From: <sip:[service]@talkops.local>;tag=[pid]SIPpTag09[call_number]
+      [last_To:]
+      Call-ID: [call_id]
+      CSeq: 2 ACK
+      Max-Forwards: 70
+      Content-Length: 0
+
+    ]]>
+  </send>
+  <nop>
+    <action>
+      <exec rtp_stream="tone.ulaw,-1,0"/>
+    </action>
+  </nop>
+  <!-- Press 1 while the menu waits for input. -->
+  <pause milliseconds="3000"/>
+  <nop>
+    <action>
+      <exec play_pcap_audio="/usr/share/sip-tester/dtmf_2833_1.pcap"/>
+    </action>
+  </nop>
+  <recv request="BYE" timeout="40000" ontimeout="hangup"/>
+  <send next="end">
+    <![CDATA[
+      SIP/2.0 200 OK
+      [last_Via:]
+      [last_From:]
+      [last_To:]
+      [last_Call-ID:]
+      [last_CSeq:]
+      Content-Length: 0
+
+    ]]>
+  </send>
+  <label id="hangup"/>
+  <send retrans="500">
+    <![CDATA[
+      BYE [next_url] SIP/2.0
+      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]
+      From: <sip:[service]@talkops.local>;tag=[pid]SIPpTag09[call_number]
+      [last_To:]
+      Call-ID: [call_id]
+      CSeq: 3 BYE
+      Max-Forwards: 70
+      Content-Length: 0
+
+    ]]>
+  </send>
+  <recv response="200" crlf="true"/>
+  <label id="end"/>
+  <pause milliseconds="100"/>
+</scenario>

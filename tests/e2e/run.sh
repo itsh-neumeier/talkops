@@ -5,7 +5,9 @@
 # 21-1 with SIPp, calls it from 20-1 and checks the call record. Also checks
 # that a wrong SIP password is rejected, that DND rejects calls as busy and
 # that a provisioned Yealink phone gets its configuration and that an
-# unreachable extension's voicemail answers and stores the message.
+# unreachable extension's voicemail answers and stores the message, that a
+# ring group falls back, an IVR menu routes a pressed key and a queue
+# offers its caller to a registered agent.
 #
 #   BASE=http://127.0.0.1:8080 SIP_HOST=192.168.1.10 tests/e2e/run.sh
 set -euo pipefail
@@ -130,5 +132,52 @@ MSG=$(api GET "/api/v1/voicemail/messages?extension_id=$EXT22" | jq -r '.[0].id'
 curl -sf -b "$COOKIES" -o "$WORK/vm.wav" "$BASE/api/v1/voicemail/messages/$MSG/audio" \
     || fail "voicemail recording cannot be downloaded"
 [ "$(head -c 4 "$WORK/vm.wav")" = RIFF ] || fail "voicemail recording is not a WAV file"
+
+vm_count() {
+    api GET "/api/v1/voicemail/messages?extension_id=$EXT22" | jq length
+}
+wait_vm_count() { # expected
+    for _ in $(seq 1 15); do
+        [ "$(vm_count)" -ge "$1" ] && return 0
+        sleep 1
+    done
+    return 1
+}
+
+log "ring group without reachable members falls back to voicemail"
+EXT21=$(api GET /api/v1/extensions | jq -r '.[] | select(.number == "21") | .id')
+api POST /api/v1/ring-groups "{\"number\":\"50\",\"name\":\"E2E group\",\"members\":[\"$EXT21\"],\"ring_timeout_secs\":5,\"fallback_type\":\"voicemail\",\"fallback_id\":\"$EXT22\"}" >/dev/null \
+    || fail "create ring group"
+printf 'SEQUENTIAL\n50;\n' > "$WORK/group.csv"
+(cd "$DIR" && sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/call_voicemail.xml" -inf "$WORK/group.csv" -s "$CALLER" -au "$CALLER" -ap "$CALLER_PW" \
+    -m 1 -p 5097 -min_rtp_port 16400 -max_rtp_port 16450 -i "$SIP_HOST" -timeout 60 -timeout_error -trace_err -error_file "$WORK/group.log" >/dev/null) \
+    || { cat "$WORK/group.log" 2>/dev/null; fail "ring group call failed"; }
+wait_vm_count 2 || fail "ring group fallback did not reach voicemail"
+
+log "IVR menu routes key 1"
+api POST /api/v1/ivr-menus "{\"number\":\"70\",\"name\":\"E2E menu\",\"greeting_text\":\"Drücken Sie die 1.\",\"timeout_secs\":4,\"options\":[{\"digit\":\"1\",\"type\":\"voicemail\",\"id\":\"$EXT22\"}]}" >/dev/null \
+    || fail "create IVR menu"
+printf 'SEQUENTIAL\n70;\n' > "$WORK/ivr.csv"
+(cd "$DIR" && sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/call_ivr.xml" -inf "$WORK/ivr.csv" -s "$CALLER" -au "$CALLER" -ap "$CALLER_PW" \
+    -m 1 -p 5098 -min_rtp_port 16500 -max_rtp_port 16550 -i "$SIP_HOST" -timeout 60 -timeout_error -trace_err -error_file "$WORK/ivr.log" >/dev/null) \
+    || { cat "$WORK/ivr.log" 2>/dev/null; fail "IVR call failed"; }
+wait_vm_count 3 || fail "IVR choice did not reach voicemail"
+
+log "queue offers the call to an agent"
+api POST /api/v1/queues "{\"number\":\"80\",\"name\":\"E2E queue\",\"strategy\":\"ring-all\",\"members\":[\"$EXT21\"]}" >/dev/null \
+    || fail "create queue"
+sipp -sn uas -p 5094 -i "$SIP_HOST" -m 1 -min_rtp_port 16600 -max_rtp_port 16650 -timeout 60 -timeout_error \
+    -trace_err -error_file "$WORK/agent.log" >"$WORK/agent.out" 2>&1 &
+AGENT_PID=$!
+sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/register.xml" -set contact_port 5094 -s "$CALLEE" -au "$CALLEE" -ap "$CALLEE_PW" \
+    -m 1 -p 5092 -i "$SIP_HOST" -timeout 20 -timeout_error -trace_err -error_file "$WORK/register2.log" >/dev/null \
+    || { cat "$WORK/register2.log" 2>/dev/null; fail "agent registration failed"; }
+# The queue sync adds the agent within seconds of the change.
+sleep 3
+printf 'SEQUENTIAL\n80;\n' > "$WORK/queue.csv"
+(cd "$DIR" && sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/call_hold.xml" -inf "$WORK/queue.csv" -s "$CALLER" -au "$CALLER" -ap "$CALLER_PW" \
+    -m 1 -p 5099 -min_rtp_port 16700 -max_rtp_port 16750 -i "$SIP_HOST" -timeout 60 -timeout_error -trace_err -error_file "$WORK/queue.log" >/dev/null) \
+    || { cat "$WORK/queue.log" 2>/dev/null; fail "queue call failed"; }
+wait "$AGENT_PID" || { cat "$WORK/agent.log" 2>/dev/null; fail "agent did not receive the queue call"; }
 
 log "all end-to-end checks passed"

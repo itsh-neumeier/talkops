@@ -1,9 +1,11 @@
 //! Media worker: claims TTS and transcription jobs from the Postgres job queue.
 //!
 //! On start it renders missing system prompts with Piper; afterwards it runs
-//! TTS greeting jobs (transcription follows in phase 5). Unknown job kinds are
-//! never claimed.
+//! TTS jobs and transcriptions (whisper.cpp) in two independent lanes, so a
+//! long transcription never delays a greeting. Unknown job kinds are never
+//! claimed.
 
+mod transcribe;
 mod tts;
 
 use std::path::{Path, PathBuf};
@@ -14,13 +16,19 @@ use clap::Parser;
 use sqlx::PgPool;
 use sqlx::postgres::PgListener;
 use talkops_core::jobs::{self, Job};
+use talkops_core::recordings::{self, Source};
 use talkops_core::telemetry::{self, LogFormat};
-use talkops_core::{ivr, voicemail};
+use talkops_core::{ivr, settings, voicemail};
+use tokio::sync::Notify;
 
+use crate::transcribe::Whisper;
 use crate::tts::Piper;
 
-/// Job kinds this worker can execute.
-const SUPPORTED_KINDS: &[&str] = &[voicemail::JOB_TTS_GREETING, ivr::JOB_TTS_IVR];
+/// Job kinds per lane; each lane works through its jobs one at a time.
+const LANES: &[&[&str]] = &[
+    &[voicemail::JOB_TTS_GREETING, ivr::JOB_TTS_IVR],
+    &[recordings::JOB_TRANSCRIBE],
+];
 
 /// Running jobs without a heartbeat for this long are handed to another worker.
 const LEASE_TIMEOUT_SECS: i64 = 30 * 60;
@@ -75,6 +83,39 @@ struct Args {
     )]
     voicemail_dir: PathBuf,
 
+    /// Shared recordings volume (call recordings).
+    #[arg(
+        long,
+        env = "TALKOPS_RECORDINGS_DIR",
+        default_value = "/var/lib/talkops/recordings"
+    )]
+    recordings_dir: PathBuf,
+
+    /// whisper.cpp command line binary.
+    #[arg(
+        long,
+        env = "TALKOPS_WHISPER_BIN",
+        default_value = "/opt/whisper/whisper-cli"
+    )]
+    whisper_bin: PathBuf,
+
+    /// Whisper model (`ggml-<name>.bin`); `base` and `small` are downloaded
+    /// automatically on first use.
+    #[arg(long, env = "TALKOPS_WHISPER_MODEL", default_value = "base")]
+    whisper_model: String,
+
+    /// CPU threads per transcription (default: up to 4).
+    #[arg(long, env = "TALKOPS_WHISPER_THREADS")]
+    whisper_threads: Option<usize>,
+
+    /// Directory for downloaded models.
+    #[arg(
+        long,
+        env = "TALKOPS_MODELS_DIR",
+        default_value = "/var/lib/talkops/models"
+    )]
+    models_dir: PathBuf,
+
     #[arg(long, env = "TALKOPS_LOG_FORMAT", default_value = "pretty")]
     log_format: LogFormat,
 
@@ -118,38 +159,67 @@ async fn main() -> anyhow::Result<()> {
         }
     };
 
-    let ctx = Ctx {
+    let threads = args.whisper_threads.unwrap_or_else(|| {
+        std::thread::available_parallelism()
+            .map(|n| n.get().min(4))
+            .unwrap_or(2)
+    });
+    let ctx = std::sync::Arc::new(Ctx {
         pool: pool.clone(),
         piper: Piper {
             bin: args.piper_bin.clone(),
             voices_dir: args.voices_dir.clone(),
         },
+        whisper: Whisper {
+            bin: args.whisper_bin.clone(),
+            models_dir: args.models_dir.clone(),
+            model: args.whisper_model.clone(),
+            threads: threads.max(1),
+        },
         voicemail_dir: args.voicemail_dir.clone(),
         sounds_dir: args.sounds_dir.clone(),
-    };
+        recordings_dir: args.recordings_dir.clone(),
+    });
     match tts::ensure_prompts(&ctx.piper, &args.sounds_dir).await {
         Ok(0) => {}
         Ok(n) => tracing::info!(count = n, "system prompts rendered"),
         Err(err) => tracing::error!(error = %err, "rendering system prompts failed"),
     }
 
+    let wake = std::sync::Arc::new(Notify::new());
     let poll = Duration::from_secs(args.poll_secs);
+    for kinds in LANES {
+        let (ctx, wake, worker_id) = (ctx.clone(), wake.clone(), args.worker_id.clone());
+        let heartbeat = args.heartbeat_file.clone();
+        tokio::spawn(async move {
+            loop {
+                let woken = wake.notified();
+                if let Err(err) = drain_queue(&ctx, &worker_id, kinds).await {
+                    tracing::error!(error = %err, "job loop error");
+                } else if kinds == &LANES[0] {
+                    // The fast lane proves liveness; transcriptions may run long.
+                    touch(&heartbeat);
+                }
+                tokio::select! {
+                    _ = woken => {}
+                    _ = tokio::time::sleep(poll) => {}
+                }
+            }
+        });
+    }
+
     let shutdown = shutdown_signal();
     tokio::pin!(shutdown);
     loop {
-        if let Err(err) = drain_queue(&ctx, &args.worker_id).await {
-            tracing::error!(error = %err, "job loop error");
-        } else {
-            touch(&args.heartbeat_file);
-        }
         tokio::select! {
             _ = &mut shutdown => break,
-            notification = tokio::time::timeout(poll, listener.recv()) => {
-                if let Ok(Err(err)) = notification {
+            notification = listener.recv() => match notification {
+                Ok(_) => wake.notify_waiters(),
+                Err(err) => {
                     tracing::warn!(error = %err, "LISTEN connection error");
                     tokio::time::sleep(Duration::from_secs(1)).await;
                 }
-            }
+            },
         }
     }
     tracing::info!("media worker stopped");
@@ -160,20 +230,19 @@ async fn main() -> anyhow::Result<()> {
 struct Ctx {
     pool: PgPool,
     piper: Piper,
+    whisper: Whisper,
     voicemail_dir: PathBuf,
     sounds_dir: PathBuf,
+    recordings_dir: PathBuf,
 }
 
-async fn drain_queue(ctx: &Ctx, worker_id: &str) -> anyhow::Result<()> {
+async fn drain_queue(ctx: &Ctx, worker_id: &str, kinds: &[&str]) -> anyhow::Result<()> {
     let pool = &ctx.pool;
     let recovered = jobs::requeue_stale(pool, LEASE_TIMEOUT_SECS).await?;
     if recovered > 0 {
         tracing::warn!(recovered, "re-queued jobs with expired lease");
     }
-    if SUPPORTED_KINDS.is_empty() {
-        return Ok(());
-    }
-    while let Some(job) = jobs::claim(pool, worker_id, SUPPORTED_KINDS).await? {
+    while let Some(job) = jobs::claim(pool, worker_id, kinds).await? {
         let id = job.id;
         match run(ctx, &job).await {
             Ok(()) => jobs::complete(pool, id).await?,
@@ -190,6 +259,7 @@ async fn run(ctx: &Ctx, job: &Job) -> anyhow::Result<()> {
     match job.kind.as_str() {
         voicemail::JOB_TTS_GREETING => tts_greeting(ctx, job).await,
         ivr::JOB_TTS_IVR => tts_ivr(ctx, job).await,
+        recordings::JOB_TRANSCRIBE => transcribe(ctx, job).await,
         other => anyhow::bail!("no handler for job kind `{other}`"),
     }
 }
@@ -271,4 +341,72 @@ async fn tts_ivr(ctx: &Ctx, job: &Job) -> anyhow::Result<()> {
         .await;
     ivr::set_greeting_status(&ctx.pool, p.owner, &p.text, result.is_ok()).await?;
     result
+}
+
+/// Payload of `transcribe` jobs.
+#[derive(serde::Deserialize)]
+struct TranscribePayload {
+    recording_id: Option<uuid::Uuid>,
+    voicemail_id: Option<uuid::Uuid>,
+}
+
+/// Transcribes a call recording or voicemail. A voicemail's e-mail waits for
+/// the transcript and is sent once it is there or has finally failed.
+async fn transcribe(ctx: &Ctx, job: &Job) -> anyhow::Result<()> {
+    let p: TranscribePayload =
+        serde_json::from_value(job.payload.clone()).context("invalid payload")?;
+    let tenant = job.tenant_id;
+    let (source, file, language) = match (p.recording_id, p.voicemail_id) {
+        (Some(id), None) => {
+            let rec = recordings::get(&ctx.pool, tenant, id).await?;
+            let lang = settings::get(&ctx.pool, tenant).await?.default_language;
+            (
+                Source::Recording(id),
+                ctx.recordings_dir.join(rec.file),
+                lang,
+            )
+        }
+        (None, Some(id)) => {
+            let msg = voicemail::get_message(&ctx.pool, tenant, id).await?;
+            let lang = match voicemail::get_box(&ctx.pool, tenant, msg.extension_id)
+                .await?
+                .language
+            {
+                Some(lang) => lang,
+                None => settings::get(&ctx.pool, tenant).await?.default_language,
+            };
+            (
+                Source::Voicemail(id),
+                ctx.voicemail_dir.join(msg.file),
+                lang,
+            )
+        }
+        _ => anyhow::bail!("payload needs recording_id or voicemail_id"),
+    };
+    let language = talkops_core::prompts::language(&language);
+    let started = std::time::Instant::now();
+    let result = ctx.whisper.transcribe(&file, language).await;
+    let finished = match &result {
+        Ok(segments) => {
+            recordings::save_transcript(&ctx.pool, tenant, source, language, segments).await?;
+            tracing::info!(
+                ?source,
+                segments = segments.len(),
+                secs = started.elapsed().as_secs(),
+                "transcribed"
+            );
+            true
+        }
+        Err(_) if job.attempts >= job.max_attempts => {
+            recordings::transcript_failed(&ctx.pool, source).await?;
+            true
+        }
+        Err(_) => false,
+    };
+    if let (true, Source::Voicemail(id)) = (finished, source) {
+        let msg = voicemail::get_message(&ctx.pool, tenant, id).await?;
+        let mut conn = ctx.pool.acquire().await?;
+        voicemail::enqueue_mail(&mut conn, tenant, &msg).await?;
+    }
+    result.map(|_| ())
 }

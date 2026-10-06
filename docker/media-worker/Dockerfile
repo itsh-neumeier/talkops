@@ -1,8 +1,10 @@
 # syntax=docker/dockerfile:1
 #
 # TalkOps media worker: TTS (Piper) and transcription (whisper.cpp) jobs.
-# Piper and its voices are pinned by checksum; whisper.cpp and the CUDA
-# variant follow in phase 5. Build context: repository root.
+# Piper and its voices are pinned by checksum, whisper.cpp by tag and commit.
+# Whisper models are downloaded (and verified) on first use into the models
+# volume, see crates/talkops-media-worker/src/transcribe.rs.
+# Build context: repository root.
 
 ARG RUST_VERSION=1.97
 ARG DEBIAN_RELEASE=trixie
@@ -46,13 +48,36 @@ RUN set -eux; \
       "141d612cc0a95ed7efc1ca936b845c2364967f2e9217c5dbfcf69fc4d6c65860  en_US-ljspeech-medium.onnx.json" \
       | sha256sum -c -
 
+# whisper.cpp v1.9.4 (MIT, https://github.com/ggml-org/whisper.cpp). On
+# amd64 every CPU variant is built as a backend library; the best one for
+# the host CPU is picked at runtime, so the image runs on any x86-64 box.
+FROM debian:${DEBIAN_RELEASE}-slim AS whisper
+ARG TARGETARCH
+ARG WHISPER_TAG=v1.9.4
+ARG WHISPER_COMMIT=927cfce34f31707e17f2bff35c349632fb9e2c3a
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      ca-certificates git cmake make g++ libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+RUN set -eux; \
+    git clone --depth 1 --branch "$WHISPER_TAG" https://github.com/ggml-org/whisper.cpp /src; \
+    test "$(git -C /src rev-parse HEAD)" = "$WHISPER_COMMIT"; \
+    variants=OFF; [ "$TARGETARCH" = amd64 ] && variants=ON; \
+    cmake -S /src -B /build -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON \
+      -DGGML_BACKEND_DL=ON -DGGML_CPU_ALL_VARIANTS=$variants -DGGML_NATIVE=OFF \
+      -DWHISPER_BUILD_TESTS=OFF -DWHISPER_BUILD_SERVER=OFF \
+      -DCMAKE_INSTALL_RPATH='$ORIGIN' -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON; \
+    cmake --build /build --target whisper-cli -j"$(nproc)"; \
+    mkdir -p /opt/whisper; \
+    cp -a /build/bin/whisper-cli /build/bin/*.so* /opt/whisper/; \
+    cp /src/LICENSE /opt/whisper/LICENSE
+
 FROM debian:${DEBIAN_RELEASE}-slim
 LABEL org.opencontainers.image.title="talkops-media-worker" \
       org.opencontainers.image.description="TalkOps TTS and transcription worker" \
       org.opencontainers.image.source="https://github.com/itsh-neumeier/talkops" \
       org.opencontainers.image.licenses="AGPL-3.0-only"
 
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates tzdata \
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates tzdata curl libgomp1 \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --system --gid 10001 talkops \
     && useradd --system --uid 10001 --gid talkops --no-create-home --shell /usr/sbin/nologin talkops \
@@ -62,6 +87,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
 
 COPY --from=piper /opt/piper /opt/piper
 COPY --from=piper /voices /usr/share/talkops/voices
+COPY --from=whisper /opt/whisper /opt/whisper
 COPY --from=build /usr/local/bin/talkops-media-worker /usr/local/bin/talkops-media-worker
 
 ENV TALKOPS_LOG_FORMAT=json \

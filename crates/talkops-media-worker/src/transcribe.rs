@@ -1,0 +1,399 @@
+//! Local transcription with whisper.cpp (`whisper-cli`).
+//!
+//! Call recordings are stereo (left: caller, right: called party); each
+//! channel is transcribed on its own and the segments are merged by time,
+//! which gives speaker labels without diarization. Audio is converted to
+//! 16 kHz mono 16-bit PCM, the only input whisper.cpp accepts.
+//!
+//! Models are downloaded on first use into the models volume and verified
+//! against pinned SHA-256 sums. Any other model must be placed there by the
+//! administrator (`ggml-<name>.bin`).
+
+use std::io::Read;
+use std::path::{Path, PathBuf};
+
+use anyhow::{Context, bail};
+use serde::Deserialize;
+use sha2::{Digest, Sha256};
+use talkops_core::recordings::Segment;
+use tokio::process::Command;
+
+const SAMPLE_RATE: u32 = 16_000;
+const MODEL_URL: &str = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main";
+
+/// Models that are downloaded automatically: name, SHA-256, size.
+const KNOWN_MODELS: &[(&str, &str, u64)] = &[
+    (
+        "base",
+        "60ed5bc3dd14eea856493d334349b405782ddcaf0028d4b5df4088345fba2efe",
+        147_951_465,
+    ),
+    (
+        "small",
+        "1be3a9b2063867b937e64e2ec7483364a79917e157fa98c5d94b5c1fffea987b",
+        487_601_967,
+    ),
+];
+
+#[derive(Debug, Clone)]
+pub struct Whisper {
+    pub bin: PathBuf,
+    pub models_dir: PathBuf,
+    pub model: String,
+    pub threads: usize,
+}
+
+impl Whisper {
+    fn model_file(&self) -> PathBuf {
+        self.models_dir.join(format!("ggml-{}.bin", self.model))
+    }
+
+    /// Returns the model file, downloading a known model if it is missing.
+    pub async fn ensure_model(&self) -> anyhow::Result<PathBuf> {
+        let file = self.model_file();
+        if file.is_file() {
+            return Ok(file);
+        }
+        let Some(&(_, sum, size)) = KNOWN_MODELS.iter().find(|(n, _, _)| *n == self.model) else {
+            bail!(
+                "whisper model {} not found; place it there or use one of: {}",
+                file.display(),
+                KNOWN_MODELS
+                    .iter()
+                    .map(|m| m.0)
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            );
+        };
+        tokio::fs::create_dir_all(&self.models_dir).await?;
+        let tmp = file.with_extension("part");
+        tracing::info!(model = %self.model, bytes = size, "downloading whisper model");
+        let status = Command::new("curl")
+            .args(["-fsSL", "--retry", "3", "-o"])
+            .arg(&tmp)
+            .arg(format!("{MODEL_URL}/ggml-{}.bin", self.model))
+            .status()
+            .await
+            .context("run curl")?;
+        if !status.success() {
+            let _ = tokio::fs::remove_file(&tmp).await;
+            bail!("downloading whisper model failed ({status})");
+        }
+        let actual = {
+            let tmp = tmp.clone();
+            tokio::task::spawn_blocking(move || sha256_file(&tmp)).await??
+        };
+        if actual != sum {
+            let _ = tokio::fs::remove_file(&tmp).await;
+            bail!("whisper model checksum mismatch: {actual}");
+        }
+        tokio::fs::rename(&tmp, &file).await?;
+        tracing::info!(model = %self.model, "whisper model ready");
+        Ok(file)
+    }
+
+    /// Transcribes a WAV file. Stereo files are split into `caller` and
+    /// `called`; mono files get no speaker.
+    pub async fn transcribe(&self, wav: &Path, language: &str) -> anyhow::Result<Vec<Segment>> {
+        let model = self.ensure_model().await?;
+        let work = tempdir()?;
+        let channels = {
+            let (wav, work) = (wav.to_owned(), work.path.clone());
+            tokio::task::spawn_blocking(move || prepare(&wav, &work)).await??
+        };
+        let mut segments = Vec::new();
+        for (speaker, file, samples) in channels {
+            let out = file.with_extension("");
+            let output = Command::new(&self.bin)
+                .arg("-m")
+                .arg(&model)
+                .arg("-f")
+                .arg(&file)
+                .args(["-l", language, "-t", &self.threads.to_string()])
+                .args(["-np", "-oj", "-of"])
+                .arg(&out)
+                .output()
+                .await
+                .with_context(|| format!("run {}", self.bin.display()))?;
+            if !output.status.success() {
+                bail!(
+                    "whisper failed ({}): {}",
+                    output.status,
+                    String::from_utf8_lossy(&output.stderr)
+                        .lines()
+                        .last()
+                        .unwrap_or_default()
+                );
+            }
+            let json = tokio::fs::read(out.with_extension("json"))
+                .await
+                .context("whisper output")?;
+            let mut parsed = parse_output(&json, speaker)?;
+            refine_starts(&mut parsed, &samples);
+            segments.extend(parsed);
+        }
+        segments.sort_by(|a, b| a.start.total_cmp(&b.start));
+        Ok(segments)
+    }
+}
+
+fn sha256_file(path: &Path) -> anyhow::Result<String> {
+    let mut file = std::fs::File::open(path)?;
+    let mut hasher = Sha256::new();
+    let mut buf = vec![0; 1 << 20];
+    loop {
+        let n = file.read(&mut buf)?;
+        if n == 0 {
+            break;
+        }
+        hasher.update(&buf[..n]);
+    }
+    Ok(hex::encode(hasher.finalize()))
+}
+
+/// A temporary directory removed on drop.
+struct TempDir {
+    path: PathBuf,
+}
+
+fn tempdir() -> anyhow::Result<TempDir> {
+    let path = std::env::temp_dir().join(format!("talkops-whisper-{}", uuid::Uuid::new_v4()));
+    std::fs::create_dir_all(&path)?;
+    Ok(TempDir { path })
+}
+
+impl Drop for TempDir {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.path);
+    }
+}
+
+/// Peak below which a channel counts as silent (no speech to transcribe).
+const SILENCE_PEAK: f32 = 0.01;
+
+/// Splits a WAV file into 16 kHz mono files: one per non-silent channel of a
+/// stereo recording (`caller`, `called`), or one without speaker.
+fn prepare(wav: &Path, work: &Path) -> anyhow::Result<Vec<(&'static str, PathBuf, Vec<f32>)>> {
+    let mut reader =
+        hound::WavReader::open(wav).with_context(|| format!("open {}", wav.display()))?;
+    let spec = reader.spec();
+    let samples: Vec<f32> = match spec.sample_format {
+        hound::SampleFormat::Int => {
+            let scale = (1i64 << (spec.bits_per_sample - 1)) as f32;
+            reader
+                .samples::<i32>()
+                .map(|s| s.map(|s| s as f32 / scale))
+                .collect::<Result<_, _>>()?
+        }
+        hound::SampleFormat::Float => reader.samples::<f32>().collect::<Result<_, _>>()?,
+    };
+    let n = spec.channels as usize;
+    anyhow::ensure!(n > 0, "WAV without channels");
+    let names: &[&'static str] = if n == 2 { &["caller", "called"] } else { &[""] };
+    let mut out = Vec::new();
+    for (i, name) in names.iter().enumerate() {
+        let channel: Vec<f32> = if names.len() == 1 {
+            // Mono, or more channels than expected: mix down.
+            samples
+                .chunks(n)
+                .map(|f| f.iter().sum::<f32>() / n as f32)
+                .collect()
+        } else {
+            samples.iter().skip(i).step_by(n).copied().collect()
+        };
+        if channel.iter().all(|s| s.abs() < SILENCE_PEAK) {
+            continue;
+        }
+        let file = work.join(format!("ch{i}.wav"));
+        let resampled = resample(&channel, spec.sample_rate, SAMPLE_RATE);
+        write_wav(&file, &resampled)?;
+        out.push((*name, file, resampled));
+    }
+    Ok(out)
+}
+
+/// Whisper often starts a segment at the end of the previous one, i.e. at
+/// the beginning of the silence before it. For a correct order of both
+/// speakers, move each start to the first loud 20 ms frame of the segment.
+fn refine_starts(segments: &mut [Segment], samples: &[f32]) {
+    const FRAME: usize = (SAMPLE_RATE / 50) as usize;
+    let rms: Vec<f32> = samples
+        .chunks(FRAME)
+        .map(|f| (f.iter().map(|s| s * s).sum::<f32>() / f.len() as f32).sqrt())
+        .collect();
+    let threshold = (rms.iter().copied().fold(0.0, f32::max) * 0.1).max(0.003);
+    for seg in segments {
+        let first = (seg.start * 50.0) as usize;
+        let last = ((seg.end * 50.0) as usize).min(rms.len());
+        if let Some(i) = (first..last).find(|&i| rms[i] >= threshold) {
+            seg.start = i as f32 / 50.0;
+        }
+    }
+}
+
+/// Linear resampling; when downsampling, a moving average first suppresses
+/// most of what would alias (good enough for speech recognition).
+fn resample(input: &[f32], from: u32, to: u32) -> Vec<f32> {
+    if from == to || input.is_empty() {
+        return input.to_vec();
+    }
+    let ratio = from as f64 / to as f64;
+    let smoothed;
+    let src = if ratio > 1.0 {
+        let width = ratio.ceil() as usize;
+        let mut acc = 0.0f32;
+        smoothed = input
+            .iter()
+            .enumerate()
+            .map(|(i, &s)| {
+                acc += s;
+                if i >= width {
+                    acc -= input[i - width];
+                }
+                acc / (i + 1).min(width) as f32
+            })
+            .collect::<Vec<_>>();
+        &smoothed[..]
+    } else {
+        input
+    };
+    let len = ((input.len() as f64) / ratio).floor() as usize;
+    (0..len)
+        .map(|i| {
+            let pos = i as f64 * ratio;
+            let idx = pos.floor() as usize;
+            let frac = (pos - idx as f64) as f32;
+            let a = src[idx.min(src.len() - 1)];
+            let b = src[(idx + 1).min(src.len() - 1)];
+            a + (b - a) * frac
+        })
+        .collect()
+}
+
+fn write_wav(path: &Path, samples: &[f32]) -> anyhow::Result<()> {
+    let spec = hound::WavSpec {
+        channels: 1,
+        sample_rate: SAMPLE_RATE,
+        bits_per_sample: 16,
+        sample_format: hound::SampleFormat::Int,
+    };
+    let mut w = hound::WavWriter::create(path, spec)?;
+    for s in samples {
+        w.write_sample((s.clamp(-1.0, 1.0) * i16::MAX as f32) as i16)?;
+    }
+    w.finalize()?;
+    Ok(())
+}
+
+#[derive(Deserialize)]
+struct Output {
+    transcription: Vec<OutSegment>,
+}
+
+#[derive(Deserialize)]
+struct OutSegment {
+    offsets: Offsets,
+    text: String,
+}
+
+#[derive(Deserialize)]
+struct Offsets {
+    from: u64,
+    to: u64,
+}
+
+/// Parses whisper-cli's `-oj` output; drops empty and non-speech segments
+/// such as `[BLANK_AUDIO]` or `(music)`.
+fn parse_output(json: &[u8], speaker: &str) -> anyhow::Result<Vec<Segment>> {
+    let out: Output = serde_json::from_slice(json).context("parse whisper output")?;
+    Ok(out
+        .transcription
+        .into_iter()
+        .filter_map(|s| {
+            let text = s.text.trim();
+            let marker = (text.starts_with('[') && text.ends_with(']'))
+                || (text.starts_with('(') && text.ends_with(')'));
+            (!text.is_empty() && !marker).then(|| Segment {
+                start: s.offsets.from as f32 / 1000.0,
+                end: s.offsets.to as f32 / 1000.0,
+                speaker: speaker.to_owned(),
+                text: text.to_owned(),
+            })
+        })
+        .collect())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn resamples_to_16k() {
+        let tone: Vec<f32> = (0..8000).map(|i| (i as f32 * 0.1).sin() * 0.5).collect();
+        let up = resample(&tone, 8000, 16000);
+        assert_eq!(up.len(), 16000);
+        assert!((up[2] - tone[1]).abs() < 1e-6);
+        let down = resample(&vec![0.25; 48000], 48000, 16000);
+        assert_eq!(down.len(), 16000);
+        assert!(down[100..].iter().all(|s| (s - 0.25).abs() < 1e-5));
+    }
+
+    #[test]
+    fn splits_stereo_and_skips_silent_channels() {
+        let work = tempdir().unwrap();
+        let wav = work.path.join("in.wav");
+        let spec = hound::WavSpec {
+            channels: 2,
+            sample_rate: 8000,
+            bits_per_sample: 16,
+            sample_format: hound::SampleFormat::Int,
+        };
+        let mut w = hound::WavWriter::create(&wav, spec).unwrap();
+        for i in 0..8000 {
+            w.write_sample(((i as f32 * 0.2).sin() * 8000.0) as i16)
+                .unwrap();
+            w.write_sample(0i16).unwrap();
+        }
+        w.finalize().unwrap();
+        let out = prepare(&wav, &work.path).unwrap();
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0].0, "caller");
+        assert_eq!(out[0].2.len(), 16000);
+        let r = hound::WavReader::open(&out[0].1).unwrap();
+        assert_eq!(r.spec().sample_rate, 16000);
+        assert_eq!(r.spec().channels, 1);
+        assert_eq!(r.len(), 16000);
+    }
+
+    #[test]
+    fn segment_starts_skip_leading_silence() {
+        let mut samples = vec![0.0; 16000];
+        samples.extend((0..16000).map(|i| (i as f32 * 0.3).sin() * 0.5));
+        let mut segs = vec![Segment {
+            start: 0.0,
+            end: 2.0,
+            speaker: "called".into(),
+            text: "x".into(),
+        }];
+        refine_starts(&mut segs, &samples);
+        assert_eq!(segs[0].start, 1.0);
+    }
+
+    #[test]
+    fn parses_whisper_json() {
+        let json = br#"{"result":{"language":"de"},"transcription":[
+            {"timestamps":{"from":"00:00:00,000","to":"00:00:02,660"},"offsets":{"from":0,"to":2660},"text":" Hallo, hier ist Anna."},
+            {"timestamps":{"from":"00:00:02,660","to":"00:00:04,000"},"offsets":{"from":2660,"to":4000},"text":" [BLANK_AUDIO]"}
+        ]}"#;
+        let s = parse_output(json, "called").unwrap();
+        assert_eq!(
+            s,
+            [Segment {
+                start: 0.0,
+                end: 2.66,
+                speaker: "called".into(),
+                text: "Hallo, hier ist Anna.".into()
+            }]
+        );
+    }
+}

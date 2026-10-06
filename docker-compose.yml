@@ -90,6 +90,7 @@ services:
         condition: service_healthy
     environment:
       <<: *talkops-env
+      TALKOPS_WHISPER_MODEL: ${TALKOPS_WHISPER_MODEL:-base}
     volumes:
       - recordings:/var/lib/talkops/recordings
       - voicemail:/var/lib/talkops/voicemail

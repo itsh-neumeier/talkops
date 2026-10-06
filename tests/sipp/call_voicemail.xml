@@ -86,6 +86,12 @@
 
     ]]>
   </send>
+  <!-- Phones send audio; FreeSWITCH's recording needs incoming RTP. -->
+  <nop>
+    <action>
+      <exec rtp_stream="tone.ulaw,-1,0"/>
+    </action>
+  </nop>
   <recv request="BYE" timeout="40000" ontimeout="hangup"/>
   <send next="end">
     <![CDATA[

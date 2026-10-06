@@ -117,8 +117,8 @@ log "voicemail answers and stores a message"
 EXT22=$(api POST /api/v1/extensions '{"number":"22","display_name":"E2E 22"}' | jq -r .id) || fail "create extension 22"
 api PUT "/api/v1/extensions/$EXT22/voicemail" '{"enabled":true,"pin":"2468"}' >/dev/null || fail "enable voicemail"
 printf 'SEQUENTIAL\n22;\n' > "$WORK/vm.csv"
-sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/call_voicemail.xml" -inf "$WORK/vm.csv" -s "$CALLER" -au "$CALLER" -ap "$CALLER_PW" \
-    -m 1 -p 5096 -min_rtp_port 16300 -max_rtp_port 16350 -i "$SIP_HOST" -timeout 60 -timeout_error -trace_err -error_file "$WORK/vm.log" >/dev/null \
+(cd "$DIR" && sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/call_voicemail.xml" -inf "$WORK/vm.csv" -s "$CALLER" -au "$CALLER" -ap "$CALLER_PW" \
+    -m 1 -p 5096 -min_rtp_port 16300 -max_rtp_port 16350 -i "$SIP_HOST" -timeout 60 -timeout_error -trace_err -error_file "$WORK/vm.log" >/dev/null) \
     || { cat "$WORK/vm.log" 2>/dev/null; fail "voicemail call failed"; }
 for _ in $(seq 1 15); do
     api GET "/api/v1/voicemail/messages?extension_id=$EXT22" | jq -e 'length >= 1 and .[0].duration_secs >= 1' >/dev/null 2>&1 && break
@@ -127,7 +127,8 @@ done
 api GET "/api/v1/voicemail/messages?extension_id=$EXT22" | jq -e 'length >= 1 and .[0].duration_secs >= 1' \
     || fail "no voicemail message stored"
 MSG=$(api GET "/api/v1/voicemail/messages?extension_id=$EXT22" | jq -r '.[0].id')
-curl -sf -b "$COOKIES" "$BASE/api/v1/voicemail/messages/$MSG/audio" | head -c 4 | grep -q RIFF \
-    || fail "voicemail recording is not a WAV file"
+curl -sf -b "$COOKIES" -o "$WORK/vm.wav" "$BASE/api/v1/voicemail/messages/$MSG/audio" \
+    || fail "voicemail recording cannot be downloaded"
+[ "$(head -c 4 "$WORK/vm.wav")" = RIFF ] || fail "voicemail recording is not a WAV file"
 
 log "all end-to-end checks passed"

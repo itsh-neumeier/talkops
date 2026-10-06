@@ -30,7 +30,9 @@ Per extension (**Extensions → Edit → Call recording**):
 | Never record | never – even if the other side is set to "always" |
 
 Only answered calls are recorded. A call that is not answered and goes to
-voicemail produces no call recording (the voicemail is stored as usual).
+voicemail produces no call recording (the voicemail is stored as usual). In
+queues the recording starts when the caller enters the queue, so it includes
+the waiting time.
 
 ## Listening to recordings
 

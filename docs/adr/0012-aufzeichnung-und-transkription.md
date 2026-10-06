@@ -66,6 +66,10 @@ Suche: PostgreSQL-Volltext (`tsvector`) oder eine separate Suchmaschine.
   Text bleiben lokal.
 - `base` transkribiert auf aktuellen CPUs schneller als Echtzeit; lange
   Gespräche belegen den Worker trotzdem minutenlang (daher die eigene Spur).
+- Warteschlangen: Die Aufnahme beginnt beim Eintritt (inkl. Wartezeit).
+  `record-template` von mod_callcenter würde erst ab Agentenannahme
+  aufnehmen, gilt aber statisch je Queue und passt nicht zur Richtlinie je
+  Anruf.
 - Eine CUDA-Variante des Worker-Images ist möglich (`GGML_CUDA`), aber
   nicht Teil dieser Phase.
 - Ohne „Alle Beteiligten wurden informiert“ ist Aufzeichnen in vielen

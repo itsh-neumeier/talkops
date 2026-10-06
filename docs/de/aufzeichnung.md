@@ -32,7 +32,9 @@ Je Nebenstelle (**Nebenstellen → Bearbeiten → Gesprächsaufzeichnung**):
 
 Aufgezeichnet wird nur, was angenommen wurde. Klingelt ein Anruf ins Leere
 und landet auf der Voicemail, entsteht keine Gesprächsaufnahme (die
-Sprachnachricht wird wie gewohnt gespeichert).
+Sprachnachricht wird wie gewohnt gespeichert). Bei Warteschlangen beginnt
+die Aufnahme beim Eintritt in die Warteschlange, enthält also auch die
+Wartezeit.
 
 ## Aufnahmen anhören
 

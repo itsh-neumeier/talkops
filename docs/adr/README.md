@@ -19,5 +19,6 @@ nächste freie Nummer; überholte ADRs werden nicht gelöscht, sondern auf
 | [0010](0010-voicemail-und-sprachausgabe.md) | Voicemail in Rust, Sprachausgabe mit Piper, Mail aus dem TalkOps-Dienst | Angenommen |
 | [0011](0011-warteschlangen-mod-callcenter.md) | Warteschlangen mit mod_callcenter, Konfiguration aus TalkOps | Angenommen |
 | [0012](0012-aufzeichnung-und-transkription.md) | Gesprächsaufzeichnung mit record_session, lokale Transkription mit whisper.cpp | Angenommen |
+| [0013](0013-tuersprechstellen-dahua.md) | Türsprechstellen: Dahua VTO als SIP-Gerät, Steuerung über die HTTP-API | Angenommen |
 
 Vorlage: [`template.md`](template.md)

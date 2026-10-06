@@ -72,6 +72,7 @@ nächsten Start bzw. nachts zwischen 2 und 4 Uhr.
 | `*51` … `*59` | Anruf parken / geparkten Anruf holen ([Anrufsteuerung](anrufsteuerung.md)) |
 | `*30<Nummer>` | Zeitsteuerung „geschlossen“ ein/aus |
 | `*97` / `*98` | eigene Voicemail / beliebige Voicemail mit PIN ([Voicemail](voicemail.md)) |
+| `*85` / `*85<Nebenstelle>` | Tür öffnen (erste Türsprechstelle / die mit dieser Nebenstelle), `*86…` für das zweite Schloss ([Türsprechstelle](tuersprechstelle.md)) |
 
 Die DND-Taste des Telefons schaltet *Nicht stören* der Nebenstelle auf
 Konto 1. Beides lässt sich auch in der Weboberfläche bei der Nebenstelle bzw.

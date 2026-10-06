@@ -1,6 +1,6 @@
 # TalkOps – Architektur
 
-> Status: Phase 5 (Recording & Transkription). Entscheidungen mit Begründung stehen in den
+> Status: Phase 6 (Türsprechstelle). Entscheidungen mit Begründung stehen in den
 > [ADRs](adr/README.md); dieses Dokument beschreibt das Zusammenspiel.
 
 ## Überblick
@@ -145,6 +145,23 @@ Blind-Transfers (SIP REFER) dort landen und wie gewählte Nummern geroutet
 werden – interne Nummern, Parkplätze, externe Nummern über die
 Standardrufnummer.
 
+## Türsprechstellen (Phase 6, [ADR 0013](adr/0013-tuersprechstellen-dahua.md))
+
+- Die VTO ist ein Gerät einer Nebenstelle; `fsxml::dialplan::plan_internal`
+  erkennt Anrufe von Nebenstellen mit `door_stations`-Eintrag und routet sie
+  über `DoorStation::route` (Taste → Ziel, sonst Standardziel) mit
+  `talkops_door_id`. Der xml_curl-Handler legt daraufhin asynchron das
+  Ereignis `ring` an und holt einen Schnappschuss (`snapshots`-Volume).
+- `*85[n]`/`*86[n]`: ESL-Outbound-App `door_open` (Ansage `door_opened`/
+  `door_failed`).
+- `talkops-doorbell`: HTTP-Digest-Client für `openDoor`, `snapshot.cgi`,
+  `magicBox` und den `eventManager`-Multipart-Stream (inkrementeller Parser).
+- `talkops_api::doors`: Listener je Station (alle 30 s abgeglichen, Backoff
+  bis 60 s), Ereignis-Zuordnung (`AccessControl` → `opened`, `DoorStatus` →
+  `door_open`/`door_closed`, `BackKeyLight` 9 → `unlock_failed`,
+  Alarm-Codes → `alarm`), Webhook (JSON, 3 Versuche), Token-Hook
+  `/hooks/door/<id>/open`.
+
 ## Aufzeichnung & Transkription (Phase 5, [ADR 0012](adr/0012-aufzeichnung-und-transkription.md))
 
 - Richtlinie: Mandanten-Vorgabe je Richtung, je Nebenstelle `inherit`/`always`/
@@ -280,7 +297,7 @@ Phase 8.
 
 ## Verzeichnisstruktur
 
-Ist-Stand Phase 5 plus geplante Ergänzungen (P6 … P8):
+Ist-Stand Phase 6 plus geplante Ergänzungen (P7, P8):
 
 ```
 talkops/
@@ -295,19 +312,19 @@ talkops/
 │   │   └── src/  db · jobs · tenant · telemetry · crypto · users · extensions
 │   │             trunks · settings · dialing · presets · cdr · audit · phones
 │   │             voicemail · prompts · mail · numbering · ring_groups
-│   │             time_conditions · holidays · ivr · queues · recordings
+│   │             time_conditions · holidays · ivr · queues · recordings · doors
 │   ├── talkops-api/
 │   │   └── src/  main · config · auth · error · esl · telephony · mailer
-│   │             menu · callcenter · retention
+│   │             menu · callcenter · retention · doors
 │   │             voicemail/{mod,ivr}
 │   │             fsxml/{sofia,directory,dialplan,cdr,callcenter}
 │   │             routes/{health,auth,users,extensions,trunks,settings,fs,
 │   │                     phones,provisioning,voicemail,groups,
-│   │                     time_conditions,ivr,queues,recordings}
+│   │                     time_conditions,ivr,queues,recordings,doors}
 │   ├── talkops-esl/              Event-Socket-Client (inbound) und outbound-Server
 │   ├── talkops-provisioning/     Yealink-Templates, Modellkatalog, XML-Telefonbuch
 │   ├── talkops-media-worker/     Piper (Ansagen, Begrüßungen), whisper.cpp (Transkription)
-│   └── talkops-doorbell/         P6: Dahua-HTTP-API/CGI, MQTT/Webhooks
+│   └── talkops-doorbell/         Dahua-HTTP-API (Digest): Türöffner, Schnappschuss, Ereignisse
 ├── migrations/                   sqlx-Migrationen (ein Satz für alle Dienste)
 ├── presets/
 │   ├── trunks/                   28 Anbieter-Vorlagen (leonet.yaml, telekom-*.yaml …)
@@ -325,8 +342,8 @@ talkops/
 ├── docs/
 │   ├── architecture.md · adr/
 │   ├── de/  installation.md · portainer.md · erste-schritte.md · leonet.md · yealink.md
-│   │        voicemail.md · anrufsteuerung.md · aufzeichnung.md
-│   │        (P3+: dahua.md, ldap.md, backup.md)
+│   │        voicemail.md · anrufsteuerung.md · aufzeichnung.md · tuersprechstelle.md
+│   │        (P7+: ldap.md, backup.md)
 │   ├── en/  (gleiche Inhalte auf Englisch)
 │   └── trunk-presets.md          Format & Beitragsregeln für Vorlagen
 └── .github/workflows/            ci.yml · freeswitch.yml · e2e.yml · release.yml
@@ -342,6 +359,6 @@ talkops/
 | 3 | Voicemail & TTS: ESL-Voicemail, Piper, Mehrsprachigkeit, Mail | ✅ |
 | 4 | Gruppen & Logik: Rufgruppen, Queues, IVR-Editor, Zeitsteuerung/Feiertage, Parken/Pickup | ✅ |
 | 5 | Recording & Transkription: Hinweisansage, Whisper, Suche, Retention | ✅ |
-| 6 | Türsprechstelle: Dahua VTO, Video, Türöffner, Snapshots, Home Assistant | geplant |
+| 6 | Türsprechstelle: Dahua VTO, Video, Türöffner, Snapshots, Home Assistant | ✅ (Test mit echter VTO offen) |
 | 7 | WebRTC & Identität: Softphone mit Video, LDAP/AD, OIDC, 2FA | geplant |
 | 8 | Betrieb: Backup/Restore, Metriken, Hardening, Setup-Assistent, Release 1.0 | geplant |

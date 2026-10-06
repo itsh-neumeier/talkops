@@ -71,6 +71,7 @@ at night between 2 and 4 am.
 | `*51` … `*59` | park a call / pick up a parked call ([call routing](call-routing.md)) |
 | `*30<number>` | time condition "closed" on/off |
 | `*97` / `*98` | own voicemail / any voicemail with PIN ([voicemail](voicemail.md)) |
+| `*85` / `*85<extension>` | open the door (first door station / the one with this extension), `*86…` for the second lock ([door station](door-station.md)) |
 
 The phone's DND key toggles *do not disturb* of the extension on account 1.
 Both settings are also available in the web UI on the extension page and

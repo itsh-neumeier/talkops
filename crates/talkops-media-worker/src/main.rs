@@ -1,7 +1,10 @@
 //! Media worker: claims TTS and transcription jobs from the Postgres job queue.
 //!
-//! Phase 0 ships the queue loop only; job handlers (Piper, whisper.cpp) are
-//! added in phases 3 and 5. Unknown job kinds are never claimed.
+//! On start it renders missing system prompts with Piper; afterwards it runs
+//! TTS greeting jobs (transcription follows in phase 5). Unknown job kinds are
+//! never claimed.
+
+mod tts;
 
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -12,9 +15,12 @@ use sqlx::PgPool;
 use sqlx::postgres::PgListener;
 use talkops_core::jobs::{self, Job};
 use talkops_core::telemetry::{self, LogFormat};
+use talkops_core::voicemail;
 
-/// Job kinds this worker can execute. Empty until the handlers land.
-const SUPPORTED_KINDS: &[&str] = &[];
+use crate::tts::Piper;
+
+/// Job kinds this worker can execute.
+const SUPPORTED_KINDS: &[&str] = &[voicemail::JOB_TTS_GREETING];
 
 /// Running jobs without a heartbeat for this long are handed to another worker.
 const LEASE_TIMEOUT_SECS: i64 = 30 * 60;
@@ -40,6 +46,34 @@ struct Args {
         default_value = "/tmp/talkops-worker.alive"
     )]
     heartbeat_file: PathBuf,
+
+    /// Piper binary.
+    #[arg(long, env = "TALKOPS_PIPER_BIN", default_value = "/opt/piper/piper")]
+    piper_bin: PathBuf,
+
+    /// Directory with Piper voices (`<voice>.onnx` + `.onnx.json`).
+    #[arg(
+        long,
+        env = "TALKOPS_VOICES_DIR",
+        default_value = "/usr/share/talkops/voices"
+    )]
+    voices_dir: PathBuf,
+
+    /// Shared sounds volume (system prompts).
+    #[arg(
+        long,
+        env = "TALKOPS_SOUNDS_DIR",
+        default_value = "/var/lib/talkops/sounds"
+    )]
+    sounds_dir: PathBuf,
+
+    /// Shared voicemail volume (greetings).
+    #[arg(
+        long,
+        env = "TALKOPS_VOICEMAIL_DIR",
+        default_value = "/var/lib/talkops/voicemail"
+    )]
+    voicemail_dir: PathBuf,
 
     #[arg(long, env = "TALKOPS_LOG_FORMAT", default_value = "pretty")]
     log_format: LogFormat,
@@ -84,11 +118,25 @@ async fn main() -> anyhow::Result<()> {
         }
     };
 
+    let ctx = Ctx {
+        pool: pool.clone(),
+        piper: Piper {
+            bin: args.piper_bin.clone(),
+            voices_dir: args.voices_dir.clone(),
+        },
+        voicemail_dir: args.voicemail_dir.clone(),
+    };
+    match tts::ensure_prompts(&ctx.piper, &args.sounds_dir).await {
+        Ok(0) => {}
+        Ok(n) => tracing::info!(count = n, "system prompts rendered"),
+        Err(err) => tracing::error!(error = %err, "rendering system prompts failed"),
+    }
+
     let poll = Duration::from_secs(args.poll_secs);
     let shutdown = shutdown_signal();
     tokio::pin!(shutdown);
     loop {
-        if let Err(err) = drain_queue(&pool, &args.worker_id).await {
+        if let Err(err) = drain_queue(&ctx, &args.worker_id).await {
             tracing::error!(error = %err, "job loop error");
         } else {
             touch(&args.heartbeat_file);
@@ -107,7 +155,15 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn drain_queue(pool: &PgPool, worker_id: &str) -> anyhow::Result<()> {
+/// What job handlers need.
+struct Ctx {
+    pool: PgPool,
+    piper: Piper,
+    voicemail_dir: PathBuf,
+}
+
+async fn drain_queue(ctx: &Ctx, worker_id: &str) -> anyhow::Result<()> {
+    let pool = &ctx.pool;
     let recovered = jobs::requeue_stale(pool, LEASE_TIMEOUT_SECS).await?;
     if recovered > 0 {
         tracing::warn!(recovered, "re-queued jobs with expired lease");
@@ -117,7 +173,7 @@ async fn drain_queue(pool: &PgPool, worker_id: &str) -> anyhow::Result<()> {
     }
     while let Some(job) = jobs::claim(pool, worker_id, SUPPORTED_KINDS).await? {
         let id = job.id;
-        match run(&job).await {
+        match run(ctx, &job).await {
             Ok(()) => jobs::complete(pool, id).await?,
             Err(err) => {
                 let status = jobs::fail(pool, id, &format!("{err:#}")).await?;
@@ -128,8 +184,36 @@ async fn drain_queue(pool: &PgPool, worker_id: &str) -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn run(job: &Job) -> anyhow::Result<()> {
-    anyhow::bail!("no handler for job kind `{}`", job.kind)
+async fn run(ctx: &Ctx, job: &Job) -> anyhow::Result<()> {
+    match job.kind.as_str() {
+        voicemail::JOB_TTS_GREETING => tts_greeting(ctx, job).await,
+        other => anyhow::bail!("no handler for job kind `{other}`"),
+    }
+}
+
+/// Renders a voicemail greeting; the box status tells the UI the outcome.
+async fn tts_greeting(ctx: &Ctx, job: &Job) -> anyhow::Result<()> {
+    #[derive(serde::Deserialize)]
+    struct Payload {
+        extension_id: uuid::Uuid,
+        text: String,
+        language: String,
+        file: String,
+    }
+    let p: Payload = serde_json::from_value(job.payload.clone()).context("invalid payload")?;
+    anyhow::ensure!(
+        !p.file
+            .split('/')
+            .any(|part| part == ".." || part.is_empty()),
+        "invalid greeting path"
+    );
+    let path = ctx.voicemail_dir.join(&p.file);
+    let result = ctx
+        .piper
+        .render(&p.language, &[(p.text.clone(), path)])
+        .await;
+    voicemail::set_greeting_status(&ctx.pool, p.extension_id, &p.text, result.is_ok()).await?;
+    result
 }
 
 fn touch(path: &Path) {

@@ -4,7 +4,7 @@
 set of UniFi Talk plus video door stations, call recording, local
 transcription and LDAP/AD, packaged as a Docker Compose stack.
 
-> **Status: early development (phase 6 – door stations).** Extensions with
+> **Status: early development (phase 7 – WebRTC & identity).** Extensions with
 > multiple devices, SIP trunks from 28 provider presets, internal and external
 > calls, emergency routing, a call log, Yealink auto-provisioning (desk phones
 > and DECT), BLF keys, XML phonebook, DND/forwarding feature codes and
@@ -13,7 +13,9 @@ transcription and LDAP/AD, packaged as a Docker Compose stack.
 > holidays, voice menus, queues, call parking, call recording with
 > announcement, local transcription (whisper.cpp) with full-text search and
 > Dahua door stations (video ring, door opener, snapshots, Home Assistant
-> webhooks) work; WebRTC and LDAP/OIDC follow. See the [roadmap](docs/architecture.md#roadmap).
+> webhooks), a browser softphone with video (WebRTC), two-factor login,
+> OIDC single sign-on and LDAP/AD logins work; backup/restore, metrics and
+> the 1.0 release follow. See the [roadmap](docs/architecture.md#roadmap).
 
 ## Highlights (planned)
 
@@ -64,6 +66,7 @@ call routing [EN](docs/en/call-routing.md) / [DE](docs/de/anrufsteuerung.md) ·
 recording & transcription [EN](docs/en/recording.md) / [DE](docs/de/aufzeichnung.md) ·
 door station [EN](docs/en/door-station.md) / [DE](docs/de/tuersprechstelle.md) ·
 sign-in, 2FA, SSO, LDAP [EN](docs/en/sign-in.md) / [DE](docs/de/anmeldung.md) ·
+softphone [EN](docs/en/softphone.md) / [DE](docs/de/softphone.md) ·
 [trunk presets](docs/trunk-presets.md).
 
 ## Development

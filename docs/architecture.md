@@ -1,6 +1,6 @@
 # TalkOps – Architektur
 
-> Status: Phase 6 (Türsprechstelle). Entscheidungen mit Begründung stehen in den
+> Status: Phase 7 (WebRTC & Identität). Entscheidungen mit Begründung stehen in den
 > [ADRs](adr/README.md); dieses Dokument beschreibt das Zusammenspiel.
 
 ## Überblick
@@ -144,6 +144,19 @@ zugeordnet). Alle Anrufe exportieren `force_transfer_context=talkops`, damit
 Blind-Transfers (SIP REFER) dort landen und wie gewählte Nummern geroutet
 werden – interne Nummern, Parkplätze, externe Nummern über die
 Standardrufnummer.
+
+## Identität und Softphone (Phase 7, [ADR 0014](adr/0014-identitaet-oidc-ldap-totp.md), [ADR 0015](adr/0015-webrtc-softphone.md))
+
+- **Anmeldung:** lokal (argon2id) → sonst LDAP (Suche mit Dienstkonto, Bind
+  als Benutzer) → optional TOTP-Challenge (`login_challenges`). OIDC über
+  `/api/v1/auth/oidc/start|callback` (PKCE, nonce, JWKS-Prüfung). Externe
+  Konten: `users.auth_source` + `external_id`, Rollen aus Gruppen
+  (`identity_settings`), stündlicher LDAP-Abgleich.
+- **Softphone:** Profil `internal` mit `ws-binding 127.0.0.1:5066` und
+  `inbound-late-negotiation`; `GET /api/v1/webrtc/ws` reicht SIP über
+  WebSocket für angemeldete Benutzer durch (`tokio-tungstenite`);
+  `POST /api/v1/me/webrtc` liefert das eigene Browser-Gerät. Im Browser
+  SIP.js (`SimpleUser`).
 
 ## Türsprechstellen (Phase 6, [ADR 0013](adr/0013-tuersprechstellen-dahua.md))
 
@@ -297,7 +310,7 @@ Phase 8.
 
 ## Verzeichnisstruktur
 
-Ist-Stand Phase 6 plus geplante Ergänzungen (P7, P8):
+Ist-Stand Phase 7 plus geplante Ergänzungen (P8):
 
 ```
 talkops/
@@ -313,14 +326,16 @@ talkops/
 │   │             trunks · settings · dialing · presets · cdr · audit · phones
 │   │             voicemail · prompts · mail · numbering · ring_groups
 │   │             time_conditions · holidays · ivr · queues · recordings · doors
+│   │             mfa · identity
 │   ├── talkops-api/
 │   │   └── src/  main · config · auth · error · esl · telephony · mailer
-│   │             menu · callcenter · retention · doors
+│   │             menu · callcenter · retention · doors · ldap
 │   │             voicemail/{mod,ivr}
 │   │             fsxml/{sofia,directory,dialplan,cdr,callcenter}
 │   │             routes/{health,auth,users,extensions,trunks,settings,fs,
 │   │                     phones,provisioning,voicemail,groups,
-│   │                     time_conditions,ivr,queues,recordings,doors}
+│   │                     time_conditions,ivr,queues,recordings,doors,
+│   │                     oidc,identity,webrtc}
 │   ├── talkops-esl/              Event-Socket-Client (inbound) und outbound-Server
 │   ├── talkops-provisioning/     Yealink-Templates, Modellkatalog, XML-Telefonbuch
 │   ├── talkops-media-worker/     Piper (Ansagen, Begrüßungen), whisper.cpp (Transkription)
@@ -343,7 +358,8 @@ talkops/
 │   ├── architecture.md · adr/
 │   ├── de/  installation.md · portainer.md · erste-schritte.md · leonet.md · yealink.md
 │   │        voicemail.md · anrufsteuerung.md · aufzeichnung.md · tuersprechstelle.md
-│   │        (P7+: ldap.md, backup.md)
+│   │        anmeldung.md · softphone.md
+│   │        (P8: backup.md)
 │   ├── en/  (gleiche Inhalte auf Englisch)
 │   └── trunk-presets.md          Format & Beitragsregeln für Vorlagen
 └── .github/workflows/            ci.yml · freeswitch.yml · e2e.yml · release.yml
@@ -360,5 +376,5 @@ talkops/
 | 4 | Gruppen & Logik: Rufgruppen, Queues, IVR-Editor, Zeitsteuerung/Feiertage, Parken/Pickup | ✅ |
 | 5 | Recording & Transkription: Hinweisansage, Whisper, Suche, Retention | ✅ |
 | 6 | Türsprechstelle: Dahua VTO, Video, Türöffner, Snapshots, Home Assistant | ✅ (Test mit echter VTO offen) |
-| 7 | WebRTC & Identität: Softphone mit Video, LDAP/AD, OIDC, 2FA | geplant |
+| 7 | WebRTC & Identität: Softphone mit Video, LDAP/AD, OIDC, 2FA | ✅ |
 | 8 | Betrieb: Backup/Restore, Metriken, Hardening, Setup-Assistent, Release 1.0 | geplant |

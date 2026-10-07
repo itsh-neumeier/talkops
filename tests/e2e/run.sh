@@ -8,7 +8,9 @@
 # unreachable extension's voicemail answers and stores the message, that a
 # ring group falls back, an IVR menu routes a pressed key and a queue
 # offers its caller to a registered agent, that answered calls are
-# recorded and that a door station's ring reaches a phone with video.
+# recorded, that a door station's ring reaches a phone with video and
+# (WEBRTC_E2E=1, needs Node.js with Playwright) that the browser softphone
+# can call an extension.
 #
 #   BASE=http://127.0.0.1:8080 SIP_HOST=192.168.1.10 tests/e2e/run.sh
 set -euo pipefail
@@ -223,5 +225,21 @@ sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/call_video.xml" -inf "$WORK/door.csv" -s "$
 wait "$DOOR_PID" || { cat "$WORK/door-callee.log" 2>/dev/null; fail "the door call did not reach the phone with video"; }
 api GET /api/v1/door-events | jq -e '.[] | select(.kind == "ring" and .detail.dialed == "9901")' >/dev/null \
     || fail "door ring not logged"
+
+if [ "${WEBRTC_E2E:-0}" = 1 ]; then
+    log "browser softphone (WebRTC) calls an extension"
+    WEBU=$(api POST /api/v1/users '{"username":"e2e-web","display_name":"E2E Web","role":"user","password":"e2e-web-password"}' | jq -r .id) \
+        || fail "create web user"
+    api POST /api/v1/extensions "{\"number\":\"23\",\"display_name\":\"E2E 23\",\"user_id\":\"$WEBU\"}" >/dev/null \
+        || fail "create extension 23"
+    sipp -sn uas -p 5094 -i "$SIP_HOST" -m 1 -min_rtp_port 17200 -max_rtp_port 17250 -timeout 60 -timeout_error \
+        -trace_err -error_file "$WORK/web-callee.log" >"$WORK/web-callee.out" 2>&1 &
+    WEB_PID=$!
+    sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/register.xml" -set contact_port 5094 -s "$CALLEE" -au "$CALLEE" -ap "$CALLEE_PW" \
+        -m 1 -p 5092 -i "$SIP_HOST" -timeout 20 -timeout_error -trace_err -error_file "$WORK/register5.log" >/dev/null \
+        || { cat "$WORK/register5.log" 2>/dev/null; fail "registration for the softphone call failed"; }
+    node "$DIR/../e2e/webrtc.mjs" "$BASE" e2e-web e2e-web-password 21 || fail "softphone call"
+    wait "$WEB_PID" || { cat "$WORK/web-callee.log" 2>/dev/null; fail "callee of the softphone call failed"; }
+fi
 
 log "all end-to-end checks passed"

@@ -20,5 +20,6 @@ nächste freie Nummer; überholte ADRs werden nicht gelöscht, sondern auf
 | [0011](0011-warteschlangen-mod-callcenter.md) | Warteschlangen mit mod_callcenter, Konfiguration aus TalkOps | Angenommen |
 | [0012](0012-aufzeichnung-und-transkription.md) | Gesprächsaufzeichnung mit record_session, lokale Transkription mit whisper.cpp | Angenommen |
 | [0013](0013-tuersprechstellen-dahua.md) | Türsprechstellen: Dahua VTO als SIP-Gerät, Steuerung über die HTTP-API | Angenommen |
+| [0014](0014-identitaet-oidc-ldap-totp.md) | Identität: lokale Konten mit TOTP, OIDC, LDAP/AD | Angenommen |
 
 Vorlage: [`template.md`](template.md)

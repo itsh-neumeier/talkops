@@ -63,6 +63,7 @@ voicemail [EN](docs/en/voicemail.md) / [DE](docs/de/voicemail.md) ·
 call routing [EN](docs/en/call-routing.md) / [DE](docs/de/anrufsteuerung.md) ·
 recording & transcription [EN](docs/en/recording.md) / [DE](docs/de/aufzeichnung.md) ·
 door station [EN](docs/en/door-station.md) / [DE](docs/de/tuersprechstelle.md) ·
+sign-in, 2FA, SSO, LDAP [EN](docs/en/sign-in.md) / [DE](docs/de/anmeldung.md) ·
 [trunk presets](docs/trunk-presets.md).
 
 ## Development

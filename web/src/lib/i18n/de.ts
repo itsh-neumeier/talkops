@@ -584,7 +584,29 @@ const de: Record<keyof typeof en, string> = {
 	'backup.download': 'Herunterladen',
 	'backup.none': 'Noch keine Sicherungen.',
 	'backup.restoreHint':
-		'Wiederherstellen mit „talkops restore“ (siehe Anleitung zur Datensicherung). Ohne TALKOPS_SECRET_KEY lassen sich die gespeicherten SIP- und Trunk-Passwörter nicht entschlüsseln: den Schlüssel zusammen mit den Sicherungen aufbewahren.'
+		'Wiederherstellen mit „talkops restore“ (siehe Anleitung zur Datensicherung). Ohne TALKOPS_SECRET_KEY lassen sich die gespeicherten SIP- und Trunk-Passwörter nicht entschlüsseln: den Schlüssel zusammen mit den Sicherungen aufbewahren.',
+	'start.title': 'Erste Schritte',
+	'start.progress': '{done} von {total} erledigt',
+	'start.hide': 'Ausblenden',
+	'start.done': 'erledigt',
+	'start.extension': 'Nebenstelle anlegen',
+	'start.extensionHint':
+		'Eine pro Person oder Raum; sie bekommt eine Rufnummer, eine Voicemail und SIP-Zugangsdaten.',
+	'start.phone': 'Telefon verbinden',
+	'start.phoneHint':
+		'Ein Yealink-Telefon provisionieren, die SIP-Zugangsdaten in ein beliebiges SIP-Telefon eintragen oder das Browser-Softphone nutzen.',
+	'start.trunk': 'SIP-Trunk hinzufügen',
+	'start.trunkHint':
+		'Die Vorlage Ihres Anbieters wählen und die Zugangsdaten eintragen, um nach extern zu telefonieren.',
+	'start.number': 'Rufnummer zuordnen',
+	'start.numberHint':
+		'Anrufe auf Ihre Rufnummer an eine Nebenstelle, Gruppe, ein Menü oder eine Warteschlange leiten.',
+	'start.twoFactor': 'Konto absichern',
+	'start.twoFactorHint': 'Die Zwei-Faktor-Anmeldung für Ihr Admin-Konto einschalten.',
+	'start.backup': 'Datensicherung einschalten',
+	'start.backupHint': 'Tägliche Sicherungen schützen Konfiguration, Voicemail und Aufzeichnungen.',
+	'start.defaultNumber': 'Standardrufnummer festlegen',
+	'start.defaultNumberHint': 'Gespräche nach außen und Notrufe brauchen eine Standardrufnummer.'
 };
 
 export default de;

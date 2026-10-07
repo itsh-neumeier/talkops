@@ -584,5 +584,25 @@ export default {
 	'backup.download': 'Download',
 	'backup.none': 'No backups yet.',
 	'backup.restoreHint':
-		'Restore with "talkops restore" (see the backup guide). Without TALKOPS_SECRET_KEY the stored SIP and trunk passwords cannot be decrypted: keep the key with your backups.'
+		'Restore with "talkops restore" (see the backup guide). Without TALKOPS_SECRET_KEY the stored SIP and trunk passwords cannot be decrypted: keep the key with your backups.',
+	'start.title': 'Getting started',
+	'start.progress': '{done} of {total} done',
+	'start.hide': 'Hide',
+	'start.done': 'done',
+	'start.extension': 'Create an extension',
+	'start.extensionHint': 'One per person or room; it gets a number, voicemail and SIP credentials.',
+	'start.phone': 'Connect a phone',
+	'start.phoneHint':
+		'Provision a Yealink phone, enter the SIP credentials in any SIP phone or use the browser softphone.',
+	'start.trunk': 'Add a SIP trunk',
+	'start.trunkHint':
+		"Pick your provider's preset and enter the account data to call external numbers.",
+	'start.number': 'Route a phone number',
+	'start.numberHint': 'Send calls to your number to an extension, ring group, menu or queue.',
+	'start.twoFactor': 'Secure your account',
+	'start.twoFactorHint': 'Turn on two-factor login for your admin account.',
+	'start.backup': 'Turn on backups',
+	'start.backupHint': 'Daily backups protect configuration, voicemail and recordings.',
+	'start.defaultNumber': 'Set the default number',
+	'start.defaultNumberHint': 'Outgoing calls and emergency calls need a default caller number.'
 } as const;

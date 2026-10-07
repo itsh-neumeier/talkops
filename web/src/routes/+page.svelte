@@ -7,6 +7,7 @@
 		type SystemStatus,
 		type TrunkDetail
 	} from '#lib/api.ts';
+	import GettingStarted from '#lib/components/GettingStarted.svelte';
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import { hasRole } from '#lib/session.svelte.ts';
 
@@ -43,6 +44,9 @@
 
 <div class="space-y-4">
 	<h1>{t('nav.dashboard')}</h1>
+	{#if hasRole('admin')}<GettingStarted
+			registrations={live ? live.registrations.length : null}
+		/>{/if}
 	<section class="card">
 		<h2 class="mb-4">{t('status.title')}</h2>
 		{#if failed}

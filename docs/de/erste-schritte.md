@@ -1,7 +1,8 @@
 # Erste Schritte
 
 Nach der [Installation](installation.md) ist TalkOps unter `http://<host>:8080`
-erreichbar.
+erreichbar. Das Dashboard zeigt Admins eine Liste *Erste Schritte*, die diese
+Schritte abhakt, sobald sie erledigt sind.
 
 1. **Administrator anlegen.** Beim ersten Aufruf fragt TalkOps nach Benutzername
    und Passwort (mind. 10 Zeichen) für das erste Admin-Konto.

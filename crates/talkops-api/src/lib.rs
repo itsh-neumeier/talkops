@@ -7,6 +7,7 @@ pub mod doors;
 pub mod error;
 pub mod esl;
 pub mod fsxml;
+pub mod ldap;
 pub mod mailer;
 pub mod menu;
 pub mod retention;

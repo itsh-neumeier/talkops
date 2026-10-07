@@ -29,6 +29,7 @@ jobs:
           --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/postgres
+      TALKOPS_TEST_LDAP_URL: ldap://127.0.0.1:3890
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -37,6 +38,14 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - name: Start OpenLDAP for the directory login tests
+        run: |
+          echo "slapd slapd/no_configuration boolean true" | sudo debconf-set-selections
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq slapd ldap-utils
+          sudo systemctl stop slapd || true
+          # Under /var/lib/ldap so the AppArmor profile of slapd allows it.
+          sudo LDAP_WORK=/var/lib/ldap/talkops-test tests/ldap/start.sh
       - run: cargo test --workspace --locked
 
   web:

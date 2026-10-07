@@ -1,0 +1,45 @@
+# Test directory for tests/ldap/start.sh; passwords are test data only.
+dn: dc=example,dc=org
+objectClass: dcObject
+objectClass: organization
+o: Example
+dc: example
+
+dn: ou=people,dc=example,dc=org
+objectClass: organizationalUnit
+ou: people
+
+dn: ou=groups,dc=example,dc=org
+objectClass: organizationalUnit
+ou: groups
+
+dn: cn=svc,ou=people,dc=example,dc=org
+objectClass: inetOrgPerson
+cn: svc
+sn: Service
+userPassword: svcpw
+
+dn: uid=anna,ou=people,dc=example,dc=org
+objectClass: inetOrgPerson
+uid: anna
+cn: Anna Beispiel
+sn: Beispiel
+mail: anna@example.org
+userPassword: anna-ldap-pw
+
+dn: uid=ben,ou=people,dc=example,dc=org
+objectClass: inetOrgPerson
+uid: ben
+cn: Ben Test
+sn: Test
+userPassword: ben-ldap-pw
+
+dn: cn=pbx-admins,ou=groups,dc=example,dc=org
+objectClass: groupOfNames
+cn: pbx-admins
+member: uid=anna,ou=people,dc=example,dc=org
+
+dn: cn=staff,ou=groups,dc=example,dc=org
+objectClass: groupOfNames
+cn: staff
+member: uid=anna,ou=people,dc=example,dc=org

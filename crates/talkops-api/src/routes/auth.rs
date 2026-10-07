@@ -205,9 +205,13 @@ pub async fn login(
     if !state.limiter.allow(&key) {
         return Err(ApiError::TooManyRequests);
     }
-    let Some(user) =
-        users::authenticate(&state.db, TenantId::DEFAULT, &req.username, &req.password).await?
-    else {
+    let local =
+        users::authenticate(&state.db, TenantId::DEFAULT, &req.username, &req.password).await?;
+    let user = match local {
+        Some(u) => Some(u),
+        None => directory_login(&state, &req).await,
+    };
+    let Some(user) = user else {
         tracing::info!(username = %req.username.chars().take(64).collect::<String>(), ip = ?meta.ip, "failed login");
         return Err(ApiError::Unauthorized);
     };
@@ -222,6 +226,43 @@ pub async fn login(
     }
     state.limiter.reset(&key);
     start_session(&state, user, &meta).await
+}
+
+/// Tries the LDAP directory when local authentication failed. Local
+/// accounts are never shadowed by directory accounts of the same name.
+async fn directory_login(state: &AppState, req: &LoginRequest) -> Option<User> {
+    let tenant = TenantId::DEFAULT;
+    let s = talkops_core::identity::get(&state.db, tenant).await.ok()?;
+    if !s.ldap_enabled {
+        return None;
+    }
+    if let Ok(Some(existing)) = users::find_by_username(&state.db, tenant, &req.username).await {
+        if existing.auth_source != "ldap" {
+            return None;
+        }
+    }
+    let (_, bind_password) = talkops_core::identity::secrets(&state.db, tenant, &state.secrets)
+        .await
+        .ok()?;
+    let account =
+        match crate::ldap::authenticate(&s, bind_password.as_deref(), &req.username, &req.password)
+            .await
+        {
+            Ok(a) => a,
+            Err(crate::ldap::LdapError::Invalid) => return None,
+            Err(err) => {
+                tracing::warn!(error = %err, "LDAP login failed");
+                return None;
+            }
+        };
+    match talkops_core::identity::upsert_user(&state.db, tenant, &account).await {
+        Ok(user) if user.enabled => Some(user),
+        Ok(_) => None,
+        Err(err) => {
+            tracing::warn!(error = %err, "LDAP user could not be created");
+            None
+        }
+    }
 }
 
 /// Second login step: TOTP or recovery code.
@@ -256,7 +297,7 @@ pub async fn login_totp(
 pub struct TotpStatus {
     pub enabled: bool,
     pub recovery_codes_left: i64,
-    /// Only local accounts can use TOTP; others log in via their directory.
+    /// Single sign-on accounts use the provider's second factor instead.
     pub available: bool,
 }
 
@@ -270,7 +311,7 @@ pub async fn totp_status(
     Ok(Json(TotpStatus {
         enabled: user.totp_enabled,
         recovery_codes_left: mfa::recovery_codes_left(&state.db, auth.id).await?,
-        available: user.auth_source == "local",
+        available: user.auth_source != "oidc",
     }))
 }
 
@@ -290,9 +331,9 @@ pub async fn totp_setup(
     auth: AuthUser,
 ) -> ApiResult<Json<TotpSetup>> {
     let user = users::get(&state.db, auth.tenant, auth.id).await?;
-    if user.auth_source != "local" {
+    if user.auth_source == "oidc" {
         return Err(ApiError::BadRequest(
-            "two-factor login is managed by your directory".into(),
+            "two-factor login is managed by your identity provider".into(),
         ));
     }
     let secret = mfa::begin_enrollment(&state.db, &state.secrets, auth.id).await?;
@@ -356,10 +397,19 @@ pub async fn totp_disable(
     Json(req): Json<TotpDisable>,
 ) -> ApiResult<StatusCode> {
     let user = users::get(&state.db, auth.tenant, auth.id).await?;
-    let ok = user
-        .password_hash
-        .as_deref()
-        .is_some_and(|h| crypto::verify_password(&req.password, h));
+    let ok = if user.auth_source == "ldap" {
+        let req = LoginRequest {
+            username: user.username.clone(),
+            password: req.password.clone(),
+        };
+        directory_login(&state, &req)
+            .await
+            .is_some_and(|u| u.id == user.id)
+    } else {
+        user.password_hash
+            .as_deref()
+            .is_some_and(|h| crypto::verify_password(&req.password, h))
+    };
     if !ok {
         return Err(ApiError::BadRequest("password is wrong".into()));
     }

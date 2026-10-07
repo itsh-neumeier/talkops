@@ -61,6 +61,7 @@ export interface User {
 	enabled: boolean;
 	auth_source: string;
 	last_login_at: string | null;
+	totp_enabled: boolean;
 }
 
 export interface Me {

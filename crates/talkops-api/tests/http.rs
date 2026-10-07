@@ -285,3 +285,136 @@ async fn trunk_lines_and_numbers(db: PgPool) {
     let (status, _) = admin.put("/api/v1/settings", s).await;
     assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
 }
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn two_factor_login(db: PgPool) {
+    let router = router(db);
+    let admin = setup_admin(&router).await;
+    let now = || chrono::Utc::now().timestamp() as u64;
+    let login_raw = |user: &str, pw: &str| {
+        Request::post("/api/v1/auth/login")
+            .header(header::CONTENT_TYPE, "application/json")
+            .header("x-requested-with", "TalkOps")
+            .body(Body::from(
+                json!({"username": user, "password": pw}).to_string(),
+            ))
+            .unwrap()
+    };
+
+    let (_, st) = admin.get("/api/v1/auth/totp").await;
+    assert_eq!(st["enabled"], false);
+    assert_eq!(st["available"], true);
+    // Enabling needs a valid code of the pending secret.
+    let (status, setup) = admin.post("/api/v1/auth/totp/setup", json!({})).await;
+    assert_eq!(status, StatusCode::OK);
+    let secret = setup["secret"].as_str().unwrap().to_owned();
+    assert!(setup["qr_svg"].as_str().unwrap().contains("<svg"));
+    assert!(
+        setup["otpauth_uri"]
+            .as_str()
+            .unwrap()
+            .starts_with("otpauth://totp/TalkOps:admin?")
+    );
+    let (status, _) = admin
+        .post("/api/v1/auth/totp/enable", json!({"code": "000000"}))
+        .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    let code = talkops_core::mfa::code_for(&secret, now()).unwrap();
+    let (status, codes) = admin
+        .post("/api/v1/auth/totp/enable", json!({"code": code}))
+        .await;
+    assert_eq!(status, StatusCode::OK);
+    let recovery: Vec<String> = codes["recovery_codes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| c.as_str().unwrap().to_owned())
+        .collect();
+    assert_eq!(recovery.len(), 10);
+
+    // Password alone gives no session, only a challenge.
+    let res = raw(&router, login_raw("admin", "correct-horse")).await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(res.headers().get(header::SET_COOKIE).is_none());
+    let body = body_json(res).await;
+    assert_eq!(body["mfa_required"], true);
+    let token = body["mfa_token"].as_str().unwrap().to_owned();
+    let second = |token: &str, code: &str| {
+        Request::post("/api/v1/auth/login/totp")
+            .header(header::CONTENT_TYPE, "application/json")
+            .header("x-requested-with", "TalkOps")
+            .body(Body::from(
+                json!({"mfa_token": token, "code": code}).to_string(),
+            ))
+            .unwrap()
+    };
+    assert_eq!(
+        raw(&router, second(&token, "123456")).await.status(),
+        StatusCode::UNAUTHORIZED
+    );
+    // The code used for enabling cannot be replayed; the next one works.
+    assert_eq!(
+        raw(&router, second(&token, &code)).await.status(),
+        StatusCode::UNAUTHORIZED
+    );
+    let next = talkops_core::mfa::code_for(&secret, now() + 30).unwrap();
+    let res = raw(&router, second(&token, &next)).await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(res.headers().get(header::SET_COOKIE).is_some());
+    let me = body_json(res).await;
+    assert_eq!(me["user"]["totp_enabled"], true);
+    // The challenge is used up.
+    assert_eq!(
+        raw(&router, second(&token, &next)).await.status(),
+        StatusCode::UNAUTHORIZED
+    );
+
+    // A recovery code works once (any case, with or without dash).
+    let body = body_json(raw(&router, login_raw("admin", "correct-horse")).await).await;
+    let token = body["mfa_token"].as_str().unwrap().to_owned();
+    let rc = recovery[0].to_uppercase().replace('-', "");
+    assert_eq!(
+        raw(&router, second(&token, &rc)).await.status(),
+        StatusCode::OK
+    );
+    let body = body_json(raw(&router, login_raw("admin", "correct-horse")).await).await;
+    let token = body["mfa_token"].as_str().unwrap().to_owned();
+    assert_eq!(
+        raw(&router, second(&token, &recovery[0])).await.status(),
+        StatusCode::UNAUTHORIZED
+    );
+    // Too many wrong codes end the challenge even before a right one.
+    for _ in 0..5 {
+        raw(&router, second(&token, "111111")).await;
+    }
+    assert_eq!(
+        raw(&router, second(&token, &recovery[1])).await.status(),
+        StatusCode::UNAUTHORIZED
+    );
+    let (_, st) = admin.get("/api/v1/auth/totp").await;
+    assert_eq!(st["recovery_codes_left"], 9);
+
+    // Disabling needs the password; an admin can reset another user's 2FA.
+    let (status, _) = admin
+        .post("/api/v1/auth/totp/disable", json!({"password": "wrong"}))
+        .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    let (_, me) = admin.get("/api/v1/auth/me").await;
+    let (status, _) = admin
+        .post(
+            &format!(
+                "/api/v1/users/{}/totp/reset",
+                me["user"]["id"].as_str().unwrap()
+            ),
+            json!({}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::NO_CONTENT);
+    // The reset ended all sessions; a plain password login works again.
+    assert_eq!(
+        admin.get("/api/v1/auth/me").await.0,
+        StatusCode::UNAUTHORIZED
+    );
+    let res = raw(&router, login_raw("admin", "correct-horse")).await;
+    assert!(res.headers().get(header::SET_COOKIE).is_some());
+}

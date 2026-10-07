@@ -21,6 +21,7 @@ pub fn router() -> OpenApiRouter<AppState> {
         .routes(routes!(list_users, create_user))
         .routes(routes!(get_user, update_user, delete_user))
         .routes(routes!(set_user_password))
+        .routes(routes!(reset_user_totp))
 }
 
 #[derive(Deserialize, ToSchema)]
@@ -159,6 +160,30 @@ pub async fn set_user_password(
         "user",
         Some(id.to_string()),
         json!({}),
+    )
+    .await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// Turns off a user's two-factor login, e.g. after a lost phone (admin).
+/// Ends the user's sessions.
+#[utoipa::path(post, path = "/api/v1/users/{id}/totp/reset", tag = "users", params(("id" = Uuid, Path)), responses((status = 204)))]
+pub async fn reset_user_totp(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<Uuid>,
+) -> ApiResult<StatusCode> {
+    auth.require(Role::Admin)?;
+    let user = users::get(&state.db, auth.tenant, id).await?;
+    talkops_core::mfa::disable(&state.db, id).await?;
+    users::delete_user_sessions(&state.db, id).await?;
+    audit::record(
+        &state.db,
+        &auth.actor(),
+        "reset_totp",
+        "user",
+        Some(id.to_string()),
+        json!({"username": user.username}),
     )
     .await?;
     Ok(StatusCode::NO_CONTENT)

@@ -466,5 +466,32 @@ export default {
 	'door.kind.unlock_failed': 'Unlock failed',
 	'door.kind.alarm': 'Alarm (tamper)',
 	'door.kind.online': 'Connected',
-	'door.kind.offline': 'Connection lost'
+	'door.kind.offline': 'Connection lost',
+	'login.codeTitle': 'Two-factor login',
+	'login.codeHint':
+		'Enter the 6-digit code from your authenticator app, or one of your recovery codes.',
+	'login.code': 'Code',
+	'login.verify': 'Verify',
+	'login.codeFailed': 'The code is not valid. After several wrong codes, log in again.',
+	'mfa.title': 'Two-factor login',
+	'mfa.hint':
+		'Protects your account with a second step: a code from an authenticator app (e.g. Aegis, Google Authenticator, 1Password) after the password.',
+	'mfa.setup': 'Set up two-factor login',
+	'mfa.step1': 'Scan the QR code with your authenticator app (or enter the key manually).',
+	'mfa.step2': 'Enter the 6-digit code the app shows.',
+	'mfa.qrAlt': 'QR code for the authenticator app',
+	'mfa.manual': 'Key for manual entry:',
+	'mfa.enable': 'Activate',
+	'mfa.active': 'active',
+	'mfa.codesLeft': '{n} recovery codes left.',
+	'mfa.recoveryTitle': 'Your recovery codes',
+	'mfa.recoveryHint':
+		'Store them in a safe place. Each code works once instead of an app code, e.g. if you lose your phone. They are shown only now.',
+	'mfa.disableHint': 'Password to turn two-factor login off',
+	'mfa.disable': 'Turn off',
+	'mfa.notAvailable':
+		'Your account logs in through the company directory; two-factor login is managed there.',
+	'mfa.reset': 'Reset 2FA',
+	'mfa.resetConfirm':
+		'Turn off two-factor login for "{name}"? They will be logged out and can set it up again.'
 } as const;

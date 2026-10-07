@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { api, type PhoneNumber, type Settings, type SmtpSettings } from '#lib/api.ts';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
+	import TwoFactor from '#lib/components/TwoFactor.svelte';
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import { hasRole, logout } from '#lib/session.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
@@ -347,4 +348,5 @@
 		</div>
 		<button class="btn">{t('settings.changePassword')}</button>
 	</form>
+	<TwoFactor />
 </div>

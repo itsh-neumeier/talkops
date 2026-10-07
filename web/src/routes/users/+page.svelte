@@ -79,6 +79,16 @@
 		}
 	}
 
+	async function resetTotp(user: User) {
+		if (!confirm(t('mfa.resetConfirm', { name: user.username }))) return;
+		try {
+			await api.post(`/users/${user.id}/totp/reset`, {});
+			await load();
+		} catch (err) {
+			error = errorMessage(err);
+		}
+	}
+
 	async function setPassword(e: SubmitEvent) {
 		e.preventDefault();
 		try {
@@ -116,6 +126,8 @@
 						<td>
 							{user.display_name}
 							{#if !user.enabled}<span class="badge badge-muted">{t('common.disabled')}</span>{/if}
+							{#if user.totp_enabled}<span class="badge badge-ok" title={t('mfa.title')}>2FA</span
+								>{/if}
 						</td>
 						<td>{t(`roles.${user.role}`)}</td>
 						<td>{formatDateTime(user.last_login_at)}</td>
@@ -129,6 +141,11 @@
 										pwOpen = true;
 									}}>{t('users.setPassword')}</button
 								>
+								{#if user.totp_enabled}
+									<button class="btn btn-sm" onclick={() => resetTotp(user)}
+										>{t('mfa.reset')}</button
+									>
+								{/if}
 								<button class="btn btn-sm btn-danger" onclick={() => remove(user)}
 									>{t('common.delete')}</button
 								>

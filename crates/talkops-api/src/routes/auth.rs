@@ -8,6 +8,7 @@ use axum::response::{IntoResponse, Response};
 use serde::{Deserialize, Serialize};
 use talkops_core::audit;
 use talkops_core::crypto;
+use talkops_core::mfa;
 use talkops_core::tenant::TenantId;
 use talkops_core::users::{self, NewUser, Role, User};
 use utoipa::ToSchema;
@@ -22,6 +23,11 @@ pub fn router() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
         .routes(routes!(setup_status, setup))
         .routes(routes!(login))
+        .routes(routes!(login_totp))
+        .routes(routes!(totp_status))
+        .routes(routes!(totp_setup))
+        .routes(routes!(totp_enable))
+        .routes(routes!(totp_disable))
         .routes(routes!(logout))
         .routes(routes!(me))
         .routes(routes!(change_password))
@@ -71,6 +77,22 @@ pub struct SetupRequest {
 pub struct LoginRequest {
     pub username: String,
     pub password: String,
+}
+
+/// Answer of a login that needs a second factor (no session yet).
+#[derive(Serialize, ToSchema)]
+pub struct MfaRequired {
+    /// Always `true`.
+    pub mfa_required: bool,
+    /// Send with the code to `/api/v1/auth/login/totp` (valid 5 minutes).
+    pub mfa_token: String,
+}
+
+#[derive(Deserialize, ToSchema)]
+pub struct TotpLogin {
+    pub mfa_token: String,
+    /// 6-digit code from the authenticator app or a recovery code.
+    pub code: String,
 }
 
 #[derive(Serialize, ToSchema)]
@@ -152,7 +174,7 @@ async fn start_session(state: &AppState, user: User, meta: &RequestMeta) -> ApiR
 /// Logs in with username and password; sets the session cookie.
 #[utoipa::path(
     post, path = "/api/v1/auth/login", tag = "auth", request_body = LoginRequest,
-    responses((status = 200, body = Me), (status = 401), (status = 429))
+    responses((status = 200, body = Me, description = "logged in; or `MfaRequired` if a code is needed"), (status = 401), (status = 429))
 )]
 pub async fn login(
     State(state): State<AppState>,
@@ -169,8 +191,169 @@ pub async fn login(
         tracing::info!(username = %req.username.chars().take(64).collect::<String>(), ip = ?meta.ip, "failed login");
         return Err(ApiError::Unauthorized);
     };
+    if user.totp_enabled {
+        // Password correct, second factor missing: no session yet.
+        let token = mfa::new_challenge(&state.db, user.id).await?;
+        return Ok(Json(MfaRequired {
+            mfa_required: true,
+            mfa_token: token,
+        })
+        .into_response());
+    }
     state.limiter.reset(&key);
     start_session(&state, user, &meta).await
+}
+
+/// Second login step: TOTP or recovery code.
+#[utoipa::path(
+    post, path = "/api/v1/auth/login/totp", tag = "auth", request_body = TotpLogin,
+    responses((status = 200, body = Me), (status = 401), (status = 429))
+)]
+pub async fn login_totp(
+    State(state): State<AppState>,
+    meta: RequestMeta,
+    Json(req): Json<TotpLogin>,
+) -> ApiResult<Response> {
+    let key = meta.ip.clone().unwrap_or_default();
+    if !state.limiter.allow(&key) {
+        return Err(ApiError::TooManyRequests);
+    }
+    let Some(user_id) =
+        mfa::complete_challenge(&state.db, &state.secrets, &req.mfa_token, &req.code).await?
+    else {
+        tracing::info!(ip = ?meta.ip, "failed second factor");
+        return Err(ApiError::Unauthorized);
+    };
+    state.limiter.reset(&key);
+    let user = users::get(&state.db, TenantId::DEFAULT, user_id).await?;
+    if !user.enabled {
+        return Err(ApiError::Unauthorized);
+    }
+    start_session(&state, user, &meta).await
+}
+
+#[derive(Serialize, ToSchema)]
+pub struct TotpStatus {
+    pub enabled: bool,
+    pub recovery_codes_left: i64,
+    /// Only local accounts can use TOTP; others log in via their directory.
+    pub available: bool,
+}
+
+/// Two-factor state of the own account.
+#[utoipa::path(get, path = "/api/v1/auth/totp", tag = "auth", responses((status = 200, body = TotpStatus)))]
+pub async fn totp_status(
+    State(state): State<AppState>,
+    auth: AuthUser,
+) -> ApiResult<Json<TotpStatus>> {
+    let user = users::get(&state.db, auth.tenant, auth.id).await?;
+    Ok(Json(TotpStatus {
+        enabled: user.totp_enabled,
+        recovery_codes_left: mfa::recovery_codes_left(&state.db, auth.id).await?,
+        available: user.auth_source == "local",
+    }))
+}
+
+#[derive(Serialize, ToSchema)]
+pub struct TotpSetup {
+    /// Base32 secret for manual entry.
+    pub secret: String,
+    pub otpauth_uri: String,
+    /// QR code of the URI as SVG.
+    pub qr_svg: String,
+}
+
+/// Starts setting up two-factor login: a new secret to scan.
+#[utoipa::path(post, path = "/api/v1/auth/totp/setup", tag = "auth", responses((status = 200, body = TotpSetup)))]
+pub async fn totp_setup(
+    State(state): State<AppState>,
+    auth: AuthUser,
+) -> ApiResult<Json<TotpSetup>> {
+    let user = users::get(&state.db, auth.tenant, auth.id).await?;
+    if user.auth_source != "local" {
+        return Err(ApiError::BadRequest(
+            "two-factor login is managed by your directory".into(),
+        ));
+    }
+    let secret = mfa::begin_enrollment(&state.db, &state.secrets, auth.id).await?;
+    let uri = mfa::otpauth_uri(&secret, &user.username);
+    let qr_svg = qrcode::QrCode::new(uri.as_bytes())
+        .map_err(|e| ApiError::Internal(e.to_string()))?
+        .render::<qrcode::render::svg::Color>()
+        .min_dimensions(200, 200)
+        .quiet_zone(true)
+        .build();
+    Ok(Json(TotpSetup {
+        secret,
+        otpauth_uri: uri,
+        qr_svg,
+    }))
+}
+
+#[derive(Deserialize, ToSchema)]
+pub struct TotpCode {
+    pub code: String,
+}
+
+#[derive(Serialize, ToSchema)]
+pub struct RecoveryCodes {
+    /// Shown only once; each works one time instead of a code.
+    pub recovery_codes: Vec<String>,
+}
+
+/// Activates two-factor login with a code from the app; returns recovery codes.
+#[utoipa::path(post, path = "/api/v1/auth/totp/enable", tag = "auth", request_body = TotpCode, responses((status = 200, body = RecoveryCodes), (status = 422)))]
+pub async fn totp_enable(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Json(req): Json<TotpCode>,
+) -> ApiResult<Json<RecoveryCodes>> {
+    let codes = mfa::confirm_enrollment(&state.db, &state.secrets, auth.id, &req.code).await?;
+    audit::record(
+        &state.db,
+        &auth.actor(),
+        "enable_totp",
+        "user",
+        Some(auth.id.to_string()),
+        serde_json::json!({}),
+    )
+    .await?;
+    Ok(Json(RecoveryCodes {
+        recovery_codes: codes,
+    }))
+}
+
+#[derive(Deserialize, ToSchema)]
+pub struct TotpDisable {
+    pub password: String,
+}
+
+/// Turns two-factor login off (needs the password).
+#[utoipa::path(post, path = "/api/v1/auth/totp/disable", tag = "auth", request_body = TotpDisable, responses((status = 204), (status = 422)))]
+pub async fn totp_disable(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Json(req): Json<TotpDisable>,
+) -> ApiResult<StatusCode> {
+    let user = users::get(&state.db, auth.tenant, auth.id).await?;
+    let ok = user
+        .password_hash
+        .as_deref()
+        .is_some_and(|h| crypto::verify_password(&req.password, h));
+    if !ok {
+        return Err(ApiError::BadRequest("password is wrong".into()));
+    }
+    mfa::disable(&state.db, auth.id).await?;
+    audit::record(
+        &state.db,
+        &auth.actor(),
+        "disable_totp",
+        "user",
+        Some(auth.id.to_string()),
+        serde_json::json!({}),
+    )
+    .await?;
+    Ok(StatusCode::NO_CONTENT)
 }
 
 /// Ends the current session.

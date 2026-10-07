@@ -462,7 +462,34 @@ const de: Record<keyof typeof en, string> = {
 	'door.kind.unlock_failed': 'Entriegeln fehlgeschlagen',
 	'door.kind.alarm': 'Alarm (Sabotage)',
 	'door.kind.online': 'Verbunden',
-	'door.kind.offline': 'Verbindung verloren'
+	'door.kind.offline': 'Verbindung verloren',
+	'login.codeTitle': 'Anmeldung in zwei Schritten',
+	'login.codeHint':
+		'Geben Sie den 6-stelligen Code aus Ihrer Authenticator-App oder einen Ihrer Wiederherstellungscodes ein.',
+	'login.code': 'Code',
+	'login.verify': 'Bestätigen',
+	'login.codeFailed': 'Der Code ist ungültig. Nach mehreren falschen Codes bitte neu anmelden.',
+	'mfa.title': 'Zwei-Faktor-Anmeldung',
+	'mfa.hint':
+		'Schützt Ihr Konto mit einem zweiten Schritt: einem Code aus einer Authenticator-App (z. B. Aegis, Google Authenticator, 1Password) nach dem Passwort.',
+	'mfa.setup': 'Zwei-Faktor-Anmeldung einrichten',
+	'mfa.step1': 'QR-Code mit der Authenticator-App scannen (oder den Schlüssel von Hand eingeben).',
+	'mfa.step2': 'Den 6-stelligen Code aus der App eingeben.',
+	'mfa.qrAlt': 'QR-Code für die Authenticator-App',
+	'mfa.manual': 'Schlüssel zur manuellen Eingabe:',
+	'mfa.enable': 'Aktivieren',
+	'mfa.active': 'aktiv',
+	'mfa.codesLeft': 'Noch {n} Wiederherstellungscodes.',
+	'mfa.recoveryTitle': 'Ihre Wiederherstellungscodes',
+	'mfa.recoveryHint':
+		'Bewahren Sie sie sicher auf. Jeder Code funktioniert einmal statt eines App-Codes, z. B. wenn das Handy verloren geht. Sie werden nur jetzt angezeigt.',
+	'mfa.disableHint': 'Passwort, um die Zwei-Faktor-Anmeldung auszuschalten',
+	'mfa.disable': 'Ausschalten',
+	'mfa.notAvailable':
+		'Ihr Konto meldet sich über das Firmenverzeichnis an; die Zwei-Faktor-Anmeldung wird dort verwaltet.',
+	'mfa.reset': '2FA zurücksetzen',
+	'mfa.resetConfirm':
+		'Zwei-Faktor-Anmeldung für „{name}“ ausschalten? Die Person wird abgemeldet und kann sie neu einrichten.'
 };
 
 export default de;

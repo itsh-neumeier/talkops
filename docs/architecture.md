@@ -255,17 +255,18 @@ MWI wird per `MESSAGE_WAITING`-Event gesetzt (genutzt ab Phase 3).
 | Port | Proto | Dienst | Erreichbar von |
 |---|---|---|---|
 | 5060 | UDP/TCP | SIP (intern, Profil `internal`, ab Phase 1) | LAN |
-| 5061 | TCP | SIP/TLS (ab Phase 1) | LAN/WAN |
+| 5061 | TCP | SIP/TLS – noch nicht aktiv (nach 1.0 geplant) | – |
 | 5080 | UDP/TCP | SIP-Trunks (Profil `external`, ab Phase 1) | Provider |
-| 7443 | TCP | SIP over WSS (WebRTC, Phase 7) | Browser |
+| 5066 | TCP | SIP über WebSocket (WebRTC), Browser verbinden sich über TalkOps `/api/v1/webrtc/ws` | nur 127.0.0.1 |
 | 16384–16999 | UDP | RTP/SRTP (konfigurierbar) | LAN/Provider |
 | 8080 | TCP | Web-UI, API, Provisioning, `/fs/xml` | LAN bzw. via Caddy |
 | 8021 | TCP | ESL inbound | nur 127.0.0.1 |
 | 5432 | TCP | PostgreSQL | nur 127.0.0.1 |
 | 80/443 | TCP | Caddy (optional) | LAN/WAN |
 
-`/fs/xml` ist per Basic-Auth geschützt; ab Phase 8 wird es zusätzlich auf
-Loopback-Quellen beschränkt.
+`/fs/xml` und `/fs/cdr` sind per Basic-Auth geschützt und antworten nur
+Loopback-Quellen (bzw. `TALKOPS_FS_PEERS`), nie über einen Reverse-Proxy
+([ADR 0016](adr/0016-betrieb-sicherung-und-sip-schutz.md)).
 
 ## Daten & Volumes
 
@@ -277,6 +278,8 @@ Loopback-Quellen beschränkt.
 | `sounds` | `/var/lib/talkops/sounds` | TTS-Ansagen, MoH-Uploads |
 | `provisioning` | `/var/lib/talkops/provisioning` | Firmware, generierte Configs |
 | `models` | `/var/lib/talkops/models` | Whisper-/Piper-Modelle |
+| `snapshots` | `/var/lib/talkops/snapshots` | Bilder der Türsprechstellen |
+| `backups` | `/var/lib/talkops/backups` | Sicherungsarchive (talkops) |
 | `freeswitch-db` | `/usr/local/freeswitch/var/lib/freeswitch/db` | FreeSWITCH-interne SQLite (Registrierungen) |
 
 Alle Images nutzen UID/GID **10001**, damit die gemeinsamen Volumes ohne
@@ -289,10 +292,16 @@ Alle Images nutzen UID/GID **10001**, damit die gemeinsamen Volumes ohne
   **verschlüsselt** gespeichert (XChaCha20-Poly1305, Schlüssel `TALKOPS_SECRET_KEY`,
   [ADR 0008](adr/0008-secrets-at-rest.md)).
 - ESL und Postgres nur auf Loopback; xml_curl mit Basic-Auth.
-- Container laufen nicht als root.
-- Ab Phase 1: Audit-Log für Admin-Aktionen, CSRF-Schutz, Session-Cookies
-  (`HttpOnly`, `SameSite=Strict`). Ab Phase 8: Rate-Limits/IP-Sperren gegen
-  SIP-Scanner, Länder-/IP-Allowlists.
+- Container laufen nicht als root, ohne Linux-Capabilities und mit
+  `no-new-privileges`; Server und Media-Worker mit schreibgeschütztem
+  Root-Dateisystem.
+- Audit-Log für Admin-Aktionen, CSRF-Schutz, Session-Cookies (`HttpOnly`,
+  `SameSite=Strict`), Login-Rate-Limit, TOTP, Sicherheits-Header und CSP.
+- SIP-Anmeldeschutz: zu viele fehlgeschlagene Anmeldungen einer Adresse
+  (ESL `sofia::register_failure`) führen zu einer zeitweisen Sperre;
+  vertrauenswürdige Netze sind ausgenommen
+  ([ADR 0016](adr/0016-betrieb-sicherung-und-sip-schutz.md)). Länderfilter
+  (GeoIP) sind nicht enthalten.
 
 ## Healthchecks & Betrieb
 
@@ -305,8 +314,10 @@ Alle Images nutzen UID/GID **10001**, damit die gemeinsamen Volumes ohne
 
 Endpunkte: `/healthz` (Liveness), `/readyz` (Readiness), `/api/v1/status`
 (Komponentenstatus), `/api/v1/openapi.json` (OpenAPI 3.1). Logs strukturiert
-als JSON auf stdout (`TALKOPS_LOG_FORMAT=json`). Prometheus-Metriken folgen in
-Phase 8.
+als JSON auf stdout (`TALKOPS_LOG_FORMAT=json`). Prometheus-Metriken unter
+`/metrics`, aktiv nur mit `TALKOPS_METRICS_TOKEN`. Tägliche Sicherungen
+(Datenbank und Volumes) nach `backups`, Wiederherstellung mit
+`talkops restore`.
 
 ## Verzeichnisstruktur
 

@@ -22,5 +22,6 @@ nächste freie Nummer; überholte ADRs werden nicht gelöscht, sondern auf
 | [0013](0013-tuersprechstellen-dahua.md) | Türsprechstellen: Dahua VTO als SIP-Gerät, Steuerung über die HTTP-API | Angenommen |
 | [0014](0014-identitaet-oidc-ldap-totp.md) | Identität: lokale Konten mit TOTP, OIDC, LDAP/AD | Angenommen |
 | [0015](0015-webrtc-softphone.md) | Browser-Softphone: SIP über WebSocket durch TalkOps, SIP.js | Angenommen |
+| [0016](0016-betrieb-sicherung-und-sip-schutz.md) | Betrieb: Datensicherung, SIP-Anmeldeschutz und Härtung | Angenommen |
 
 Vorlage: [`template.md`](template.md)

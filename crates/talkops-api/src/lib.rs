@@ -1,6 +1,7 @@
 //! TalkOps control plane HTTP server.
 
 pub mod auth;
+pub mod backup;
 pub mod callcenter;
 pub mod config;
 pub mod doors;
@@ -55,6 +56,8 @@ pub struct AppState {
     pub limiter: Arc<LoginLimiter>,
     /// Bearer token for `/metrics`; `None` disables the endpoint.
     pub metrics_token: Option<Arc<str>>,
+    /// Backup target; `None` disables the backup API.
+    pub backup: Option<Arc<backup::BackupConfig>>,
 }
 
 impl AppState {
@@ -82,6 +85,7 @@ impl AppState {
             xmlcurl_password: Arc::from(xmlcurl_password),
             limiter: Arc::new(LoginLimiter::default()),
             metrics_token: None,
+            backup: None,
         }
     }
 }
@@ -126,6 +130,11 @@ impl AppState {
     /// Enables `/metrics` with this bearer token (empty: disabled).
     pub fn with_metrics_token(mut self, token: Option<&str>) -> Self {
         self.metrics_token = token.filter(|t| !t.is_empty()).map(Arc::from);
+        self
+    }
+
+    pub fn with_backup(mut self, cfg: backup::BackupConfig) -> Self {
+        self.backup = Some(Arc::new(cfg));
         self
     }
 
@@ -176,6 +185,7 @@ pub fn api_router() -> (Router<AppState>, utoipa::openapi::OpenApi) {
         .merge(routes::recordings::router())
         .merge(routes::doors::router())
         .merge(routes::webrtc::router())
+        .merge(routes::backups::router())
         .split_for_parts();
     (router, api)
 }

@@ -11,9 +11,8 @@ pub struct Config {
     #[arg(long, env = "TALKOPS_LISTEN", default_value = "0.0.0.0:8080")]
     pub listen: SocketAddr,
 
-    /// Postgres connection string.
-    #[arg(long, env = "TALKOPS_DATABASE_URL", hide_env_values = true)]
-    pub database_url: String,
+    #[command(flatten)]
+    pub storage: Storage,
 
     #[arg(long, env = "TALKOPS_DB_MAX_CONNECTIONS", default_value_t = 10)]
     pub db_max_connections: u32,
@@ -49,46 +48,6 @@ pub struct Config {
         default_value = "/usr/share/talkops/presets/phones"
     )]
     pub phones_dir: PathBuf,
-
-    /// Writable directory for provisioning data (firmware images).
-    #[arg(
-        long,
-        env = "TALKOPS_PROVISIONING_DIR",
-        default_value = "/var/lib/talkops/provisioning"
-    )]
-    pub provisioning_dir: PathBuf,
-
-    /// Shared voicemail volume (messages, greetings).
-    #[arg(
-        long,
-        env = "TALKOPS_VOICEMAIL_DIR",
-        default_value = "/var/lib/talkops/voicemail"
-    )]
-    pub voicemail_dir: PathBuf,
-
-    /// Shared recordings volume (call recordings).
-    #[arg(
-        long,
-        env = "TALKOPS_RECORDINGS_DIR",
-        default_value = "/var/lib/talkops/recordings"
-    )]
-    pub recordings_dir: PathBuf,
-
-    /// Door station snapshots.
-    #[arg(
-        long,
-        env = "TALKOPS_SNAPSHOTS_DIR",
-        default_value = "/var/lib/talkops/snapshots"
-    )]
-    pub snapshots_dir: PathBuf,
-
-    /// Shared sounds volume (system prompts rendered by the media worker).
-    #[arg(
-        long,
-        env = "TALKOPS_SOUNDS_DIR",
-        default_value = "/var/lib/talkops/sounds"
-    )]
-    pub sounds_dir: PathBuf,
 
     /// Address of the outbound Event Socket server FreeSWITCH hands
     /// interactive calls (voicemail) to.
@@ -137,4 +96,64 @@ pub struct Config {
 
     #[arg(long, env = "TALKOPS_LOG_FORMAT", default_value = "pretty")]
     pub log_format: LogFormat,
+}
+
+/// Database and data directories: everything a backup contains.
+#[derive(Debug, Clone, clap::Args)]
+pub struct Storage {
+    /// Postgres connection string.
+    #[arg(long, env = "TALKOPS_DATABASE_URL", hide_env_values = true)]
+    pub database_url: String,
+
+    /// Writable directory for provisioning data (firmware images).
+    #[arg(
+        long,
+        env = "TALKOPS_PROVISIONING_DIR",
+        default_value = "/var/lib/talkops/provisioning"
+    )]
+    pub provisioning_dir: PathBuf,
+
+    /// Shared voicemail volume (messages, greetings).
+    #[arg(
+        long,
+        env = "TALKOPS_VOICEMAIL_DIR",
+        default_value = "/var/lib/talkops/voicemail"
+    )]
+    pub voicemail_dir: PathBuf,
+
+    /// Shared recordings volume (call recordings).
+    #[arg(
+        long,
+        env = "TALKOPS_RECORDINGS_DIR",
+        default_value = "/var/lib/talkops/recordings"
+    )]
+    pub recordings_dir: PathBuf,
+
+    /// Door station snapshots.
+    #[arg(
+        long,
+        env = "TALKOPS_SNAPSHOTS_DIR",
+        default_value = "/var/lib/talkops/snapshots"
+    )]
+    pub snapshots_dir: PathBuf,
+
+    /// Shared sounds volume (system prompts rendered by the media worker).
+    #[arg(
+        long,
+        env = "TALKOPS_SOUNDS_DIR",
+        default_value = "/var/lib/talkops/sounds"
+    )]
+    pub sounds_dir: PathBuf,
+
+    /// Backup archives (`talkops-*.tar.gz`).
+    #[arg(
+        long,
+        env = "TALKOPS_BACKUP_DIR",
+        default_value = "/var/lib/talkops/backups"
+    )]
+    pub backup_dir: PathBuf,
+
+    /// Directory with `pg_dump`/`pg_restore` (default: from `PATH`).
+    #[arg(long, env = "TALKOPS_PG_BIN_DIR")]
+    pub pg_bin_dir: Option<PathBuf>,
 }

@@ -2,6 +2,7 @@
 //! by all TalkOps services.
 
 pub mod audit;
+pub mod backups;
 pub mod cdr;
 pub mod crypto;
 pub mod db;

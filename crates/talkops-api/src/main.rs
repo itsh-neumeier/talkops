@@ -2,7 +2,8 @@ use std::time::Duration;
 
 use anyhow::Context;
 use clap::{Parser, Subcommand};
-use talkops_api::config::Config;
+use talkops_api::backup::{self, BackupConfig};
+use talkops_api::config::{Config, Storage};
 use talkops_api::fsxml::sofia::ProfileSettings;
 use talkops_api::voicemail::VmContext;
 use talkops_api::{AppState, MediaPaths, app};
@@ -27,6 +28,25 @@ enum Command {
         #[arg(long, env = "TALKOPS_DATABASE_URL", hide_env_values = true)]
         database_url: String,
     },
+    /// Write a backup archive (database and data volumes) and exit.
+    Backup {
+        #[command(flatten)]
+        storage: Storage,
+        /// Leave call recordings out.
+        #[arg(long)]
+        without_recordings: bool,
+    },
+    /// Restore a backup archive. Replaces the database and the data
+    /// volumes: stop the server and the media worker first.
+    Restore {
+        #[command(flatten)]
+        storage: Storage,
+        /// The archive (`talkops-YYYYMMDD-HHMMSS.tar.gz`).
+        archive: std::path::PathBuf,
+        /// Confirm that all current data is replaced.
+        #[arg(long)]
+        yes: bool,
+    },
     /// Probe the local server's readiness endpoint (container healthcheck).
     Healthcheck {
         /// Port of the local server; defaults to the port of TALKOPS_LISTEN.
@@ -45,6 +65,39 @@ async fn main() -> anyhow::Result<()> {
             println!("migrations applied");
             Ok(())
         }
+        Command::Backup {
+            storage,
+            without_recordings,
+        } => {
+            let cfg = BackupConfig::from_storage(&storage);
+            let pool = talkops_core::db::connect_lazy(&storage.database_url, 2)?;
+            let name = backup::create(&cfg, &pool, !without_recordings).await?;
+            println!("{}", cfg.dir.join(name).display());
+            Ok(())
+        }
+        Command::Restore {
+            storage,
+            archive,
+            yes,
+        } => {
+            if !yes {
+                anyhow::bail!(
+                    "this replaces the database and all data volumes with {}; \
+                     stop TalkOps first and run again with --yes",
+                    archive.display()
+                );
+            }
+            let cfg = BackupConfig::from_storage(&storage);
+            let pool = talkops_core::db::connect_lazy(&storage.database_url, 1)?;
+            let manifest = backup::restore(&cfg, &pool, &archive).await?;
+            println!(
+                "restored backup of {} (TalkOps {}), volumes: {}",
+                manifest.created_at,
+                manifest.talkops_version,
+                manifest.volumes.join(", ")
+            );
+            Ok(())
+        }
         Command::Healthcheck { port } => healthcheck(port).await,
     }
 }
@@ -53,7 +106,8 @@ async fn serve(config: Config) -> anyhow::Result<()> {
     talkops_core::telemetry::init(config.log_format);
     tracing::info!(version = talkops_core::VERSION, listen = %config.listen, "TalkOps starting");
 
-    let db = talkops_core::db::connect_lazy(&config.database_url, config.db_max_connections)?;
+    let db =
+        talkops_core::db::connect_lazy(&config.storage.database_url, config.db_max_connections)?;
     if config.auto_migrate {
         let mut delay = Duration::from_secs(1);
         loop {
@@ -95,19 +149,20 @@ async fn serve(config: Config) -> anyhow::Result<()> {
         secrets,
         catalog,
         phone_catalog,
-        config.provisioning_dir.clone(),
+        config.storage.provisioning_dir.clone(),
         profile,
         &config.xmlcurl_password,
     )
     .with_media(MediaPaths {
-        voicemail: config.voicemail_dir.clone(),
-        sounds: config.sounds_dir.clone(),
-        recordings: config.recordings_dir.clone(),
-        snapshots: config.snapshots_dir.clone(),
+        voicemail: config.storage.voicemail_dir.clone(),
+        sounds: config.storage.sounds_dir.clone(),
+        recordings: config.storage.recordings_dir.clone(),
+        snapshots: config.storage.snapshots_dir.clone(),
     })
     .with_outbound_socket(&config.esl_outbound_listen)
     .with_sip_ws(&config.sip_ws_url)
-    .with_metrics_token(config.metrics_token.as_deref());
+    .with_metrics_token(config.metrics_token.as_deref())
+    .with_backup(BackupConfig::from_storage(&config.storage));
     let queue_sync = talkops_api::callcenter::spawn(db.clone(), state.telephony.esl.clone());
     let state = state.with_queue_sync(queue_sync);
     state
@@ -126,6 +181,9 @@ async fn serve(config: Config) -> anyhow::Result<()> {
     }));
     talkops_api::mailer::spawn(state.db.clone(), state.secrets.clone(), state.media.clone());
     talkops_api::retention::spawn(db.clone(), state.media.clone());
+    if let Some(cfg) = &state.backup {
+        backup::spawn(db.clone(), cfg.clone());
+    }
     talkops_api::ldap::spawn_sync(state.db.clone(), state.secrets.clone());
     talkops_api::doors::spawn_listeners(talkops_api::doors::DoorCtx::from(&state));
     spawn_session_cleanup(db);

@@ -58,6 +58,7 @@ services:
       - sounds:/var/lib/talkops/sounds
       - provisioning:/var/lib/talkops/provisioning
       - snapshots:/var/lib/talkops/snapshots
+      - backups:/var/lib/talkops/backups
 
   freeswitch:
     image: ghcr.io/itsh-neumeier/talkops-freeswitch:${TALKOPS_VERSION:-latest}
@@ -118,6 +119,7 @@ volumes:
   sounds:
   provisioning:
   snapshots:
+  backups:
   models:
   freeswitch-db:
   caddy-data:

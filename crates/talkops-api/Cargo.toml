@@ -47,6 +47,10 @@ utoipa.workspace = true
 utoipa-axum = "0.2.0"
 webpki-roots = "1"
 uuid = { workspace = true, features = ["v4", "serde"] }
+tar = "0.4"
+flate2 = "1"
+url = "2"
+percent-encoding = "2"
 
 [dev-dependencies]
 http-body-util = "0.1"

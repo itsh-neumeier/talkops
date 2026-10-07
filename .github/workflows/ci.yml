@@ -46,7 +46,13 @@ jobs:
           sudo systemctl stop slapd || true
           # Under /var/lib/ldap so the AppArmor profile of slapd allows it.
           sudo LDAP_WORK=/var/lib/ldap/talkops-test tests/ldap/start.sh
+      - name: Install PostgreSQL 17 client tools (backup tests)
+        run: |
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq postgresql-client-17
       - run: cargo test --workspace --locked
+        env:
+          TALKOPS_TEST_PG_BIN_DIR: /usr/lib/postgresql/17/bin
 
   web:
     name: Web UI (lint, check, build)

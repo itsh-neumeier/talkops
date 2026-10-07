@@ -170,12 +170,17 @@ async fn with_recording(r: &Routing<'_>, mut actions: Vec<Action>) -> CoreResult
     let mut rec = vec![
         set("talkops_recording", file.clone()),
         set("RECORD_STEREO", "true"),
-        set("RECORD_ANSWER_REQ", "true"),
-        (
-            "record_session",
-            r.recordings.join(&file).display().to_string(),
-        ),
     ];
+    let path = r.recordings.join(&file).display().to_string();
+    if actions[..pos].iter().any(|(app, _)| *app == "answer") {
+        // Already answered (queues): record from now on.
+        rec.push(("record_session", path.clone()));
+    } else {
+        // Start when the call is answered: running record_session earlier
+        // would set up the caller's media before the answer, which stalls
+        // WebRTC callers (late codec negotiation).
+        rec.push(set("execute_on_answer", format!("record_session {path}")));
+    }
     let announcement = settings
         .recording_announcement
         .then(|| prompts::path(r.sounds, "rec_announcement", &settings.default_language))
@@ -197,7 +202,6 @@ async fn with_recording(r: &Routing<'_>, mut actions: Vec<Action>) -> CoreResult
             }
         }
     }
-    let path = r.recordings.join(&file).display().to_string();
     let after = pos + rec.len() + 1;
     actions.splice(pos..pos, rec);
     // Unanswered: whatever follows (voicemail, fallback) is not part of it.

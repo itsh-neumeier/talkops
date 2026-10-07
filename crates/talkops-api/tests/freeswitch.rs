@@ -983,7 +983,10 @@ async fn call_recording(db: PgPool) {
 
     // Nothing is recorded by default.
     let a = internal_call(&router, &f.ext21, "20").await;
-    assert!(!a.iter().any(|(app, _)| app == "record_session"), "{a:?}");
+    assert!(
+        !a.iter().any(|(_, d)| d.contains("record_session")),
+        "{a:?}"
+    );
 
     let (_, mut s) = f.admin.get("/api/v1/settings").await;
     s["record_internal"] = json!(true);
@@ -994,8 +997,8 @@ async fn call_recording(db: PgPool) {
     let a = internal_call(&router, &f.ext21, "20").await;
     let rec = a
         .iter()
-        .position(|(app, _)| app == "record_session")
-        .expect("recorded");
+        .position(|(app, d)| app == "set" && d.starts_with("execute_on_answer=record_session "))
+        .expect("recorded on answer");
     let bridge = a.iter().position(|(app, _)| app == "bridge").unwrap();
     assert!(rec < bridge, "{a:?}");
     assert!(has(&a, "set", "RECORD_STEREO=true"));
@@ -1012,7 +1015,13 @@ async fn call_recording(db: PgPool) {
         file.starts_with(TENANT) && file.ends_with("/${uuid}.wav"),
         "{file}"
     );
-    assert_eq!(a[rec].1, dir.join(&file).display().to_string());
+    assert_eq!(
+        a[rec].1,
+        format!(
+            "execute_on_answer=record_session {}",
+            dir.join(&file).display()
+        )
+    );
     // Unanswered calls go on to voicemail without recording it.
     assert_eq!(a[bridge + 1].0, "stop_record_session", "{a:?}");
 
@@ -1025,7 +1034,10 @@ async fn call_recording(db: PgPool) {
         .await;
     assert_eq!(status, StatusCode::OK);
     let a = internal_call(&router, &f.ext21, "20").await;
-    assert!(!a.iter().any(|(app, _)| app == "record_session"), "{a:?}");
+    assert!(
+        !a.iter().any(|(_, d)| d.contains("record_session")),
+        "{a:?}"
+    );
 
     // FreeSWITCH wrote the file; the CDR registers it.
     let file = file.replace("${uuid}", "call-rec");

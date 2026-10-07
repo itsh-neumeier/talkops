@@ -4,31 +4,31 @@
 set of UniFi Talk plus video door stations, call recording, local
 transcription and LDAP/AD, packaged as a Docker Compose stack.
 
-> **Status: early development (phase 7 – WebRTC & identity).** Extensions with
-> multiple devices, SIP trunks from 28 provider presets, internal and external
-> calls, emergency routing, a call log, Yealink auto-provisioning (desk phones
-> and DECT), BLF keys, XML phonebook, DND/forwarding feature codes and
-> firmware management, voicemail with TTS greetings (Piper, German/English)
-> and e-mail notification, ring groups, opening hours with German public
-> holidays, voice menus, queues, call parking, call recording with
-> announcement, local transcription (whisper.cpp) with full-text search and
-> Dahua door stations (video ring, door opener, snapshots, Home Assistant
-> webhooks), a browser softphone with video (WebRTC), two-factor login,
-> OIDC single sign-on and LDAP/AD logins work; backup/restore, metrics and
-> the 1.0 release follow. See the [roadmap](docs/architecture.md#roadmap).
+> **Status: 1.0 release candidate.** All roadmap phases are implemented and
+> covered by unit, integration and SIPp/browser end-to-end tests. Not yet
+> verified with real hardware: LEONET live trunk, Yealink phones, Dahua door
+> stations. See the [roadmap](docs/architecture.md#roadmap) and the
+> [changelog](CHANGELOG.md).
 
-## Highlights (planned)
+## Features
 
-- Multiple SIP trunks with versioned provider presets (LEONET, Telekom,
-  Vodafone, sipgate, easybell, FRITZ!Box, Twilio, …)
-- Extensions with multiple devices, ring groups, queues, graphical IVR editor,
-  business hours and public holidays per German state
+- SIP trunks from 28 versioned provider presets (LEONET, Telekom, Vodafone,
+  sipgate, easybell, FRITZ!Box, Twilio, …), multiple trunks and numbers,
+  emergency routing
+- Extensions with multiple devices, DND and forwarding (also via feature codes)
+- Ring groups, queues, voice menus (IVR), opening hours with public holidays
+  per German state, call parking
 - Voicemail with TTS greetings (Piper, local), e-mail delivery with transcript
-- Call recording with announcement, local transcription (whisper.cpp), full-text search
-- Yealink auto-provisioning, XML phonebook, BLF, DECT, firmware management
-- Dahua VTO door stations with H.264 video, door opener, snapshots, Home Assistant events
+- Call recording with announcement, local transcription (whisper.cpp),
+  full-text search, retention
+- Yealink auto-provisioning (desk phones and DECT), XML phonebook, BLF, MWI,
+  firmware management
+- Dahua VTO door stations: video ring, door opener, snapshots, Home Assistant
+  webhooks
 - WebRTC softphone with video in the browser
-- Local accounts, LDAP/AD and OIDC single sign-on, TOTP
+- Local accounts with TOTP, OIDC single sign-on, LDAP/Active Directory
+- Daily backups with one-command restore, Prometheus metrics, SIP login
+  protection (bans after failed logins), hardened containers
 
 ## Architecture
 

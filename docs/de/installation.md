@@ -1,9 +1,5 @@
 # Installation
 
-> Stand Phase 1: Nebenstellen, Geräte, SIP-Trunks (Provider-Vorlagen),
-> interne/externe Gespräche und Anrufliste. Danach weiter mit
-> [Erste Schritte](erste-schritte.md).
-
 ## Voraussetzungen
 
 - Linux-Host (x86_64 oder arm64), z. B. Debian/Ubuntu, Proxmox-VM, NAS mit Docker
@@ -71,16 +67,36 @@ docker compose pull && docker compose up -d
 ```
 
 Datenbankmigrationen laufen beim Start von `talkops` automatisch. Für feste
-Versionen `TALKOPS_VERSION` in `.env` setzen (z. B. `0.1`).
+Versionen `TALKOPS_VERSION` in `.env` setzen (z. B. `1.0`). Vor größeren
+Updates eine [Datensicherung](datensicherung.md) anlegen.
 
 ## Alternative: macvlan
 
 Ist Port 5060 auf dem Host belegt (z. B. durch eine andere Anlage), kann
 FreeSWITCH eine eigene IP im LAN bekommen. Dann müssen `talkops` und
 `freeswitch` sich gegenseitig erreichen; dafür `TALKOPS_ESL_ADDR`,
-`TALKOPS_XMLCURL_URL` und `TALKOPS_ESL_LISTEN_IP` auf die jeweiligen IPs setzen
-und das ESL-Passwort besonders stark wählen. Eine fertige Beispielkonfiguration
-folgt in Phase 8.
+`TALKOPS_XMLCURL_URL` und `TALKOPS_ESL_LISTEN_IP` auf die jeweiligen IPs setzen,
+die Adresse von FreeSWITCH mit `TALKOPS_FS_PEERS` freigeben (sonst beantwortet
+TalkOps Konfigurationsabfragen nur vom selben Host) und das ESL-Passwort
+besonders stark wählen. Dieser Aufbau gehört nicht zur getesteten
+Standardinstallation.
+
+## Sicherheit
+
+- **SIP aus dem Internet:** Port 5060 nur öffnen, wenn externe Telefone ihn
+  brauchen; ein VPN (WireGuard, Tailscale) ist sicherer. Trunks registrieren
+  sich ausgehend und brauchen bei den meisten Anbietern keine Portweiterleitung.
+- **SIP-Anmeldeschutz** (*Einstellungen → SIP-Anmeldeschutz*): Eine Adresse mit
+  10 fehlgeschlagenen Anmeldungen (falsches Passwort oder unbekannter
+  Benutzer) innerhalb von 10 Minuten wird für eine Stunde gesperrt – jede
+  Anmeldung von dort scheitert, auch mit dem richtigen Passwort. Das eigene LAN
+  als vertrauenswürdiges Netz eintragen, wenn sich viele Telefone hinter NAT
+  eine Adresse teilen; Admins können Sperren dort aufheben.
+- Das Web-UI von außen nur per HTTPS (Caddy) erreichbar machen und für Admins
+  die Zwei-Faktor-Anmeldung einschalten.
+- Die Container laufen ohne root, ohne Linux-Capabilities und – Server und
+  Media-Worker – mit schreibgeschütztem Dateisystem.
+- Überwachung: siehe [Monitoring](monitoring.md).
 
 ## Fehlersuche
 

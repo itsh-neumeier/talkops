@@ -1,8 +1,5 @@
 # Installation
 
-> Phase 1 status: extensions, devices, SIP trunks (provider presets),
-> internal/external calls and call log. Continue with the [First steps](first-steps.md).
-
 ## Requirements
 
 - Linux host (x86_64 or arm64), e.g. Debian/Ubuntu, Proxmox VM, NAS with Docker
@@ -70,15 +67,33 @@ docker compose pull && docker compose up -d
 ```
 
 Database migrations run automatically when `talkops` starts. Pin a version by
-setting `TALKOPS_VERSION` in `.env` (e.g. `0.1`).
+setting `TALKOPS_VERSION` in `.env` (e.g. `1.0`). Make a
+[backup](backup.md) before major updates.
 
 ## Alternative: macvlan
 
 If port 5060 is already used on the host (e.g. by another PBX), FreeSWITCH can
 get its own LAN IP. `talkops` and `freeswitch` must then reach each other: set
 `TALKOPS_ESL_ADDR`, `TALKOPS_XMLCURL_URL` and `TALKOPS_ESL_LISTEN_IP` to the
-respective IPs and use a strong ESL password. A ready-made example follows in
-phase 8.
+respective IPs, allow FreeSWITCH's address with `TALKOPS_FS_PEERS` (TalkOps
+otherwise only answers configuration requests from the same host) and use a
+strong ESL password. This setup is not part of the tested standard installation.
+
+## Security
+
+- **SIP from the internet:** only open 5060 if remote phones need it; a VPN
+  (WireGuard, Tailscale) is safer. Trunks register outbound and need no
+  inbound port forwarding with most providers.
+- **SIP login protection** (*Settings → SIP login protection*): an address
+  with 10 failed logins (wrong password or unknown user) within 10 minutes is
+  banned for an hour – every login from it fails, even with the right
+  password. Add your LAN as trusted network if many phones share one address
+  behind NAT; admins can lift bans there.
+- The web UI should only be reachable via HTTPS (Caddy) from outside; turn on
+  two-factor login for admins.
+- The containers run without root, without Linux capabilities and – server and
+  media worker – with read-only file systems.
+- Monitoring: see [Monitoring](monitoring.md).
 
 ## Troubleshooting
 

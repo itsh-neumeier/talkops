@@ -17,11 +17,12 @@ fn ldap_url() -> Option<String> {
 
 #[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
 async fn ldap_logins(db: PgPool) {
+    let pool = db.clone();
     let Some(url) = ldap_url() else {
         eprintln!("TALKOPS_TEST_LDAP_URL not set, skipping");
         return;
     };
-    let router = router(db);
+    let router = router(pool);
     let admin = setup_admin(&router).await;
     let (status, s) = admin
         .put(
@@ -77,6 +78,26 @@ async fn ldap_logins(db: PgPool) {
     // LDAP accounts can use TOTP as a second factor.
     let (_, st) = anna.get("/api/v1/auth/totp").await;
     assert_eq!(st["available"], true);
+
+    // The hourly sync disables accounts that lost their group.
+    admin
+        .put(
+            "/api/v1/settings/identity",
+            json!({"ldap_enabled": true, "ldap_url": url,
+                   "ldap_bind_dn": "cn=svc,ou=people,dc=example,dc=org",
+                   "ldap_base_dn": "dc=example,dc=org",
+                   "ldap_user_filter": "(&(objectClass=inetOrgPerson)(uid={username}))",
+                   "user_group": "nobody-is-here"}),
+        )
+        .await;
+    let secrets = talkops_core::crypto::SecretBox::from_hex(KEY).unwrap();
+    let (disabled, _) = talkops_api::ldap::sync_users(&db, &secrets).await.unwrap();
+    assert_eq!(disabled, 1);
+    assert_eq!(
+        anna.get("/api/v1/auth/me").await.0,
+        StatusCode::UNAUTHORIZED
+    );
+    assert!(login(&router, "anna", "anna-ldap-pw").await.is_none());
 
     // A wrong service password shows up in the connection test.
     admin

@@ -180,6 +180,90 @@ pub async fn test(
     result
 }
 
+/// Hourly: disables directory accounts that were removed from the directory
+/// or lost their group (and ends their sessions), and refreshes the role of
+/// the others. An admin re-enables an account once it is allowed again.
+pub async fn sync_users(
+    pool: &sqlx::PgPool,
+    secrets: &talkops_core::crypto::SecretBox,
+) -> Result<(usize, usize), LdapError> {
+    use talkops_core::tenant::TenantId;
+    use talkops_core::{identity, users};
+    let tenant = TenantId::DEFAULT;
+    let s = identity::get(pool, tenant)
+        .await
+        .map_err(|e| LdapError::Config(e.to_string()))?;
+    if !s.ldap_enabled {
+        return Ok((0, 0));
+    }
+    let (_, bind_password) = identity::secrets(pool, tenant, secrets)
+        .await
+        .map_err(|e| LdapError::Config(e.to_string()))?;
+    let accounts: Vec<(uuid::Uuid, String, users::Role)> = sqlx::query_as(
+        "SELECT id, username, role FROM users
+         WHERE tenant_id = $1 AND auth_source = 'ldap' AND enabled",
+    )
+    .bind(tenant)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| LdapError::Config(e.to_string()))?;
+    if accounts.is_empty() {
+        return Ok((0, 0));
+    }
+    let mut ldap = connect(&s).await?;
+    let (mut disabled, mut changed) = (0, 0);
+    for (id, username, role) in accounts {
+        let wanted = match find(&mut ldap, &s, bind_password.as_deref(), &username).await {
+            Ok(u) => map_role(&s, &group_names(&u.groups)),
+            Err(LdapError::Invalid) => None,
+            // Directory unreachable or misconfigured: change nothing.
+            Err(err) => return Err(err),
+        };
+        let result = match wanted {
+            None => {
+                disabled += 1;
+                tracing::info!(%username, "directory account removed or without group, disabling");
+                sqlx::query("UPDATE users SET enabled = false, updated_at = now() WHERE id = $1")
+                    .bind(id)
+                    .execute(pool)
+                    .await
+                    .map(|_| ())
+            }
+            Some(r) if r != role => {
+                changed += 1;
+                sqlx::query("UPDATE users SET role = $2, updated_at = now() WHERE id = $1")
+                    .bind(id)
+                    .bind(r)
+                    .execute(pool)
+                    .await
+                    .map(|_| ())
+            }
+            Some(_) => Ok(()),
+        };
+        result.map_err(|e| LdapError::Config(e.to_string()))?;
+        if wanted.is_none() || wanted != Some(role) {
+            // A changed role or a disabled account needs a fresh login.
+            let _ = users::delete_user_sessions(pool, id).await;
+        }
+    }
+    let _ = ldap.unbind().await;
+    Ok((disabled, changed))
+}
+
+/// Runs [`sync_users`] every hour.
+pub fn spawn_sync(pool: sqlx::PgPool, secrets: talkops_core::crypto::SecretBox) {
+    tokio::spawn(async move {
+        loop {
+            match sync_users(&pool, &secrets).await {
+                Ok((0, 0)) => {}
+                Ok((d, c)) => tracing::info!(disabled = d, role_changed = c, "directory sync"),
+                Err(err) => tracing::warn!(error = %err, "directory sync failed"),
+            }
+            tokio::time::sleep(Duration::from_secs(3600)).await;
+        }
+    });
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

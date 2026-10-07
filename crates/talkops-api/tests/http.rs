@@ -2,6 +2,7 @@
 
 mod common;
 
+use axum::Router;
 use axum::body::Body;
 use axum::http::{Request, StatusCode, header};
 use common::*;
@@ -33,6 +34,43 @@ async fn health_endpoints(db: PgPool) {
         doc["paths"]["/api/v1/trunks/{id}/lines"]["post"].is_object(),
         "OpenAPI lists all routes"
     );
+}
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn prometheus_metrics(db: PgPool) {
+    let get = |router: Router, auth: Option<&'static str>| async move {
+        let mut req = Request::get("/metrics");
+        if let Some(a) = auth {
+            req = req.header(header::AUTHORIZATION, a);
+        }
+        raw(&router, req.body(Body::empty()).unwrap()).await
+    };
+    // Disabled without a token.
+    let res = get(router(db.clone()), Some("Bearer x")).await;
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+    let router = talkops_api::app(state(db).with_metrics_token(Some("scrape-me")), None);
+    assert_eq!(
+        get(router.clone(), None).await.status(),
+        StatusCode::UNAUTHORIZED
+    );
+    assert_eq!(
+        get(router.clone(), Some("Bearer wrong")).await.status(),
+        StatusCode::UNAUTHORIZED
+    );
+    let res = get(router, Some("Bearer scrape-me")).await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let text = body_string(res).await;
+    for metric in [
+        "talkops_build_info{version=",
+        "talkops_freeswitch_connected 0",
+        "talkops_registrations 0",
+        "talkops_recordings 0",
+        "talkops_voicemail_new 0",
+        "talkops_database_up 1",
+    ] {
+        assert!(text.contains(metric), "{metric} missing in:\n{text}");
+    }
 }
 
 #[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]

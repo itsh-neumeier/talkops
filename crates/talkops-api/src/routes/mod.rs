@@ -6,6 +6,7 @@ pub mod groups;
 pub mod health;
 pub mod identity;
 pub mod ivr;
+pub mod metrics;
 pub mod oidc;
 pub mod phones;
 pub mod provisioning;

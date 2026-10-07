@@ -53,6 +53,8 @@ pub struct AppState {
     pub profile: Arc<ProfileSettings>,
     pub xmlcurl_password: Arc<str>,
     pub limiter: Arc<LoginLimiter>,
+    /// Bearer token for `/metrics`; `None` disables the endpoint.
+    pub metrics_token: Option<Arc<str>>,
 }
 
 impl AppState {
@@ -79,6 +81,7 @@ impl AppState {
             profile: Arc::new(profile),
             xmlcurl_password: Arc::from(xmlcurl_password),
             limiter: Arc::new(LoginLimiter::default()),
+            metrics_token: None,
         }
     }
 }
@@ -117,6 +120,12 @@ impl AppState {
 
     pub fn with_sip_ws(mut self, url: &str) -> Self {
         self.sip_ws_url = Arc::from(url);
+        self
+    }
+
+    /// Enables `/metrics` with this bearer token (empty: disabled).
+    pub fn with_metrics_token(mut self, token: Option<&str>) -> Self {
+        self.metrics_token = token.filter(|t| !t.is_empty()).map(Arc::from);
         self
     }
 
@@ -185,6 +194,7 @@ pub fn app(state: AppState, web_dir: Option<&Path>) -> Router {
                 async move { axum::Json((*doc).clone()) }
             }),
         )
+        .route("/metrics", axum::routing::get(routes::metrics::metrics))
         .route("/fs/xml", axum::routing::post(routes::fs::xml_curl))
         .route("/fs/cdr", axum::routing::post(routes::fs::xml_cdr))
         .route(

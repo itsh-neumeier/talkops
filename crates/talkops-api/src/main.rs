@@ -106,7 +106,8 @@ async fn serve(config: Config) -> anyhow::Result<()> {
         snapshots: config.snapshots_dir.clone(),
     })
     .with_outbound_socket(&config.esl_outbound_listen)
-    .with_sip_ws(&config.sip_ws_url);
+    .with_sip_ws(&config.sip_ws_url)
+    .with_metrics_token(config.metrics_token.as_deref());
     let queue_sync = talkops_api::callcenter::spawn(db.clone(), state.telephony.esl.clone());
     let state = state.with_queue_sync(queue_sync);
     state

@@ -51,6 +51,7 @@ services:
       TALKOPS_SECRET_KEY: ${TALKOPS_SECRET_KEY:?set TALKOPS_SECRET_KEY}
       TALKOPS_SIP_PORT: ${TALKOPS_SIP_PORT:-5060}
       TALKOPS_SIP_TRUNK_PORT: ${TALKOPS_SIP_TRUNK_PORT:-5080}
+      TALKOPS_METRICS_TOKEN: ${TALKOPS_METRICS_TOKEN:-}
     volumes:
       - recordings:/var/lib/talkops/recordings
       - voicemail:/var/lib/talkops/voicemail

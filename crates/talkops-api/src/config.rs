@@ -107,6 +107,11 @@ pub struct Config {
     )]
     pub sip_ws_url: String,
 
+    /// Enables the Prometheus endpoint `/metrics`; scrapers send this as
+    /// bearer token.
+    #[arg(long, env = "TALKOPS_METRICS_TOKEN", hide_env_values = true)]
+    pub metrics_token: Option<String>,
+
     /// FreeSWITCH Event Socket address.
     #[arg(long, env = "TALKOPS_ESL_ADDR", default_value = "127.0.0.1:8021")]
     pub esl_addr: String,

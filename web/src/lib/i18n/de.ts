@@ -606,7 +606,21 @@ const de: Record<keyof typeof en, string> = {
 	'start.backup': 'Datensicherung einschalten',
 	'start.backupHint': 'Tägliche Sicherungen schützen Konfiguration, Voicemail und Aufzeichnungen.',
 	'start.defaultNumber': 'Standardrufnummer festlegen',
-	'start.defaultNumberHint': 'Gespräche nach außen und Notrufe brauchen eine Standardrufnummer.'
+	'start.defaultNumberHint': 'Gespräche nach außen und Notrufe brauchen eine Standardrufnummer.',
+	'guard.title': 'SIP-Anmeldeschutz',
+	'guard.hint':
+		'Adressen, die sich zu oft nicht per SIP anmelden können (falsches Passwort oder unbekannter Benutzer), werden zeitweise gesperrt: jede Anmeldung von dort scheitert, auch mit dem richtigen Passwort. Schützt vor dem Erraten von Passwörtern, wenn der SIP-Port aus dem Internet erreichbar ist.',
+	'guard.enabled': 'Adressen nach Fehlversuchen sperren',
+	'guard.maxFailures': 'Fehlversuche',
+	'guard.window': 'Innerhalb von (Minuten)',
+	'guard.banMinutes': 'Sperre für (Minuten)',
+	'guard.trusted': 'Vertrauenswürdige Netze (nie gesperrt)',
+	'guard.trustedHint':
+		'Eine Adresse oder ein Netz pro Zeile, z. B. 192.168.1.0/24. Das eigene LAN eintragen, wenn sich viele Telefone hinter NAT eine Adresse teilen.',
+	'guard.bans': 'Gesperrte Adressen',
+	'guard.unban': 'Entsperren',
+	'guard.noBans': 'Keine Adresse gesperrt.',
+	'guard.banInfo': 'Letzter SIP-Benutzer {user} · gesperrt bis {until}'
 };
 
 export default de;

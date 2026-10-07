@@ -4,6 +4,7 @@
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
 	import BackupSettings from '#lib/components/BackupSettings.svelte';
 	import IdentitySettings from '#lib/components/IdentitySettings.svelte';
+	import SipGuardSettings from '#lib/components/SipGuardSettings.svelte';
 	import TwoFactor from '#lib/components/TwoFactor.svelte';
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import { hasRole, logout } from '#lib/session.svelte.ts';
@@ -248,6 +249,8 @@
 	{/if}
 
 	{#if hasRole('admin')}<IdentitySettings />{/if}
+
+	{#if hasRole('admin')}<SipGuardSettings />{/if}
 
 	{#if hasRole('admin')}<BackupSettings />{/if}
 

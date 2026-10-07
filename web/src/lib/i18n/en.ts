@@ -604,5 +604,19 @@ export default {
 	'start.backup': 'Turn on backups',
 	'start.backupHint': 'Daily backups protect configuration, voicemail and recordings.',
 	'start.defaultNumber': 'Set the default number',
-	'start.defaultNumberHint': 'Outgoing calls and emergency calls need a default caller number.'
+	'start.defaultNumberHint': 'Outgoing calls and emergency calls need a default caller number.',
+	'guard.title': 'SIP login protection',
+	'guard.hint':
+		'Addresses that fail SIP authentication too often (wrong password or unknown user) are banned for a while: every login from them fails, even with the right password. Protects against password guessing when the SIP port is reachable from the internet.',
+	'guard.enabled': 'Ban addresses after failed logins',
+	'guard.maxFailures': 'Failed attempts',
+	'guard.window': 'Within (minutes)',
+	'guard.banMinutes': 'Ban for (minutes)',
+	'guard.trusted': 'Trusted networks (never banned)',
+	'guard.trustedHint':
+		'One address or network per line, e.g. 192.168.1.0/24. Add your LAN if many phones share one address behind NAT.',
+	'guard.bans': 'Banned addresses',
+	'guard.unban': 'Unban',
+	'guard.noBans': 'No address is banned.',
+	'guard.banInfo': 'Last SIP user {user} · banned until {until}'
 } as const;

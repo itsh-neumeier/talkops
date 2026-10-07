@@ -13,6 +13,7 @@ pub mod holidays;
 pub mod ivr;
 pub mod jobs;
 pub mod mail;
+pub mod mfa;
 pub mod numbering;
 pub mod phones;
 pub mod presets;

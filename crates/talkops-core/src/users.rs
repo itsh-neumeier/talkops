@@ -44,6 +44,8 @@ pub struct User {
     pub last_login_at: Option<DateTime<Utc>>,
     #[serde(skip)]
     pub password_hash: Option<String>,
+    /// Two-factor login (TOTP) is active.
+    pub totp_enabled: bool,
 }
 
 #[derive(Debug, Clone, Deserialize, utoipa::ToSchema)]
@@ -67,7 +69,8 @@ pub struct UserUpdate {
     pub enabled: bool,
 }
 
-const COLUMNS: &str = "id, tenant_id, username, display_name, email, role, enabled, auth_source, last_login_at, password_hash";
+const COLUMNS: &str = "id, tenant_id, username, display_name, email, role, enabled, auth_source, last_login_at, \
+     password_hash, totp_secret_enc IS NOT NULL AS totp_enabled";
 
 /// Minimum length for web passwords.
 pub const MIN_PASSWORD_LEN: usize = 10;

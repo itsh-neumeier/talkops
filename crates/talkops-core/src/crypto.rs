@@ -112,6 +112,13 @@ pub fn verify_password(password: &str, phc: &str) -> bool {
 }
 
 /// URL-safe random token with `bytes` bytes of entropy.
+/// Random bytes from the OS generator.
+pub fn random_bytes(n: usize) -> Result<Vec<u8>, CryptoError> {
+    let mut buf = vec![0u8; n];
+    getrandom::fill(&mut buf).map_err(|_| CryptoError::Rng)?;
+    Ok(buf)
+}
+
 pub fn random_token(bytes: usize) -> Result<String, CryptoError> {
     let mut buf = vec![0u8; bytes];
     getrandom::fill(&mut buf).map_err(|_| CryptoError::Rng)?;

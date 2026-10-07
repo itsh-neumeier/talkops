@@ -12,7 +12,24 @@ export default defineConfig({
 		sveltekit({
 			// Built as a single-page app and served by the Rust server, which falls
 			// back to index.html for unknown paths.
-			adapter: adapter({ pages: 'build', assets: 'build', fallback: 'index.html', strict: true })
+			adapter: adapter({ pages: 'build', assets: 'build', fallback: 'index.html', strict: true }),
+			// Content Security Policy as <meta> tag; the inline bootstrap script is
+			// allowed by its hash. frame-ancestors is sent as header by the server.
+			csp: {
+				mode: 'hash',
+				directives: {
+					'default-src': ['self'],
+					'script-src': ['self'],
+					'style-src': ['self', 'unsafe-inline'],
+					'img-src': ['self', 'data:', 'blob:'],
+					'media-src': ['self', 'blob:'],
+					'connect-src': ['self'],
+					'font-src': ['self'],
+					'object-src': ['none'],
+					'base-uri': ['self'],
+					'form-action': ['self']
+				}
+			}
 		})
 	],
 	server: {

@@ -26,6 +26,7 @@ use talkops_core::crypto::SecretBox;
 use talkops_core::presets::PresetCatalog;
 use talkops_provisioning::PhoneCatalog;
 use tower_http::services::{ServeDir, ServeFile};
+use tower_http::set_header::SetResponseHeaderLayer;
 use tower_http::trace::TraceLayer;
 use utoipa::OpenApi;
 use utoipa_axum::router::OpenApiRouter;
@@ -226,5 +227,32 @@ pub fn app(state: AppState, web_dir: Option<&Path>) -> Router {
         router = router.fallback_service(spa);
     }
 
-    router.layer(TraceLayer::new_for_http())
+    with_security_headers(router).layer(TraceLayer::new_for_http())
+}
+
+/// Browser hardening for every response. The page's own Content Security
+/// Policy is a `<meta>` tag in the web UI (it carries the script hashes);
+/// `frame-ancestors` only works as a header.
+fn with_security_headers(router: Router) -> Router {
+    use axum::http::{HeaderName, HeaderValue, header};
+    let headers: [(HeaderName, &'static str); 6] = [
+        (header::X_CONTENT_TYPE_OPTIONS, "nosniff"),
+        (header::X_FRAME_OPTIONS, "DENY"),
+        (header::CONTENT_SECURITY_POLICY, "frame-ancestors 'none'"),
+        (header::REFERRER_POLICY, "same-origin"),
+        (
+            HeaderName::from_static("permissions-policy"),
+            "camera=(self), microphone=(self), geolocation=(), payment=(), usb=()",
+        ),
+        (
+            HeaderName::from_static("cross-origin-opener-policy"),
+            "same-origin",
+        ),
+    ];
+    headers.into_iter().fold(router, |r, (name, value)| {
+        r.layer(SetResponseHeaderLayer::if_not_present(
+            name,
+            HeaderValue::from_static(value),
+        ))
+    })
 }

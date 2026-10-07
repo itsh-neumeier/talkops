@@ -29,6 +29,12 @@ async fn health_endpoints(db: PgPool) {
             .unwrap(),
     )
     .await;
+    assert_eq!(res.headers()["x-content-type-options"], "nosniff");
+    assert_eq!(res.headers()["x-frame-options"], "DENY");
+    assert_eq!(
+        res.headers()["content-security-policy"],
+        "frame-ancestors 'none'"
+    );
     let doc = body_json(res).await;
     assert!(
         doc["paths"]["/api/v1/trunks/{id}/lines"]["post"].is_object(),

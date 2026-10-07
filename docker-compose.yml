@@ -15,10 +15,20 @@ x-talkops-env: &talkops-env
   RUST_LOG: ${RUST_LOG:-info}
   TZ: ${TZ:-Europe/Berlin}
 
+# The TalkOps images run as UID 10001 and need no Linux capabilities.
+x-hardened: &hardened
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+
 services:
   postgres:
     image: postgres:17-trixie
     restart: unless-stopped
+    # The entrypoint needs root to prepare the data directory, then drops it.
+    security_opt:
+      - no-new-privileges:true
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-talkops}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
@@ -39,6 +49,10 @@ services:
     image: ghcr.io/itsh-neumeier/talkops-server:${TALKOPS_VERSION:-latest}
     restart: unless-stopped
     network_mode: host
+    <<: *hardened
+    read_only: true
+    tmpfs:
+      - /tmp
     depends_on:
       postgres:
         condition: service_healthy
@@ -64,6 +78,7 @@ services:
     image: ghcr.io/itsh-neumeier/talkops-freeswitch:${TALKOPS_VERSION:-latest}
     restart: unless-stopped
     network_mode: host
+    <<: *hardened
     # FreeSWITCH loads its configuration from TalkOps at startup.
     depends_on:
       talkops:
@@ -88,6 +103,10 @@ services:
     image: ghcr.io/itsh-neumeier/talkops-media-worker:${TALKOPS_VERSION:-latest}
     restart: unless-stopped
     network_mode: host
+    <<: *hardened
+    read_only: true
+    tmpfs:
+      - /tmp
     depends_on:
       postgres:
         condition: service_healthy
@@ -107,6 +126,12 @@ services:
     profiles: ["caddy"]
     restart: unless-stopped
     network_mode: host
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
     command: caddy reverse-proxy --from ${TALKOPS_DOMAIN:-localhost} --to 127.0.0.1:${TALKOPS_HTTP_PORT:-8080}
     volumes:
       - caddy-data:/data

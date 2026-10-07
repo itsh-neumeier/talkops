@@ -489,7 +489,55 @@ const de: Record<keyof typeof en, string> = {
 		'Ihr Konto meldet sich über das Firmenverzeichnis an; die Zwei-Faktor-Anmeldung wird dort verwaltet.',
 	'mfa.reset': '2FA zurücksetzen',
 	'mfa.resetConfirm':
-		'Zwei-Faktor-Anmeldung für „{name}“ ausschalten? Die Person wird abgemeldet und kann sie neu einrichten.'
+		'Zwei-Faktor-Anmeldung für „{name}“ ausschalten? Die Person wird abgemeldet und kann sie neu einrichten.',
+	'login.or': 'oder',
+	'login.sso': 'Mit Single Sign-on anmelden',
+	'login.sso.denied': 'Die Anmeldung wurde beim Identitätsanbieter abgebrochen.',
+	'login.sso.forbidden': 'Ihr Konto darf TalkOps nicht nutzen (Gruppenmitgliedschaft).',
+	'login.sso.conflict':
+		'Es gibt bereits ein lokales Konto mit Ihrem Benutzernamen. Bitte an einen Admin wenden.',
+	'login.sso.expired': 'Die Anmeldung hat zu lange gedauert. Bitte erneut versuchen.',
+	'login.sso.provider':
+		'Der Identitätsanbieter war nicht erreichbar oder hat ungültig geantwortet.',
+	'login.sso.disabled': 'Single Sign-on ist nicht aktiviert.',
+	'identity.title': 'Single Sign-on und Verzeichnis',
+	'identity.hint':
+		'Benutzer können sich über einen Identitätsanbieter (OpenID Connect: Keycloak, Authentik, Entra ID, Google, …) oder mit ihrem LDAP-/Active-Directory-Passwort anmelden. Lokale Konten funktionieren weiter.',
+	'identity.roles': 'Rollen aus Gruppen',
+	'identity.rolesHint':
+		'Gruppennamen aus dem OIDC-Gruppen-Claim bzw. LDAP-Gruppen-DNs oder -CNs. Die Rolle wird bei jeder Anmeldung aktualisiert. Ist die Benutzergruppe leer, darf sich jeder aus dem Verzeichnis als Benutzer anmelden.',
+	'identity.everyone': 'alle',
+	'identity.oidc': 'Single Sign-on (OpenID Connect)',
+	'identity.oidcHint':
+		'TalkOps beim Anbieter als vertraulichen (oder öffentlichen, mit PKCE) Client mit dieser Redirect-URI registrieren.',
+	'identity.issuer': 'Issuer-URL',
+	'identity.clientId': 'Client-ID',
+	'identity.clientSecret': 'Client-Secret',
+	'identity.publicClient': 'leer bei öffentlichen Clients',
+	'identity.redirectUri': 'Redirect-URI',
+	'identity.advanced': 'Erweitert',
+	'identity.scopes': 'Scopes',
+	'identity.buttonLabel': 'Text der Schaltfläche',
+	'identity.usernameClaim': 'Claim für den Benutzernamen',
+	'identity.groupsClaim': 'Claim für Gruppen',
+	'identity.publicUrl': 'Öffentliche URL von TalkOps (hinter einem Proxy)',
+	'identity.ldap': 'LDAP / Active Directory',
+	'identity.ldapHint':
+		'Benutzer melden sich mit ihrem Verzeichnis-Passwort an. TalkOps sucht sie mit dem Dienstkonto und prüft das Passwort per Anmeldung als der Benutzer.',
+	'identity.bindDn': 'Dienstkonto (Bind-DN)',
+	'identity.baseDn': 'Basis-DN',
+	'identity.filter': 'Benutzerfilter',
+	'identity.filterHint':
+		'{username} wird durch den eingegebenen Namen ersetzt. Active Directory: (&(objectClass=user)(sAMAccountName={username})), Benutzername-Attribut sAMAccountName, Namens-Attribut displayName.',
+	'identity.attrUser': 'Benutzername',
+	'identity.attrName': 'Anzeigename',
+	'identity.attrMail': 'E-Mail',
+	'identity.attrGroups': 'Gruppen',
+	'identity.testUser': 'Testbenutzer (optional)',
+	'identity.test': 'Verbindung testen',
+	'identity.testHint': 'Testet die gespeicherten Einstellungen; Änderungen vorher speichern.',
+	'identity.ldapOk': 'Verbindung zum Verzeichnis hergestellt.',
+	'identity.noAccess': 'kein Zugang'
 };
 
 export default de;

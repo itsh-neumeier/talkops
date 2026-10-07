@@ -493,5 +493,51 @@ export default {
 		'Your account logs in through the company directory; two-factor login is managed there.',
 	'mfa.reset': 'Reset 2FA',
 	'mfa.resetConfirm':
-		'Turn off two-factor login for "{name}"? They will be logged out and can set it up again.'
+		'Turn off two-factor login for "{name}"? They will be logged out and can set it up again.',
+	'login.or': 'or',
+	'login.sso': 'Log in with single sign-on',
+	'login.sso.denied': 'The login was cancelled at the identity provider.',
+	'login.sso.forbidden': 'Your account is not allowed to use TalkOps (group membership).',
+	'login.sso.conflict': 'A local account with your user name exists already. Ask an admin.',
+	'login.sso.expired': 'The login took too long. Please try again.',
+	'login.sso.provider': 'The identity provider could not be reached or answered invalidly.',
+	'login.sso.disabled': 'Single sign-on is not enabled.',
+	'identity.title': 'Single sign-on and directory',
+	'identity.hint':
+		'Users can log in with an identity provider (OpenID Connect: Keycloak, Authentik, Entra ID, Google, …) or with their LDAP/Active Directory password. Local accounts keep working.',
+	'identity.roles': 'Roles from groups',
+	'identity.rolesHint':
+		'Group names from the OIDC groups claim, or LDAP group DNs or CNs. The role is updated at every login. If the user group is empty, everyone in the directory may log in as user.',
+	'identity.everyone': 'everyone',
+	'identity.oidc': 'Single sign-on (OpenID Connect)',
+	'identity.oidcHint':
+		'Register TalkOps at your provider as a confidential (or public, with PKCE) client with this redirect URI.',
+	'identity.issuer': 'Issuer URL',
+	'identity.clientId': 'Client ID',
+	'identity.clientSecret': 'Client secret',
+	'identity.publicClient': 'empty for public clients',
+	'identity.redirectUri': 'Redirect URI',
+	'identity.advanced': 'Advanced',
+	'identity.scopes': 'Scopes',
+	'identity.buttonLabel': 'Button text',
+	'identity.usernameClaim': 'User name claim',
+	'identity.groupsClaim': 'Groups claim',
+	'identity.publicUrl': 'Public URL of TalkOps (if behind a proxy)',
+	'identity.ldap': 'LDAP / Active Directory',
+	'identity.ldapHint':
+		'Users log in with their directory password. TalkOps searches them with the service account and checks the password by binding as the user.',
+	'identity.bindDn': 'Service account (bind DN)',
+	'identity.baseDn': 'Base DN',
+	'identity.filter': 'User filter',
+	'identity.filterHint':
+		'{username} is replaced by the entered name. Active Directory: (&(objectClass=user)(sAMAccountName={username})), user name attribute sAMAccountName, name attribute displayName.',
+	'identity.attrUser': 'User name',
+	'identity.attrName': 'Display name',
+	'identity.attrMail': 'E-mail',
+	'identity.attrGroups': 'Groups',
+	'identity.testUser': 'Test user (optional)',
+	'identity.test': 'Test connection',
+	'identity.testHint': 'Tests the saved settings; save changes first.',
+	'identity.ldapOk': 'Connected to the directory.',
+	'identity.noAccess': 'no access'
 } as const;

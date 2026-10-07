@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { api, type PhoneNumber, type Settings, type SmtpSettings } from '#lib/api.ts';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
+	import IdentitySettings from '#lib/components/IdentitySettings.svelte';
 	import TwoFactor from '#lib/components/TwoFactor.svelte';
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import { hasRole, logout } from '#lib/session.svelte.ts';
@@ -244,6 +245,8 @@
 			</div>
 		</form>
 	{/if}
+
+	{#if hasRole('admin')}<IdentitySettings />{/if}
 
 	{#if smtp && hasRole('admin')}
 		<form class="card space-y-3" onsubmit={saveSmtp}>

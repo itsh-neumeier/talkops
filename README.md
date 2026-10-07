@@ -67,6 +67,7 @@ recording & transcription [EN](docs/en/recording.md) / [DE](docs/de/aufzeichnung
 door station [EN](docs/en/door-station.md) / [DE](docs/de/tuersprechstelle.md) ·
 sign-in, 2FA, SSO, LDAP [EN](docs/en/sign-in.md) / [DE](docs/de/anmeldung.md) ·
 softphone [EN](docs/en/softphone.md) / [DE](docs/de/softphone.md) ·
+backup & restore [EN](docs/en/backup.md) / [DE](docs/de/datensicherung.md) ·
 monitoring [EN](docs/en/monitoring.md) / [DE](docs/de/monitoring.md) ·
 [trunk presets](docs/trunk-presets.md).
 

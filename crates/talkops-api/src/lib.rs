@@ -143,6 +143,8 @@ pub fn api_router() -> (Router<AppState>, utoipa::openapi::OpenApi) {
     let (router, api) = OpenApiRouter::with_openapi(ApiDoc::openapi())
         .merge(routes::health::router())
         .merge(routes::auth::router())
+        .merge(routes::oidc::router())
+        .merge(routes::identity::router())
         .merge(routes::users::router())
         .merge(routes::extensions::router())
         .merge(routes::trunks::router())

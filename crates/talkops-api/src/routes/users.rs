@@ -151,6 +151,11 @@ pub async fn set_user_password(
     Json(input): Json<SetPassword>,
 ) -> ApiResult<StatusCode> {
     auth.require(Role::Admin)?;
+    if users::get(&state.db, auth.tenant, id).await?.auth_source != "local" {
+        return Err(ApiError::BadRequest(
+            "this account logs in through the directory".into(),
+        ));
+    }
     users::set_password(&state.db, auth.tenant, id, &input.password).await?;
     users::delete_user_sessions(&state.db, id).await?;
     audit::record(

@@ -35,10 +35,12 @@ pub fn router() -> OpenApiRouter<AppState> {
 
 /// Request metadata for unauthenticated endpoints (client IP, HTTPS, CSRF guard).
 pub struct RequestMeta {
-    ip: Option<String>,
-    https: bool,
-    user_agent: Option<String>,
-    token: Option<String>,
+    pub ip: Option<String>,
+    pub https: bool,
+    pub user_agent: Option<String>,
+    pub token: Option<String>,
+    /// `Host` header (OIDC redirect URI when no public URL is set).
+    pub host: Option<String>,
 }
 
 impl FromRequestParts<AppState> for RequestMeta {
@@ -55,6 +57,12 @@ impl FromRequestParts<AppState> for RequestMeta {
                 .and_then(|v| v.to_str().ok())
                 .map(str::to_owned),
             token: session::cookie_value(&parts.headers, session::SESSION_COOKIE)
+                .map(str::to_owned),
+            host: parts
+                .headers
+                .get("x-forwarded-host")
+                .or_else(|| parts.headers.get(header::HOST))
+                .and_then(|v| v.to_str().ok())
                 .map(str::to_owned),
         })
     }
@@ -152,7 +160,12 @@ pub async fn setup(
     start_session(&state, user, &meta).await
 }
 
-async fn start_session(state: &AppState, user: User, meta: &RequestMeta) -> ApiResult<Response> {
+/// Creates a session; returns the cookie header and the session info.
+pub(crate) async fn new_session(
+    state: &AppState,
+    user: User,
+    meta: &RequestMeta,
+) -> ApiResult<(HeaderValue, Me)> {
     let s = users::create_session(
         &state.db,
         user.id,
@@ -160,13 +173,20 @@ async fn start_session(state: &AppState, user: User, meta: &RequestMeta) -> ApiR
         meta.user_agent.as_deref(),
     )
     .await?;
-    let mut response = Json(Me {
-        user,
-        csrf_token: s.csrf_token,
-    })
-    .into_response();
     let cookie = HeaderValue::from_str(&session::session_cookie(&s.token, meta.https))
         .map_err(|e| ApiError::Internal(e.to_string()))?;
+    Ok((
+        cookie,
+        Me {
+            user,
+            csrf_token: s.csrf_token,
+        },
+    ))
+}
+
+async fn start_session(state: &AppState, user: User, meta: &RequestMeta) -> ApiResult<Response> {
+    let (cookie, me) = new_session(state, user, meta).await?;
+    let mut response = Json(me).into_response();
     response.headers_mut().insert(header::SET_COOKIE, cookie);
     Ok(response)
 }

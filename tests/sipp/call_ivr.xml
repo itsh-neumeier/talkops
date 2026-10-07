@@ -102,6 +102,14 @@
       <exec play_pcap_audio="/usr/share/sip-tester/dtmf_2833_1.pcap"/>
     </action>
   </nop>
+  <!-- Playing the pcap ends the RTP stream; keep sending audio so the
+       voicemail behind the menu has something to record. -->
+  <pause milliseconds="1000"/>
+  <nop>
+    <action>
+      <exec rtp_stream="tone.ulaw,-1,0"/>
+    </action>
+  </nop>
   <recv request="BYE" timeout="40000" ontimeout="hangup"/>
   <send next="end">
     <![CDATA[

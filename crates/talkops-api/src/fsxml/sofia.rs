@@ -29,6 +29,9 @@ impl Default for ProfileSettings {
     }
 }
 
+/// Local WebSocket listener of the internal profile (see `TALKOPS_SIP_WS_URL`).
+pub const WS_BINDING: &str = "127.0.0.1:5066";
+
 const INTERNAL_CODECS: &str = "OPUS,G722,PCMA,PCMU,H264,VP8";
 const EXTERNAL_CODECS: &str = "G722,PCMA,PCMU";
 
@@ -188,12 +191,19 @@ pub fn render(settings: &ProfileSettings, gateways: &[GatewaySpec]) -> String {
     w.param("manage-presence", "true");
     w.param("inbound-codec-prefs", INTERNAL_CODECS);
     w.param("outbound-codec-prefs", INTERNAL_CODECS);
+    // Negotiate the caller's codec only after the callee answered, so a
+    // browser (OPUS/VP8) can call a phone without OPUS and both sides end
+    // up on a common codec without transcoding where possible.
+    w.param("inbound-late-negotiation", "true");
     w.param("dtmf-type", "rfc2833");
     w.param("rfc2833-pt", "101");
     w.param("nonce-ttl", "60");
     w.param("rtp-timeout-sec", "300");
     w.param("rtp-hold-timeout-sec", "1800");
     w.param("user-agent-string", "TalkOps");
+    // SIP over WebSocket for the browser softphone; only TalkOps (same host)
+    // connects here and relays it to logged-in users.
+    w.param("ws-binding", WS_BINDING);
     w.close("settings");
     w.close("profile");
 

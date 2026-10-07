@@ -99,6 +99,14 @@ pub struct Config {
     )]
     pub esl_outbound_listen: String,
 
+    /// FreeSWITCH's SIP-over-WebSocket listener for the browser softphone.
+    #[arg(
+        long,
+        env = "TALKOPS_SIP_WS_URL",
+        default_value = "ws://127.0.0.1:5066"
+    )]
+    pub sip_ws_url: String,
+
     /// FreeSWITCH Event Socket address.
     #[arg(long, env = "TALKOPS_ESL_ADDR", default_value = "127.0.0.1:8021")]
     pub esl_addr: String,

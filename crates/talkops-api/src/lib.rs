@@ -46,6 +46,8 @@ pub struct AppState {
     pub media: Arc<MediaPaths>,
     /// `host:port` FreeSWITCH connects to for interactive calls (`socket`).
     pub outbound_socket: Arc<str>,
+    /// FreeSWITCH's SIP-over-WebSocket listener (browser softphone).
+    pub sip_ws_url: Arc<str>,
     /// Wakes the queue (mod_callcenter) sync after changes.
     pub queue_sync: Arc<tokio::sync::Notify>,
     pub profile: Arc<ProfileSettings>,
@@ -72,6 +74,7 @@ impl AppState {
             provisioning_dir: Arc::new(provisioning_dir),
             media: Arc::new(MediaPaths::default()),
             outbound_socket: Arc::from("127.0.0.1:8084"),
+            sip_ws_url: Arc::from("ws://127.0.0.1:5066"),
             queue_sync: Arc::new(tokio::sync::Notify::new()),
             profile: Arc::new(profile),
             xmlcurl_password: Arc::from(xmlcurl_password),
@@ -109,6 +112,11 @@ impl AppState {
 
     pub fn with_queue_sync(mut self, trigger: Arc<tokio::sync::Notify>) -> Self {
         self.queue_sync = trigger;
+        self
+    }
+
+    pub fn with_sip_ws(mut self, url: &str) -> Self {
+        self.sip_ws_url = Arc::from(url);
         self
     }
 
@@ -158,6 +166,7 @@ pub fn api_router() -> (Router<AppState>, utoipa::openapi::OpenApi) {
         .merge(routes::queues::router())
         .merge(routes::recordings::router())
         .merge(routes::doors::router())
+        .merge(routes::webrtc::router())
         .split_for_parts();
     (router, api)
 }
@@ -178,6 +187,10 @@ pub fn app(state: AppState, web_dir: Option<&Path>) -> Router {
         )
         .route("/fs/xml", axum::routing::post(routes::fs::xml_curl))
         .route("/fs/cdr", axum::routing::post(routes::fs::xml_cdr))
+        .route(
+            "/api/v1/webrtc/ws",
+            axum::routing::get(routes::webrtc::sip_ws),
+        )
         .route(
             "/hooks/door/{id}/open",
             axum::routing::post(routes::doors::hook_open),

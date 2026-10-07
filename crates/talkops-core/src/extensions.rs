@@ -266,6 +266,8 @@ pub enum DeviceKind {
     Mobile,
     Door,
     Other,
+    /// The WebRTC softphone in the web interface.
+    Browser,
 }
 
 #[derive(Debug, Clone, FromRow, Serialize, utoipa::ToSchema)]

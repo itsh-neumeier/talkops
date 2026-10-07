@@ -566,5 +566,23 @@ export default {
 	'phone.resume': 'Resume',
 	'phone.hint':
 		'The browser softphone rings with your other phones while this page is open. Allow microphone (and camera for video) when the browser asks.',
-	'kinds.browser': 'Browser'
+	'kinds.browser': 'Browser',
+	'backup.title': 'Backups',
+	'backup.hint':
+		'A backup contains the database (configuration, users, call log, voicemail metadata, encrypted secrets) and the data volumes. Copy archives to another machine: a backup on the same disk does not help when the disk fails.',
+	'backup.daily': 'Daily backup',
+	'backup.hour': 'Hour (local time)',
+	'backup.keep': 'Backups kept',
+	'backup.recordings': 'Include call recordings',
+	'backup.lastRun': 'Last backup',
+	'backup.now': 'Back up now',
+	'backup.running': 'Backup running …',
+	'backup.started': 'Backup started.',
+	'backup.file': 'Archive',
+	'backup.size': 'Size',
+	'backup.actions': 'Actions',
+	'backup.download': 'Download',
+	'backup.none': 'No backups yet.',
+	'backup.restoreHint':
+		'Restore with "talkops restore" (see the backup guide). Without TALKOPS_SECRET_KEY the stored SIP and trunk passwords cannot be decrypted: keep the key with your backups.'
 } as const;

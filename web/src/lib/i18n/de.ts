@@ -566,7 +566,25 @@ const de: Record<keyof typeof en, string> = {
 	'phone.resume': 'Fortsetzen',
 	'phone.hint':
 		'Das Browser-Softphone klingelt mit Ihren anderen Telefonen, solange diese Seite geöffnet ist. Mikrofon (und für Video die Kamera) erlauben, wenn der Browser fragt.',
-	'kinds.browser': 'Browser'
+	'kinds.browser': 'Browser',
+	'backup.title': 'Datensicherung',
+	'backup.hint':
+		'Eine Sicherung enthält die Datenbank (Konfiguration, Benutzer, Anrufliste, Voicemail-Metadaten, verschlüsselte Geheimnisse) und die Datenvolumes. Archive auf einen anderen Rechner kopieren: eine Sicherung auf derselben Platte hilft nicht, wenn die Platte ausfällt.',
+	'backup.daily': 'Tägliche Sicherung',
+	'backup.hour': 'Stunde (Ortszeit)',
+	'backup.keep': 'Aufbewahrte Sicherungen',
+	'backup.recordings': 'Gesprächsaufzeichnungen einschließen',
+	'backup.lastRun': 'Letzte Sicherung',
+	'backup.now': 'Jetzt sichern',
+	'backup.running': 'Sicherung läuft …',
+	'backup.started': 'Sicherung gestartet.',
+	'backup.file': 'Archiv',
+	'backup.size': 'Größe',
+	'backup.actions': 'Aktionen',
+	'backup.download': 'Herunterladen',
+	'backup.none': 'Noch keine Sicherungen.',
+	'backup.restoreHint':
+		'Wiederherstellen mit „talkops restore“ (siehe Anleitung zur Datensicherung). Ohne TALKOPS_SECRET_KEY lassen sich die gespeicherten SIP- und Trunk-Passwörter nicht entschlüsseln: den Schlüssel zusammen mit den Sicherungen aufbewahren.'
 };
 
 export default de;

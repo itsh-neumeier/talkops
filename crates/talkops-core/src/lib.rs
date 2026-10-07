@@ -10,6 +10,7 @@ pub mod doors;
 pub mod error;
 pub mod extensions;
 pub mod holidays;
+pub mod identity;
 pub mod ivr;
 pub mod jobs;
 pub mod mail;

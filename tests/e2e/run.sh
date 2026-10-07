@@ -10,7 +10,7 @@
 # offers its caller to a registered agent, that answered calls are
 # recorded, that a door station's ring reaches a phone with video and
 # (WEBRTC_E2E=1, needs Node.js with Playwright) that the browser softphone
-# can call an extension.
+# can call an extension, and that repeated wrong passwords ban the address.
 #
 #   BASE=http://127.0.0.1:8080 SIP_HOST=192.168.1.10 tests/e2e/run.sh
 set -euo pipefail
@@ -241,5 +241,27 @@ if [ "${WEBRTC_E2E:-0}" = 1 ]; then
     node "$DIR/../e2e/webrtc.mjs" "$BASE" e2e-web e2e-web-password 21 || fail "softphone call"
     wait "$WEB_PID" || { cat "$WORK/web-callee.log" 2>/dev/null; fail "callee of the softphone call failed"; }
 fi
+
+log "repeated wrong passwords ban the address"
+api PUT /api/v1/security/sip \
+    '{"enabled":true,"max_failures":3,"window_minutes":10,"ban_minutes":5,"trusted_networks":[]}' >/dev/null \
+    || fail "SIP protection settings"
+sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/bad_password.xml" -s "$CALLEE" -au "$CALLEE" -ap "guess" \
+    -m 3 -p 5091 -i "$SIP_HOST" -timeout 30 -timeout_error -trace_err -error_file "$WORK/guess.log" >/dev/null \
+    || { cat "$WORK/guess.log" 2>/dev/null; fail "guessed passwords were not rejected"; }
+for _ in $(seq 1 10); do
+    api GET /api/v1/security/sip | jq -e --arg ip "$SIP_HOST" '.bans[] | select(.ip == $ip)' >/dev/null && break
+    sleep 1
+done
+api GET /api/v1/security/sip | jq -e --arg ip "$SIP_HOST" '.bans[] | select(.ip == $ip)' >/dev/null \
+    || fail "address not banned"
+# Banned: even the right password is refused.
+sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/bad_password.xml" -s "$CALLEE" -au "$CALLEE" -ap "$CALLEE_PW" \
+    -m 1 -p 5091 -i "$SIP_HOST" -timeout 20 -timeout_error -trace_err -error_file "$WORK/banned.log" >/dev/null \
+    || { cat "$WORK/banned.log" 2>/dev/null; fail "banned address could still register"; }
+api DELETE "/api/v1/security/sip/bans/$SIP_HOST" >/dev/null || fail "unban"
+sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/register.xml" -set contact_port 5094 -s "$CALLEE" -au "$CALLEE" -ap "$CALLEE_PW" \
+    -m 1 -p 5092 -i "$SIP_HOST" -timeout 20 -timeout_error -trace_err -error_file "$WORK/unbanned.log" >/dev/null \
+    || { cat "$WORK/unbanned.log" 2>/dev/null; fail "registration after unban failed"; }
 
 log "all end-to-end checks passed"

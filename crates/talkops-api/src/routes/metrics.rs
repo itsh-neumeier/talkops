@@ -133,6 +133,15 @@ async fn database_metrics(db: &PgPool, m: &mut Metrics) -> Result<(), sqlx::Erro
         new_vm as f64,
     );
 
+    let bans: i64 = sqlx::query_scalar("SELECT count(*) FROM sip_bans WHERE banned_until > now()")
+        .fetch_one(db)
+        .await?;
+    m.gauge(
+        "talkops_sip_bans",
+        "Addresses banned after failed SIP logins.",
+        bans as f64,
+    );
+
     let doors: Vec<(String, bool)> = sqlx::query_as(
         "SELECT name, online FROM door_stations
          WHERE events_enabled AND host <> '' ORDER BY name",

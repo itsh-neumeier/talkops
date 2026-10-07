@@ -162,7 +162,8 @@ async fn serve(config: Config) -> anyhow::Result<()> {
     .with_outbound_socket(&config.esl_outbound_listen)
     .with_sip_ws(&config.sip_ws_url)
     .with_metrics_token(config.metrics_token.as_deref())
-    .with_backup(BackupConfig::from_storage(&config.storage));
+    .with_backup(BackupConfig::from_storage(&config.storage))
+    .with_fs_peers(config.fs_peers.clone());
     let queue_sync = talkops_api::callcenter::spawn(db.clone(), state.telephony.esl.clone());
     let state = state.with_queue_sync(queue_sync);
     state
@@ -181,6 +182,7 @@ async fn serve(config: Config) -> anyhow::Result<()> {
     }));
     talkops_api::mailer::spawn(state.db.clone(), state.secrets.clone(), state.media.clone());
     talkops_api::retention::spawn(db.clone(), state.media.clone());
+    talkops_api::sip_guard::spawn(db.clone(), state.telephony.esl.clone());
     if let Some(cfg) = &state.backup {
         backup::spawn(db.clone(), cfg.clone());
     }

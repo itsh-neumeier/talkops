@@ -66,6 +66,11 @@ pub struct Config {
     )]
     pub sip_ws_url: String,
 
+    /// Addresses/networks besides loopback FreeSWITCH may connect from
+    /// (comma-separated, e.g. a macvlan IP). Default: same host only.
+    #[arg(long, env = "TALKOPS_FS_PEERS", value_delimiter = ',', value_parser = parse_peer)]
+    pub fs_peers: Vec<(std::net::IpAddr, u8)>,
+
     /// Enables the Prometheus endpoint `/metrics`; scrapers send this as
     /// bearer token.
     #[arg(long, env = "TALKOPS_METRICS_TOKEN", hide_env_values = true)]
@@ -96,6 +101,11 @@ pub struct Config {
 
     #[arg(long, env = "TALKOPS_LOG_FORMAT", default_value = "pretty")]
     pub log_format: LogFormat,
+}
+
+fn parse_peer(s: &str) -> Result<(std::net::IpAddr, u8), String> {
+    talkops_core::sip_guard::parse_network(s)
+        .ok_or_else(|| format!("not an address or network: {s}"))
 }
 
 /// Database and data directories: everything a backup contains.

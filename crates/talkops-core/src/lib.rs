@@ -24,6 +24,7 @@ pub mod queues;
 pub mod recordings;
 pub mod ring_groups;
 pub mod settings;
+pub mod sip_guard;
 pub mod telemetry;
 pub mod tenant;
 pub mod time_conditions;

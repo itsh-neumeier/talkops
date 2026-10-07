@@ -2,10 +2,12 @@
 //! call records. Both use HTTP basic auth with the shared xml_curl password.
 
 use std::collections::HashMap;
+use std::net::{IpAddr, SocketAddr};
 
 use axum::Form;
-use axum::extract::State;
+use axum::extract::{ConnectInfo, Request, State};
 use axum::http::{HeaderMap, StatusCode, header};
+use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
@@ -29,6 +31,31 @@ fn authorized(headers: &HeaderMap, password: &str) -> bool {
         return false;
     };
     constant_time_eq(&decoded, format!("{XMLCURL_USER}:{password}").as_bytes())
+}
+
+/// FreeSWITCH runs on the same host: the endpoints only answer loopback
+/// peers (or the configured `TALKOPS_FS_PEERS`), and never requests relayed
+/// by a reverse proxy.
+pub async fn only_local(State(state): State<AppState>, req: Request, next: Next) -> Response {
+    let peer = req
+        .extensions()
+        .get::<ConnectInfo<SocketAddr>>()
+        .map(|c| c.0.ip());
+    let proxied = req.headers().contains_key("x-forwarded-for")
+        || req.headers().contains_key(header::FORWARDED);
+    let allowed = |ip: IpAddr| {
+        ip.is_loopback()
+            || state
+                .fs_peers
+                .iter()
+                .any(|net| talkops_core::sip_guard::network_contains(*net, ip))
+    };
+    // No peer address: called in-process (tests).
+    if proxied || peer.is_some_and(|ip| !allowed(ip)) {
+        tracing::warn!(peer = ?peer, proxied, "FreeSWITCH endpoint refused for this client");
+        return StatusCode::FORBIDDEN.into_response();
+    }
+    next.run(req).await
 }
 
 fn unauthorized() -> Response {
@@ -170,6 +197,23 @@ async fn directory_user(state: &AppState, params: &HashMap<String, String>) -> O
     // Gateway/network-list lookups at profile start are not served from the directory.
     if params.contains_key("purpose") {
         return None;
+    }
+    // Banned addresses fail every authentication, even with the right password.
+    if let Some(ip) = params.get("ip").and_then(|v| v.parse::<IpAddr>().ok()) {
+        match talkops_core::sip_guard::is_banned(
+            &state.db,
+            talkops_core::tenant::TenantId::DEFAULT,
+            ip,
+        )
+        .await
+        {
+            Ok(false) => {}
+            Ok(true) => {
+                tracing::debug!(%ip, "directory lookup from banned address refused");
+                return None;
+            }
+            Err(err) => tracing::warn!(error = %err, "cannot check SIP bans"),
+        }
     }
     let user = params.get("user").filter(|u| !u.is_empty())?;
     let device = match talkops_core::extensions::device_auth(&state.db, user).await {

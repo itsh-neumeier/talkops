@@ -13,6 +13,7 @@ pub mod mailer;
 pub mod menu;
 pub mod retention;
 pub mod routes;
+pub mod sip_guard;
 pub mod telephony;
 pub mod util;
 pub mod voicemail;
@@ -59,6 +60,9 @@ pub struct AppState {
     pub metrics_token: Option<Arc<str>>,
     /// Backup target; `None` disables the backup API.
     pub backup: Option<Arc<backup::BackupConfig>>,
+    /// Networks besides loopback that may call `/fs/*` (FreeSWITCH on
+    /// another address, e.g. macvlan).
+    pub fs_peers: Arc<Vec<(std::net::IpAddr, u8)>>,
 }
 
 impl AppState {
@@ -87,6 +91,7 @@ impl AppState {
             limiter: Arc::new(LoginLimiter::default()),
             metrics_token: None,
             backup: None,
+            fs_peers: Arc::new(Vec::new()),
         }
     }
 }
@@ -131,6 +136,11 @@ impl AppState {
     /// Enables `/metrics` with this bearer token (empty: disabled).
     pub fn with_metrics_token(mut self, token: Option<&str>) -> Self {
         self.metrics_token = token.filter(|t| !t.is_empty()).map(Arc::from);
+        self
+    }
+
+    pub fn with_fs_peers(mut self, peers: Vec<(std::net::IpAddr, u8)>) -> Self {
+        self.fs_peers = Arc::new(peers);
         self
     }
 
@@ -187,6 +197,7 @@ pub fn api_router() -> (Router<AppState>, utoipa::openapi::OpenApi) {
         .merge(routes::doors::router())
         .merge(routes::webrtc::router())
         .merge(routes::backups::router())
+        .merge(routes::security::router())
         .split_for_parts();
     (router, api)
 }
@@ -206,8 +217,15 @@ pub fn app(state: AppState, web_dir: Option<&Path>) -> Router {
             }),
         )
         .route("/metrics", axum::routing::get(routes::metrics::metrics))
-        .route("/fs/xml", axum::routing::post(routes::fs::xml_curl))
-        .route("/fs/cdr", axum::routing::post(routes::fs::xml_cdr))
+        .merge(
+            Router::new()
+                .route("/fs/xml", axum::routing::post(routes::fs::xml_curl))
+                .route("/fs/cdr", axum::routing::post(routes::fs::xml_cdr))
+                .route_layer(axum::middleware::from_fn_with_state(
+                    state.clone(),
+                    routes::fs::only_local,
+                )),
+        )
         .route(
             "/api/v1/webrtc/ws",
             axum::routing::get(routes::webrtc::sip_ws),

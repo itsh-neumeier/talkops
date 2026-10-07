@@ -94,7 +94,7 @@ export interface Extension {
 	record_calls: 'inherit' | 'always' | 'never';
 }
 
-export type DeviceKind = 'desk' | 'dect' | 'softphone' | 'mobile' | 'door' | 'other';
+export type DeviceKind = 'desk' | 'dect' | 'softphone' | 'mobile' | 'door' | 'other' | 'browser';
 
 export interface Device {
 	id: string;

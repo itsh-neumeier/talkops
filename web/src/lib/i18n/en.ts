@@ -539,5 +539,32 @@ export default {
 	'identity.test': 'Test connection',
 	'identity.testHint': 'Tests the saved settings; save changes first.',
 	'identity.ldapOk': 'Connected to the directory.',
-	'identity.noAccess': 'no access'
+	'identity.noAccess': 'no access',
+	'nav.phone': 'Softphone',
+	'phone.state.offline': 'offline',
+	'phone.state.connecting': 'connecting',
+	'phone.state.ready': 'ready',
+	'phone.state.calling': 'calling',
+	'phone.state.ringing': 'ringing',
+	'phone.state.incall': 'in call',
+	'phone.insecure':
+		'The softphone needs a secure connection: open TalkOps via HTTPS (e.g. with the Caddy option) or on this computer via localhost.',
+	'phone.noExtension': 'Your user has no extension yet. Ask an admin to assign one.',
+	'phone.disconnected': 'Connection to the phone system lost. Reload the page to reconnect.',
+	'phone.incoming': 'Incoming call',
+	'phone.answer': 'Answer',
+	'phone.answerVideo': 'Answer with video',
+	'phone.decline': 'Decline',
+	'phone.idle': 'Ready for calls',
+	'phone.number': 'Number',
+	'phone.call': 'Call',
+	'phone.videoCall': 'Video',
+	'phone.hangup': 'Hang up',
+	'phone.mute': 'Mute',
+	'phone.unmute': 'Unmute',
+	'phone.hold': 'Hold',
+	'phone.resume': 'Resume',
+	'phone.hint':
+		'The browser softphone rings with your other phones while this page is open. Allow microphone (and camera for video) when the browser asks.',
+	'kinds.browser': 'Browser'
 } as const;

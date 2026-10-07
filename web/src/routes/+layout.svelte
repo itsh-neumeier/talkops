@@ -23,6 +23,7 @@
 	const nav: { href: string; key: MessageKey; role: 'admin' | 'operator' | 'user' }[] = [
 		{ href: '/', key: 'nav.dashboard', role: 'user' },
 		{ href: '/me', key: 'nav.myPhones', role: 'user' },
+		{ href: '/phone', key: 'nav.phone', role: 'user' },
 		{ href: '/voicemail', key: 'nav.voicemail', role: 'user' },
 		{ href: '/doors', key: 'nav.doors', role: 'user' },
 		{ href: '/extensions', key: 'nav.extensions', role: 'operator' },

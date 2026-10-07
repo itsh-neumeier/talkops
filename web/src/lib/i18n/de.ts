@@ -537,7 +537,36 @@ const de: Record<keyof typeof en, string> = {
 	'identity.test': 'Verbindung testen',
 	'identity.testHint': 'Testet die gespeicherten Einstellungen; Änderungen vorher speichern.',
 	'identity.ldapOk': 'Verbindung zum Verzeichnis hergestellt.',
-	'identity.noAccess': 'kein Zugang'
+	'identity.noAccess': 'kein Zugang',
+	'nav.phone': 'Softphone',
+	'phone.state.offline': 'getrennt',
+	'phone.state.connecting': 'verbinde',
+	'phone.state.ready': 'bereit',
+	'phone.state.calling': 'wählt',
+	'phone.state.ringing': 'klingelt',
+	'phone.state.incall': 'im Gespräch',
+	'phone.insecure':
+		'Das Softphone braucht eine sichere Verbindung: TalkOps über HTTPS öffnen (z. B. mit der Caddy-Option) oder auf diesem Rechner über localhost.',
+	'phone.noExtension':
+		'Ihrem Benutzer ist noch keine Nebenstelle zugeordnet. Bitte an einen Admin wenden.',
+	'phone.disconnected':
+		'Verbindung zur Telefonanlage verloren. Seite neu laden, um erneut zu verbinden.',
+	'phone.incoming': 'Eingehender Anruf',
+	'phone.answer': 'Annehmen',
+	'phone.answerVideo': 'Mit Video annehmen',
+	'phone.decline': 'Ablehnen',
+	'phone.idle': 'Bereit für Anrufe',
+	'phone.number': 'Rufnummer',
+	'phone.call': 'Anrufen',
+	'phone.videoCall': 'Video',
+	'phone.hangup': 'Auflegen',
+	'phone.mute': 'Stumm',
+	'phone.unmute': 'Ton an',
+	'phone.hold': 'Halten',
+	'phone.resume': 'Fortsetzen',
+	'phone.hint':
+		'Das Browser-Softphone klingelt mit Ihren anderen Telefonen, solange diese Seite geöffnet ist. Mikrofon (und für Video die Kamera) erlauben, wenn der Browser fragt.',
+	'kinds.browser': 'Browser'
 };
 
 export default de;

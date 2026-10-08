@@ -46,6 +46,7 @@ pub struct EslClient {
     writer: tokio::sync::Mutex<OwnedWriteHalf>,
     pending: Pending,
     events: broadcast::Sender<Event>,
+    logs: broadcast::Sender<String>,
     timeout: Duration,
 }
 
@@ -88,12 +89,19 @@ impl EslClient {
 
         let pending: Pending = Arc::default();
         let (events, _) = broadcast::channel(1024);
-        tokio::spawn(read_loop(reader, pending.clone(), events.clone()));
+        let (logs, _) = broadcast::channel(4096);
+        tokio::spawn(read_loop(
+            reader,
+            pending.clone(),
+            events.clone(),
+            logs.clone(),
+        ));
 
         Ok(Self {
             writer: tokio::sync::Mutex::new(write_half),
             pending,
             events,
+            logs,
             timeout,
         })
     }
@@ -185,6 +193,26 @@ impl EslClient {
         self.events.subscribe()
     }
 
+    /// Receiver for log lines requested with [`EslClient::log`].
+    pub fn logs(&self) -> broadcast::Receiver<String> {
+        self.logs.subscribe()
+    }
+
+    /// Streams FreeSWITCH's log to this connection from `level` up
+    /// (`debug`, `info`, `notice`, `warning`, `err`, …), like fs_cli does.
+    pub async fn log(&self, level: &str) -> Result<(), EslError> {
+        if !level.chars().all(|c| c.is_ascii_alphanumeric()) {
+            return Err(EslError::Protocol("invalid log level".into()));
+        }
+        let reply = self.send(&format!("log {level}")).await?;
+        let text = reply.headers.get("Reply-Text").unwrap_or_default();
+        if text.starts_with("+OK") {
+            Ok(())
+        } else {
+            Err(EslError::CommandFailed(text.trim_end().to_owned()))
+        }
+    }
+
     /// True while the background reader is alive.
     pub fn is_connected(&self) -> bool {
         // The reader holds a clone of the pending queue; once it exits only we hold it.
@@ -192,8 +220,12 @@ impl EslClient {
     }
 }
 
-async fn read_loop<R>(mut reader: R, pending: Pending, events: broadcast::Sender<Event>)
-where
+async fn read_loop<R>(
+    mut reader: R,
+    pending: Pending,
+    events: broadcast::Sender<Event>,
+    logs: broadcast::Sender<String>,
+) where
     R: tokio::io::AsyncBufRead + Unpin,
 {
     loop {
@@ -221,6 +253,9 @@ where
                 }
                 Err(err) => tracing::warn!(error = %err, "malformed ESL event"),
             },
+            Some("log/data") => {
+                let _ = logs.send(frame.body_text());
+            }
             Some("text/disconnect-notice") => break,
             other => tracing::debug!(content_type = ?other, "ignoring ESL frame"),
         }
@@ -275,6 +310,13 @@ mod tests {
                     && block.contains("MWI-Messages-Waiting: yes")
                 {
                     "Content-Type: command/reply\nReply-Text: +OK 1234\n\n".to_string()
+                } else if cmd == "log debug" {
+                    let line = "2026-01-01 00:00:00.000000 [DEBUG] sofia.c:1 hello\n";
+                    format!(
+                        "Content-Type: command/reply\nReply-Text: +OK log level debug [7]\n\n\
+                         Content-Type: log/data\nContent-Length: {}\nLog-Level: 7\n\n{line}",
+                        line.len()
+                    )
                 } else if cmd.starts_with("event plain") {
                     let ev = "Event-Name: HEARTBEAT\nUp-Time: 0%20years\n\n";
                     format!(
@@ -325,6 +367,11 @@ mod tests {
         let event = events.recv().await.unwrap();
         assert_eq!(event.name(), Some("HEARTBEAT"));
         assert_eq!(event.headers.get("Up-Time"), Some("0 years"));
+
+        let mut logs = client.logs();
+        client.log("debug").await.unwrap();
+        assert!(logs.recv().await.unwrap().ends_with("hello\n"));
+        assert!(client.log("debug\nx").await.is_err());
     }
 
     #[tokio::test]

@@ -26,6 +26,17 @@ use tokio::process::Command;
 const SAMPLE_RATE: u32 = 16_000;
 const MODEL_URL: &str = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main";
 
+/// primeLine's German fine-tune of large-v3-turbo (Apache-2.0,
+/// huggingface.co/primeline/whisper-large-v3-turbo-german), converted to
+/// ggml with whisper.cpp's convert-h5-to-ggml.py by huggingface.co/cstr.
+/// Model weights are data, and the file is pinned by its SHA-256.
+const GERMAN_MODEL: (&str, &str, u64) = (
+    "large-v3-turbo-german-q5_0",
+    "15e92e3db0993c52fffa781513eec9253475331c1be808f8fb409285c9d9d030",
+    574_041_195,
+);
+const GERMAN_URL: &str = "https://huggingface.co/cstr/whisper-large-v3-turbo-german-ggml/resolve/main/ggml-model-q5_0.bin";
+
 /// Silero VAD model for whisper.cpp: file, SHA-256, size.
 const VAD_MODEL: (&str, &str, u64) = (
     "ggml-silero-v5.1.2.bin",
@@ -137,6 +148,7 @@ impl Whisper {
             TranscriptionQuality::Fast => &self.model,
             TranscriptionQuality::Accurate => "large-v3-q5_0",
             TranscriptionQuality::Best => "large-v3",
+            TranscriptionQuality::German => GERMAN_MODEL.0,
         }
     }
 
@@ -144,6 +156,10 @@ impl Whisper {
     pub async fn ensure_model(&self, name: &str) -> anyhow::Result<PathBuf> {
         let file = self.models_dir.join(format!("ggml-{name}.bin"));
         if file.is_file() {
+            return Ok(file);
+        }
+        if name == GERMAN_MODEL.0 {
+            download(GERMAN_URL, &file, GERMAN_MODEL.1, GERMAN_MODEL.2).await?;
             return Ok(file);
         }
         let Some(&(_, sum, size)) = KNOWN_MODELS.iter().find(|(n, _, _)| *n == name) else {

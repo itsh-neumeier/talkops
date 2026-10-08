@@ -2,5 +2,5 @@
 -- (names, companies, products).
 ALTER TABLE tenant_settings
     ADD COLUMN transcription_quality TEXT NOT NULL DEFAULT 'fast'
-        CHECK (transcription_quality IN ('fast', 'accurate', 'best')),
+        CHECK (transcription_quality IN ('fast', 'accurate', 'best', 'german')),
     ADD COLUMN transcription_vocabulary TEXT NOT NULL DEFAULT '';

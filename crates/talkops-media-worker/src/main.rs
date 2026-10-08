@@ -143,7 +143,7 @@ enum Command {
     /// levels: `talkops-media-worker transcribe --quality best call.wav`.
     Transcribe {
         file: PathBuf,
-        /// `fast`, `accurate` or `best`.
+        /// `fast`, `accurate`, `best` or `german`.
         #[arg(long, default_value = "fast")]
         quality: String,
         #[arg(long, default_value = "de")]
@@ -186,7 +186,7 @@ async fn main() -> anyhow::Result<()> {
     {
         let opts = transcribe::Options {
             quality: settings::TranscriptionQuality::parse(quality)
-                .context("quality must be fast, accurate or best")?,
+                .context("quality must be fast, accurate, best or german")?,
             vocabulary: vocabulary.clone(),
         };
         let started = std::time::Instant::now();
@@ -206,6 +206,8 @@ async fn main() -> anyhow::Result<()> {
         match PgListener::connect_with(&pool).await {
             Ok(mut l) => {
                 l.listen(jobs::NOTIFY_CHANNEL).await?;
+                // Restart requests from the web UI (talkops-api diagnostics).
+                l.listen(CONTROL_CHANNEL).await?;
                 break l;
             }
             Err(err) => {
@@ -260,6 +262,11 @@ async fn main() -> anyhow::Result<()> {
         tokio::select! {
             _ = &mut shutdown => break,
             notification = listener.recv() => match notification {
+                Ok(n) if n.channel() == CONTROL_CHANNEL && n.payload() == "restart" => {
+                    // Docker's restart policy starts the worker again.
+                    tracing::warn!("restart requested");
+                    break;
+                }
                 Ok(_) => wake.notify_waiters(),
                 Err(err) => {
                     tracing::warn!(error = %err, "LISTEN connection error");
@@ -271,6 +278,9 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!("media worker stopped");
     Ok(())
 }
+
+/// Postgres channel for control messages (same as talkops-api).
+const CONTROL_CHANNEL: &str = "talkops_control";
 
 /// What job handlers need.
 struct Ctx {

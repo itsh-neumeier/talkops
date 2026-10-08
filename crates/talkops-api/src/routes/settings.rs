@@ -61,7 +61,7 @@ fn validate(s: &TenantSettings) -> Result<(), ApiError> {
     }
     if settings::TranscriptionQuality::parse(&s.transcription_quality).is_none() {
         return Err(ApiError::BadRequest(
-            "transcription quality must be fast, accurate or best".into(),
+            "transcription quality must be fast, accurate, best or german".into(),
         ));
     }
     if s.transcription_vocabulary.chars().count() > settings::MAX_VOCABULARY

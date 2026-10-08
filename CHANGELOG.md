@@ -4,6 +4,21 @@ All notable changes to TalkOps. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- **Settings in sections** (Telephony, Call handling, E-mail, Sign-in &
+  security, System, My account) with a side menu like UniFi Talk.
+- **Settings → System:** status and uptime, **debug logging** of FreeSWITCH
+  for 1–60 minutes with optional **SIP trace**, live view with filter and
+  download, active channels, and **restart** of FreeSWITCH or all services
+  from the browser.
+- Transcription accuracy (*Fast*, *Accurate* = large-v3 compressed, *Best* =
+  large-v3, *German-optimized* = primeLine large-v3-turbo German) and a list
+  of names and terms; audio is normalized and VAD keeps word edges.
+  `talkops-media-worker transcribe` compares levels on a file.
+
 ## [1.3.0] – 2026-10-08
 
 ### Added

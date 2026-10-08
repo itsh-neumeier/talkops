@@ -73,3 +73,21 @@ groups:
       - alert: TalkOpsJobsFailing
         expr: delta(talkops_jobs{status="failed"}[1h]) > 0
 ```
+
+## Troubleshooting in the web UI
+
+**Settings → System** (admin):
+
+- **Status**: version, uptime of TalkOps and FreeSWITCH, active channels.
+- **Debug logging**: pick a level (debug/info/notice/warning), a duration in
+  minutes (1–60) and optionally **SIP trace**, *Start*, reproduce the
+  problem. The log follows live (filterable) and downloads as a text file to
+  attach to a support request. The capture stops by itself after the chosen
+  time and switches the SIP trace off again. This is
+  `fs_cli -x "sofia global siptrace on"` with `/log debug`, without access to
+  the server.
+- **Active channels**: like `show channels` – channel, caller, destination,
+  state, codec, application.
+- **Restart**: *Restart FreeSWITCH* or *Restart all services* (FreeSWITCH,
+  media worker, TalkOps). The services exit and Docker starts them again
+  thanks to `restart: unless-stopped`; active calls are dropped.

@@ -42,7 +42,7 @@ pub struct TenantSettings {
     pub hold_music: String,
     #[serde(default)]
     pub hold_music_clip_id: Option<Uuid>,
-    /// `fast`, `accurate` or `best` (see [TranscriptionQuality]).
+    /// `fast`, `accurate`, `best` or `german` (see [TranscriptionQuality]).
     #[serde(default = "default_quality")]
     pub transcription_quality: String,
     /// Names and terms passed to Whisper as context, comma-separated.
@@ -63,6 +63,9 @@ pub enum TranscriptionQuality {
     Accurate,
     /// `large-v3`: unquantized, about 4 GB RAM, slowest.
     Best,
+    /// large-v3-turbo fine-tuned on German speech (primeLine), about 2 GB
+    /// RAM; for German calls.
+    German,
 }
 
 impl TranscriptionQuality {
@@ -71,6 +74,7 @@ impl TranscriptionQuality {
             "fast" => Some(Self::Fast),
             "accurate" => Some(Self::Accurate),
             "best" => Some(Self::Best),
+            "german" => Some(Self::German),
             _ => None,
         }
     }

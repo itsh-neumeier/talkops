@@ -3,6 +3,7 @@ pub mod audio;
 pub mod auth;
 pub mod backups;
 pub mod dashboard;
+pub mod diagnostics;
 pub mod doors;
 pub mod extensions;
 pub mod fs;

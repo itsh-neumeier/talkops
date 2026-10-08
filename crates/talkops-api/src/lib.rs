@@ -6,6 +6,7 @@ pub mod backup;
 pub mod callcenter;
 pub mod conference;
 pub mod config;
+pub mod diagnostics;
 pub mod doors;
 pub mod error;
 pub mod esl;
@@ -66,6 +67,8 @@ pub struct AppState {
     pub fs_peers: Arc<Vec<(std::net::IpAddr, u8)>>,
     /// TURN relay for the browser softphone; `None`: direct media only.
     pub turn: Option<Arc<TurnSettings>>,
+    /// Log capture and restarts (settings → system).
+    pub diagnostics: Arc<diagnostics::Diagnostics>,
 }
 
 /// TURN servers handed to browser softphones.
@@ -105,6 +108,7 @@ impl AppState {
             backup: None,
             fs_peers: Arc::new(Vec::new()),
             turn: None,
+            diagnostics: Arc::default(),
         }
     }
 }
@@ -131,6 +135,11 @@ impl Default for MediaPaths {
 }
 
 impl AppState {
+    pub fn with_diagnostics(mut self, diagnostics: diagnostics::Diagnostics) -> Self {
+        self.diagnostics = Arc::new(diagnostics);
+        self
+    }
+
     pub fn with_media(mut self, media: MediaPaths) -> Self {
         self.media = Arc::new(media);
         self
@@ -234,6 +243,7 @@ pub fn api_router() -> (Router<AppState>, utoipa::openapi::OpenApi) {
         .merge(routes::doors::router())
         .merge(routes::webrtc::router())
         .merge(routes::backups::router())
+        .merge(routes::diagnostics::router())
         .merge(routes::dashboard::router())
         .merge(routes::audio::router())
         .merge(routes::security::router())

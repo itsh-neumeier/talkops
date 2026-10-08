@@ -173,7 +173,12 @@ async fn serve(config: Config) -> anyhow::Result<()> {
         tracing::info!(urls = ?turn.urls, relay_only = turn.relay_only, "TURN enabled for softphones");
     }
     let queue_sync = talkops_api::callcenter::spawn(db.clone(), state.telephony.esl.clone());
-    let state = state.with_queue_sync(queue_sync);
+    let state = state.with_queue_sync(queue_sync).with_diagnostics(
+        talkops_api::diagnostics::Diagnostics::new(
+            config.esl_addr.clone(),
+            config.esl_password.clone(),
+        ),
+    );
     state
         .telephony
         .esl

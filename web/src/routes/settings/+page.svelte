@@ -8,10 +8,32 @@
 	import BackupSettings from '#lib/components/BackupSettings.svelte';
 	import IdentitySettings from '#lib/components/IdentitySettings.svelte';
 	import SipGuardSettings from '#lib/components/SipGuardSettings.svelte';
+	import SystemDiagnostics from '#lib/components/SystemDiagnostics.svelte';
 	import TwoFactor from '#lib/components/TwoFactor.svelte';
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import { hasRole, logout } from '#lib/session.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
+
+	type Section = 'telephony' | 'calls' | 'email' | 'security' | 'system' | 'account';
+	const sections: { id: Section; icon: string; admin: boolean }[] = [
+		{ id: 'telephony', icon: '☎', admin: true },
+		{ id: 'calls', icon: '🎵', admin: true },
+		{ id: 'email', icon: '✉', admin: true },
+		{ id: 'security', icon: '🛡', admin: true },
+		{ id: 'system', icon: '⚙', admin: true },
+		{ id: 'account', icon: '👤', admin: false }
+	];
+	const visible = $derived(sections.filter((s) => !s.admin || hasRole('admin')));
+	function initialSection(): Section {
+		const hash = typeof location === 'undefined' ? '' : location.hash.slice(1);
+		const found = sections.find((s) => s.id === hash && (!s.admin || hasRole('admin')));
+		return found?.id ?? (hasRole('admin') ? 'telephony' : 'account');
+	}
+	let section = $state<Section>(initialSection());
+	function show(id: Section) {
+		section = id;
+		history.replaceState(history.state, '', `#${id}`);
+	}
 
 	let settings = $state<Settings | null>(null);
 	let numbers = $state<PhoneNumber[]>([]);
@@ -153,315 +175,343 @@
 
 <div class="space-y-4">
 	<h1>{t('nav.settings')}</h1>
-	{#if settings && hasRole('admin')}
-		<form class="card space-y-4" onsubmit={save}>
-			<h2>{t('settings.dialing')}</h2>
-			<ErrorBox {error} />
-			{#if saved}<p class="text-sm text-emerald-700 dark:text-emerald-400">
-					{t('common.saved')}
-				</p>{/if}
-			<div class="grid gap-3 sm:grid-cols-2">
-				<div>
-					<label for="s-cc">{t('settings.countryCode')}</label><input
-						id="s-cc"
-						class="input font-mono"
-						bind:value={settings.country_code}
-						required
-					/>
-				</div>
-				<div>
-					<label for="s-ac">{t('settings.areaCode')}</label>
-					<input id="s-ac" class="input font-mono" bind:value={settings.area_code} />
-					<p class="hint">{t('settings.areaHint')}</p>
-				</div>
-				<div>
-					<label for="s-np">{t('settings.nationalPrefix')}</label><input
-						id="s-np"
-						class="input font-mono"
-						bind:value={settings.national_prefix}
-					/>
-				</div>
-				<div>
-					<label for="s-ip">{t('settings.internationalPrefix')}</label><input
-						id="s-ip"
-						class="input font-mono"
-						bind:value={settings.international_prefix}
-						required
-					/>
-				</div>
-			</div>
-			<div>
-				<label for="s-em">{t('settings.emergency')}</label>
-				<input id="s-em" class="input font-mono" bind:value={emergency} required />
-				<p class="hint">{t('settings.emergencyHint')}</p>
-			</div>
-			<div>
-				<label for="s-def">{t('settings.defaultNumber')}</label>
-				<select id="s-def" class="input" bind:value={settings.default_number_id}>
-					<option value={null}>—</option>
-					{#each numbers as n (n.id)}<option value={n.id}>{n.e164} {n.label}</option>{/each}
-				</select>
-				<p class="hint">{t('settings.defaultNumberHint')}</p>
-			</div>
-			<div>
-				<label for="s-ext">{t('settings.externalIp')}</label>
-				<input
-					id="s-ext"
-					class="input font-mono"
-					bind:value={settings.external_ip}
-					placeholder="203.0.113.10"
-				/>
-				<p class="hint">{t('settings.externalIpHint')}</p>
-			</div>
-			<div>
-				<label for="s-tz">{t('settings.timezone')}</label>
-				<select id="s-tz" class="input" bind:value={settings.timezone}>
-					{#each timezones as tz (tz)}<option value={tz}>{tz}</option>{/each}
-				</select>
-				<p class="hint">{t('settings.timezoneHint')}</p>
-			</div>
-			<div class="flex justify-end">
-				<button class="btn btn-primary">{t('common.save')}</button>
-			</div>
-		</form>
-	{/if}
-
-	{#if settings && hasRole('admin')}
-		<form class="card space-y-3" onsubmit={saveRecording}>
-			<h2>{t('rec.title')}</h2>
-			<p class="text-sm text-slate-600 dark:text-slate-300">{t('rec.hint')}</p>
-			<ErrorBox error={recError} />
-			{#if recSaved}<p class="text-sm text-emerald-700 dark:text-emerald-400">
-					{t('common.saved')}
-				</p>{/if}
-			<fieldset class="space-y-1">
-				<legend class="text-sm font-medium">{t('rec.record')}</legend>
-				<label class="flex items-center gap-2"
-					><input type="checkbox" bind:checked={settings.record_inbound} />
-					{t('dir.inbound')}</label
+	<div class="flex flex-col gap-4 md:flex-row md:items-start">
+		<nav
+			class="-mx-1 flex gap-1 overflow-x-auto px-1 md:sticky md:top-4 md:w-56 md:shrink-0 md:flex-col md:overflow-visible"
+			aria-label={t('nav.settings')}
+		>
+			{#each visible as s (s.id)}
+				<button
+					type="button"
+					class="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-left text-sm whitespace-nowrap {section ===
+					s.id
+						? 'bg-teal-50 font-medium text-teal-800 dark:bg-teal-900/40 dark:text-teal-200'
+						: 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'}"
+					aria-current={section === s.id ? 'page' : undefined}
+					onclick={() => show(s.id)}
+					><span aria-hidden="true" class="w-5 text-center">{s.icon}</span>
+					{t(`settings.section.${s.id}`)}</button
 				>
-				<label class="flex items-center gap-2"
-					><input type="checkbox" bind:checked={settings.record_outbound} />
-					{t('dir.outbound')}</label
-				>
-				<label class="flex items-center gap-2"
-					><input type="checkbox" bind:checked={settings.record_internal} />
-					{t('dir.internal')}</label
-				>
-				<p class="hint">{t('rec.recordHint')}</p>
-			</fieldset>
-			<label class="flex items-center gap-2"
-				><input type="checkbox" bind:checked={settings.recording_announcement} />
-				{t('rec.announcement')}</label
-			>
-			<p class="hint">{t('rec.announcementHint')}</p>
-			<div>
-				<label for="rec-days">{t('rec.retention')}</label>
-				<input
-					id="rec-days"
-					class="input w-32"
-					type="number"
-					min="0"
-					max="3650"
-					bind:value={settings.recording_retention_days}
-				/>
-				<p class="hint">{t('rec.retentionHint')}</p>
-			</div>
-			<label class="flex items-center gap-2"
-				><input type="checkbox" bind:checked={settings.transcription_enabled} />
-				{t('rec.transcription')}</label
-			>
-			<p class="hint">{t('rec.transcriptionHint')}</p>
-			{#if settings.transcription_enabled}
-				<div>
-					<label for="s-tq">{t('rec.quality')}</label>
-					<select id="s-tq" class="input" bind:value={settings.transcription_quality}>
-						<option value="fast">{t('rec.qualityFast')}</option>
-						<option value="accurate">{t('rec.qualityAccurate')}</option>
-						<option value="best">{t('rec.qualityBest')}</option>
-					</select>
-					<p class="hint">{t('rec.qualityHint')}</p>
-				</div>
-				<div>
-					<label for="s-tv">{t('rec.vocabulary')}</label>
-					<input
-						id="s-tv"
-						class="input"
-						maxlength="600"
-						bind:value={settings.transcription_vocabulary}
-						placeholder={t('rec.vocabularyPlaceholder')}
-					/>
-					<p class="hint">{t('rec.vocabularyHint')}</p>
-				</div>
-			{/if}
-			<div class="flex justify-end">
-				<button class="btn btn-primary">{t('common.save')}</button>
-			</div>
-		</form>
-	{/if}
-
-	{#if settings && hasRole('admin')}
-		<form class="card space-y-3" onsubmit={saveMusic}>
-			<h2>{t('music.title')}</h2>
-			<p class="text-sm text-slate-600 dark:text-slate-300">{t('music.hint')}</p>
-			<ErrorBox error={musicError} />
-			{#if musicSaved}<p class="text-sm text-emerald-700 dark:text-emerald-400">
-					{t('common.saved')}
-				</p>{/if}
-			<div class="space-y-2" role="radiogroup" aria-label={t('music.title')}>
-				<label class="flex items-center gap-2"
-					><input type="radio" name="hold-music" value="" bind:group={music} />
-					{t('music.all')}</label
-				>
-				{#each tracks as tr (tr.id)}
-					<div class="space-y-1">
-						<label class="flex items-center gap-2"
-							><input
-								type="radio"
-								name="hold-music"
-								value={tr.id}
-								bind:group={music}
-								disabled={!tr.available}
+			{/each}
+		</nav>
+		<div class="min-w-0 flex-1 space-y-4">
+			{#if section === 'telephony'}
+				{#if settings && hasRole('admin')}
+					<form class="card space-y-4" onsubmit={save}>
+						<h2>{t('settings.dialing')}</h2>
+						<ErrorBox {error} />
+						{#if saved}<p class="text-sm text-emerald-700 dark:text-emerald-400">
+								{t('common.saved')}
+							</p>{/if}
+						<div class="grid gap-3 sm:grid-cols-2">
+							<div>
+								<label for="s-cc">{t('settings.countryCode')}</label><input
+									id="s-cc"
+									class="input font-mono"
+									bind:value={settings.country_code}
+									required
+								/>
+							</div>
+							<div>
+								<label for="s-ac">{t('settings.areaCode')}</label>
+								<input id="s-ac" class="input font-mono" bind:value={settings.area_code} />
+								<p class="hint">{t('settings.areaHint')}</p>
+							</div>
+							<div>
+								<label for="s-np">{t('settings.nationalPrefix')}</label><input
+									id="s-np"
+									class="input font-mono"
+									bind:value={settings.national_prefix}
+								/>
+							</div>
+							<div>
+								<label for="s-ip">{t('settings.internationalPrefix')}</label><input
+									id="s-ip"
+									class="input font-mono"
+									bind:value={settings.international_prefix}
+									required
+								/>
+							</div>
+						</div>
+						<div>
+							<label for="s-em">{t('settings.emergency')}</label>
+							<input id="s-em" class="input font-mono" bind:value={emergency} required />
+							<p class="hint">{t('settings.emergencyHint')}</p>
+						</div>
+						<div>
+							<label for="s-def">{t('settings.defaultNumber')}</label>
+							<select id="s-def" class="input" bind:value={settings.default_number_id}>
+								<option value={null}>—</option>
+								{#each numbers as n (n.id)}<option value={n.id}>{n.e164} {n.label}</option>{/each}
+							</select>
+							<p class="hint">{t('settings.defaultNumberHint')}</p>
+						</div>
+						<div>
+							<label for="s-ext">{t('settings.externalIp')}</label>
+							<input
+								id="s-ext"
+								class="input font-mono"
+								bind:value={settings.external_ip}
+								placeholder="203.0.113.10"
 							/>
-							{tr.title}</label
-						>
-						{#if tr.available && music === tr.id}
-							<div class="pl-6"><AudioPlayer src={musicUrl(tr.id)} /></div>
-						{/if}
-					</div>
-				{/each}
-				{#if tracks.some((tr) => !tr.available)}
-					<p class="hint">{t('music.unavailable')}</p>
+							<p class="hint">{t('settings.externalIpHint')}</p>
+						</div>
+						<div>
+							<label for="s-tz">{t('settings.timezone')}</label>
+							<select id="s-tz" class="input" bind:value={settings.timezone}>
+								{#each timezones as tz (tz)}<option value={tz}>{tz}</option>{/each}
+							</select>
+							<p class="hint">{t('settings.timezoneHint')}</p>
+						</div>
+						<div class="flex justify-end">
+							<button class="btn btn-primary">{t('common.save')}</button>
+						</div>
+					</form>
 				{/if}
-				<label class="flex items-center gap-2"
-					><input type="radio" name="hold-music" value="own" bind:group={music} />
-					{t('music.own')}</label
-				>
-			</div>
-			{#if music === 'own'}
-				<AudioPicker
-					bind:this={musicPicker}
-					bind:mode={musicMode}
-					bind:clipId={settings.hold_music_clip_id}
-					modes={['upload', 'record', 'generate']}
-					language={settings.default_language === 'en' ? 'en' : 'de'}
-					hints={{ upload: t('queues.mohHint') }}
-				/>
-			{/if}
-			<div class="flex justify-end">
-				<button class="btn btn-primary">{t('common.save')}</button>
-			</div>
-		</form>
-	{/if}
-
-	{#if hasRole('admin')}<IdentitySettings />{/if}
-
-	{#if hasRole('admin')}<SipGuardSettings />{/if}
-
-	{#if hasRole('admin')}<BackupSettings />{/if}
-
-	{#if smtp && hasRole('admin')}
-		<form class="card space-y-3" onsubmit={saveSmtp}>
-			<h2>{t('smtp.title')}</h2>
-			<p class="text-sm text-slate-600 dark:text-slate-300">{t('smtp.hint')}</p>
-			<ErrorBox error={smtpError} />
-			{#if smtpInfo}<p class="text-sm text-emerald-700 dark:text-emerald-400">{smtpInfo}</p>{/if}
-			<div class="grid gap-3 sm:grid-cols-3">
-				<div class="sm:col-span-2">
-					<label for="smtp-host">{t('smtp.host')}</label>
-					<input
-						id="smtp-host"
-						class="input font-mono"
-						bind:value={smtp.host}
-						placeholder="smtp.example.com"
-					/>
-				</div>
-				<div>
-					<label for="smtp-port">{t('smtp.port')}</label>
-					<input
-						id="smtp-port"
-						class="input"
-						type="number"
-						min="1"
-						max="65535"
-						bind:value={smtp.port}
-					/>
-				</div>
-				<div>
-					<label for="smtp-sec">{t('smtp.security')}</label>
-					<select id="smtp-sec" class="input" bind:value={smtp.security}>
-						<option value="starttls">STARTTLS (587)</option>
-						<option value="tls">TLS (465)</option>
-						<option value="none">{t('smtp.none')}</option>
-					</select>
-				</div>
-				<div>
-					<label for="smtp-user">{t('smtp.username')}</label>
-					<input id="smtp-user" class="input" autocomplete="off" bind:value={smtp.username} />
-				</div>
-				<div>
-					<label for="smtp-pw">{t('login.password')}</label>
-					<input
-						id="smtp-pw"
-						class="input"
-						type="password"
-						autocomplete="new-password"
-						bind:value={smtpPassword}
-						placeholder={smtp.has_password ? t('trunks.passwordKeep') : ''}
-					/>
-				</div>
-			</div>
-			<div>
-				<label for="smtp-from">{t('smtp.from')}</label>
-				<input
-					id="smtp-from"
-					class="input"
-					bind:value={smtp.from}
-					placeholder="TalkOps <pbx@example.com>"
-				/>
-			</div>
-			<div class="flex flex-wrap items-end justify-between gap-2">
-				<div class="flex items-end gap-2">
+			{:else if section === 'calls'}
+				{#if settings && hasRole('admin')}
+					<form class="card space-y-3" onsubmit={saveRecording}>
+						<h2>{t('rec.title')}</h2>
+						<p class="text-sm text-slate-600 dark:text-slate-300">{t('rec.hint')}</p>
+						<ErrorBox error={recError} />
+						{#if recSaved}<p class="text-sm text-emerald-700 dark:text-emerald-400">
+								{t('common.saved')}
+							</p>{/if}
+						<fieldset class="space-y-1">
+							<legend class="text-sm font-medium">{t('rec.record')}</legend>
+							<label class="flex items-center gap-2"
+								><input type="checkbox" bind:checked={settings.record_inbound} />
+								{t('dir.inbound')}</label
+							>
+							<label class="flex items-center gap-2"
+								><input type="checkbox" bind:checked={settings.record_outbound} />
+								{t('dir.outbound')}</label
+							>
+							<label class="flex items-center gap-2"
+								><input type="checkbox" bind:checked={settings.record_internal} />
+								{t('dir.internal')}</label
+							>
+							<p class="hint">{t('rec.recordHint')}</p>
+						</fieldset>
+						<label class="flex items-center gap-2"
+							><input type="checkbox" bind:checked={settings.recording_announcement} />
+							{t('rec.announcement')}</label
+						>
+						<p class="hint">{t('rec.announcementHint')}</p>
+						<div>
+							<label for="rec-days">{t('rec.retention')}</label>
+							<input
+								id="rec-days"
+								class="input w-32"
+								type="number"
+								min="0"
+								max="3650"
+								bind:value={settings.recording_retention_days}
+							/>
+							<p class="hint">{t('rec.retentionHint')}</p>
+						</div>
+						<label class="flex items-center gap-2"
+							><input type="checkbox" bind:checked={settings.transcription_enabled} />
+							{t('rec.transcription')}</label
+						>
+						<p class="hint">{t('rec.transcriptionHint')}</p>
+						{#if settings.transcription_enabled}
+							<div>
+								<label for="s-tq">{t('rec.quality')}</label>
+								<select id="s-tq" class="input" bind:value={settings.transcription_quality}>
+									<option value="fast">{t('rec.qualityFast')}</option>
+									<option value="accurate">{t('rec.qualityAccurate')}</option>
+									<option value="best">{t('rec.qualityBest')}</option>
+									<option value="german">{t('rec.qualityGerman')}</option>
+								</select>
+								<p class="hint">{t('rec.qualityHint')}</p>
+							</div>
+							<div>
+								<label for="s-tv">{t('rec.vocabulary')}</label>
+								<input
+									id="s-tv"
+									class="input"
+									maxlength="600"
+									bind:value={settings.transcription_vocabulary}
+									placeholder={t('rec.vocabularyPlaceholder')}
+								/>
+								<p class="hint">{t('rec.vocabularyHint')}</p>
+							</div>
+						{/if}
+						<div class="flex justify-end">
+							<button class="btn btn-primary">{t('common.save')}</button>
+						</div>
+					</form>
+				{/if}
+				{#if settings && hasRole('admin')}
+					<form class="card space-y-3" onsubmit={saveMusic}>
+						<h2>{t('music.title')}</h2>
+						<p class="text-sm text-slate-600 dark:text-slate-300">{t('music.hint')}</p>
+						<ErrorBox error={musicError} />
+						{#if musicSaved}<p class="text-sm text-emerald-700 dark:text-emerald-400">
+								{t('common.saved')}
+							</p>{/if}
+						<div class="space-y-2" role="radiogroup" aria-label={t('music.title')}>
+							<label class="flex items-center gap-2"
+								><input type="radio" name="hold-music" value="" bind:group={music} />
+								{t('music.all')}</label
+							>
+							{#each tracks as tr (tr.id)}
+								<div class="space-y-1">
+									<label class="flex items-center gap-2"
+										><input
+											type="radio"
+											name="hold-music"
+											value={tr.id}
+											bind:group={music}
+											disabled={!tr.available}
+										/>
+										{tr.title}</label
+									>
+									{#if tr.available && music === tr.id}
+										<div class="pl-6"><AudioPlayer src={musicUrl(tr.id)} /></div>
+									{/if}
+								</div>
+							{/each}
+							{#if tracks.some((tr) => !tr.available)}
+								<p class="hint">{t('music.unavailable')}</p>
+							{/if}
+							<label class="flex items-center gap-2"
+								><input type="radio" name="hold-music" value="own" bind:group={music} />
+								{t('music.own')}</label
+							>
+						</div>
+						{#if music === 'own'}
+							<AudioPicker
+								bind:this={musicPicker}
+								bind:mode={musicMode}
+								bind:clipId={settings.hold_music_clip_id}
+								modes={['upload', 'record', 'generate']}
+								language={settings.default_language === 'en' ? 'en' : 'de'}
+								hints={{ upload: t('queues.mohHint') }}
+							/>
+						{/if}
+						<div class="flex justify-end">
+							<button class="btn btn-primary">{t('common.save')}</button>
+						</div>
+					</form>
+				{/if}
+			{:else if section === 'email'}
+				{#if smtp && hasRole('admin')}
+					<form class="card space-y-3" onsubmit={saveSmtp}>
+						<h2>{t('smtp.title')}</h2>
+						<p class="text-sm text-slate-600 dark:text-slate-300">{t('smtp.hint')}</p>
+						<ErrorBox error={smtpError} />
+						{#if smtpInfo}<p class="text-sm text-emerald-700 dark:text-emerald-400">
+								{smtpInfo}
+							</p>{/if}
+						<div class="grid gap-3 sm:grid-cols-3">
+							<div class="sm:col-span-2">
+								<label for="smtp-host">{t('smtp.host')}</label>
+								<input
+									id="smtp-host"
+									class="input font-mono"
+									bind:value={smtp.host}
+									placeholder="smtp.example.com"
+								/>
+							</div>
+							<div>
+								<label for="smtp-port">{t('smtp.port')}</label>
+								<input
+									id="smtp-port"
+									class="input"
+									type="number"
+									min="1"
+									max="65535"
+									bind:value={smtp.port}
+								/>
+							</div>
+							<div>
+								<label for="smtp-sec">{t('smtp.security')}</label>
+								<select id="smtp-sec" class="input" bind:value={smtp.security}>
+									<option value="starttls">STARTTLS (587)</option>
+									<option value="tls">TLS (465)</option>
+									<option value="none">{t('smtp.none')}</option>
+								</select>
+							</div>
+							<div>
+								<label for="smtp-user">{t('smtp.username')}</label>
+								<input id="smtp-user" class="input" autocomplete="off" bind:value={smtp.username} />
+							</div>
+							<div>
+								<label for="smtp-pw">{t('login.password')}</label>
+								<input
+									id="smtp-pw"
+									class="input"
+									type="password"
+									autocomplete="new-password"
+									bind:value={smtpPassword}
+									placeholder={smtp.has_password ? t('trunks.passwordKeep') : ''}
+								/>
+							</div>
+						</div>
+						<div>
+							<label for="smtp-from">{t('smtp.from')}</label>
+							<input
+								id="smtp-from"
+								class="input"
+								bind:value={smtp.from}
+								placeholder="TalkOps <pbx@example.com>"
+							/>
+						</div>
+						<div class="flex flex-wrap items-end justify-between gap-2">
+							<div class="flex items-end gap-2">
+								<div>
+									<label for="smtp-to">{t('smtp.testTo')}</label>
+									<input id="smtp-to" class="input" type="email" bind:value={testTo} />
+								</div>
+								<button type="button" class="btn" disabled={!testTo} onclick={testSmtp}
+									>{t('smtp.test')}</button
+								>
+							</div>
+							<button class="btn btn-primary">{t('common.save')}</button>
+						</div>
+					</form>
+				{/if}
+			{:else if section === 'security'}
+				{#if hasRole('admin')}<IdentitySettings />{/if}
+				{#if hasRole('admin')}<SipGuardSettings />{/if}
+			{:else if section === 'system'}
+				{#if hasRole('admin')}
+					<SystemDiagnostics />
+					<BackupSettings />
+				{/if}
+			{:else}
+				<form class="card max-w-md space-y-3" onsubmit={changePassword}>
+					<h2>{t('settings.account')}</h2>
+					<ErrorBox error={pwError} />
 					<div>
-						<label for="smtp-to">{t('smtp.testTo')}</label>
-						<input id="smtp-to" class="input" type="email" bind:value={testTo} />
+						<label for="p-cur">{t('settings.currentPassword')}</label><input
+							id="p-cur"
+							class="input"
+							type="password"
+							autocomplete="current-password"
+							bind:value={pw.current_password}
+							required
+						/>
 					</div>
-					<button type="button" class="btn" disabled={!testTo} onclick={testSmtp}
-						>{t('smtp.test')}</button
-					>
-				</div>
-				<button class="btn btn-primary">{t('common.save')}</button>
-			</div>
-		</form>
-	{/if}
-
-	<form class="card max-w-md space-y-3" onsubmit={changePassword}>
-		<h2>{t('settings.account')}</h2>
-		<ErrorBox error={pwError} />
-		<div>
-			<label for="p-cur">{t('settings.currentPassword')}</label><input
-				id="p-cur"
-				class="input"
-				type="password"
-				autocomplete="current-password"
-				bind:value={pw.current_password}
-				required
-			/>
+					<div>
+						<label for="p-new">{t('settings.newPassword')}</label>
+						<input
+							id="p-new"
+							class="input"
+							type="password"
+							autocomplete="new-password"
+							minlength="10"
+							bind:value={pw.new_password}
+							required
+						/>
+						<p class="hint">{t('setup.passwordHint')}</p>
+					</div>
+					<button class="btn">{t('settings.changePassword')}</button>
+				</form>
+				<TwoFactor />
+			{/if}
 		</div>
-		<div>
-			<label for="p-new">{t('settings.newPassword')}</label>
-			<input
-				id="p-new"
-				class="input"
-				type="password"
-				autocomplete="new-password"
-				minlength="10"
-				bind:value={pw.new_password}
-				required
-			/>
-			<p class="hint">{t('setup.passwordHint')}</p>
-		</div>
-		<button class="btn">{t('settings.changePassword')}</button>
-	</form>
-	<TwoFactor />
+	</div>
 </div>

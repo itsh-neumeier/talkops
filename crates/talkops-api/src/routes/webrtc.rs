@@ -139,7 +139,7 @@ fn same_origin(headers: &HeaderMap) -> bool {
 /// logged-in users, relayed to FreeSWITCH.
 pub async fn sip_ws(
     State(state): State<AppState>,
-    _auth: AuthUser,
+    auth: AuthUser,
     headers: HeaderMap,
     ws: WebSocketUpgrade,
 ) -> Response {
@@ -161,26 +161,103 @@ pub async fn sip_ws(
         return ApiError::Forbidden.into_response();
     }
     let url = state.sip_ws_url.to_string();
+    let user = auth.id;
     ws.protocols(["sip"]).on_upgrade(move |socket| async move {
-        if let Err(err) = relay(socket, &url).await {
-            tracing::warn!(url, error = %err, "softphone WebSocket: FreeSWITCH not reachable");
+        match relay(socket, &url).await {
+            Ok(end) => tracing::info!(
+                %user,
+                to_freeswitch = end.to_fs,
+                to_browser = end.to_browser,
+                closed_by = end.closed_by,
+                "softphone WebSocket closed"
+            ),
+            Err(err) => {
+                tracing::warn!(url, error = %err, "softphone WebSocket: FreeSWITCH not reachable")
+            }
         }
     })
 }
 
-async fn relay(client: WebSocket, url: &str) -> Result<(), tungstenite::Error> {
+/// Is `line` a Via header (long or compact form)?
+fn is_via(line: &str) -> bool {
+    let name = line.split(':').next().unwrap_or_default().trim();
+    name.eq_ignore_ascii_case("via") || name.eq_ignore_ascii_case("v")
+}
+
+/// Rewrites the transport in the Via headers of a SIP message; the body
+/// (after the first empty line) is left alone, so Content-Length stays valid.
+fn rewrite_via(msg: &str, from: &str, to: &str) -> Option<String> {
+    let (head, body) = match msg.find("\r\n\r\n") {
+        Some(i) => msg.split_at(i),
+        None => (msg, ""),
+    };
+    if !head.split("\r\n").any(|l| is_via(l) && l.contains(from)) {
+        return None;
+    }
+    let head = head
+        .split("\r\n")
+        .map(|l| {
+            if is_via(l) {
+                l.replace(from, to)
+            } else {
+                l.to_owned()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\r\n");
+    Some(head + body)
+}
+
+/// Browsers on an `https://` page announce the transport `WSS` in Via, but
+/// FreeSWITCH only has a plain WebSocket listener (TLS ends at TalkOps or the
+/// reverse proxy) and would send its answers to a WSS transport it does not
+/// have. The relay presents `WS` to FreeSWITCH and `WSS` to the browser.
+fn to_freeswitch(msg: &str, secure: &std::sync::atomic::AtomicBool) -> String {
+    match rewrite_via(msg, "SIP/2.0/WSS ", "SIP/2.0/WS ") {
+        Some(out) => {
+            secure.store(true, std::sync::atomic::Ordering::Relaxed);
+            out
+        }
+        None => msg.to_owned(),
+    }
+}
+
+fn to_browser(msg: &str, secure: &std::sync::atomic::AtomicBool) -> String {
+    if secure.load(std::sync::atomic::Ordering::Relaxed) {
+        rewrite_via(msg, "SIP/2.0/WS ", "SIP/2.0/WSS ").unwrap_or_else(|| msg.to_owned())
+    } else {
+        msg.to_owned()
+    }
+}
+
+/// How a relayed connection ended (for the log).
+struct RelayEnd {
+    /// Messages relayed in each direction.
+    to_fs: usize,
+    to_browser: usize,
+    closed_by: &'static str,
+}
+
+async fn relay(client: WebSocket, url: &str) -> Result<RelayEnd, tungstenite::Error> {
     let mut request = url.into_client_request()?;
     request.headers_mut().insert(
         "sec-websocket-protocol",
         tungstenite::http::HeaderValue::from_static("sip"),
     );
     let (upstream, _) = tokio_tungstenite::connect_async(request).await?;
+    tracing::info!("softphone WebSocket connected to FreeSWITCH");
     let (mut up_tx, mut up_rx) = upstream.split();
     let (mut cl_tx, mut cl_rx) = client.split();
+    let secure = std::sync::atomic::AtomicBool::new(false);
+    let mut to_fs_count = 0;
+    let mut to_browser_count = 0;
     let to_fs = async {
         while let Some(Ok(msg)) = cl_rx.next().await {
+            to_fs_count += 1;
             let out = match msg {
-                Message::Text(t) => tungstenite::Message::Text(t.as_str().into()),
+                Message::Text(t) => {
+                    tungstenite::Message::Text(to_freeswitch(t.as_str(), &secure).into())
+                }
                 Message::Binary(b) => tungstenite::Message::Binary(b),
                 Message::Ping(p) => tungstenite::Message::Ping(p),
                 Message::Pong(p) => tungstenite::Message::Pong(p),
@@ -194,8 +271,11 @@ async fn relay(client: WebSocket, url: &str) -> Result<(), tungstenite::Error> {
     };
     let to_browser = async {
         while let Some(Ok(msg)) = up_rx.next().await {
+            to_browser_count += 1;
             let out = match msg {
-                tungstenite::Message::Text(t) => Message::Text(t.as_str().into()),
+                tungstenite::Message::Text(t) => {
+                    Message::Text(to_browser(t.as_str(), &secure).into())
+                }
                 tungstenite::Message::Binary(b) => Message::Binary(b),
                 tungstenite::Message::Ping(p) => Message::Ping(p),
                 tungstenite::Message::Pong(p) => Message::Pong(p),
@@ -208,16 +288,46 @@ async fn relay(client: WebSocket, url: &str) -> Result<(), tungstenite::Error> {
         let _ = cl_tx.close().await;
     };
     // Either side closing ends the relay.
-    tokio::select! {
-        _ = to_fs => {}
-        _ = to_browser => {}
-    }
-    Ok(())
+    let closed_by = tokio::select! {
+        _ = to_fs => "browser",
+        _ = to_browser => "freeswitch",
+    };
+    Ok(RelayEnd {
+        to_fs: to_fs_count,
+        to_browser: to_browser_count,
+        closed_by,
+    })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn via_transport_rewrite() {
+        use std::sync::atomic::AtomicBool;
+        let register = "REGISTER sip:talkops.local SIP/2.0\r\n\
+            Via: SIP/2.0/WSS abc.invalid;branch=z9hG4bK1\r\n\
+            To: <sip:610-1@talkops.local>\r\n\
+            Contact: <sip:x@abc.invalid;transport=ws>\r\n\
+            Content-Length: 0\r\n\r\n";
+        let secure = AtomicBool::new(false);
+        let out = to_freeswitch(register, &secure);
+        assert!(out.contains("Via: SIP/2.0/WS abc.invalid;branch=z9hG4bK1\r\n"));
+        assert_eq!(out.len(), register.len() - 1);
+        assert!(secure.load(std::sync::atomic::Ordering::Relaxed));
+        let answer = "SIP/2.0 401 Unauthorized\r\n\
+            Via: SIP/2.0/WS abc.invalid;branch=z9hG4bK1;received=127.0.0.1\r\n\
+            Content-Length: 0\r\n\r\n";
+        assert!(to_browser(answer, &secure).contains("Via: SIP/2.0/WSS abc.invalid"));
+        // Plain ws:// pages are left alone, and so are bodies.
+        let plain = AtomicBool::new(false);
+        assert_eq!(to_browser(answer, &plain), answer);
+        let with_body = "MESSAGE sip:a SIP/2.0\r\nv: SIP/2.0/WSS h\r\n\r\nSIP/2.0/WSS in body";
+        let out = to_freeswitch(with_body, &plain);
+        assert!(out.starts_with("MESSAGE sip:a SIP/2.0\r\nv: SIP/2.0/WS h\r\n"));
+        assert!(out.ends_with("SIP/2.0/WSS in body"));
+    }
 
     #[test]
     fn origin_check() {

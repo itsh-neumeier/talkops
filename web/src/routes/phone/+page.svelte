@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
 	import { Web } from 'sip.js';
-	import { api } from '#lib/api.ts';
+	import { ApiError, api } from '#lib/api.ts';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
@@ -45,8 +45,9 @@
 		try {
 			account = await api.post<Account>('/me/webrtc', {});
 		} catch (err) {
-			noExtension = true;
-			error = errorMessage(err);
+			// 404: no extension assigned yet – the hint below says so.
+			if (err instanceof ApiError && err.status === 404) noExtension = true;
+			else error = errorMessage(err);
 			return;
 		}
 		const scheme = location.protocol === 'https:' ? 'wss' : 'ws';

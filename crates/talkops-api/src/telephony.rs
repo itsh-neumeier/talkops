@@ -43,6 +43,22 @@ pub struct LiveStatus {
     pub updated_at: Option<DateTime<Utc>>,
 }
 
+/// A call in progress (`show calls`).
+#[derive(Debug, Clone, PartialEq, Serialize, utoipa::ToSchema)]
+pub struct ActiveCall {
+    pub uuid: String,
+    pub caller_number: String,
+    pub caller_name: String,
+    /// Dialed number.
+    pub destination: String,
+    /// Who answered or is ringing, if connected to another phone.
+    pub callee_number: String,
+    pub callee_name: String,
+    /// `ringing`, `talking`, `held` or `system` (menu, voicemail, queue).
+    pub state: String,
+    pub started_at: Option<DateTime<Utc>>,
+}
+
 #[derive(Clone, Default)]
 pub struct Telephony {
     pub esl: EslHandle,
@@ -187,6 +203,13 @@ impl Telephony {
         }
     }
 
+    /// Calls in progress; `None` if FreeSWITCH is unreachable.
+    pub async fn active_calls(&self) -> Option<Vec<ActiveCall>> {
+        let client = self.esl.get().await?;
+        let out = client.api("show calls as json").await.ok()?;
+        Some(parse_calls(&out))
+    }
+
     /// Callers waiting in a mod_callcenter queue; `None` if unknown.
     pub async fn queue_waiting(&self, queue: &str) -> Option<usize> {
         let client = self.esl.get().await?;
@@ -225,6 +248,57 @@ impl Telephony {
             }
         }
     }
+}
+
+fn parse_calls(json: &str) -> Vec<ActiveCall> {
+    let Ok(value) = serde_json::from_str::<serde_json::Value>(json) else {
+        return Vec::new();
+    };
+    let Some(rows) = value.get("rows").and_then(|r| r.as_array()) else {
+        return Vec::new();
+    };
+    rows.iter()
+        .map(|r| {
+            let f = |k: &str| {
+                r.get(k)
+                    .and_then(|v| v.as_str())
+                    .unwrap_or_default()
+                    .to_owned()
+            };
+            let bridged = !f("b_uuid").is_empty();
+            let state = match (f("callstate").as_str(), bridged) {
+                ("RINGING" | "EARLY" | "RING_WAIT", _) => "ringing",
+                ("HELD", _) => "held",
+                (_, true) => "talking",
+                (_, false) => "system",
+            };
+            let (callee_number, callee_name) = if bridged {
+                let number = f("b_cid_num");
+                let number = if number.is_empty() || number == f("cid_num") {
+                    f("callee_num")
+                } else {
+                    number
+                };
+                (number, f("callee_name"))
+            } else {
+                (String::new(), String::new())
+            };
+            let started_at = f("created_epoch")
+                .parse::<i64>()
+                .ok()
+                .and_then(|s| DateTime::from_timestamp(s, 0));
+            ActiveCall {
+                uuid: f("uuid"),
+                caller_number: f("cid_num"),
+                caller_name: f("cid_name"),
+                destination: f("dest"),
+                callee_number,
+                callee_name,
+                state: state.to_owned(),
+                started_at,
+            }
+        })
+        .collect()
 }
 
 /// Slot names in `valet_info` output (`<extension uuid="…">*51</extension>`).
@@ -302,6 +376,24 @@ fn parse_gateways(xml: &str) -> HashMap<String, GatewayState> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn parses_show_calls() {
+        let json = r#"{"row_count":2,"rows":[
+            {"uuid":"a","created_epoch":"1791450000","cid_name":"Anna","cid_num":"21",
+             "dest":"20","callstate":"ACTIVE","callee_name":"Timo","callee_num":"20",
+             "b_uuid":"b","b_cid_num":"21","b_callstate":"ACTIVE"},
+            {"uuid":"c","created_epoch":"1791450100","cid_name":"","cid_num":"+4930123",
+             "dest":"70","callstate":"ACTIVE","b_uuid":""}]}"#;
+        let calls = parse_calls(json);
+        assert_eq!(calls.len(), 2);
+        assert_eq!(calls[0].state, "talking");
+        assert_eq!(calls[0].callee_number, "20");
+        assert_eq!(calls[0].callee_name, "Timo");
+        assert_eq!(calls[1].state, "system");
+        assert_eq!(calls[1].started_at.unwrap().timestamp(), 1791450100);
+        assert!(parse_calls(r#"{"row_count":0}"#).is_empty());
+    }
 
     #[test]
     fn parses_valet_info() {

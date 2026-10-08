@@ -198,6 +198,7 @@ pub fn api_router() -> (Router<AppState>, utoipa::openapi::OpenApi) {
         .merge(routes::doors::router())
         .merge(routes::webrtc::router())
         .merge(routes::backups::router())
+        .merge(routes::dashboard::router())
         .merge(routes::audio::router())
         .merge(routes::security::router())
         .split_for_parts();

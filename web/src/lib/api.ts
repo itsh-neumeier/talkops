@@ -244,6 +244,32 @@ export interface Call {
 	recording_id: string | null;
 }
 
+export type StatsRange = '1h' | '1d' | '1w' | '1m';
+
+export interface CallStats {
+	range: StatsRange;
+	buckets: { start: string; inbound: number; outbound: number; internal: number; missed: number }[];
+	end: string;
+	total: number;
+	inbound: number;
+	outbound: number;
+	internal: number;
+	missed: number;
+	answer_rate: number | null;
+	avg_talk_secs: number;
+}
+
+export interface ActiveCall {
+	uuid: string;
+	caller_number: string;
+	caller_name: string;
+	destination: string;
+	callee_number: string;
+	callee_name: string;
+	state: 'ringing' | 'talking' | 'held' | 'parked' | 'system';
+	started_at: string | null;
+}
+
 export type TranscriptStatus = 'none' | 'pending' | 'done' | 'failed';
 
 export interface Recording {

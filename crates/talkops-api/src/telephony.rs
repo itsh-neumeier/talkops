@@ -54,7 +54,8 @@ pub struct ActiveCall {
     /// Who answered or is ringing, if connected to another phone.
     pub callee_number: String,
     pub callee_name: String,
-    /// `ringing`, `talking`, `held` or `system` (menu, voicemail, queue).
+    /// `ringing`, `talking`, `held`, `parked` or `system` (menu, voicemail,
+    /// queue).
     pub state: String,
     pub started_at: Option<DateTime<Utc>>,
 }
@@ -266,7 +267,9 @@ fn parse_calls(json: &str) -> Vec<ActiveCall> {
                     .to_owned()
             };
             let bridged = !f("b_uuid").is_empty();
+            let parked = f("dest").starts_with("park+");
             let state = match (f("callstate").as_str(), bridged) {
+                _ if parked => "parked",
                 ("RINGING" | "EARLY" | "RING_WAIT", _) => "ringing",
                 ("HELD", _) => "held",
                 (_, true) => "talking",
@@ -287,11 +290,26 @@ fn parse_calls(json: &str) -> Vec<ActiveCall> {
                 .parse::<i64>()
                 .ok()
                 .and_then(|s| DateTime::from_timestamp(s, 0));
+            // Phones call with their device login (`20-1`): show the extension.
+            let device = f("cid_num");
+            let caller_number = match device.split_once('-') {
+                Some((ext, n))
+                    if !ext.is_empty()
+                        && ext.bytes().all(|b| b.is_ascii_digit())
+                        && n.bytes().all(|b| b.is_ascii_digit()) =>
+                {
+                    ext.to_owned()
+                }
+                _ => device.clone(),
+            };
+            let caller_name = Some(f("cid_name"))
+                .filter(|n| *n != device)
+                .unwrap_or_default();
             ActiveCall {
                 uuid: f("uuid"),
-                caller_number: f("cid_num"),
-                caller_name: f("cid_name"),
-                destination: f("dest"),
+                caller_number,
+                caller_name,
+                destination: f("dest").trim_start_matches("park+").to_owned(),
                 callee_number,
                 callee_name,
                 state: state.to_owned(),
@@ -393,6 +411,14 @@ mod tests {
         assert_eq!(calls[1].state, "system");
         assert_eq!(calls[1].started_at.unwrap().timestamp(), 1791450100);
         assert!(parse_calls(r#"{"row_count":0}"#).is_empty());
+        let parked = parse_calls(
+            r#"{"rows":[{"uuid":"p","cid_num":"23-2","cid_name":"23-2","dest":"park+*51",
+                "callstate":"ACTIVE"}]}"#,
+        );
+        assert_eq!(parked[0].state, "parked");
+        assert_eq!(parked[0].caller_number, "23");
+        assert_eq!(parked[0].caller_name, "");
+        assert_eq!(parked[0].destination, "*51");
     }
 
     #[test]

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { api, type VoicemailBox } from '#lib/api.ts';
+	import AudioPicker, { type AudioMode } from '#lib/components/AudioPicker.svelte';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
@@ -11,33 +12,47 @@
 	let pin = $state('');
 	let error = $state('');
 	let saved = $state(false);
-	let previewKey = $state(0);
+	let mode = $state<AudioMode>('default');
+	let clipId = $state<string | null>(null);
+	let picker = $state<ReturnType<typeof AudioPicker>>();
+	let pickerKey = $state(0);
+
+	// Greetings from before audio clips: rendered text or recorded by phone.
+	const legacy = $derived.by(() => {
+		if (!box || box.greeting_status !== 'ready') return null;
+		const src = `/api/v1/extensions/${extensionId}/voicemail/greeting?v=${pickerKey}`;
+		if (box.greeting === 'tts') return { mode: 'generate' as const, src, text: box.greeting_text };
+		if (box.greeting === 'recorded') return { mode: 'record' as const, src };
+		return null;
+	});
+
+	function apply(b: VoicemailBox) {
+		box = b;
+		clipId = b.greeting === 'clip' ? b.greeting_clip_id : null;
+		mode =
+			b.greeting === 'tts' || b.greeting === 'clip'
+				? 'generate'
+				: b.greeting === 'recorded'
+					? 'record'
+					: b.greeting;
+		pickerKey++;
+	}
 
 	async function load() {
 		try {
-			box = await api.get<VoicemailBox>(`/extensions/${extensionId}/voicemail`);
+			apply(await api.get<VoicemailBox>(`/extensions/${extensionId}/voicemail`));
 		} catch (err) {
 			error = errorMessage(err);
 		}
 	}
 	onMount(load);
 
-	// Refresh while a TTS greeting is being rendered.
+	// Refresh while a greeting from before clips is being rendered.
 	$effect(() => {
 		if (box?.greeting_status !== 'pending') return;
-		const timer = setTimeout(async () => {
-			await load();
-			previewKey++;
-		}, 3000);
+		const timer = setTimeout(load, 3000);
 		return () => clearTimeout(timer);
 	});
-
-	function useTts() {
-		if (!box) return;
-		box.greeting = 'tts';
-		if (!box.greeting_text)
-			box.greeting_text = t('vm.greetingTemplate', { name: displayName || '…' });
-	}
 
 	async function save(e: SubmitEvent) {
 		e.preventDefault();
@@ -45,19 +60,22 @@
 		error = '';
 		saved = false;
 		try {
-			box = await api.put<VoicemailBox>(`/extensions/${extensionId}/voicemail`, {
+			const clip = (await picker?.ensure()) ?? null;
+			const greeting = mode === 'default' || mode === 'none' ? mode : clip ? 'clip' : box.greeting;
+			const updated = await api.put<VoicemailBox>(`/extensions/${extensionId}/voicemail`, {
 				enabled: box.enabled,
 				pin: pin === '' ? null : pin,
 				email_notify: box.email_notify,
 				attach_audio: box.attach_audio,
 				language: box.language || null,
-				greeting: box.greeting,
+				greeting,
 				greeting_text: box.greeting_text,
+				greeting_clip_id: clip,
 				max_message_secs: Number(box.max_message_secs)
 			});
+			apply(updated);
 			pin = '';
 			saved = true;
-			previewKey++;
 		} catch (err) {
 			error = errorMessage(err);
 		}
@@ -110,37 +128,21 @@
 
 		<fieldset class="space-y-2">
 			<legend class="text-sm font-medium">{t('vm.greeting')}</legend>
-			<label class="flex items-center gap-2">
-				<input type="radio" value="default" bind:group={box.greeting} />
-				{t('vm.greetingDefault')}
-			</label>
-			<label class="flex items-center gap-2">
-				<input type="radio" value="tts" checked={box.greeting === 'tts'} onchange={useTts} />
-				{t('vm.greetingTts')}
-			</label>
-			{#if box.greeting === 'tts'}
-				<textarea class="input" rows="3" maxlength="1000" bind:value={box.greeting_text}></textarea>
-			{/if}
-			<label class="flex items-center gap-2">
-				<input type="radio" value="recorded" bind:group={box.greeting} />
-				{t('vm.greetingRecorded')}
-			</label>
-			<p class="hint">{t('vm.greetingRecordHint')}</p>
-			{#if box.greeting !== 'default'}
-				{#if box.greeting_status === 'pending'}
-					<p class="text-sm text-slate-500">{t('vm.greetingPending')}</p>
-				{:else if box.greeting_status === 'failed'}
-					<p class="text-sm text-red-600">{t('vm.greetingFailed')}</p>
-				{:else if box.greeting_status === 'ready'}
-					{#key previewKey}
-						<audio
-							controls
-							preload="none"
-							src="/api/v1/extensions/{extensionId}/voicemail/greeting?v={previewKey}"
-						></audio>
-					{/key}
-				{/if}
-			{/if}
+			{#key pickerKey}
+				<AudioPicker
+					bind:this={picker}
+					bind:mode
+					bind:clipId
+					language={box.language ?? 'de'}
+					defaultText={t('vm.greetingTemplate', { name: displayName || '…' })}
+					{legacy}
+					hints={{
+						default: t('vm.greetingDefaultHint'),
+						record: t('vm.greetingRecordHint'),
+						none: t('vm.greetingNoneHint')
+					}}
+				/>
+			{/key}
 		</fieldset>
 
 		<label class="flex items-center gap-2">

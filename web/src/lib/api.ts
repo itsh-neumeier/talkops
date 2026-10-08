@@ -374,9 +374,10 @@ export interface VoicemailBox {
 	email_notify: boolean;
 	attach_audio: boolean;
 	language: 'de' | 'en' | null;
-	greeting: 'default' | 'tts' | 'recorded';
+	greeting: 'default' | 'tts' | 'recorded' | 'clip' | 'none';
 	greeting_text: string;
 	greeting_status: 'none' | 'pending' | 'ready' | 'failed';
+	greeting_clip_id: string | null;
 	max_message_secs: number;
 	new_messages: number;
 	saved_messages: number;
@@ -451,9 +452,10 @@ export interface IvrMenu {
 	number: string | null;
 	name: string;
 	language: 'de' | 'en' | null;
-	greeting: 'tts' | 'upload';
+	greeting: 'tts' | 'upload' | 'clip' | 'none';
 	greeting_text: string;
 	greeting_status: 'none' | 'pending' | 'ready' | 'failed';
+	greeting_clip_id: string | null;
 	timeout_secs: number;
 	max_tries: number;
 	direct_dial: boolean;

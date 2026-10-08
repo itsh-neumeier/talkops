@@ -1,5 +1,8 @@
 <script lang="ts">
-	import { api, upload, type IvrMenu, type MenuOption } from '#lib/api.ts';
+	import { api, type IvrMenu, type MenuOption } from '#lib/api.ts';
+	import { clipUrl } from '#lib/audio.ts';
+	import AudioPicker, { type AudioMode } from '#lib/components/AudioPicker.svelte';
+	import AudioPlayer from '#lib/components/AudioPlayer.svelte';
 	import DestinationSelect from '#lib/components/DestinationSelect.svelte';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
 	import Modal from '#lib/components/Modal.svelte';
@@ -17,6 +20,7 @@
 		greeting: 'tts' as IvrMenu['greeting'],
 		greeting_text: '',
 		greeting_status: 'none' as IvrMenu['greeting_status'],
+		greeting_clip_id: null as string | null,
 		timeout_secs: 5,
 		max_tries: 3,
 		direct_dial: false,
@@ -27,8 +31,29 @@
 	let form = $state(blank());
 	let open = $state(false);
 	let error = $state('');
-	let file = $state<FileList | null>(null);
 	let preview = $state(0);
+	let mode = $state<AudioMode>('generate');
+	let clipId = $state<string | null>(null);
+	let picker = $state<ReturnType<typeof AudioPicker>>();
+
+	/** The greeting's audio, for the list and the editor. */
+	function greetingSrc(
+		m: Pick<IvrMenu, 'id' | 'greeting' | 'greeting_clip_id' | 'greeting_status'>
+	) {
+		if (m.greeting === 'clip' && m.greeting_clip_id) return clipUrl(m.greeting_clip_id);
+		if ((m.greeting === 'tts' || m.greeting === 'upload') && m.greeting_status === 'ready')
+			return `/api/v1/ivr-menus/${m.id}/greeting?v=${preview}`;
+		return null;
+	}
+
+	// Greetings from before audio clips.
+	const legacy = $derived.by(() => {
+		const src = form.id ? greetingSrc(form) : null;
+		if (!src || form.greeting === 'clip') return null;
+		return form.greeting === 'tts'
+			? { mode: 'generate' as const, src, text: form.greeting_text }
+			: { mode: 'upload' as const, src };
+	});
 
 	// Refresh while greetings are being rendered.
 	$effect(() => {
@@ -39,10 +64,11 @@
 
 	function edit(m: IvrMenu | null) {
 		error = '';
-		file = null;
 		form = m
 			? { ...m, number: m.number ?? '', options: m.options.map((o) => ({ ...o })) }
 			: blank();
+		clipId = form.greeting === 'clip' ? form.greeting_clip_id : null;
+		mode = form.greeting === 'none' ? 'none' : form.greeting === 'upload' ? 'upload' : 'generate';
 		open = true;
 	}
 
@@ -51,23 +77,26 @@
 	async function save(e: SubmitEvent) {
 		e.preventDefault();
 		error = '';
+		let clip: string | null;
+		try {
+			clip = (await picker?.ensure()) ?? null;
+		} catch (err) {
+			error = errorMessage(err);
+			return;
+		}
+		const greeting = mode === 'none' ? 'none' : clip ? 'clip' : form.greeting;
 		const body = {
 			...form,
+			greeting,
+			greeting_clip_id: clip,
 			number: form.number || null,
 			timeout_secs: Number(form.timeout_secs),
 			max_tries: Number(form.max_tries),
 			options: form.options.filter((o) => o.type !== 'none')
 		};
 		try {
-			const saved = form.id
-				? await api.put<IvrMenu>(`/ivr-menus/${form.id}`, body)
-				: await api.post<IvrMenu>('/ivr-menus', body);
-			const wav = file?.[0];
-			if (form.greeting === 'upload' && wav) {
-				const data = new FormData();
-				data.append('file', wav);
-				await upload(`/ivr-menus/${saved.id}/greeting`, data);
-			}
+			if (form.id) await api.put<IvrMenu>(`/ivr-menus/${form.id}`, body);
+			else await api.post<IvrMenu>('/ivr-menus', body);
 			open = false;
 			await loadTargets();
 			preview++;
@@ -111,13 +140,9 @@
 					</span>
 				{/if}
 			</div>
-			{#if m.greeting_status === 'ready'}
-				{#key preview}<audio
-						controls
-						preload="none"
-						src="/api/v1/ivr-menus/{m.id}/greeting?v={preview}"
-					></audio>{/key}
-			{:else if m.greeting_status === 'pending'}
+			{#if greetingSrc(m)}
+				<AudioPlayer src={greetingSrc(m) ?? ''} />
+			{:else if m.greeting_status === 'pending' && m.greeting === 'tts'}
 				<p class="text-sm text-slate-500">{t('vm.greetingPending')}</p>
 			{:else if m.greeting_status === 'failed'}
 				<p class="text-sm text-red-600">{t('vm.greetingFailed')}</p>
@@ -164,30 +189,26 @@
 				/>
 			</div>
 		</div>
+		<div>
+			<label for="ivr-lang">{t('vm.language')}</label>
+			<select id="ivr-lang" class="input" bind:value={form.language}>
+				<option value={null}>{t('vm.languageDefault')}</option>
+				<option value="de">Deutsch</option>
+				<option value="en">English</option>
+			</select>
+		</div>
 		<fieldset class="space-y-2">
 			<legend class="text-sm font-medium">{t('vm.greeting')}</legend>
-			<label class="flex items-center gap-2"
-				><input type="radio" value="tts" bind:group={form.greeting} /> {t('vm.greetingTts')}</label
-			>
-			{#if form.greeting === 'tts'}
-				<textarea
-					class="input"
-					rows="3"
-					maxlength="2000"
-					bind:value={form.greeting_text}
-					placeholder={t('ivr.textPlaceholder')}></textarea>
-				<select class="input" bind:value={form.language} aria-label={t('vm.language')}>
-					<option value={null}>{t('vm.languageDefault')}</option>
-					<option value="de">Deutsch</option>
-					<option value="en">English</option>
-				</select>
-			{/if}
-			<label class="flex items-center gap-2"
-				><input type="radio" value="upload" bind:group={form.greeting} /> {t('ivr.upload')}</label
-			>
-			{#if form.greeting === 'upload'}
-				<input class="input" type="file" accept="audio/wav,.wav" bind:files={file} />
-				<p class="hint">{t('ivr.uploadHint')}</p>
+			{#if open}
+				<AudioPicker
+					bind:this={picker}
+					bind:mode
+					bind:clipId
+					modes={['generate', 'record', 'upload', 'none']}
+					language={form.language ?? 'de'}
+					defaultText={t('ivr.textPlaceholder')}
+					{legacy}
+				/>
 			{/if}
 		</fieldset>
 		<fieldset class="space-y-2">

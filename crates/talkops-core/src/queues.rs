@@ -23,6 +23,8 @@ pub const STRATEGIES: &[&str] = &[
 #[derive(Debug, Clone, FromRow, Serialize, utoipa::ToSchema)]
 pub struct Queue {
     pub id: Uuid,
+    #[serde(skip)]
+    pub tenant_id: TenantId,
     pub number: Option<String>,
     pub name: String,
     pub strategy: String,
@@ -32,12 +34,57 @@ pub struct Queue {
     pub timeout_type: NumberDestination,
     pub timeout_id: Option<Uuid>,
     pub enabled: bool,
+    /// Played once before the caller waits.
+    pub greeting_clip_id: Option<Uuid>,
+    /// Music on hold while waiting (default: the system music).
+    pub moh_clip_id: Option<Uuid>,
+    /// Callers waiting at most; 0 = no limit.
+    pub max_callers: i32,
+    /// Where callers go when the queue is full.
+    pub overflow_type: NumberDestination,
+    pub overflow_id: Option<Uuid>,
+    /// Business hours; outside them calls go to `closed_*`.
+    pub time_condition_id: Option<Uuid>,
+    pub closed_type: NumberDestination,
+    pub closed_id: Option<Uuid>,
+    /// Not answered in time: a message for these extensions (instead of the
+    /// timeout destination).
+    pub voicemail_recipients: Vec<Uuid>,
+    pub voicemail_clip_id: Option<Uuid>,
     /// Member extensions (agents) in order.
     #[sqlx(skip)]
     pub members: Vec<Uuid>,
 }
 
 impl Queue {
+    /// A queue with default settings (tests).
+    pub fn example() -> Self {
+        Queue {
+            id: Uuid::nil(),
+            tenant_id: TenantId::DEFAULT,
+            number: None,
+            name: "Queue".into(),
+            strategy: default_strategy(),
+            max_wait_secs: default_wait(),
+            agent_timeout_secs: default_agent_timeout(),
+            wrap_up_secs: default_wrap_up(),
+            timeout_type: NumberDestination::None,
+            timeout_id: None,
+            enabled: true,
+            greeting_clip_id: None,
+            moh_clip_id: None,
+            max_callers: 0,
+            overflow_type: NumberDestination::None,
+            overflow_id: None,
+            time_condition_id: None,
+            closed_type: NumberDestination::None,
+            closed_id: None,
+            voicemail_recipients: Vec::new(),
+            voicemail_clip_id: None,
+            members: Vec::new(),
+        }
+    }
+
     /// Queue name inside mod_callcenter.
     pub fn cc_name(&self) -> String {
         cc_queue(self.id)
@@ -74,6 +121,26 @@ pub struct QueueInput {
     pub enabled: bool,
     #[serde(default)]
     pub members: Vec<Uuid>,
+    #[serde(default)]
+    pub greeting_clip_id: Option<Uuid>,
+    #[serde(default)]
+    pub moh_clip_id: Option<Uuid>,
+    #[serde(default)]
+    pub max_callers: i32,
+    #[serde(default = "no_destination")]
+    pub overflow_type: NumberDestination,
+    #[serde(default)]
+    pub overflow_id: Option<Uuid>,
+    #[serde(default)]
+    pub time_condition_id: Option<Uuid>,
+    #[serde(default = "no_destination")]
+    pub closed_type: NumberDestination,
+    #[serde(default)]
+    pub closed_id: Option<Uuid>,
+    #[serde(default)]
+    pub voicemail_recipients: Vec<Uuid>,
+    #[serde(default)]
+    pub voicemail_clip_id: Option<Uuid>,
 }
 
 fn default_strategy() -> String {
@@ -95,8 +162,10 @@ fn yes() -> bool {
     true
 }
 
-const COLUMNS: &str = "id, number, name, strategy, max_wait_secs, agent_timeout_secs, \
-                       wrap_up_secs, timeout_type, timeout_id, enabled";
+const COLUMNS: &str = "id, tenant_id, number, name, strategy, max_wait_secs, agent_timeout_secs, \
+                       wrap_up_secs, timeout_type, timeout_id, enabled, greeting_clip_id, \
+                       moh_clip_id, max_callers, overflow_type, overflow_id, time_condition_id, \
+                       closed_type, closed_id, voicemail_recipients, voicemail_clip_id";
 
 async fn with_members(pool: &PgPool, mut queues: Vec<Queue>) -> CoreResult<Vec<Queue>> {
     let ids: Vec<Uuid> = queues.iter().map(|q| q.id).collect();
@@ -181,7 +250,47 @@ async fn validate(
             "a queue cannot overflow into itself".into(),
         ));
     }
-    numbering::check_destination(pool, tenant, input.timeout_type, input.timeout_id).await
+    numbering::check_destination(pool, tenant, input.timeout_type, input.timeout_id).await?;
+    if !(0..=500).contains(&input.max_callers) {
+        return Err(CoreError::Validation("at most 500 waiting callers".into()));
+    }
+    for (kind, target) in [
+        (input.overflow_type, input.overflow_id),
+        (input.closed_type, input.closed_id),
+    ] {
+        if kind == NumberDestination::Queue && id.is_some() && target == id {
+            return Err(CoreError::Validation(
+                "a queue cannot overflow into itself".into(),
+            ));
+        }
+        numbering::check_destination(pool, tenant, kind, target).await?;
+    }
+    if input.time_condition_id.is_some() {
+        numbering::check_destination(
+            pool,
+            tenant,
+            NumberDestination::TimeCondition,
+            input.time_condition_id,
+        )
+        .await?;
+    }
+    if input.voicemail_recipients.len() > 20 {
+        return Err(CoreError::Validation(
+            "at most 20 voicemail recipients".into(),
+        ));
+    }
+    for ext in &input.voicemail_recipients {
+        numbering::check_destination(pool, tenant, NumberDestination::Extension, Some(*ext))
+            .await?;
+    }
+    for clip in [
+        input.greeting_clip_id,
+        input.moh_clip_id,
+        input.voicemail_clip_id,
+    ] {
+        crate::audio::ensure_exists(pool, tenant, clip).await?;
+    }
+    Ok(())
 }
 
 async fn set_members(db: &mut sqlx::PgConnection, queue: Uuid, members: &[Uuid]) -> CoreResult<()> {
@@ -260,6 +369,28 @@ pub async fn save(
             id
         }
     };
+    let destination = |kind: NumberDestination, target: Option<Uuid>| {
+        target.filter(|_| kind != NumberDestination::None)
+    };
+    sqlx::query(
+        "UPDATE queues SET greeting_clip_id = $2, moh_clip_id = $3, max_callers = $4,
+             overflow_type = $5, overflow_id = $6, time_condition_id = $7, closed_type = $8,
+             closed_id = $9, voicemail_recipients = $10, voicemail_clip_id = $11
+         WHERE id = $1",
+    )
+    .bind(id)
+    .bind(input.greeting_clip_id)
+    .bind(input.moh_clip_id)
+    .bind(input.max_callers)
+    .bind(input.overflow_type)
+    .bind(destination(input.overflow_type, input.overflow_id))
+    .bind(input.time_condition_id)
+    .bind(input.closed_type)
+    .bind(destination(input.closed_type, input.closed_id))
+    .bind(&input.voicemail_recipients)
+    .bind(input.voicemail_clip_id)
+    .execute(&mut *tx)
+    .await?;
     set_members(&mut tx, id, &input.members).await?;
     tx.commit().await?;
     get(pool, tenant, id).await

@@ -944,6 +944,106 @@ async fn queue_routing_and_callcenter_conf(db: PgPool) {
     assert!(!a.iter().any(|(app, _)| app == "callcenter"), "{a:?}");
 }
 
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn queue_hours_greeting_music_and_voicemail(db: PgPool) {
+    let state = state(db.clone());
+    let sounds = state.media.sounds.clone();
+    let router = talkops_api::app(state, None);
+    let f = fixture(&router).await;
+    let id = |e: &Value| e["id"].as_str().unwrap().to_owned();
+    let tenant = talkops_core::tenant::TenantId::DEFAULT;
+    let clip = |n: u128| {
+        let db = db.clone();
+        let sounds = sounds.clone();
+        async move {
+            let id = uuid::Uuid::from_u128(n);
+            write_wav(&sounds.join(talkops_core::audio::clip_file(tenant, id)), 1);
+            talkops_core::audio::create_file(&db, tenant, None, id, "upload", 1000)
+                .await
+                .unwrap();
+            id
+        }
+    };
+    let (greeting, music) = (clip(1).await, clip(2).await);
+    let (status, hours) = f
+        .admin
+        .post(
+            "/api/v1/time-conditions",
+            json!({"name": "Hours", "override": "closed",
+                   "open_type": "none", "closed_type": "none"}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{hours}");
+    let (status, q) = f
+        .admin
+        .post(
+            "/api/v1/queues",
+            json!({"number": "81", "name": "Sales", "members": [id(&f.ext20)],
+                   "greeting_clip_id": greeting, "moh_clip_id": music, "max_callers": 3,
+                   "time_condition_id": id(&hours),
+                   "closed_type": "extension", "closed_id": id(&f.ext20),
+                   "voicemail_recipients": [id(&f.ext20), id(&f.ext21)]}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{q}");
+    assert_eq!(q["max_callers"], 3);
+    assert_eq!(q["voicemail_recipients"].as_array().unwrap().len(), 2);
+    assert!(q.get("tenant_id").is_none());
+
+    // Closed: straight to the after-hours destination.
+    let a = internal_call(&router, &f.ext21, "81").await;
+    assert!(has(&a, "set", "talkops_queue_closed=true"), "{a:?}");
+    assert!(has(&a, "bridge", &ring20(&f)), "{a:?}");
+    assert!(!a.iter().any(|(app, _)| app == "callcenter"));
+
+    // Open: greeting, queue, then a message for the recipients.
+    let (status, _) = f
+        .admin
+        .put(
+            &format!("/api/v1/time-conditions/{}/override", id(&hours)),
+            json!({"override": "open"}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK);
+    let a = internal_call(&router, &f.ext21, "81").await;
+    let play = a
+        .iter()
+        .position(|(app, d)| app == "playback" && d.ends_with(&format!("{greeting}.wav")));
+    let cc = a.iter().position(|(app, _)| app == "callcenter");
+    assert!(play.is_some() && play < cc, "{a:?}");
+    assert!(has(&a, "set", "talkops_app=queue_vm"), "{a:?}");
+    assert!(a.last().is_some_and(|(app, _)| app == "socket"), "{a:?}");
+
+    // Its own music on hold.
+    let (_, xml) = fs_post(
+        &router,
+        "/fs/xml",
+        &[
+            ("section", "configuration"),
+            ("key_value", "callcenter.conf"),
+        ],
+    )
+    .await;
+    assert!(xml.contains(&format!("{music}.wav")), "{xml}");
+
+    // Validation: unknown clip, a queue overflowing into itself.
+    let mut bad = q.clone();
+    bad["moh_clip_id"] = json!(uuid::Uuid::new_v4());
+    let (status, _) = f
+        .admin
+        .put(&format!("/api/v1/queues/{}", id(&q)), bad)
+        .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    let mut bad = q.clone();
+    bad["overflow_type"] = json!("queue");
+    bad["overflow_id"] = q["id"].clone();
+    let (status, _) = f
+        .admin
+        .put(&format!("/api/v1/queues/{}", id(&q)), bad)
+        .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+}
+
 fn write_wav(path: &std::path::Path, secs: u32) {
     std::fs::create_dir_all(path.parent().unwrap()).unwrap();
     let spec = hound::WavSpec {

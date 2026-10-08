@@ -99,6 +99,7 @@ pub async fn xml_curl(
                 socket: &state.outbound_socket,
                 recordings: &state.media.recordings,
                 sounds: &state.media.sounds,
+                telephony: &state.telephony,
             };
             let actions = dialplan::plan(&routing, &req).await;
             if let (Some(station), Some(tenant)) = (
@@ -126,7 +127,12 @@ async fn callcenter_conf(state: &AppState) -> Option<String> {
         let queues = talkops_core::queues::list_all(&state.db).await?;
         let (agents, tiers) =
             talkops_core::queues::desired_agents(&state.db, fsxml::SIP_DOMAIN).await?;
-        talkops_core::error::CoreResult::Ok(fsxml::callcenter::render(&queues, &agents, &tiers))
+        talkops_core::error::CoreResult::Ok(fsxml::callcenter::render(
+            &queues,
+            &agents,
+            &tiers,
+            &state.media.sounds,
+        ))
     }
     .await;
     match loaded {

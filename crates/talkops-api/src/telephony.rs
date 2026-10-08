@@ -187,6 +187,16 @@ impl Telephony {
         }
     }
 
+    /// Callers waiting in a mod_callcenter queue; `None` if unknown.
+    pub async fn queue_waiting(&self, queue: &str) -> Option<usize> {
+        let client = self.esl.get().await?;
+        let out = client
+            .api(&format!("callcenter_config queue list members {queue}"))
+            .await
+            .ok()?;
+        Some(crate::callcenter::count_waiting(&out))
+    }
+
     /// Reserves a free park slot (`*51` … `*59`) for a call about to be
     /// parked; `None` if all are taken or FreeSWITCH is unreachable.
     pub async fn reserve_park_slot(&self) -> Option<String> {

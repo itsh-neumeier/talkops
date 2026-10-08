@@ -95,6 +95,8 @@ pub struct Routing<'a> {
     pub recordings: &'a std::path::Path,
     /// Shared sounds volume (system prompts).
     pub sounds: &'a std::path::Path,
+    /// Live state (queue lengths).
+    pub telephony: &'a crate::telephony::Telephony,
 }
 
 /// Decides how to handle a call. Never fails open: errors become rejections.
@@ -954,45 +956,7 @@ pub fn route_to<'a>(
                 Ok(attendant_socket(r, id, None))
             }
             NumberDestination::Queue => match queues::get(r.pool, tenant, id).await {
-                Ok(q) if q.enabled => {
-                    let mut a = vec![
-                        set(
-                            "talkops_destination",
-                            q.number.clone().unwrap_or_else(|| sanitize_value(&q.name)),
-                        ),
-                        set("talkops_queue_id", q.id.to_string()),
-                        set("hangup_after_bridge", "true"),
-                        ("answer", String::new()),
-                        ("callcenter", q.cc_name()),
-                    ];
-                    // Back here only if the caller left the queue unanswered.
-                    let after = route_to(
-                        r,
-                        tenant,
-                        q.timeout_type,
-                        q.timeout_id,
-                        caller_name,
-                        depth + 1,
-                    )
-                    .await?;
-                    if after.first().is_some_and(|(app, _)| *app == "respond") {
-                        a.push(("hangup", String::new()));
-                    } else {
-                        a.extend(after);
-                    }
-                    Ok(a)
-                }
-                Ok(q) => {
-                    route_to(
-                        r,
-                        tenant,
-                        q.timeout_type,
-                        q.timeout_id,
-                        caller_name,
-                        depth + 1,
-                    )
-                    .await
-                }
+                Ok(q) => queue(r, tenant, &q, caller_name, depth).await,
                 Err(_) => unavailable(),
             },
             NumberDestination::TimeCondition => {
@@ -1012,6 +976,121 @@ pub fn route_to<'a>(
             _ => unavailable(),
         }
     })
+}
+
+/// Actions for a destination the call continues to after an application
+/// returns; a rejection becomes a hangup (the call is already answered).
+async fn then_route(
+    r: &Routing<'_>,
+    tenant: TenantId,
+    kind: NumberDestination,
+    id: Option<Uuid>,
+    caller_name: &str,
+    depth: u8,
+) -> CoreResult<Vec<Action>> {
+    let after = route_to(r, tenant, kind, id, caller_name, depth + 1).await?;
+    Ok(if after.first().is_some_and(|(app, _)| *app == "respond") {
+        vec![("hangup", String::new())]
+    } else {
+        after
+    })
+}
+
+/// A call queue: business hours, a full queue, greeting, waiting with music
+/// (mod_callcenter), and what happens when nobody answers in time.
+async fn queue(
+    r: &Routing<'_>,
+    tenant: TenantId,
+    q: &queues::Queue,
+    caller_name: &str,
+    depth: u8,
+) -> CoreResult<Vec<Action>> {
+    if !q.enabled {
+        return route_to(
+            r,
+            tenant,
+            q.timeout_type,
+            q.timeout_id,
+            caller_name,
+            depth + 1,
+        )
+        .await;
+    }
+    if let Some(tc) = q.time_condition_id {
+        let open = match time_conditions::get(r.pool, tenant, tc).await {
+            Ok(tc) => {
+                let zone = settings::get(r.pool, tenant).await?.timezone;
+                tc.state(chrono::Utc::now(), &zone).open
+            }
+            Err(_) => true,
+        };
+        if !open {
+            let mut a = vec![set("talkops_queue_closed", "true")];
+            a.extend(
+                route_to(
+                    r,
+                    tenant,
+                    q.closed_type,
+                    q.closed_id,
+                    caller_name,
+                    depth + 1,
+                )
+                .await?,
+            );
+            return Ok(a);
+        }
+    }
+    if q.max_callers > 0 {
+        let waiting = r.telephony.queue_waiting(&q.cc_name()).await;
+        if waiting.is_some_and(|n| n >= q.max_callers as usize) {
+            tracing::info!(queue = %q.name, "queue full, overflow");
+            let mut a = vec![set("talkops_queue_full", "true")];
+            a.extend(
+                route_to(
+                    r,
+                    tenant,
+                    q.overflow_type,
+                    q.overflow_id,
+                    caller_name,
+                    depth + 1,
+                )
+                .await?,
+            );
+            return Ok(a);
+        }
+    }
+    let mut a = vec![
+        set(
+            "talkops_destination",
+            q.number.clone().unwrap_or_else(|| sanitize_value(&q.name)),
+        ),
+        set("talkops_queue_id", q.id.to_string()),
+        set("hangup_after_bridge", "true"),
+        ("answer", String::new()),
+    ];
+    if let Some(greeting) = clip_path(r, tenant, q.greeting_clip_id) {
+        a.push(("sleep", "500".to_owned()));
+        a.push(("playback", greeting));
+    }
+    a.push(("callcenter", q.cc_name()));
+    // Back here only if the caller left the queue unanswered.
+    if q.voicemail_recipients.is_empty() {
+        a.extend(then_route(r, tenant, q.timeout_type, q.timeout_id, caller_name, depth).await?);
+    } else {
+        a.extend([
+            set("talkops_app", "queue_vm"),
+            set("verbose_events", "true"),
+            ("socket", format!("{} async full", r.socket)),
+        ]);
+    }
+    Ok(a)
+}
+
+/// Path of an audio clip FreeSWITCH can play, if it exists.
+fn clip_path(r: &Routing<'_>, tenant: TenantId, clip: Option<Uuid>) -> Option<String> {
+    let path = r.sounds.join(talkops_core::audio::clip_file(tenant, clip?));
+    let text = path.to_string_lossy().into_owned();
+    (path.is_file() && !text.contains([' ', '$', '{', '}'])).then_some(text)
 }
 
 /// Rings the members of a group; unanswered calls go to its fallback.

@@ -334,6 +334,31 @@ async fn login_with_pin_and_record_greeting(pool: PgPool) {
     std::fs::remove_dir_all(dir).unwrap();
 }
 
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn queue_voicemail_for_recipients(pool: PgPool) {
+    let (ctx, ext, dir) = setup(&pool).await;
+    let input: talkops_core::queues::QueueInput = serde_json::from_value(serde_json::json!({
+        "name": "Support", "voicemail_recipients": [ext]
+    }))
+    .unwrap();
+    let q = talkops_core::queues::save(&pool, T, None, &input, &[])
+        .await
+        .unwrap();
+    let mut c = call("queue_vm", None);
+    c.vars.insert("talkops_queue_id".into(), q.id.to_string());
+    c.record_secs.push_back(2);
+    queue_voicemail(&mut c, &ctx).await.unwrap();
+    assert!(
+        c.executed
+            .iter()
+            .any(|(a, d)| a == "playback" && d.contains("vm_greeting_default"))
+    );
+    let msgs = voicemail::list_messages(&pool, T, ext).await.unwrap();
+    assert_eq!(msgs.len(), 1);
+    assert_eq!(msgs[0].duration_secs, 2);
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
 mod attendants {
     use super::*;
     use crate::attendant::{Outcome, run as run_attendant};

@@ -40,6 +40,20 @@ fn parse_list(output: &str) -> Vec<HashMap<String, String>> {
         .collect()
 }
 
+/// Callers waiting for an agent in `callcenter_config queue list members`
+/// output (not those already talking).
+pub fn count_waiting(output: &str) -> usize {
+    parse_list(output)
+        .iter()
+        .filter(|m| {
+            matches!(
+                m.get("state").map(String::as_str),
+                Some("Waiting" | "Trying")
+            )
+        })
+        .count()
+}
+
 /// Commands that turn the current mod_callcenter state into the desired one.
 pub fn plan(
     queues: &[Queue],
@@ -239,7 +253,18 @@ mod tests {
             timeout_id: None,
             enabled,
             members: vec![],
+            ..Queue::example()
         }
+    }
+
+    #[test]
+    fn counts_waiting_callers() {
+        let out = "queue|instance_id|uuid|session_uuid|cid_number|cid_name|system_epoch|joined_epoch|rejoined_epoch|bridge_epoch|abandoned_epoch|base_score|skill_score|serving_agent|serving_system|state|score\n\
+                   q-1|single_box|a|b|20|A|0|0|0|0|0|0|0|||Waiting|5\n\
+                   q-1|single_box|c|d|21|B|0|0|0|0|0|0|0|a-1|single_box|Answered|9\n\
+                   q-1|single_box|e|f|22|C|0|0|0|0|0|0|0|a-2|single_box|Trying|3\n+OK\n";
+        assert_eq!(count_waiting(out), 2);
+        assert_eq!(count_waiting("+OK\n"), 0);
     }
 
     fn agent(name: &str, status: &str) -> Agent {

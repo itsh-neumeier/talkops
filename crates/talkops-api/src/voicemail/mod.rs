@@ -68,6 +68,9 @@ pub async fn handle(mut session: OutboundSession, ctx: VmContext) {
             run(&mut session, &ctx, &app).await.map(|()| Outcome::Done)
         }
         "ivr" => run_attendant(&mut session, &ctx).await,
+        "queue_vm" => queue_voicemail(&mut session, &ctx)
+            .await
+            .map(|()| Outcome::Done),
         "door_open" => open_door(&mut session, &ctx).await.map(|()| Outcome::Done),
         other => {
             tracing::warn!(%uuid, app = other, "unknown interactive application");
@@ -113,6 +116,38 @@ async fn run_attendant<C: Call>(call: &mut C, ctx: &VmContext) -> FlowResult<Out
     // Back from ringing phones nobody answered: continue at this step.
     let step = call.var("talkops_attendant_step").filter(|s| !s.is_empty());
     crate::attendant::run(call, ctx, tenant, attendant, step.as_deref()).await
+}
+
+/// A queue nobody answered in time: a message for its voicemail recipients.
+async fn queue_voicemail<C: Call>(call: &mut C, ctx: &VmContext) -> FlowResult<()> {
+    let var = |c: &C, n: &str| c.var(n).and_then(|v| v.parse::<Uuid>().ok());
+    let (Some(tenant), Some(queue)) = (
+        var(call, "talkops_tenant_id").map(TenantId),
+        var(call, "talkops_queue_id"),
+    ) else {
+        return Err(FlowError::Other(
+            "queue voicemail without tenant/queue".into(),
+        ));
+    };
+    let q = talkops_core::queues::get(&ctx.db, tenant, queue).await?;
+    let lang = settings::get(&ctx.db, tenant).await?.default_language;
+    let mut ivr = Ivr::new(call, &ctx.media.sounds, &lang);
+    ivr.set("playback_terminators", "#").await?;
+    let mut greeting = Seq::default();
+    match q
+        .voicemail_clip_id
+        .map(|id| {
+            ctx.media
+                .sounds
+                .join(talkops_core::audio::clip_file(tenant, id))
+        })
+        .filter(|p| p.is_file())
+    {
+        Some(clip) => ivr.file(&mut greeting, &clip),
+        None => ivr.prompt(&mut greeting, "vm_greeting_default"),
+    }
+    ivr.play(&greeting).await?;
+    store_message(&mut ivr, ctx, tenant, &q.voicemail_recipients, 120).await
 }
 
 /// `*85`/`*86`: opens a door and says whether it worked.

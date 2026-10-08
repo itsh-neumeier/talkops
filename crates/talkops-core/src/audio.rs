@@ -240,6 +240,7 @@ pub async fn ensure_exists(pool: &PgPool, tenant: TenantId, id: Option<Uuid>) ->
 pub const REFERENCES: &[&str] = &[
     "voicemail_boxes r WHERE r.greeting_clip_id = c.id",
     "ivr_menus r WHERE c.id = ANY (r.clip_ids)",
+    "queues r WHERE c.id IN (r.greeting_clip_id, r.moh_clip_id, r.voicemail_clip_id)",
 ];
 
 /// Deletes clips nobody references that are older than a day (previews,

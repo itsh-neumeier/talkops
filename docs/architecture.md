@@ -388,4 +388,4 @@ talkops/
 | 5 | Recording & Transkription: Hinweisansage, Whisper, Suche, Retention | ✅ |
 | 6 | Türsprechstelle: Dahua VTO, Video, Türöffner, Snapshots, Home Assistant | ✅ (Test mit echter VTO offen) |
 | 7 | WebRTC & Identität: Softphone mit Video, LDAP/AD, OIDC, 2FA | ✅ |
-| 8 | Betrieb: Backup/Restore, Metriken, Hardening, SIP-Anmeldeschutz, Setup-Assistent, Release 1.0 | ✅ (Tag v1.0.0 steht aus) |
+| 8 | Betrieb: Backup/Restore, Metriken, Hardening, SIP-Anmeldeschutz, Setup-Assistent, Release 1.0 | ✅ (v1.0.0) |

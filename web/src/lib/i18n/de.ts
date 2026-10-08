@@ -1,7 +1,7 @@
 import type en from './en';
 
 const de: Record<keyof typeof en, string> = {
-	'app.tagline': 'Selbst gehostete Telefonanlage',
+	'app.tagline': 'by ITSH Neumeier',
 	'theme.toggle': 'Dunkelmodus umschalten',
 	'locale.label': 'Sprache',
 	'nav.dashboard': 'Übersicht',

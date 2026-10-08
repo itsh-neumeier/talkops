@@ -4,7 +4,7 @@
 set of UniFi Talk plus video door stations, call recording, local
 transcription and LDAP/AD, packaged as a Docker Compose stack.
 
-> **Status: 1.0 release candidate.** All roadmap phases are implemented and
+> **Status: 1.0.** All roadmap phases are implemented and
 > covered by unit, integration and SIPp/browser end-to-end tests. Not yet
 > verified with real hardware: LEONET live trunk, Yealink phones, Dahua door
 > stations. See the [roadmap](docs/architecture.md#roadmap) and the

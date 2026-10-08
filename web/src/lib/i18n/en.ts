@@ -1,5 +1,5 @@
 export default {
-	'app.tagline': 'Self-hosted phone system',
+	'app.tagline': 'by ITSH Neumeier',
 	'theme.toggle': 'Toggle dark mode',
 	'locale.label': 'Language',
 

@@ -4,7 +4,7 @@ All notable changes to TalkOps. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
-## [1.0.0] – unreleased
+## [1.0.0] – 2026-10-08
 
 First stable release. Database migrations are forward-only; later 1.x
 releases upgrade a 1.0 installation automatically.

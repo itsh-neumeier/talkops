@@ -2,12 +2,16 @@
 #
 # accounts:   number of SIP accounts (DECT bases: handsets/accounts)
 # line_keys:  programmable line keys incl. all pages (managed by TalkOps)
-# family:     desk | dect | conference
+# family:     desk | dect | conference | wifi
 # Common config file names follow "y0000000000XX.cfg" (hardware id); TalkOps
 # serves the same common file for every such name.
 #
 # Sources: Yealink IP Phones Auto Provisioning Guide V1.3 (2021),
 # Yealink SIP-T2/T4 Auto Provisioning Guide V80, product datasheets.
+# AX83H/AX86R: Yealink AX83H/AX86R datasheets (Wi-Fi handsets, 4 SIP
+# accounts), AX83H documentation "Trigger the Phone to Perform Auto
+# Provisioning" (common file y000000000108.cfg); firmware 180.86.x uses the
+# same V86 parameters as the T5x series.
 vendor: yealink
 status: untested
 models:
@@ -27,3 +31,5 @@ models:
   - { id: w60b, name: W60B, family: dect, accounts: 8, line_keys: 0 }
   - { id: w70b, name: W70B, family: dect, accounts: 10, line_keys: 0 }
   - { id: w80b, name: W80B, family: dect, accounts: 100, line_keys: 0 }
+  - { id: ax83h, name: AX83H, family: wifi, accounts: 4, line_keys: 0 }
+  - { id: ax86r, name: AX86R, family: wifi, accounts: 4, line_keys: 0 }

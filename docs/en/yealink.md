@@ -1,8 +1,14 @@
 # Setting up Yealink phones
 
-TalkOps configures Yealink desk phones (T3x, T4x, T5x, VP59, CP9x0) and DECT
-bases (W60B, W70B, W80B) automatically: SIP accounts, line keys with BLF,
-phonebooks, time zone, language, admin password and firmware.
+TalkOps configures Yealink desk phones (T3x, T4x, T5x, VP59, CP9x0), DECT
+bases (W60B, W70B, W80B) and Wi-Fi handsets (AX83H, AX86R) automatically: SIP
+accounts, line keys with BLF, phonebooks, time zone, language, admin password
+and firmware.
+
+**AX83H/AX86R:** the handsets have no LAN port; hand out the provisioning URL
+via DHCP option 66 on the Wi-Fi network or enter it on the phone under
+*Settings → Auto Provision*. Up to 4 SIP accounts, no line keys. Firmware
+180.86 or later.
 
 > **Status:** All parameters come from the official *Yealink Auto
 > Provisioning Guide*. Tests with real devices are still pending – feedback

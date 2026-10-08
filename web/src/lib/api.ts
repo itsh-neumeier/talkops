@@ -334,7 +334,7 @@ export interface PhoneModel {
 	id: string;
 	name: string;
 	vendor: string;
-	family: 'desk' | 'dect' | 'conference';
+	family: 'desk' | 'dect' | 'conference' | 'wifi';
 	accounts: number;
 	line_keys: number;
 	video: boolean;

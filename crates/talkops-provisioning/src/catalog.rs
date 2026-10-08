@@ -11,6 +11,8 @@ pub enum PhoneFamily {
     Desk,
     Dect,
     Conference,
+    /// Wi-Fi handsets (Yealink AX series): no base station, no line keys.
+    Wifi,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -136,6 +138,17 @@ mod tests {
         assert_eq!(
             c.from_user_agent("Yealink W70B 146.85.0.20").unwrap().id,
             "w70b"
+        );
+        let ax = c
+            .from_user_agent("Yealink AX83H 180.86.0.5 24:9a:d8:12:34:56")
+            .unwrap();
+        assert_eq!(
+            (ax.id.as_str(), ax.family, ax.accounts, ax.line_keys),
+            ("ax83h", PhoneFamily::Wifi, 4, 0)
+        );
+        assert_eq!(
+            c.from_user_agent("Yealink AX86R 180.86.0.5").unwrap().id,
+            "ax86r"
         );
         assert!(c.from_user_agent("Snom D785").is_none());
         assert_eq!(

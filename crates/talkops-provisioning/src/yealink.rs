@@ -404,6 +404,43 @@ mod tests {
     }
 
     #[test]
+    fn wifi_handset_config() {
+        let c = catalog();
+        for id in ["ax83h", "ax86r"] {
+            let setup = PhoneSetup {
+                name: "Lager".into(),
+                mac: "249ad8123456".into(),
+                model: c.get(id).unwrap(),
+                accounts: vec![Account {
+                    index: 1,
+                    label: "30 Lager".into(),
+                    display_name: "Lager".into(),
+                    username: "30-1".into(),
+                    password: "secret".into(),
+                }],
+                keys: vec![LineKey {
+                    key: 1,
+                    kind: KeyType::Blf,
+                    value: "21".into(),
+                    label: "Lab".into(),
+                    account: 1,
+                }],
+                sip_host: "192.168.1.10".into(),
+                sip_port: 5060,
+                firmware_url: None,
+                voicemail_code: "*97".into(),
+            };
+            let m = parse(&render_phone(&setup).unwrap());
+            assert_eq!(m["account.1.user_name"], "30-1", "{id}");
+            assert_eq!(m["account.1.sip_server.1.address"], "192.168.1.10");
+            assert_eq!(m["account.4.enable"], "0");
+            assert!(!m.contains_key("account.5.enable"), "{id} has 4 accounts");
+            assert!(!m.keys().any(|k| k.starts_with("linekey.")), "no line keys");
+            assert!(!m.contains_key("handset.1.name"), "not a DECT base");
+        }
+    }
+
+    #[test]
     fn dect_base_config() {
         let c = catalog();
         let setup = PhoneSetup {

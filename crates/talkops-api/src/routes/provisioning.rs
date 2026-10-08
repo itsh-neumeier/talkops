@@ -215,13 +215,14 @@ pub async fn serve(
     })
 }
 
-/// `y0000000000XX.cfg` (some models use three digits): the model-specific
-/// common file. All models get the same content.
+/// `y<12-digit hardware id>.cfg`, e.g. `y000000000028.cfg` (T46) or
+/// `y000000000108.cfg` (AX83H): the model-specific common file. All models
+/// get the same content.
 fn is_common_cfg(path: &str) -> bool {
-    path.strip_prefix("y0000000000")
+    path.strip_prefix('y')
         .and_then(|rest| rest.strip_suffix(".cfg"))
-        .is_some_and(|code| {
-            (2..=3).contains(&code.len()) && code.chars().all(|c| c.is_ascii_digit())
+        .is_some_and(|id| {
+            id.len() == 12 && id.starts_with("000000000") && id.bytes().all(|b| b.is_ascii_digit())
         })
 }
 
@@ -393,6 +394,8 @@ mod tests {
     #[test]
     fn common_file_names() {
         assert!(is_common_cfg("y000000000028.cfg"));
+        assert!(is_common_cfg("y000000000108.cfg"), "AX83H (three-digit id)");
+        assert!(!is_common_cfg("y00000000028.cfg"));
         assert!(!is_common_cfg("y00000000002x.cfg"));
         assert!(!is_common_cfg("y000000000000.boot"));
     }

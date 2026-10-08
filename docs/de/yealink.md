@@ -1,8 +1,14 @@
 # Yealink-Telefone einrichten
 
-TalkOps richtet Yealink-Tischtelefone (T3x, T4x, T5x, VP59, CP9x0) und
-DECT-Basen (W60B, W70B, W80B) automatisch ein: SIP-Konten, Funktionstasten
-mit BLF, Telefonbücher, Zeitzone, Sprache, Admin-Passwort und Firmware.
+TalkOps richtet Yealink-Tischtelefone (T3x, T4x, T5x, VP59, CP9x0),
+DECT-Basen (W60B, W70B, W80B) und WLAN-Mobilteile (AX83H, AX86R) automatisch
+ein: SIP-Konten, Funktionstasten mit BLF, Telefonbücher, Zeitzone, Sprache,
+Admin-Passwort und Firmware.
+
+**AX83H/AX86R:** Die Mobilteile haben kein LAN; die Provisioning-URL daher
+entweder per DHCP-Option 66 im WLAN-Netz verteilen oder am Telefon unter
+*Einstellungen → Auto Provision* eintragen. Bis zu 4 SIP-Konten, keine
+Funktionstasten. Ab Firmware 180.86.
 
 > **Status:** Die Parameter stammen aus dem offiziellen *Yealink Auto
 > Provisioning Guide*. Tests mit echten Geräten stehen noch aus –

@@ -89,6 +89,10 @@ groups:
   ohne Zugriff auf den Server.
 - **Aktive Kanäle**: wie `show channels` – Kanal, Anrufer, Ziel, Status,
   Codec, Anwendung.
+- **Sitzungen beim Anbieter**: *Alle Gespräche beenden* (BYE für jedes
+  Gespräch), *Trunks ab- und anmelden* oder beides. Hilft, wenn der Anbieter mit
+  „403 Too many simultaneous sessions“ ablehnt. Trunk-Gespräche nutzen
+  Session-Timer (600 s), damit der Anbieter verwaiste Gespräche selbst beendet.
 - **Neustart**: *FreeSWITCH neu starten* oder *Alle Dienste neu starten*
   (FreeSWITCH, Media-Worker, TalkOps). Die Dienste beenden sich und Docker
   startet sie dank `restart: unless-stopped` neu; laufende Gespräche werden

@@ -89,4 +89,17 @@ async fn diagnostics_api(db: PgPool) {
         .post("/api/v1/diagnostics/restart", json!({"target": "all"}))
         .await;
     assert_eq!(status, StatusCode::FORBIDDEN);
+
+    let (status, _) = admin
+        .post("/api/v1/diagnostics/sessions", json!({"action": "nuke"}))
+        .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    let (status, _) = admin
+        .post("/api/v1/diagnostics/sessions", json!({"action": "all"}))
+        .await;
+    assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
+    let (status, _) = ben
+        .post("/api/v1/diagnostics/sessions", json!({"action": "hangup"}))
+        .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
 }

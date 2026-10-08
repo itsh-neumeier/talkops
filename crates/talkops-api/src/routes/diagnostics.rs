@@ -26,6 +26,7 @@ pub fn router() -> OpenApiRouter<AppState> {
         .routes(routes!(log_lines, clear_log))
         .routes(routes!(download_log))
         .routes(routes!(restart))
+        .routes(routes!(reset_sessions))
 }
 
 impl From<DiagnosticsError> for ApiError {
@@ -282,4 +283,82 @@ pub async fn restart(
         });
     }
     Ok(StatusCode::ACCEPTED)
+}
+
+#[derive(Deserialize, ToSchema)]
+pub struct SessionsRequest {
+    /// `hangup` (end every call with a BYE), `reregister` (sign all trunks
+    /// off and on again) or `all` (both).
+    pub action: String,
+}
+
+#[derive(Serialize, ToSchema)]
+pub struct SessionsResult {
+    /// Call legs ended.
+    pub hung_up: usize,
+    pub reregistered: bool,
+}
+
+/// Clears sessions with the providers: ends all calls (FreeSWITCH sends a
+/// BYE for every leg, so the provider releases them too) and/or signs the
+/// trunks off and on again.
+#[utoipa::path(post, path = "/api/v1/diagnostics/sessions", tag = "system", request_body = SessionsRequest, responses((status = 200, body = SessionsResult)))]
+pub async fn reset_sessions(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Json(req): Json<SessionsRequest>,
+) -> ApiResult<Json<SessionsResult>> {
+    auth.require(Role::Admin)?;
+    let (hangup, reregister) = match req.action.as_str() {
+        "hangup" => (true, false),
+        "reregister" => (false, true),
+        "all" => (true, true),
+        _ => {
+            return Err(ApiError::BadRequest(
+                "action must be hangup, reregister or all".into(),
+            ));
+        }
+    };
+    let client = state
+        .telephony
+        .esl
+        .get()
+        .await
+        .ok_or_else(|| ApiError::Internal("FreeSWITCH is not connected".into()))?;
+    let esl = |e: talkops_esl::EslError| ApiError::Internal(e.to_string());
+    let mut hung_up = 0;
+    if hangup {
+        hung_up = client
+            .api("show channels as json")
+            .await
+            .map(|j| diagnostics::parse_channels(&j).len())
+            .unwrap_or(0);
+        client.api("hupall MANAGER_REQUEST").await.map_err(esl)?;
+    }
+    if reregister {
+        // REGISTER with Expires: 0, then a fresh registration.
+        client
+            .api("sofia profile external unregister all")
+            .await
+            .map_err(esl)?;
+        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+        client
+            .api("sofia profile external register all")
+            .await
+            .map_err(esl)?;
+    }
+    audit::record(
+        &state.db,
+        &auth.actor(),
+        "reset_sessions",
+        "system",
+        Some(req.action.clone()),
+        json!({"hung_up": hung_up}),
+    )
+    .await?;
+    tracing::warn!(action = %req.action, hung_up, user = %auth.username, "sessions reset");
+    Ok(Json(SessionsResult {
+        hung_up,
+        reregistered: reregister,
+    }))
 }

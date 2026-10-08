@@ -88,6 +88,10 @@ groups:
   the server.
 - **Active channels**: like `show channels` – channel, caller, destination,
   state, codec, application.
+- **Sessions with the provider**: *End all calls* (a BYE for every call),
+  *Sign trunks off and on* or both. Helps when the provider rejects calls with
+  "403 Too many simultaneous sessions". Trunk calls use session timers
+  (600 s) so the provider ends orphaned calls itself.
 - **Restart**: *Restart FreeSWITCH* or *Restart all services* (FreeSWITCH,
   media worker, TalkOps). The services exit and Docker starts them again
   thanks to `restart: unless-stopped`; active calls are dropped.

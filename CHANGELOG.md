@@ -4,6 +4,18 @@ All notable changes to TalkOps. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [1.4.1] – 2026-10-08
+
+### Added
+
+- **Settings → System → Sessions with the provider:** end all calls (a BYE
+  for every leg) and/or sign all trunks off and on again, for providers that
+  reject calls with "Too many simultaneous sessions".
+- **Session timers on trunks** (RFC 4028, 600 s): a call the provider still
+  counts after TalkOps vanished without a BYE ends at the provider within
+  10 minutes. Takes effect after the trunk profile restarts (restart
+  FreeSWITCH once).
+
 ## [1.4.0] – 2026-10-08
 
 ### Added

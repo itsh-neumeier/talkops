@@ -193,6 +193,20 @@ const de: Record<keyof typeof en, string> = {
 	'diag.chDest': 'Ziel',
 	'diag.chState': 'Status',
 	'diag.chApp': 'Anwendung',
+	'diag.sessions': 'Sitzungen beim Anbieter',
+	'diag.sessionsHint':
+		'Lehnt der Anbieter Anrufe mit „Too many simultaneous sessions“ (403) ab, obwohl niemand telefoniert, zählt er noch ein altes Gespräch. „Alle Gespräche beenden“ schickt für jedes Gespräch, das FreeSWITCH kennt, ein BYE; „Trunks ab- und anmelden“ registriert die Leitungen neu.',
+	'diag.hangupAll': 'Alle Gespräche beenden',
+	'diag.reregister': 'Trunks ab- und anmelden',
+	'diag.sessionsAll': 'Alle Sitzungen trennen',
+	'diag.hangupConfirm': 'Jetzt alle Gespräche beenden (intern und extern)?',
+	'diag.reregisterConfirm':
+		'Alle Trunks ab- und wieder anmelden? Eingehende Anrufe können dabei einige Sekunden fehlschlagen.',
+	'diag.sessionsAllConfirm': 'Alle Gespräche beenden und alle Trunks ab- und anmelden?',
+	'diag.hungUp': '{n} Gesprächskanäle beendet.',
+	'diag.reregistered': 'Trunks neu angemeldet.',
+	'diag.sessionsTimer':
+		'Gespräche, die FreeSWITCH nicht mehr kennt (z. B. nach einem Absturz), lassen sich von hier nicht beenden. Seit 1.4.1 nutzen Trunk-Gespräche Session-Timer: Der Anbieter beendet solche Gespräche nach spätestens 10 Minuten selbst. Sonst kann der Support des Anbieters sie beenden.',
 	'diag.restart': 'Neustart',
 	'diag.restartHint':
 		'Die Dienste beenden sich und Docker startet sie neu (restart: unless-stopped). Laufende Gespräche werden getrennt.',

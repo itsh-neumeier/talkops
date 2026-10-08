@@ -117,6 +117,38 @@
 		}
 	}
 
+	let sessionsInfo = $state('');
+	let sessionsBusy = $state(false);
+
+	async function resetSessions(action: 'hangup' | 'reregister' | 'all') {
+		const question = {
+			hangup: t('diag.hangupConfirm'),
+			reregister: t('diag.reregisterConfirm'),
+			all: t('diag.sessionsAllConfirm')
+		}[action];
+		if (!confirm(question)) return;
+		error = '';
+		sessionsInfo = '';
+		sessionsBusy = true;
+		try {
+			const r = await api.post<{ hung_up: number; reregistered: boolean }>(
+				'/diagnostics/sessions',
+				{ action }
+			);
+			sessionsInfo = [
+				action !== 'reregister' ? t('diag.hungUp', { n: r.hung_up }) : '',
+				r.reregistered ? t('diag.reregistered') : ''
+			]
+				.filter(Boolean)
+				.join(' ');
+			await load();
+		} catch (err) {
+			error = errorMessage(err);
+		} finally {
+			sessionsBusy = false;
+		}
+	}
+
 	async function restart(target: 'freeswitch' | 'all') {
 		const question = target === 'all' ? t('diag.restartAllConfirm') : t('diag.restartFsConfirm');
 		if (!confirm(question)) return;
@@ -308,6 +340,29 @@
 	{:else}
 		<p class="text-sm text-slate-500 dark:text-slate-400">{t('diag.noChannels')}</p>
 	{/if}
+</section>
+
+<section class="card space-y-3">
+	<h2>{t('diag.sessions')}</h2>
+	<p class="text-sm text-slate-600 dark:text-slate-300">{t('diag.sessionsHint')}</p>
+	{#if sessionsInfo}<p
+			class="text-sm text-emerald-700 dark:text-emerald-400"
+			data-testid="sessions-info"
+		>
+			{sessionsInfo}
+		</p>{/if}
+	<div class="flex flex-wrap gap-2">
+		<button class="btn" disabled={sessionsBusy} onclick={() => resetSessions('hangup')}
+			>{t('diag.hangupAll')}</button
+		>
+		<button class="btn" disabled={sessionsBusy} onclick={() => resetSessions('reregister')}
+			>{t('diag.reregister')}</button
+		>
+		<button class="btn btn-danger" disabled={sessionsBusy} onclick={() => resetSessions('all')}
+			>{t('diag.sessionsAll')}</button
+		>
+	</div>
+	<p class="hint">{t('diag.sessionsTimer')}</p>
 </section>
 
 <section class="card space-y-3">

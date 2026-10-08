@@ -201,6 +201,19 @@ export default {
 	'diag.chDest': 'Destination',
 	'diag.chState': 'State',
 	'diag.chApp': 'Application',
+	'diag.sessions': 'Sessions with the provider',
+	'diag.sessionsHint':
+		'If the provider rejects calls with "Too many simultaneous sessions" (403) although nobody is on the phone, it still counts an old call. End all calls sends a BYE for every call FreeSWITCH knows; sign trunks off and on registers them anew.',
+	'diag.hangupAll': 'End all calls',
+	'diag.reregister': 'Sign trunks off and on',
+	'diag.sessionsAll': 'End all sessions',
+	'diag.hangupConfirm': 'End all calls now (internal and external)?',
+	'diag.reregisterConfirm': 'Sign all trunks off and on? Inbound calls may fail for a few seconds.',
+	'diag.sessionsAllConfirm': 'End all calls and sign all trunks off and on?',
+	'diag.hungUp': '{n} call legs ended.',
+	'diag.reregistered': 'Trunks signed off and on again.',
+	'diag.sessionsTimer':
+		'Calls that FreeSWITCH no longer knows (e.g. after a crash) cannot be ended from here. Since 1.4.1, trunk calls use session timers: the provider ends such calls itself after at most 10 minutes. Otherwise ask the provider support to end them.',
 	'diag.restart': 'Restart',
 	'diag.restartHint':
 		'The services stop and Docker starts them again (restart: unless-stopped). Active calls are dropped.',

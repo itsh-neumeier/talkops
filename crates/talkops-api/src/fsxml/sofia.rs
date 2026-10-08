@@ -249,6 +249,12 @@ pub fn render(settings: &ProfileSettings, gateways: &[GatewaySpec]) -> String {
     w.param("rfc2833-pt", "101");
     w.param("rtp-timeout-sec", "300");
     w.param("rtp-hold-timeout-sec", "1800");
+    // Session timers (RFC 4028): calls are refreshed every few minutes, so
+    // a provider ends a call itself if TalkOps disappears without a BYE
+    // (crash, power loss) instead of counting it as busy for hours.
+    w.param("enable-timer", "true");
+    w.param("session-timeout", "600");
+    w.param("minimum-session-expires", "90");
     w.param("user-agent-string", "TalkOps");
     w.close("settings");
     w.close("profile");

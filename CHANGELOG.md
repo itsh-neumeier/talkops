@@ -4,6 +4,16 @@ All notable changes to TalkOps. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [1.1.2] – 2026-10-08
+
+### Fixed
+
+- Browser softphone calls hung up when answered (`INCOMPATIBLE_DESTINATION`):
+  browsers hide their address in ICE candidates behind random `*.local` names
+  that FreeSWITCH cannot resolve. TalkOps now replaces them with the
+  browser's address (from `X-Forwarded-For` of a reverse proxy on the local
+  network, or the connection itself).
+
 ## [1.1.1] – 2026-10-08
 
 ### Fixed

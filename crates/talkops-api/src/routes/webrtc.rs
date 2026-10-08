@@ -5,6 +5,8 @@
 use axum::Json;
 use axum::extract::State;
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
+use std::net::IpAddr;
+
 use axum::http::{HeaderMap, header};
 use axum::response::{IntoResponse, Response};
 use futures_util::{SinkExt, StreamExt};
@@ -140,6 +142,7 @@ fn same_origin(headers: &HeaderMap) -> bool {
 pub async fn sip_ws(
     State(state): State<AppState>,
     auth: AuthUser,
+    connect: Option<axum::Extension<axum::extract::ConnectInfo<std::net::SocketAddr>>>,
     headers: HeaderMap,
     ws: WebSocketUpgrade,
 ) -> Response {
@@ -162,8 +165,9 @@ pub async fn sip_ws(
     }
     let url = state.sip_ws_url.to_string();
     let user = auth.id;
+    let browser_ip = browser_ip(&headers, connect.map(|c| c.0.0.ip()));
     ws.protocols(["sip"]).on_upgrade(move |socket| async move {
-        match relay(socket, &url).await {
+        match relay(socket, &url, browser_ip).await {
             Ok(end) => tracing::info!(
                 %user,
                 to_freeswitch = end.to_fs,
@@ -230,6 +234,78 @@ fn to_browser(msg: &str, secure: &std::sync::atomic::AtomicBool) -> String {
     }
 }
 
+/// The browser's address as seen in the network: from the reverse proxy
+/// (`X-Forwarded-For`, `X-Real-IP`) when the direct peer is on the local
+/// network, else the peer itself.
+fn browser_ip(headers: &HeaderMap, peer: Option<IpAddr>) -> Option<IpAddr> {
+    let local = |ip: &IpAddr| match ip {
+        IpAddr::V4(v4) => v4.is_loopback() || v4.is_private() || v4.is_link_local(),
+        IpAddr::V6(v6) => v6.is_loopback() || v6.is_unique_local(),
+    };
+    let header = |name: &str| {
+        headers
+            .get(name)
+            .and_then(|v| v.to_str().ok())
+            .and_then(|v| v.split(',').next())
+            .and_then(|v| v.trim().parse::<IpAddr>().ok())
+    };
+    match peer {
+        Some(p) if local(&p) => header("x-forwarded-for")
+            .or_else(|| header("x-real-ip"))
+            .or(Some(p)),
+        other => other,
+    }
+}
+
+/// Browsers hide their address in ICE candidates behind random mDNS names
+/// (`<uuid>.local`), which FreeSWITCH cannot resolve: the call then fails
+/// with INCOMPATIBLE_DESTINATION. The relay replaces such host candidates
+/// with the browser's address and fixes Content-Length. `None`: unchanged.
+fn resolve_mdns_candidates(msg: &str, ip: IpAddr) -> Option<String> {
+    let split = msg.find("\r\n\r\n")?;
+    let (head, body) = (&msg[..split], &msg[split + 4..]);
+    if !body.contains(".local ") {
+        return None;
+    }
+    let addr = ip.to_string();
+    let mut changed = false;
+    let body: String = body
+        .split_inclusive('\n')
+        .map(|line| {
+            // a=candidate:<foundation> <component> <proto> <prio> <addr> <port> typ …
+            if !line.starts_with("a=candidate:") {
+                return line.to_owned();
+            }
+            let fields: Vec<&str> = line.split(' ').collect();
+            match fields.get(4) {
+                Some(host) if host.ends_with(".local") => {
+                    changed = true;
+                    let mut fields = fields.clone();
+                    fields[4] = &addr;
+                    fields.join(" ")
+                }
+                _ => line.to_owned(),
+            }
+        })
+        .collect();
+    if !changed {
+        return None;
+    }
+    let head = head
+        .split("\r\n")
+        .map(|l| {
+            let name = l.split(':').next().unwrap_or_default().trim();
+            if name.eq_ignore_ascii_case("content-length") || name.eq_ignore_ascii_case("l") {
+                format!("{name}: {}", body.len())
+            } else {
+                l.to_owned()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\r\n");
+    Some(format!("{head}\r\n\r\n{body}"))
+}
+
 /// How a relayed connection ended (for the log).
 struct RelayEnd {
     /// Messages relayed in each direction.
@@ -238,7 +314,11 @@ struct RelayEnd {
     closed_by: &'static str,
 }
 
-async fn relay(client: WebSocket, url: &str) -> Result<RelayEnd, tungstenite::Error> {
+async fn relay(
+    client: WebSocket,
+    url: &str,
+    browser_ip: Option<IpAddr>,
+) -> Result<RelayEnd, tungstenite::Error> {
     let mut request = url.into_client_request()?;
     request.headers_mut().insert(
         "sec-websocket-protocol",
@@ -256,7 +336,12 @@ async fn relay(client: WebSocket, url: &str) -> Result<RelayEnd, tungstenite::Er
             to_fs_count += 1;
             let out = match msg {
                 Message::Text(t) => {
-                    tungstenite::Message::Text(to_freeswitch(t.as_str(), &secure).into())
+                    let msg = to_freeswitch(t.as_str(), &secure);
+                    let msg = match browser_ip {
+                        Some(ip) => resolve_mdns_candidates(&msg, ip).unwrap_or(msg),
+                        None => msg,
+                    };
+                    tungstenite::Message::Text(msg.into())
                 }
                 Message::Binary(b) => tungstenite::Message::Binary(b),
                 Message::Ping(p) => tungstenite::Message::Ping(p),
@@ -302,6 +387,38 @@ async fn relay(client: WebSocket, url: &str) -> Result<RelayEnd, tungstenite::Er
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn mdns_candidates() {
+        let body = "v=0\r\no=- 1 2 IN IP4 127.0.0.1\r\nc=IN IP4 0.0.0.0\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111\r\n\
+            a=candidate:1 1 udp 2113937151 dd83a502-f4be-4e9e-9833-bfd73f019f95.local 59361 typ host generation 0\r\n\
+            a=candidate:2 1 udp 1677729535 91.1.2.3 40000 typ srflx raddr 0.0.0.0 rport 0\r\n";
+        let msg = format!(
+            "INVITE sip:0152@talkops.local SIP/2.0\r\nVia: SIP/2.0/WS x.invalid\r\nContent-Type: application/sdp\r\nContent-Length: {}\r\n\r\n{body}",
+            body.len()
+        );
+        let ip: IpAddr = "192.168.140.55".parse().unwrap();
+        let out = resolve_mdns_candidates(&msg, ip).unwrap();
+        let (head, new_body) = out.split_once("\r\n\r\n").unwrap();
+        assert!(new_body.contains(
+            "a=candidate:1 1 udp 2113937151 192.168.140.55 59361 typ host generation 0\r\n"
+        ));
+        assert!(new_body.contains("91.1.2.3 40000 typ srflx"));
+        assert!(head.ends_with(&format!("Content-Length: {}", new_body.len())));
+        assert!(resolve_mdns_candidates("REGISTER sip:x SIP/2.0\r\n\r\n", ip).is_none());
+
+        // Address: proxy header from a local peer, otherwise the peer.
+        let mut h = HeaderMap::new();
+        h.insert(
+            "x-forwarded-for",
+            "192.168.140.55, 10.0.0.1".parse().unwrap(),
+        );
+        let lan: IpAddr = "192.168.140.30".parse().unwrap();
+        assert_eq!(browser_ip(&h, Some(lan)), Some(ip));
+        let public: IpAddr = "8.8.8.8".parse().unwrap();
+        assert_eq!(browser_ip(&h, Some(public)), Some(public));
+        assert_eq!(browser_ip(&HeaderMap::new(), Some(lan)), Some(lan));
+    }
 
     #[test]
     fn via_transport_rewrite() {

@@ -115,7 +115,8 @@ services:
         condition: service_healthy
     environment:
       <<: *talkops-env
-      TALKOPS_WHISPER_MODEL: ${TALKOPS_WHISPER_MODEL:-base}
+      TALKOPS_WHISPER_MODEL: ${TALKOPS_WHISPER_MODEL:-large-v3-turbo-q5_0}
+      TALKOPS_WHISPER_VAD: ${TALKOPS_WHISPER_VAD:-true}
     volumes:
       - recordings:/var/lib/talkops/recordings
       - voicemail:/var/lib/talkops/voicemail

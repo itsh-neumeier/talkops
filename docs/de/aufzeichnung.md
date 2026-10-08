@@ -63,20 +63,31 @@ Aufnahme und jede neue Sprachnachricht in Text um:
   Einstellungen.
 - Die Voicemail-Mail wartet auf das Transkript und enthält den Text
   (bei einem Fehler kommt sie ohne Text).
-- Beim ersten Mal lädt der Worker das Sprachmodell (ca. 150 MB) aus dem
-  offiziellen whisper.cpp-Repository und prüft seine Prüfsumme; danach
-  arbeitet er ohne Internet.
+- Beim ersten Mal lädt der Worker das Sprachmodell (ca. 550 MB) und das
+  Modell der Spracherkennung (Silero VAD, ca. 1 MB) aus den offiziellen
+  whisper.cpp-Repositories und prüft die Prüfsummen; danach arbeitet er
+  ohne Internet.
+- Die Spracherkennung (VAD) schneidet Stille und Wartemusik heraus, bevor
+  Whisper transkribiert. Das verhindert erfundene Sätze in Pausen und
+  macht die Erkennung schneller. Abschalten mit `TALKOPS_WHISPER_VAD=false`.
 
 Modell wählen (`.env`):
 
 | `TALKOPS_WHISPER_MODEL` | Größe | Hinweis |
 |---|---|---|
-| `base` (Standard) | ca. 150 MB | schnell, gut für klare Sprache |
-| `small` | ca. 490 MB | genauer, etwa dreimal langsamer |
+| `large-v3-turbo-q5_0` (Standard) | ca. 550 MB | sehr genau, auch bei Telefonqualität; ca. 2 GB RAM |
+| `large-v3-turbo-q8_0` | ca. 870 MB | minimal genauer |
+| `large-v3-turbo` | ca. 1,6 GB | volle Genauigkeit, braucht viel RAM |
+| `medium-q5_0` / `medium` | ca. 540 MB / 1,5 GB | Alternative zu turbo |
+| `small` | ca. 490 MB | für schwache Hardware (z. B. Raspberry Pi) |
+| `base` | ca. 150 MB | schnell, aber deutlich ungenauer (Standard bis 1.2) |
 
-Andere Modelle (z. B. `medium`) als `ggml-<name>.bin` selbst in das Volume
-`models` legen und den Namen eintragen. Weitere Optionen:
-`TALKOPS_WHISPER_THREADS` (CPU-Threads je Transkription, Standard bis 4).
+Auf einem aktuellen x86-Server mit 4 Kernen braucht `large-v3-turbo-q5_0`
+etwa ein Drittel bis die Hälfte der Gesprächsdauer. Wer `base` explizit
+gesetzt hat, sollte die Zeile in der `.env` entfernen oder ändern.
+Andere Modelle als `ggml-<name>.bin` selbst in das Volume `models` legen und
+den Namen eintragen. Weitere Optionen: `TALKOPS_WHISPER_THREADS`
+(CPU-Threads je Transkription, Standard bis 4).
 
 ## Suche
 

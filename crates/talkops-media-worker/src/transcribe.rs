@@ -8,6 +8,10 @@
 //! Models are downloaded on first use into the models volume and verified
 //! against pinned SHA-256 sums. Any other model must be placed there by the
 //! administrator (`ggml-<name>.bin`).
+//!
+//! Voice activity detection (Silero VAD) passes only speech to Whisper: phone
+//! recordings have long pauses and hold music, on which Whisper otherwise
+//! invents text ("Untertitel im Auftrag des ZDF …").
 
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -21,6 +25,14 @@ use tokio::process::Command;
 const SAMPLE_RATE: u32 = 16_000;
 const MODEL_URL: &str = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main";
 
+/// Silero VAD model for whisper.cpp: file, SHA-256, size.
+const VAD_MODEL: (&str, &str, u64) = (
+    "ggml-silero-v5.1.2.bin",
+    "29940d98d42b91fbd05ce489f3ecf7c72f0a42f027e4875919a28fb4c04ea2cf",
+    885_098,
+);
+const VAD_URL: &str = "https://huggingface.co/ggml-org/whisper-vad/resolve/main";
+
 /// Models that are downloaded automatically: name, SHA-256, size.
 const KNOWN_MODELS: &[(&str, &str, u64)] = &[
     (
@@ -33,6 +45,31 @@ const KNOWN_MODELS: &[(&str, &str, u64)] = &[
         "1be3a9b2063867b937e64e2ec7483364a79917e157fa98c5d94b5c1fffea987b",
         487_601_967,
     ),
+    (
+        "medium-q5_0",
+        "19fea4b380c3a618ec4723c3eef2eb785ffba0d0538cf43f8f235e7b3b34220f",
+        539_212_467,
+    ),
+    (
+        "medium",
+        "6c14d5adee5f86394037b4e4e8b59f1673b6cee10e3cf0b11bbdbee79c156208",
+        1_533_763_059,
+    ),
+    (
+        "large-v3-turbo-q5_0",
+        "394221709cd5ad1f40c46e6031ca61bce88931e6e088c188294c6d5a55ffa7e2",
+        574_041_195,
+    ),
+    (
+        "large-v3-turbo-q8_0",
+        "317eb69c11673c9de1e1f0d459b253999804ec71ac4c23c17ecf5fbe24e259a1",
+        874_188_075,
+    ),
+    (
+        "large-v3-turbo",
+        "1fc70f774d38eb169993ac391eea357ef47c88757ef72ee5943879b7e8e2bc69",
+        1_624_555_275,
+    ),
 ];
 
 #[derive(Debug, Clone)]
@@ -41,6 +78,8 @@ pub struct Whisper {
     pub models_dir: PathBuf,
     pub model: String,
     pub threads: usize,
+    /// Transcribe only detected speech (Silero VAD).
+    pub vad: bool,
 }
 
 impl Whisper {
@@ -65,37 +104,52 @@ impl Whisper {
                     .join(", ")
             );
         };
-        tokio::fs::create_dir_all(&self.models_dir).await?;
-        let tmp = file.with_extension("part");
-        tracing::info!(model = %self.model, bytes = size, "downloading whisper model");
-        let status = Command::new("curl")
-            .args(["-fsSL", "--retry", "3", "-o"])
-            .arg(&tmp)
-            .arg(format!("{MODEL_URL}/ggml-{}.bin", self.model))
-            .status()
-            .await
-            .context("run curl")?;
-        if !status.success() {
-            let _ = tokio::fs::remove_file(&tmp).await;
-            bail!("downloading whisper model failed ({status})");
-        }
-        let actual = {
-            let tmp = tmp.clone();
-            tokio::task::spawn_blocking(move || sha256_file(&tmp)).await??
-        };
-        if actual != sum {
-            let _ = tokio::fs::remove_file(&tmp).await;
-            bail!("whisper model checksum mismatch: {actual}");
-        }
-        tokio::fs::rename(&tmp, &file).await?;
-        tracing::info!(model = %self.model, "whisper model ready");
+        let url = format!("{MODEL_URL}/ggml-{}.bin", self.model);
+        download(&url, &file, sum, size).await?;
         Ok(file)
+    }
+
+    /// The VAD model, downloaded on first use.
+    async fn ensure_vad_model(&self) -> anyhow::Result<PathBuf> {
+        let (name, sum, size) = VAD_MODEL;
+        let file = self.models_dir.join(name);
+        if !file.is_file() {
+            download(&format!("{VAD_URL}/{name}"), &file, sum, size).await?;
+        }
+        Ok(file)
+    }
+
+    /// Arguments for whisper-cli besides input and output.
+    async fn decode_args(&self, model: &Path, language: &str) -> anyhow::Result<Vec<String>> {
+        let mut args = vec![
+            "-m".to_owned(),
+            model.to_string_lossy().into_owned(),
+            "-l".to_owned(),
+            language.to_owned(),
+            "-t".to_owned(),
+            self.threads.to_string(),
+            // No "[Musik]", "(lacht)" and the like.
+            "-sns".to_owned(),
+        ];
+        if self.vad {
+            match self.ensure_vad_model().await {
+                Ok(vad) => args.extend([
+                    "--vad".to_owned(),
+                    "-vm".to_owned(),
+                    vad.to_string_lossy().into_owned(),
+                ]),
+                // Without the VAD model, transcribe everything.
+                Err(err) => tracing::warn!(error = %err, "VAD model unavailable"),
+            }
+        }
+        Ok(args)
     }
 
     /// Transcribes a WAV file. Stereo files are split into `caller` and
     /// `called`; mono files get no speaker.
     pub async fn transcribe(&self, wav: &Path, language: &str) -> anyhow::Result<Vec<Segment>> {
         let model = self.ensure_model().await?;
+        let args = self.decode_args(&model, language).await?;
         let work = tempdir()?;
         let channels = {
             let (wav, work) = (wav.to_owned(), work.path.clone());
@@ -105,11 +159,9 @@ impl Whisper {
         for (speaker, file, samples) in channels {
             let out = file.with_extension("");
             let output = Command::new(&self.bin)
-                .arg("-m")
-                .arg(&model)
+                .args(&args)
                 .arg("-f")
                 .arg(&file)
-                .args(["-l", language, "-t", &self.threads.to_string()])
                 .args(["-np", "-oj", "-of"])
                 .arg(&out)
                 .output()
@@ -135,6 +187,37 @@ impl Whisper {
         segments.sort_by(|a, b| a.start.total_cmp(&b.start));
         Ok(segments)
     }
+}
+
+/// Downloads `url` to `file`, checking size and SHA-256.
+async fn download(url: &str, file: &Path, sum: &str, size: u64) -> anyhow::Result<()> {
+    if let Some(dir) = file.parent() {
+        tokio::fs::create_dir_all(dir).await?;
+    }
+    let tmp = file.with_extension("part");
+    tracing::info!(url, bytes = size, "downloading model");
+    let status = Command::new("curl")
+        .args(["-fsSL", "--retry", "3", "-o"])
+        .arg(&tmp)
+        .arg(url)
+        .status()
+        .await
+        .context("run curl")?;
+    if !status.success() {
+        let _ = tokio::fs::remove_file(&tmp).await;
+        bail!("downloading {url} failed ({status})");
+    }
+    let actual = {
+        let tmp = tmp.clone();
+        tokio::task::spawn_blocking(move || sha256_file(&tmp)).await??
+    };
+    if actual != sum {
+        let _ = tokio::fs::remove_file(&tmp).await;
+        bail!("checksum mismatch for {url}: {actual}");
+    }
+    tokio::fs::rename(&tmp, file).await?;
+    tracing::info!(file = %file.display(), "model ready");
+    Ok(())
 }
 
 fn sha256_file(path: &Path) -> anyhow::Result<String> {

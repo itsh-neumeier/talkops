@@ -58,20 +58,30 @@ voicemail into text:
   settings.
 - The voicemail e-mail waits for the transcript and contains the text
   (on failure it is sent without text).
-- The first time, the worker downloads the speech model (about 150 MB) from
-  the official whisper.cpp repository and verifies its checksum; afterwards it
-  works offline.
+- The first time, the worker downloads the speech model (about 550 MB) and
+  the voice activity model (Silero VAD, about 1 MB) from the official
+  whisper.cpp repositories and verifies their checksums; afterwards it works
+  offline.
+- Voice activity detection (VAD) cuts out silence and hold music before
+  Whisper transcribes. This prevents invented sentences in pauses and speeds
+  recognition up. Turn it off with `TALKOPS_WHISPER_VAD=false`.
 
 Choosing a model (`.env`):
 
 | `TALKOPS_WHISPER_MODEL` | Size | Note |
 |---|---|---|
-| `base` (default) | ~150 MB | fast, good for clear speech |
-| `small` | ~490 MB | more accurate, about three times slower |
+| `large-v3-turbo-q5_0` (default) | ~550 MB | very accurate, also at phone quality; ~2 GB RAM |
+| `large-v3-turbo-q8_0` | ~870 MB | slightly more accurate |
+| `large-v3-turbo` | ~1.6 GB | full accuracy, needs a lot of RAM |
+| `medium-q5_0` / `medium` | ~540 MB / 1.5 GB | alternative to turbo |
+| `small` | ~490 MB | for weak hardware (e.g. Raspberry Pi) |
+| `base` | ~150 MB | fast but much less accurate (default up to 1.2) |
 
-Place other models (e.g. `medium`) as `ggml-<name>.bin` in the `models`
-volume yourself and set their name. Further option: `TALKOPS_WHISPER_THREADS`
-(CPU threads per transcription, default up to 4).
+On a current 4-core x86 server `large-v3-turbo-q5_0` needs about a third to
+half of the call duration. If you set `base` explicitly, remove or change
+that line in your `.env`. Place other models as `ggml-<name>.bin` in the
+`models` volume yourself and set their name. Further option:
+`TALKOPS_WHISPER_THREADS` (CPU threads per transcription, default up to 4).
 
 ## Search
 

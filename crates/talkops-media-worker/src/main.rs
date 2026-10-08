@@ -99,10 +99,19 @@ struct Args {
     )]
     whisper_bin: PathBuf,
 
-    /// Whisper model (`ggml-<name>.bin`); `base` and `small` are downloaded
-    /// automatically on first use.
-    #[arg(long, env = "TALKOPS_WHISPER_MODEL", default_value = "base")]
+    /// Whisper model (`ggml-<name>.bin`); `base`, `small`, `medium(-q5_0)` and
+    /// `large-v3-turbo(-q5_0, -q8_0)` are downloaded automatically.
+    #[arg(
+        long,
+        env = "TALKOPS_WHISPER_MODEL",
+        default_value = "large-v3-turbo-q5_0"
+    )]
     whisper_model: String,
+
+    /// Transcribe only detected speech (Silero VAD); avoids invented text in
+    /// pauses and hold music.
+    #[arg(long, env = "TALKOPS_WHISPER_VAD", default_value_t = true, action = clap::ArgAction::Set)]
+    whisper_vad: bool,
 
     /// CPU threads per transcription (default: up to 4).
     #[arg(long, env = "TALKOPS_WHISPER_THREADS")]
@@ -175,6 +184,7 @@ async fn main() -> anyhow::Result<()> {
             models_dir: args.models_dir.clone(),
             model: args.whisper_model.clone(),
             threads: threads.max(1),
+            vad: args.whisper_vad,
         },
         voicemail_dir: args.voicemail_dir.clone(),
         sounds_dir: args.sounds_dir.clone(),

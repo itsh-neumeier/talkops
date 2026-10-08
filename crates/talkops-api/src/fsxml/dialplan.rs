@@ -253,6 +253,14 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
             format!("hold_music={}", hold_music(r.sounds, tenant, &settings)),
         ),
     ];
+    // Dialled into a softphone conference (loopback leg): offer the usual
+    // codecs instead of the loopback's L16. Trunk routes set their own.
+    if req.var("talkops_conference").is_some() {
+        actions.push((
+            "export",
+            format!("nolocal:absolute_codec_string={CONFERENCE_CODECS}"),
+        ));
+    }
 
     // A door station rings: whatever it dials goes to its configured target.
     if let Some(station) = doors::for_extension(pool, caller.id).await? {
@@ -331,6 +339,9 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
     )?);
     Ok(actions)
 }
+
+/// Codecs offered to participants dialled into a conference.
+const CONFERENCE_CODECS: &str = "OPUS,G722,PCMA,PCMU";
 
 /// Confirmation tone for feature codes (rising two-tone beep).
 const CONFIRM_TONE: &str = "tone_stream://%(200,100,800);%(300,0,1200)";

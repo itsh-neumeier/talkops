@@ -7,6 +7,7 @@
 	import { errorMessage } from '#lib/util.ts';
 
 	type Account = {
+		extension_id: string;
 		extension_number: string;
 		display_name: string;
 		sip_username: string;
@@ -32,6 +33,11 @@
 	/** For redialling: an empty number calls the last one again. */
 	let lastDialed = $state('');
 	let connectedAt = $state(0);
+	/** Conference: the form to add someone, and who was added. */
+	let confOpen = $state(false);
+	let confNumber = $state('');
+	let confBusy = $state(false);
+	let conferenced = $state<string[]>([]);
 	let now = $state(Date.now());
 	let localVideo = $state<HTMLVideoElement>();
 	let remoteVideo = $state<HTMLVideoElement>();
@@ -50,6 +56,30 @@
 		const number = raw.replace(/^(\d+)-\d+$/, '$1');
 		const name = id.displayName && id.displayName !== raw ? id.displayName : '';
 		peer = { name, number };
+	}
+
+	function sipDebug(): boolean {
+		try {
+			return localStorage.getItem('talkops.sipDebug') === '1';
+		} catch {
+			return false;
+		}
+	}
+
+	/**
+	 * Key tones as RTP telephone events (RFC 2833, what voicemail and menus
+	 * expect); SIP INFO only if the browser cannot send them.
+	 */
+	function sendTone(k: string) {
+		const session = (user as unknown as { session?: Session } | null)?.session;
+		const sdh = session?.sessionDescriptionHandler as Web.SessionDescriptionHandler | undefined;
+		let sent = false;
+		try {
+			sent = sdh?.sendDtmf(k, { duration: 120, interToneGap: 70 }) ?? false;
+		} catch {
+			sent = false;
+		}
+		if (!sent) user?.sendDTMF(k).catch(() => {});
 	}
 
 	function media(withVideo: boolean) {
@@ -79,7 +109,9 @@
 				authorizationUsername: account.sip_username,
 				authorizationPassword: account.sip_password,
 				displayName: account.display_name,
-				logBuiltinEnabled: false,
+				// `localStorage['talkops.sipDebug'] = '1'` logs SIP to the console.
+				logBuiltinEnabled: sipDebug(),
+				logLevel: sipDebug() ? 'debug' : 'error',
 				sessionDescriptionHandlerFactoryOptions: {
 					// Without TURN no external STUN server is asked: TalkOps finds
 					// the browser's address itself.
@@ -119,6 +151,9 @@
 					peer = null;
 					connectedAt = 0;
 					number = '';
+					confOpen = false;
+					confNumber = '';
+					conferenced = [];
 				},
 				onCallHold: (h) => (held = h)
 			}
@@ -179,7 +214,7 @@
 		flashed = k;
 		clearTimeout(flashTimer);
 		flashTimer = setTimeout(() => (flashed = ''), 150);
-		if (status === 'incall') user?.sendDTMF(k).catch(() => {});
+		if (status === 'incall') sendTone(k);
 		else number += k;
 	}
 
@@ -218,6 +253,31 @@
 		if (muted) user.unmute();
 		else user.mute();
 		muted = !muted;
+	}
+
+	/** Adds a participant: the call becomes a conference on the server. */
+	async function addParticipant(e: SubmitEvent) {
+		e.preventDefault();
+		const session = (user as unknown as { session?: Session } | null)?.session;
+		const callId = session?.dialog?.callId;
+		const dest = confNumber.replace(/[^0-9*#+]/g, '');
+		if (!account || !callId || !dest) return;
+		error = '';
+		confBusy = true;
+		try {
+			await api.post('/me/webrtc/conference', {
+				extension_id: account.extension_id,
+				call_id: callId,
+				number: dest
+			});
+			conferenced = [...conferenced, dest];
+			confNumber = '';
+			confOpen = false;
+		} catch (err) {
+			error = errorMessage(err);
+		} finally {
+			confBusy = false;
+		}
 	}
 
 	async function toggleHold() {
@@ -365,6 +425,30 @@
 						onclick={toggleHold}>{held ? t('phone.resume') : t('phone.hold')}</button
 					>
 				</div>
+				{#if status === 'incall'}
+					{#if confOpen}
+						<form class="flex gap-2" onsubmit={addParticipant}>
+							<input
+								class="input mt-0 flex-1 font-mono"
+								bind:value={confNumber}
+								placeholder={t('phone.number')}
+								aria-label={t('phone.confNumber')}
+							/>
+							<button class="btn btn-primary" disabled={confBusy || !confNumber}
+								>{t('phone.confAdd')}</button
+							>
+						</form>
+					{:else}
+						<button class="btn w-full" onclick={() => (confOpen = true)}
+							>👥 {t('phone.conference')}</button
+						>
+					{/if}
+					{#if conferenced.length}
+						<p class="hint" data-testid="conference">
+							{t('phone.confMembers', { numbers: conferenced.join(', ') })}
+						</p>
+					{/if}
+				{/if}
 				<button class="btn btn-danger w-full" onclick={() => user?.hangup()}
 					>{t('phone.hangup')}</button
 				>

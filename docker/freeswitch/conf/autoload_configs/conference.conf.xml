@@ -1,4 +1,15 @@
 <configuration name="conference.conf" description="Conferences (profiles served by TalkOps)">
   <caller-controls/>
-  <profiles/>
+  <profiles>
+    <!-- Ad-hoc conferences from the softphone (talkops-api conference.rs):
+         wideband mixing, no entry/exit sounds, no noise gate. -->
+    <profile name="talkops">
+      <param name="rate" value="16000"/>
+      <param name="interval" value="20"/>
+      <param name="energy-level" value="0"/>
+      <param name="comfort-noise" value="false"/>
+      <param name="caller-controls" value="none"/>
+      <param name="video-mode" value="passthrough"/>
+    </profile>
+  </profiles>
 </configuration>

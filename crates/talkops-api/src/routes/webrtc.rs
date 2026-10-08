@@ -27,7 +27,9 @@ use crate::error::{ApiError, ApiResult};
 use crate::fsxml::SIP_DOMAIN;
 
 pub fn router() -> OpenApiRouter<AppState> {
-    OpenApiRouter::new().routes(routes!(webrtc_account))
+    OpenApiRouter::new()
+        .routes(routes!(webrtc_account))
+        .routes(routes!(conference_add))
 }
 
 #[derive(Deserialize, ToSchema)]
@@ -124,6 +126,74 @@ pub async fn webrtc_account(
             .collect(),
         relay_only: state.turn.as_ref().is_some_and(|t| t.relay_only),
     }))
+}
+
+#[derive(Deserialize, ToSchema)]
+pub struct ConferenceRequest {
+    /// Extension of the softphone (as in [WebrtcAccount]).
+    pub extension_id: Uuid,
+    /// SIP Call-ID of the softphone's current call.
+    pub call_id: String,
+    /// Who to add (internal or external number).
+    pub number: String,
+}
+
+#[derive(Serialize, ToSchema)]
+pub struct ConferenceResponse {
+    pub conference: String,
+}
+
+/// Turns the softphone's current call into a conference and dials another
+/// participant into it (again for further participants).
+#[utoipa::path(post, path = "/api/v1/me/webrtc/conference", tag = "extensions", request_body = ConferenceRequest, responses((status = 202, body = ConferenceResponse), (status = 409, description = "no active call")))]
+pub async fn conference_add(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Json(req): Json<ConferenceRequest>,
+) -> ApiResult<(axum::http::StatusCode, Json<ConferenceResponse>)> {
+    use crate::conference::{self, ConferenceError, Initiator};
+    let ext = extensions::list_for_user(&state.db, auth.tenant, auth.id)
+        .await?
+        .into_iter()
+        .find(|e| e.id == req.extension_id && e.enabled)
+        .ok_or(ApiError::NotFound)?;
+    let number = conference::clean_number(&req.number)
+        .ok_or_else(|| ApiError::BadRequest("invalid number".into()))?;
+    if req.call_id.is_empty() || req.call_id.len() > 256 {
+        return Err(ApiError::BadRequest("invalid call id".into()));
+    }
+    let client = state
+        .telephony
+        .esl
+        .get()
+        .await
+        .ok_or_else(|| ApiError::Internal(ConferenceError::Unavailable.to_string()))?;
+    let who = Initiator {
+        tenant: auth.tenant.0,
+        extension_id: ext.id,
+        extension_number: &ext.number,
+        display_name: &ext.display_name,
+        call_id: &req.call_id,
+    };
+    let room = conference::add_participant(client, &who, &number)
+        .await
+        .map_err(|e| match e {
+            ConferenceError::NoCall => ApiError::Conflict(e.to_string()),
+            other => ApiError::Internal(other.to_string()),
+        })?;
+    audit::record(
+        &state.db,
+        &auth.actor(),
+        "conference",
+        "call",
+        Some(room.clone()),
+        json!({"extension": ext.number, "number": number}),
+    )
+    .await?;
+    Ok((
+        axum::http::StatusCode::ACCEPTED,
+        Json(ConferenceResponse { conference: room }),
+    ))
 }
 
 /// Same-origin check against cross-site WebSocket hijacking (the session

@@ -4,6 +4,7 @@ pub mod attendant;
 pub mod auth;
 pub mod backup;
 pub mod callcenter;
+pub mod conference;
 pub mod config;
 pub mod doors;
 pub mod error;

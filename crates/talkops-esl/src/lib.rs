@@ -155,6 +155,18 @@ impl EslClient {
         Ok(body)
     }
 
+    /// Starts an API command in the background (`bgapi <cmd>`), e.g. an
+    /// `originate` that would otherwise block this connection until the
+    /// callee answers. Returns the job UUID.
+    pub async fn bgapi(&self, command: &str) -> Result<String, EslError> {
+        let reply = self.send(&format!("bgapi {command}")).await?;
+        let text = reply.headers.get("Reply-Text").unwrap_or_default();
+        match text.strip_prefix("+OK Job-UUID: ") {
+            Some(job) => Ok(job.trim().to_owned()),
+            None => Err(EslError::CommandFailed(text.trim_end().to_owned())),
+        }
+    }
+
     /// Subscribes to events in plain format, e.g. `["CHANNEL_CREATE", "CUSTOM sofia::register"]`.
     pub async fn subscribe(&self, events: &[&str]) -> Result<(), EslError> {
         let reply = self

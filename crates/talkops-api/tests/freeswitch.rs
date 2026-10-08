@@ -1328,3 +1328,41 @@ async fn hold_music_selection(db: PgPool) {
     bad["hold_music_clip_id"] = json!(uuid::Uuid::from_u128(8));
     assert_ne!(f.admin.put("/api/v1/settings", bad).await.0, StatusCode::OK);
 }
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn conference_legs_offer_real_codecs(db: PgPool) {
+    let router = router(db);
+    let f = fixture(&router).await;
+    let ext_id = f.ext21["id"].as_str().unwrap();
+    let (status, xml) = fs_post(
+        &router,
+        "/fs/xml",
+        &[
+            ("section", "dialplan"),
+            ("Caller-Context", "internal"),
+            ("Caller-Destination-Number", "20"),
+            ("Caller-Caller-ID-Number", "21"),
+            ("variable_talkops_tenant_id", TENANT),
+            ("variable_talkops_extension_id", ext_id),
+            ("variable_talkops_conference", "talkops-abc"),
+        ],
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let a = actions(&xml);
+    assert!(
+        has(
+            &a,
+            "export",
+            "nolocal:absolute_codec_string=OPUS,G722,PCMA,PCMU"
+        ),
+        "{a:?}"
+    );
+    assert!(has(&a, "bridge", &ring20(&f)));
+    // Normal calls negotiate late, without a fixed list.
+    let a = internal_call(&router, &f.ext21, "20").await;
+    assert!(
+        !a.iter()
+            .any(|(_, d)| d.starts_with("absolute_codec_string"))
+    );
+}

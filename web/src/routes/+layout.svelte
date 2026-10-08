@@ -51,7 +51,7 @@
 
 	function active(href: string) {
 		const path = page.url.pathname;
-		return href === '/' ? path === '/' : path.startsWith(href);
+		return href === '/' ? path === '/' : path === href || path.startsWith(href + '/');
 	}
 </script>
 

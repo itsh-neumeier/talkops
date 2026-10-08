@@ -13,7 +13,7 @@
 	} from '#lib/api.ts';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
 	import Modal from '#lib/components/Modal.svelte';
-	import { t } from '#lib/i18n/index.svelte.ts';
+	import { formatDateTime, t } from '#lib/i18n/index.svelte.ts';
 	import { hasRole } from '#lib/session.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
 
@@ -150,7 +150,7 @@
 			</div>
 			<p class="text-sm text-slate-500">
 				{t('phones.lastSeen')}: {phone.last_seen_at
-					? new Date(phone.last_seen_at).toLocaleString()
+					? formatDateTime(phone.last_seen_at)
 					: t('phones.neverSeen')}{phone.last_ip ? ` · ${phone.last_ip}` : ''}{phone.last_firmware
 					? ` · ${t('phones.firmware')} ${phone.last_firmware}`
 					: ''}

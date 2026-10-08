@@ -3,7 +3,7 @@
 	import { api, type VoicemailMessage } from '#lib/api.ts';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
 	import TranscriptView from '#lib/components/TranscriptView.svelte';
-	import { t } from '#lib/i18n/index.svelte.ts';
+	import { formatDateTime, t } from '#lib/i18n/index.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
 
 	let { extensionId }: { extensionId: string } = $props();
@@ -65,7 +65,7 @@
 							>{/if}
 						{#if m.status === 'new'}<span class="badge badge-ok">{t('vm.new')}</span>{/if}
 						<div class="text-sm text-slate-500">
-							{new Date(m.created_at).toLocaleString()} · {duration(m.duration_secs)}
+							{formatDateTime(m.created_at)} · {duration(m.duration_secs)}
 						</div>
 					</div>
 					<div class="space-x-1">

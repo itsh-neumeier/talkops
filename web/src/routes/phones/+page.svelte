@@ -11,7 +11,7 @@
 	} from '#lib/api.ts';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
 	import Modal from '#lib/components/Modal.svelte';
-	import { t } from '#lib/i18n/index.svelte.ts';
+	import { formatDateTime, t } from '#lib/i18n/index.svelte.ts';
 	import { hasRole } from '#lib/session.svelte.ts';
 	import { copy, errorMessage } from '#lib/util.ts';
 
@@ -105,7 +105,7 @@
 	}
 
 	function seen(p: Phone) {
-		return p.last_seen_at ? new Date(p.last_seen_at).toLocaleString() : t('phones.neverSeen');
+		return p.last_seen_at ? formatDateTime(p.last_seen_at) : t('phones.neverSeen');
 	}
 </script>
 

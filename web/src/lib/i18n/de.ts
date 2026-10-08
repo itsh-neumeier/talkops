@@ -71,7 +71,7 @@ const de: Record<keyof typeof en, string> = {
 	'ext.outboundNumber': 'Ausgehende Rufnummer',
 	'ext.defaultNumber': 'Standardrufnummer',
 	'ext.hideCallerId': 'Rufnummer unterdrücken (CLIR)',
-	'ext.ringTimeout': 'Klingeldauer (Sekunden)',
+	'ext.ringTimeout': 'Klingeldauer bis Voicemail/Weiterleitung (Sekunden)',
 	'ext.new': 'Neue Nebenstelle',
 	'ext.devices': 'Geräte',
 	'ext.noDevices':
@@ -250,6 +250,8 @@ const de: Record<keyof typeof en, string> = {
 	'vm.pinHint': '4–10 Ziffern. Nötig, um die Mailbox von einem anderen Telefon abzufragen (*98).',
 	'vm.language': 'Sprache der Ansagen',
 	'vm.languageDefault': 'Systemstandard',
+	'vm.ringTime': 'Voicemail nimmt ab nach (Sekunden)',
+	'vm.ringTimeHint': 'Etwa {rings}× Klingeln. Gilt auch für die Weiterleitung bei Nichtmelden.',
 	'vm.maxLength': 'Max. Nachrichtenlänge (s)',
 	'vm.greeting': 'Ansage',
 	'vm.greetingRecordHint': 'Im Browser aufnehmen oder am Telefon: *97 wählen, dann die 5 drücken.',

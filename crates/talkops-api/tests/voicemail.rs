@@ -71,6 +71,26 @@ async fn voicemail_api(db: PgPool) {
         .await;
     assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
 
+    // The user decides how long the phone rings before voicemail answers.
+    assert_eq!(b["ring_timeout_secs"], 30);
+    let (status, b) = anna
+        .put(
+            &format!("/api/v1/extensions/{ext_id}/voicemail"),
+            json!({"enabled": true, "ring_timeout_secs": 15}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{b}");
+    assert_eq!(b["ring_timeout_secs"], 15);
+    let (_, e) = admin.get(&format!("/api/v1/extensions/{ext_id}")).await;
+    assert_eq!(e["ring_timeout_secs"], 15);
+    let (status, _) = anna
+        .put(
+            &format!("/api/v1/extensions/{ext_id}/voicemail"),
+            json!({"enabled": true, "ring_timeout_secs": 2}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+
     // A message as the voicemail flow would store it.
     let ext_uuid: Uuid = ext_id.parse().unwrap();
     let msg = voicemail::create_message(

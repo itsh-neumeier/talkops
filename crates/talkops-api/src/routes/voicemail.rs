@@ -49,6 +49,8 @@ pub struct VoicemailBoxView {
     #[serde(flatten)]
     pub settings: VoicemailBox,
     pub has_pin: bool,
+    /// How long the extension rings before voicemail answers.
+    pub ring_timeout_secs: i32,
     pub new_messages: u32,
     pub saved_messages: u32,
 }
@@ -60,11 +62,12 @@ pub async fn get_box(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<Json<VoicemailBoxView>> {
-    owned_extension(&state, &auth, id).await?;
+    let ext = owned_extension(&state, &auth, id).await?;
     let vbox = voicemail::get_box(&state.db, auth.tenant, id).await?;
     let (new_messages, saved_messages) = voicemail::counts(&state.db, id).await?;
     Ok(Json(VoicemailBoxView {
         has_pin: vbox.has_pin(),
+        ring_timeout_secs: ext.ring_timeout_secs,
         settings: vbox,
         new_messages,
         saved_messages,
@@ -83,6 +86,9 @@ pub async fn update_box(
     let lang = settings::get(&state.db, auth.tenant)
         .await?
         .default_language;
+    if let Some(secs) = input.ring_timeout_secs {
+        extensions::set_ring_timeout(&state.db, auth.tenant, id, secs).await?;
+    }
     let vbox = voicemail::update_box(&state.db, auth.tenant, id, &input, &lang).await?;
     audit::record(
         &state.db,
@@ -96,12 +102,14 @@ pub async fn update_box(
             "pin_changed": input.pin.is_some(),
             "greeting": vbox.greeting,
             "email_notify": vbox.email_notify,
+            "ring_timeout_secs": input.ring_timeout_secs,
         }),
     )
     .await?;
     let (new_messages, saved_messages) = voicemail::counts(&state.db, id).await?;
     Ok(Json(VoicemailBoxView {
         has_pin: vbox.has_pin(),
+        ring_timeout_secs: input.ring_timeout_secs.unwrap_or(ext.ring_timeout_secs),
         settings: vbox,
         new_messages,
         saved_messages,

@@ -687,6 +687,7 @@ fn vm_input() -> VoicemailBoxInput {
         greeting: "default".into(),
         greeting_text: String::new(),
         max_message_secs: 120,
+        ring_timeout_secs: None,
         greeting_clip_id: None,
     }
 }
@@ -723,6 +724,7 @@ async fn voicemail_boxes_messages_and_smtp(pool: PgPool) {
         },
         VoicemailBoxInput {
             max_message_secs: 5,
+            ring_timeout_secs: None,
             ..vm_input()
         },
     ] {

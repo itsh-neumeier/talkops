@@ -71,7 +71,8 @@
 				greeting,
 				greeting_text: box.greeting_text,
 				greeting_clip_id: clip,
-				max_message_secs: Number(box.max_message_secs)
+				max_message_secs: Number(box.max_message_secs),
+				ring_timeout_secs: Number(box.ring_timeout_secs)
 			});
 			apply(updated);
 			pin = '';
@@ -122,6 +123,23 @@
 					max="600"
 					bind:value={box.max_message_secs}
 				/>
+			</div>
+			<div>
+				<label for="vm-ring-{extensionId}">{t('vm.ringTime')}</label>
+				<input
+					id="vm-ring-{extensionId}"
+					class="input"
+					type="number"
+					min="5"
+					max="300"
+					step="5"
+					bind:value={box.ring_timeout_secs}
+				/>
+				<p class="hint">
+					{t('vm.ringTimeHint', {
+						rings: Math.max(1, Math.round(Number(box.ring_timeout_secs) / 5))
+					})}
+				</p>
 			</div>
 		</div>
 		<p class="hint">{t('vm.pinHint')}</p>

@@ -96,6 +96,9 @@ pub struct VoicemailBoxInput {
     pub greeting_clip_id: Option<Uuid>,
     #[serde(default = "default_max_secs")]
     pub max_message_secs: i32,
+    /// Ring time of the extension before voicemail answers (kept if absent).
+    #[serde(default)]
+    pub ring_timeout_secs: Option<i32>,
 }
 
 fn yes() -> bool {

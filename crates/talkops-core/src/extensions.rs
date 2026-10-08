@@ -171,6 +171,34 @@ pub async fn create(
         .await?)
 }
 
+/// How long the extension rings before voicemail or the no-answer
+/// forwarding takes over (5–300 s); changeable by the extension's user.
+pub async fn set_ring_timeout(
+    db: &sqlx::PgPool,
+    tenant: TenantId,
+    id: Uuid,
+    secs: i32,
+) -> CoreResult<()> {
+    if !(5..=300).contains(&secs) {
+        return Err(CoreError::Validation(
+            "ring time must be 5 to 300 seconds".into(),
+        ));
+    }
+    let done = sqlx::query(
+        "UPDATE extensions SET ring_timeout_secs = $3, updated_at = now()
+         WHERE tenant_id = $1 AND id = $2",
+    )
+    .bind(tenant)
+    .bind(id)
+    .bind(secs)
+    .execute(db)
+    .await?;
+    if done.rows_affected() == 0 {
+        return Err(CoreError::NotFound);
+    }
+    Ok(())
+}
+
 pub async fn update(
     db: &sqlx::PgPool,
     tenant: TenantId,

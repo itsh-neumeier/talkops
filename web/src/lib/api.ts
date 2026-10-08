@@ -409,6 +409,8 @@ export interface VoicemailBox {
 	greeting_status: 'none' | 'pending' | 'ready' | 'failed';
 	greeting_clip_id: string | null;
 	max_message_secs: number;
+	/** How long the extension rings before voicemail answers. */
+	ring_timeout_secs: number;
 	new_messages: number;
 	saved_messages: number;
 }

@@ -81,8 +81,9 @@ groups:
 - **Status**: version, uptime of TalkOps and FreeSWITCH, active channels.
 - **Debug logging**: pick a level (debug/info/notice/warning), a duration in
   minutes (1–60) and optionally **SIP trace**, *Start*, reproduce the
-  problem. The log follows live (filterable) and downloads as a text file to
-  attach to a support request. The capture stops by itself after the chosen
+  problem. The log follows live (filterable), can be copied to the clipboard
+  with *Copy* (the lines shown, after filtering) or downloaded as a text file
+  to attach to a support request. The capture stops by itself after the chosen
   time and switches the SIP trace off again. This is
   `fs_cli -x "sofia global siptrace on"` with `/log debug`, without access to
   the server.

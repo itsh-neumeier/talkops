@@ -7,10 +7,27 @@ export function errorMessage(err: unknown): string {
 	return String(err);
 }
 
-export async function copy(text: string) {
+/** Copy text to the clipboard; false if the browser refused. */
+export async function copy(text: string): Promise<boolean> {
 	try {
 		await navigator.clipboard.writeText(text);
+		return true;
 	} catch {
-		// clipboard unavailable (insecure context); the value is visible anyway
+		// Clipboard API needs HTTPS; fall back to the legacy copy command,
+		// which also works on plain-HTTP LAN addresses.
+		const area = document.createElement('textarea');
+		area.value = text;
+		area.setAttribute('readonly', '');
+		area.style.position = 'fixed';
+		area.style.opacity = '0';
+		document.body.appendChild(area);
+		area.select();
+		try {
+			return document.execCommand('copy');
+		} catch {
+			return false;
+		} finally {
+			area.remove();
+		}
 	}
 }

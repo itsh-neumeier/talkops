@@ -15,6 +15,9 @@ All notable changes to TalkOps. The format follows
   counts after TalkOps vanished without a BYE ends at the provider within
   10 minutes. Takes effect after the trunk profile restarts (restart
   FreeSWITCH once).
+- **Copy log:** the debug log under Settings → System can be copied to the
+  clipboard (the lines shown, respecting the filter), also when the UI is
+  opened over plain HTTP.
 
 ### Changed
 

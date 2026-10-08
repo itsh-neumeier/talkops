@@ -3,7 +3,7 @@
 	import { api } from '#lib/api.ts';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
 	import { formatDateTime, t } from '#lib/i18n/index.svelte.ts';
-	import { errorMessage } from '#lib/util.ts';
+	import { copy, errorMessage } from '#lib/util.ts';
 
 	type Capture = {
 		running: boolean;
@@ -106,6 +106,15 @@
 		} catch (err) {
 			error = errorMessage(err);
 		}
+	}
+
+	let copied = $state<'' | 'ok' | 'failed'>('');
+
+	/** Copies the lines shown (respecting the filter) as plain text. */
+	async function copyLog() {
+		const text = shown.map((l) => (l.text.endsWith('\n') ? l.text : l.text + '\n')).join('');
+		copied = (await copy(text)) ? 'ok' : 'failed';
+		setTimeout(() => (copied = ''), 2500);
 	}
 
 	async function clearLog() {
@@ -287,6 +296,13 @@
 			><input type="checkbox" bind:checked={follow} /> {t('diag.follow')}</label
 		>
 		<div class="ml-auto flex gap-2">
+			<button class="btn" disabled={!shown.length} onclick={copyLog} data-testid="copy-log"
+				>{copied === 'ok'
+					? `✓ ${t('diag.copied')}`
+					: copied === 'failed'
+						? t('diag.copyFailed')
+						: `⧉ ${t('diag.copy')}`}</button
+			>
 			<a class="btn" href="/api/v1/diagnostics/log.txt" download>⬇ {t('diag.download')}</a>
 			<button class="btn" onclick={clearLog}>{t('diag.clear')}</button>
 		</div>

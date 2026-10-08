@@ -761,7 +761,18 @@ const de: Record<keyof typeof en, string> = {
 	'dash.dir.inbound': 'Eingehend',
 	'dash.dir.outbound': 'Ausgehend',
 	'dash.dir.internal': 'Intern',
-	'dash.state.parked': 'Geparkt'
+	'dash.state.parked': 'Geparkt',
+	'phone.keyboardHint':
+		'Tastatur: Ziffern und Nummernblock wählen (im Gespräch als Tastentöne), Rücktaste löscht, Enter ruft an bzw. nimmt an, Esc legt auf.',
+	'flow.menu.title': 'Schritt',
+	'flow.menu.edit': 'Bearbeiten',
+	'flow.menu.replace': 'Ersetzen durch …',
+	'flow.menu.remove': 'Schritt löschen',
+	'flow.menu.removeWithBelow': 'Schritt und {n} darunter löschen',
+	'flow.menu.removeKey': 'Zweig „{key}“ entfernen',
+	'flow.menu.confirmRemove': '{n} Schritte löschen?',
+	'flow.menu.confirmBranches': 'Die {n} Schritte darunter werden gelöscht. Fortfahren?',
+	'flow.rightClickHint': 'Tipp: Rechtsklick auf einen Schritt oder eine Taste für weitere Aktionen.'
 };
 
 export default de;

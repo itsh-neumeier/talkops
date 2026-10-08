@@ -29,6 +29,22 @@ dort deaktiviert oder gelöscht werden.
   öffentliche IP mit freigegebenen RTP-Ports bzw. einen TURN-Server – das
   ist noch nicht eingebaut.
 
+## Bedienen mit der Tastatur
+
+Ziffern, `*` und `#` – auch über den Nummernblock – wählen; im Gespräch
+werden sie als Tastentöne gesendet (z. B. für Sprachmenüs). **Rücktaste**
+löscht, **Enter** ruft an bzw. nimmt einen Anruf an, **Esc** legt auf,
+lehnt ab oder leert das Wählfeld.
+
+## Hinter einem Reverse-Proxy (z. B. Zoraxy)
+
+- WebSocket-Weiterleitung einschalten, Timeout mindestens 3600 s und
+  „bei Aktivität verlängern“, zum Ziel HTTP/1.1.
+- Den Original-Host weitergeben oder `X-Forwarded-Host: <Domain>` setzen,
+  sowie `X-Forwarded-For` (Adresse des Browsers für die Sprachverbindung).
+- Keine eigene Permission-Policy setzen – TalkOps erlaubt Mikrofon und
+  Kamera selbst.
+
 ## Video
 
 Video zu Tischtelefonen (z. B. Yealink T58W, VP59) und Türsprechstellen

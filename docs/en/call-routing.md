@@ -43,7 +43,7 @@ step, clicking a step opens its settings on the right.
 | Go to step | Jumps to another step, e.g. "back to the main menu". |
 | Hang up | Says goodbye and ends the call. |
 
-An empty branch ends the call. Prompts are generated with the computer voice,
+An empty branch ends the call. **Right-clicking** a step opens a menu to edit it, replace it with another step or remove it (with the steps below); right-clicking a key removes that branch. Prompts are generated with the computer voice,
 recorded in the browser or uploaded, as for voicemail (see
 [voicemail](voicemail.md#greetings-and-audio)). Voice menus from TalkOps 1.0 are
 converted into a Smart Attendant with a keypress menu on update.

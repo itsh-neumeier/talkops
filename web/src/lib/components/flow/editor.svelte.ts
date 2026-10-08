@@ -1,11 +1,20 @@
 // Shared state of the Smart Attendant editor: the flow being edited and the
 // selected step (with the slot holding it, so it can be replaced).
 
-import type { FlowNode } from '#lib/api.ts';
+import type { FlowNode, FlowNodeType } from '#lib/api.ts';
+import { createNode, newId, walk } from '#lib/flow.ts';
 
 export interface Slot {
 	holder: Record<string, unknown>;
 	key: string;
+}
+
+/** An entry of the right-click menu; `children` open a sub-list. */
+export interface MenuItem {
+	label: string;
+	danger?: boolean;
+	action?: () => void;
+	children?: MenuItem[];
 }
 
 export class FlowEditor {
@@ -15,6 +24,8 @@ export class FlowEditor {
 	slot = $state<Slot | null>(null);
 	/** The empty slot whose "add step" menu is open. */
 	adding = $state.raw<object | null>(null);
+	/** The open right-click menu (viewport position). */
+	menu = $state.raw<{ x: number; y: number; items: MenuItem[] } | null>(null);
 	/** Set by the settings panel: saves pending audio before switching. */
 	flush: (() => Promise<void>) | null = null;
 
@@ -46,9 +57,25 @@ export class FlowEditor {
 	}
 
 	remove() {
-		if (!this.slot) return;
-		this.slot.holder[this.slot.key] = null;
-		this.selected = null;
-		this.slot = null;
+		if (this.slot) this.removeAt(this.slot);
+	}
+
+	/** Removes the step in `slot` and everything below it. */
+	removeAt(slot: Slot) {
+		const node = slot.holder[slot.key] as FlowNode | null;
+		if (node && walk(node).some((n) => n.id === this.selected)) {
+			this.selected = null;
+			this.slot = null;
+		}
+		slot.holder[slot.key] = null;
+	}
+
+	/** Replaces the step in `slot` by a new step of `type` (its branches go). */
+	replaceAt(slot: Slot, type: FlowNodeType) {
+		this.removeAt(slot);
+		const root = this.root.flow;
+		const id = newId(root, type);
+		slot.holder[slot.key] = createNode(type, id, root?.id ?? id);
+		void this.select(id, slot);
 	}
 }

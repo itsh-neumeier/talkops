@@ -3,17 +3,27 @@
 	// an empty slot with a "+" to add a step. Renders itself recursively.
 	import type { FlowNode, FlowNodeType } from '#lib/api.ts';
 	import { describe, targets } from '#lib/destinations.svelte.ts';
-	import { ICONS, NODE_TYPES, DIGITS, createNode, newId, typeHint, typeKey } from '#lib/flow.ts';
+	import {
+		ICONS,
+		NODE_TYPES,
+		DIGITS,
+		createNode,
+		newId,
+		typeHint,
+		typeKey,
+		walk
+	} from '#lib/flow.ts';
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import Self from './FlowSlot.svelte';
-	import type { FlowEditor } from './editor.svelte.ts';
+	import type { FlowEditor, MenuItem } from './editor.svelte.ts';
 
 	let {
 		holder,
 		key,
 		editor,
 		branch = '',
-		ending = ''
+		ending = '',
+		onremovebranch = undefined
 	}: {
 		holder: Record<string, unknown>;
 		key: string;
@@ -22,6 +32,8 @@
 		branch?: string;
 		/** What happens when this slot stays empty. */
 		ending?: string;
+		/** Removes the branch itself (keys of a menu). */
+		onremovebranch?: () => void;
 	} = $props();
 
 	const node = $derived(holder[key] as FlowNode | null);
@@ -91,6 +103,7 @@
 		key: string;
 		label: string;
 		ending: string;
+		remove?: () => void;
 	}
 
 	const branches = $derived.by((): Branch[] => {
@@ -103,11 +116,17 @@
 				return [{ holder: node, key: 'next', label: t('flow.branch.noAnswer'), ending: hangup }];
 			case 'menu':
 				return [
-					...node.options.map((o) => ({
+					...node.options.map((o, i) => ({
 						holder: o,
 						key: 'next',
 						label: t('flow.branch.key', { key: o.digit }),
-						ending: hangup
+						ending: hangup,
+						remove: () => {
+							if (node.type !== 'menu') return;
+							const removed = node.options[i];
+							if (removed?.next) editor.removeAt({ holder: removed, key: 'next' });
+							node.options.splice(i, 1);
+						}
 					})),
 					{ holder: node, key: 'timeout', label: t('flow.branch.noInput'), ending: hangup }
 				];
@@ -130,13 +149,65 @@
 	}
 
 	const selected = $derived(node !== null && editor.selected === node.id);
+
+	function openMenu(e: MouseEvent, items: MenuItem[]) {
+		e.preventDefault();
+		e.stopPropagation();
+		editor.adding = null;
+		editor.menu = { x: e.clientX, y: e.clientY, items };
+	}
+
+	function stepMenu(e: MouseEvent) {
+		if (!node) return;
+		const slot = { holder, key };
+		const below = walk(node).length - 1;
+		openMenu(e, [
+			{ label: t('flow.menu.edit'), action: () => editor.select(node.id, slot) },
+			{
+				label: t('flow.menu.replace'),
+				children: NODE_TYPES.filter((ty) => ty !== node.type).map((ty) => ({
+					label: t(typeKey(ty)),
+					action: () => {
+						if (below === 0 || confirm(t('flow.menu.confirmBranches', { n: below })))
+							editor.replaceAt(slot, ty);
+					}
+				}))
+			},
+			...(node.type === 'menu' ? [{ label: `+ ${t('flow.addKey')}`, action: addKey }] : []),
+			...(onremovebranch
+				? [
+						{
+							label: t('flow.menu.removeKey', { key: branch }),
+							danger: true,
+							action: onremovebranch
+						}
+					]
+				: []),
+			{
+				label: below ? t('flow.menu.removeWithBelow', { n: below }) : t('flow.menu.remove'),
+				danger: true,
+				action: () => {
+					if (below === 0 || confirm(t('flow.menu.confirmRemove', { n: below + 1 })))
+						editor.removeAt(slot);
+				}
+			}
+		]);
+	}
+
+	function branchMenu(e: MouseEvent) {
+		if (!onremovebranch) return;
+		openMenu(e, [
+			{ label: t('flow.menu.removeKey', { key: branch }), danger: true, action: onremovebranch }
+		]);
+	}
 </script>
 
 <div class="flex flex-col items-center">
 	{#if branch}
 		<span
 			class="mb-1 rounded-full border border-slate-300 bg-white px-2 py-0.5 text-xs whitespace-nowrap text-slate-600 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-300"
-			>{branch}</span
+			role="note"
+			oncontextmenu={branchMenu}>{branch}</span
 		>
 	{/if}
 	{#if node}
@@ -146,6 +217,7 @@
 				? 'border-teal-600 ring-2 ring-teal-600/30'
 				: 'border-slate-200 hover:border-teal-500 dark:border-slate-700'}"
 			onclick={() => editor.select(node.id, { holder, key })}
+			oncontextmenu={stepMenu}
 			data-step={node.id}
 		>
 			<span class="flex items-center gap-2">
@@ -190,7 +262,14 @@
 									: 'right-0 left-0'}"
 						></span>
 						<span class="absolute top-0 left-1/2 h-5 w-px bg-slate-300 dark:bg-slate-600"></span>
-						<Self {editor} holder={b.holder} key={b.key} branch={b.label} ending={b.ending} />
+						<Self
+							{editor}
+							holder={b.holder}
+							key={b.key}
+							branch={b.label}
+							ending={b.ending}
+							onremovebranch={b.remove}
+						/>
 					</div>
 				{/each}
 				{#if node.type === 'menu'}

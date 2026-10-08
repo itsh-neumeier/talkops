@@ -48,7 +48,7 @@ rechts seine Einstellungen.
 | Gehe zu Schritt | Springt zu einem anderen Schritt, z. B. „zurück zum Hauptmenü“. |
 | Auflegen | Verabschiedet sich und beendet den Anruf. |
 
-Ein leerer Zweig beendet den Anruf. Ansagen werden wie bei der Voicemail mit
+Ein leerer Zweig beendet den Anruf. Ein **Rechtsklick** auf einen Schritt öffnet ein Menü zum Bearbeiten, Ersetzen durch einen anderen Schritt oder Löschen (samt der Schritte darunter); ein Rechtsklick auf eine Taste entfernt diesen Zweig. Ansagen werden wie bei der Voicemail mit
 der Computerstimme generiert, im Browser aufgenommen oder hochgeladen (siehe
 [Voicemail](voicemail.md#ansagen-und-audio)). Sprachmenüs aus TalkOps 1.0
 werden beim Update automatisch in einen Smart Attendant mit Tastenmenü

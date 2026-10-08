@@ -759,5 +759,16 @@ export default {
 	'dash.dir.inbound': 'Inbound',
 	'dash.dir.outbound': 'Outbound',
 	'dash.dir.internal': 'Internal',
-	'dash.state.parked': 'Parked'
+	'dash.state.parked': 'Parked',
+	'phone.keyboardHint':
+		'Keyboard: digits and numpad dial (tones during a call), Backspace deletes, Enter calls or answers, Esc hangs up.',
+	'flow.menu.title': 'Step',
+	'flow.menu.edit': 'Edit',
+	'flow.menu.replace': 'Replace with …',
+	'flow.menu.remove': 'Remove step',
+	'flow.menu.removeWithBelow': 'Remove step and {n} below',
+	'flow.menu.removeKey': 'Remove branch “{key}”',
+	'flow.menu.confirmRemove': 'Remove {n} steps?',
+	'flow.menu.confirmBranches': 'The {n} steps below will be removed. Continue?',
+	'flow.rightClickHint': 'Tip: right-click a step or key for more actions.'
 } as const;

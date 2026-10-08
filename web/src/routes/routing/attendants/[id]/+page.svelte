@@ -6,6 +6,7 @@
 	import { onMount } from 'svelte';
 	import { api, type Attendant } from '#lib/api.ts';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
+	import ContextMenu from '#lib/components/flow/ContextMenu.svelte';
 	import FlowSlot from '#lib/components/flow/FlowSlot.svelte';
 	import NodeSettings from '#lib/components/flow/NodeSettings.svelte';
 	import { FlowEditor } from '#lib/components/flow/editor.svelte.ts';
@@ -129,6 +130,7 @@
 					<FlowSlot {editor} holder={editor.rootSlot.holder} key="flow" />
 				</div>
 			</div>
+			<ContextMenu {editor} />
 			<aside class="card lg:sticky lg:top-4">
 				<NodeSettings {editor} attendantId={id} {language} />
 			</aside>

@@ -237,4 +237,5 @@
 	</div>
 {:else}
 	<p class="text-sm text-slate-500">{t('flow.selectHint')}</p>
+	<p class="hint mt-2">{t('flow.rightClickHint')}</p>
 {/if}

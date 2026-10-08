@@ -4,6 +4,15 @@ All notable changes to TalkOps. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [1.1.3] – 2026-10-08
+
+### Added
+
+- Softphone: dial with the keyboard and numpad (tones during a call),
+  Backspace, Enter to call or answer, Esc to hang up.
+- Smart Attendant editor: right-click menu on steps (edit, replace with
+  another step, remove with the steps below) and on keys (remove branch).
+
 ## [1.1.2] – 2026-10-08
 
 ### Fixed

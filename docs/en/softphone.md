@@ -27,6 +27,21 @@ there.
   without further settings. **On the road without VPN** you need a public IP
   with open RTP ports or a TURN server – not built in yet.
 
+## Keyboard
+
+Digits, `*` and `#` – also on the numpad – dial; during a call they are sent
+as tones (e.g. for voice menus). **Backspace** deletes, **Enter** calls or
+answers, **Esc** hangs up, declines or clears the number.
+
+## Behind a reverse proxy (e.g. Zoraxy)
+
+- Enable WebSocket forwarding, a timeout of at least 3600 s that is
+  refreshed on activity, and HTTP/1.1 to the upstream.
+- Pass the original host or set `X-Forwarded-Host: <domain>`, and
+  `X-Forwarded-For` (the browser's address for the media connection).
+- Do not add your own permission policy – TalkOps allows microphone and
+  camera itself.
+
 ## Video
 
 Video to desk phones (e.g. Yealink T58W, VP59) and door stations uses H.264;

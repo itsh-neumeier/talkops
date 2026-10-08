@@ -129,9 +129,46 @@
 		}
 	}
 
+	// The key last pressed (highlighted briefly on the keypad).
+	let flashed = $state('');
+	let flashTimer: ReturnType<typeof setTimeout> | undefined;
+
 	function press(k: string) {
+		flashed = k;
+		clearTimeout(flashTimer);
+		flashTimer = setTimeout(() => (flashed = ''), 150);
 		if (status === 'incall') user?.sendDTMF(k).catch(() => {});
 		else number += k;
+	}
+
+	/**
+	 * Keyboard and numpad: digits, * and # dial (DTMF during a call),
+	 * Backspace deletes, Enter calls or answers, Escape hangs up, declines
+	 * or clears. Typing into another field is left alone.
+	 */
+	function onKey(e: KeyboardEvent) {
+		if (e.ctrlKey || e.metaKey || e.altKey) return;
+		const target = e.target as HTMLElement | null;
+		const inNumber = target?.id === 'phone-number';
+		if (!inNumber && target?.closest('input, textarea, select, [contenteditable]')) return;
+		const key = e.key === 'Multiply' ? '*' : e.key;
+		if (/^[0-9*#]$/.test(key) || (key === '+' && status !== 'incall')) {
+			if (inNumber && status !== 'incall') return; // the field types it itself
+			e.preventDefault();
+			press(key);
+		} else if (key === 'Backspace' && !inNumber && status !== 'incall') {
+			e.preventDefault();
+			number = number.slice(0, -1);
+		} else if (key === 'Enter') {
+			e.preventDefault();
+			if (status === 'ringing') answer(false);
+			else if (status === 'ready') call(false);
+		} else if (key === 'Escape') {
+			e.preventDefault();
+			if (status === 'ringing') user?.decline();
+			else if (busy) user?.hangup();
+			else number = '';
+		}
 	}
 
 	function toggleMute() {
@@ -159,6 +196,8 @@
 				: 'badge-muted'
 	);
 </script>
+
+<svelte:window onkeydown={onKey} />
 
 <div class="mx-auto max-w-3xl space-y-4">
 	<div class="flex flex-wrap items-center justify-between gap-2">
@@ -218,16 +257,21 @@
 
 		<div class="card space-y-3">
 			<input
+				id="phone-number"
 				class="input mt-0 text-center font-mono text-lg"
 				bind:value={number}
 				placeholder={t('phone.number')}
 				aria-label={t('phone.number')}
 				disabled={status === 'incall'}
-				onkeydown={(e) => e.key === 'Enter' && !busy && call(false)}
 			/>
 			<div class="grid grid-cols-3 gap-2">
 				{#each keys as k (k)}
-					<button class="btn font-mono text-lg" onclick={() => press(k)}>{k}</button>
+					<button
+						class="btn font-mono text-lg {flashed === k
+							? 'bg-teal-600 text-white dark:bg-teal-600'
+							: ''}"
+						onclick={() => press(k)}>{k}</button
+					>
 				{/each}
 			</div>
 			{#if busy && status !== 'ringing'}
@@ -261,5 +305,5 @@
 			{/if}
 		</div>
 	</div>
-	<p class="hint">{t('phone.hint')}</p>
+	<p class="hint">{t('phone.hint')} {t('phone.keyboardHint')}</p>
 </div>

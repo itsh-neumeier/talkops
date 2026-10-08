@@ -4,6 +4,43 @@ All notable changes to TalkOps. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [1.1.0] – 2026-10-13
+
+Upgrading from 1.0 is automatic; voice menus become Smart Attendants.
+
+### Added
+
+- **Audio clips** for every prompt: generate with the computer voice (two
+  voices per language: Thorsten/Kerstin, Linda/Joe) and listen before saving,
+  record in the browser, or upload WAV/MP3/OGG/M4A (converted in the
+  browser). Waveform player with seeking and 1×/1.5×/2× speed.
+- Voicemail greeting *None* (straight to the beep) and greetings from clips.
+- **Smart Attendant** flow editor replacing voice menus: keypress menu, ring
+  phones (continues when nobody answers), play audio, schedule, voicemail for
+  several recipients, forward, park in a free slot, go to step, hang up.
+- **Queues** like UniFi Talk: own page with General / Schedule / Call
+  handling; greeting, music on hold, business hours with after-hours
+  destination, maximum waiting callers with overflow, voicemail for several
+  recipients when nobody answers.
+- **Dashboard**: calls, missed calls, answer rate and average talk time; call
+  chart for 1 hour / day / week / month; calls in progress; recent calls;
+  system box with services, devices, trunks and last backup.
+- Yealink **AX83H and AX86R** Wi-Fi handsets (4 accounts, firmware 180.86+).
+- API: `/api/v1/audio/*`, `/api/v1/attendants`, `/api/v1/stats/calls`,
+  `/api/v1/telephony/calls`.
+
+### Changed
+
+- **Breaking (REST API):** `/api/v1/ivr-menus` is replaced by
+  `/api/v1/attendants` (flow as JSON). Existing menus are converted by the
+  migration; their greetings become audio clips.
+- The media worker image ships two more Piper voices (de_DE-kerstin-low,
+  en_US-joe-medium).
+
+### Fixed
+
+- Yealink common configuration `y000000000108.cfg` (AX handsets) is served.
+
 ## [1.0.0] – 2026-10-08
 
 First stable release. Database migrations are forward-only; later 1.x

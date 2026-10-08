@@ -2,7 +2,7 @@
 
 **Call routing** decides where calls go. Phone numbers, fallbacks, menu keys
 and opening hours can point to any destination: extension, an extension's
-voicemail, ring group, time condition, voice menu or queue. Internal numbers
+voicemail, ring group, time condition, Smart Attendant or queue. Internal numbers
 are unique across all of them.
 
 ## Ring groups
@@ -25,22 +25,47 @@ closed* – in the web UI (operators too) or on the phone with `*30<number>`
 (e.g. `*3060`; a low double beep means "closed", a high one "automatic
 again"). The time zone from the settings applies.
 
-## Voice menus
+## Smart Attendant
 
-Callers hear a greeting and choose with the keypad. The greeting is spoken by
-the computer voice from text or uploaded as a WAV file. Each key (0–9, \*, #)
-gets a destination; optionally callers may dial extensions directly. Without
-valid input after the configured attempts the call goes to the "no input"
-destination (or ends).
+A Smart Attendant is a call flow for incoming calls, like in UniFi Talk. It is
+built under **Call routing → Smart Attendant** as a tree of steps: **+** adds a
+step, clicking a step opens its settings on the right.
+
+| Step | What happens |
+|---|---|
+| Keypress menu | A prompt; callers choose with a key (0–9, \*, #), each key has its own branch, plus "No input". Optionally callers may dial extensions directly. |
+| Ring phones | The chosen extensions ring at once or one after the other; if nobody answers, the "No answer" branch continues. |
+| Play audio | Plays a prompt, then continues. |
+| Schedule | Branches on a time condition (business hours, holidays, closures) into "Open" and "Closed". |
+| Voicemail | Callers leave a message; every chosen recipient gets it in their voicemail box (with e-mail and transcription as usual). |
+| Forward | To an extension, ring group, queue, another Smart Attendant … |
+| Park call | Parks in a free slot `*51`–`*59`, to be picked up from any phone. |
+| Go to step | Jumps to another step, e.g. "back to the main menu". |
+| Hang up | Says goodbye and ends the call. |
+
+An empty branch ends the call. Prompts are generated with the computer voice,
+recorded in the browser or uploaded, as for voicemail (see
+[voicemail](voicemail.md#greetings-and-audio)). Voice menus from TalkOps 1.0 are
+converted into a Smart Attendant with a keypress menu on update.
 
 ## Queues
 
 Callers wait with music until an agent is free (FreeSWITCH `mod_callcenter`).
-Strategies: longest idle, ring all, round robin, in order, fewest calls,
-random. You can set the maximum wait, ring time per agent and a pause after
-each call. Agents on do-not-disturb or without devices get no calls. After the
-maximum wait – or when no agent is available for 30 seconds – the call goes to
-the fallback destination.
+Every queue has its own page with three tabs:
+
+- **General:** number, name, agents (order with the arrows). Agents on
+  do-not-disturb or without devices get no calls.
+- **Schedule:** a time condition as business hours; outside them the call goes
+  to the "outside business hours" destination.
+- **Call handling:**
+  - *Greeting* (once before waiting) and *music on hold* (looped; without an
+    own file the system music),
+  - *Call distribution*: longest idle, ring all, round robin, in order, fewest
+    calls, random; ring time per agent, pause after each call,
+  - *Queue size*: callers waiting at most – more go to the overflow destination,
+  - *When nobody answers* (after the maximum wait, or when no agent is
+    available for 30 seconds): forward **or** take a message for one or more
+    recipients.
 
 ## Parking and transfers
 

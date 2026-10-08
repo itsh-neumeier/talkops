@@ -12,16 +12,30 @@ auf der Seite der Nebenstelle:
 - **Voicemail aktiv** einschalten.
 - **PIN** (4–10 Ziffern) – nötig für den Abruf von einem fremden Telefon.
 - **Sprache der Ansagen**: Deutsch oder Englisch (Standard aus den Einstellungen).
-- **Ansage**:
-  - *Standardansage* – „Ihr Gesprächspartner ist gerade nicht erreichbar …“
-  - *Text* – wird von der Computerstimme (Piper, lokal) vorgelesen; nach dem
-    Speichern dauert die Erzeugung einige Sekunden, danach lässt sie sich im
-    Browser anhören.
-  - *Eigene Aufnahme* – am Telefon `*97` wählen und die **5** drücken.
+- **Ansage**: *Standard*, *Generieren*, *Aufnehmen*, *Hochladen* oder *Keine*
+  (Anrufer hören sofort den Signalton) – siehe unten. Aufnehmen geht auch am
+  Telefon: `*97` wählen und die **5** drücken.
 - **Per E-Mail senden** – an die E-Mail-Adresse des Benutzers der Nebenstelle,
   optional mit Aufnahme als WAV-Anhang. Bei eingeschalteter Transkription
   enthält die Mail auch den Text der Nachricht (siehe
   [Aufzeichnung & Transkription](aufzeichnung.md)).
+
+## Ansagen und Audio
+
+Überall, wo TalkOps etwas ansagt – Voicemail, Smart Attendant, Warteschlangen –
+gibt es dieselbe Auswahl:
+
+- **Generieren:** Text eingeben, Sprache und Stimme wählen (je Sprache zwei:
+  Deutsch *Thorsten* / *Kerstin*, Englisch *Linda* / *Joe*), **Generieren**
+  klicken und anhören. Die Computerstimme (Piper) läuft lokal im
+  Media-Worker; nichts verlässt den Server. Wird der Text geändert und ohne
+  erneutes Generieren gespeichert, erzeugt TalkOps ihn beim Speichern.
+- **Aufnehmen:** direkt im Browser über das Mikrofon (bis 10 Minuten).
+- **Hochladen:** WAV, MP3, OGG oder M4A; der Browser wandelt die Datei in
+  16 kHz Mono um.
+
+Der Player zeigt die Wellenform, springt per Klick und spielt mit 1×, 1,5×
+oder 2×. Nicht mehr verwendete Audiodateien löscht TalkOps nach einem Tag.
 
 ## Am Telefon abhören
 

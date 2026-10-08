@@ -23,5 +23,6 @@ nächste freie Nummer; überholte ADRs werden nicht gelöscht, sondern auf
 | [0014](0014-identitaet-oidc-ldap-totp.md) | Identität: lokale Konten mit TOTP, OIDC, LDAP/AD | Angenommen |
 | [0015](0015-webrtc-softphone.md) | Browser-Softphone: SIP über WebSocket durch TalkOps, SIP.js | Angenommen |
 | [0016](0016-betrieb-sicherung-und-sip-schutz.md) | Betrieb: Datensicherung, SIP-Anmeldeschutz und Härtung | Angenommen |
+| [0017](0017-audio-clips-und-smart-attendant.md) | Audio-Clips, Smart Attendant und Warteschlangen-Einstellungen | Angenommen |
 
 Vorlage: [`template.md`](template.md)

@@ -2,6 +2,14 @@
 
 TalkOps exposes its state in the Prometheus text format at `/metrics`.
 
+## Dashboard in the web UI
+
+The start page shows operators and admins key figures (calls, missed calls,
+answer rate, average talk time), a chart of calls by direction for the last
+hour, day, week or month (days in the time zone from the settings), calls in
+progress, recent calls and the system status (services, registered devices,
+trunks, last backup). It refreshes every 10 seconds.
+
 ## Enable
 
 Set a long random token in `.env` (or the Portainer stack environment) and

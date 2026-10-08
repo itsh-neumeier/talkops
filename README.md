@@ -16,12 +16,17 @@ transcription and LDAP/AD, packaged as a Docker Compose stack.
   sipgate, easybell, FRITZ!Box, Twilio, …), multiple trunks and numbers,
   emergency routing
 - Extensions with multiple devices, DND and forwarding (also via feature codes)
-- Ring groups, queues, voice menus (IVR), opening hours with public holidays
+- Smart Attendant call flows (keypress menu, ring phones, schedule, voicemail
+  for several recipients, park, forward), queues with greeting, music on hold,
+  overflow and business hours, ring groups, opening hours with public holidays
   per German state, call parking
+- Prompts generated with two computer voices per language, recorded in the
+  browser or uploaded; waveform player
+- Dashboard with call statistics, calls in progress and recent calls
 - Voicemail with TTS greetings (Piper, local), e-mail delivery with transcript
 - Call recording with announcement, local transcription (whisper.cpp),
   full-text search, retention
-- Yealink auto-provisioning (desk phones and DECT), XML phonebook, BLF, MWI,
+- Yealink auto-provisioning (desk phones, DECT and AX83H/AX86R Wi-Fi handsets), XML phonebook, BLF, MWI,
   firmware management
 - Dahua VTO door stations: video ring, door opener, snapshots, Home Assistant
   webhooks

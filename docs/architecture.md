@@ -136,8 +136,8 @@ Interne Nummern sind über alle Arten eindeutig (`talkops_core::numbering`).
 |---|---|
 | Rufgruppe | ein `bridge`: gleichzeitig `a,b,…` (+ `pickup/ext-*`), nacheinander `[leg_timeout=N]a\|[leg_timeout=N]b`; danach Ausweichziel |
 | Zeitsteuerung | Auswertung beim Routing in der Mandanten-Zeitzone: Override → Feiertag (`talkops_core::holidays`, Osterformel, Bundesländer) → Schließtag → Wochenplan |
-| Sprachmenü | ESL outbound (`talkops_app=ivr`), `play_and_get_digits`, Auswahl per `transfer dest:<art>:<id> XML talkops` |
-| Warteschlange | `callcenter q-<id>` (mod_callcenter); `callcenter.conf` per xml_curl, Agenten/Tiers per `callcenter_config` abgeglichen (diff-basiert, alle 30 s und nach Änderungen) |
+| Smart Attendant (ab 1.1, ADR 0017) | ESL outbound (`talkops_app=ivr`) läuft den JSON-Ablauf ab; Tastenmenü per `play_and_get_digits`, Weiterleiten per `transfer dest:<art>:<id> XML talkops`, „Telefone klingeln“ per `transfer attendant:<id>:<schritt>` mit Rücksprung (`talkops_attendant_step`) |
+| Warteschlange | Öffnungszeiten und „voll“ (Überlauf) werden vor dem Eintritt geprüft, Begrüßung per `playback`, dann `callcenter q-<id>` (mod_callcenter, Wartemusik als `moh-sound`); ohne Annahme Ausweichziel oder Gruppen-Voicemail (`talkops_app=queue_vm`); `callcenter.conf` per xml_curl, Agenten/Tiers per `callcenter_config` abgeglichen (diff-basiert, alle 30 s und nach Änderungen) |
 
 Der Kontext `talkops` ist nur über `transfer` erreichbar (keinem Profil
 zugeordnet). Alle Anrufe exportieren `force_transfer_context=talkops`, damit
@@ -389,3 +389,4 @@ talkops/
 | 6 | Türsprechstelle: Dahua VTO, Video, Türöffner, Snapshots, Home Assistant | ✅ (Test mit echter VTO offen) |
 | 7 | WebRTC & Identität: Softphone mit Video, LDAP/AD, OIDC, 2FA | ✅ |
 | 8 | Betrieb: Backup/Restore, Metriken, Hardening, SIP-Anmeldeschutz, Setup-Assistent, Release 1.0 | ✅ (v1.0.0) |
+| 1.1 | Audio-Clips (Computerstimme, Aufnahme, Upload), Smart Attendant, Warteschlangen wie UniFi Talk, Übersicht mit Statistik, Yealink AX83H/AX86R | ✅ (v1.1.0) |

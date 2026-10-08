@@ -2,6 +2,15 @@
 
 TalkOps stellt seinen Zustand im Prometheus-Textformat unter `/metrics` bereit.
 
+## Übersicht in der Weboberfläche
+
+Die Startseite zeigt Operatoren und Admins Kennzahlen (Anrufe, verpasste
+Anrufe, Annahmequote, Ø Gesprächsdauer), ein Diagramm der Anrufe nach
+Richtung für die letzte Stunde, den letzten Tag, die letzte Woche oder den
+letzten Monat (Tage in der Zeitzone aus den Einstellungen), laufende
+Gespräche, die letzten Anrufe und den Systemstatus (Dienste, registrierte
+Geräte, Trunks, letzte Datensicherung). Sie aktualisiert sich alle 10 Sekunden.
+
 ## Aktivieren
 
 Ein langes Zufallstoken in der `.env` (bzw. der Stack-Umgebung in Portainer)

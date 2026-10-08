@@ -45,7 +45,7 @@ The station then shows up on the **Dashboard** under *Registered devices* as `80
 | Field | Meaning |
 |---|---|
 | Extension | the extension from step 1 – every call from it is a ring |
-| Ring goes to | extension, ring group, time condition, voice menu, queue or voicemail |
+| Ring goes to | extension, ring group, time condition, Smart Attendant, queue or voicemail |
 | Buttons | for multi-tenant stations: dialed number (e.g. `9902`) → its own destination; `9902#0` and `9902` count as the same |
 | HTTP access | IP/port and web login of the station; without a host only rings, no door opener/picture/log |
 | Locks | `2` if a second lock is connected through the RS-485 module (e.g. DEE1010B) |

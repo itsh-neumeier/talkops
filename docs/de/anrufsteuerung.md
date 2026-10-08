@@ -3,7 +3,7 @@
 Unter **Anrufsteuerung** legst du fest, wohin Anrufe gehen. Rufnummern,
 Ausweichziele, Menütasten und Öffnungszeiten können auf jedes dieser Ziele
 zeigen: Nebenstelle, Voicemail einer Nebenstelle, Rufgruppe, Zeitsteuerung,
-Sprachmenü oder Warteschlange. Interne Nummern sind über alle Arten hinweg
+Smart Attendant oder Warteschlange. Interne Nummern sind über alle Arten hinweg
 eindeutig.
 
 ## Rufgruppen
@@ -29,22 +29,50 @@ Telefon mit `*30<Nummer>` (z. B. `*3060`; ein tiefer Doppelton bedeutet
 „geschlossen“, ein hoher „wieder automatisch“). Es gilt die Zeitzone aus den
 Einstellungen.
 
-## Sprachmenüs
+## Smart Attendant
 
-Anrufer hören eine Ansage und wählen per Tastatur. Die Ansage wird aus Text
-von der Computerstimme erzeugt oder als WAV-Datei hochgeladen. Jeder Taste
-(0–9, \*, #) wird ein Ziel zugeordnet; optional dürfen Anrufer Nebenstellen
-direkt wählen. Ohne gültige Eingabe nach der eingestellten Zahl an Versuchen
-geht der Anruf an das Ziel „Keine Eingabe“ (oder wird beendet).
+Ein Smart Attendant ist ein Ablauf für eingehende Anrufe – wie bei UniFi Talk.
+Er wird unter **Anrufsteuerung → Smart Attendant** als Baum aus Schritten
+gebaut: Mit **+** kommt ein Schritt hinzu, ein Klick auf einen Schritt öffnet
+rechts seine Einstellungen.
+
+| Schritt | Was passiert |
+|---|---|
+| Tastenmenü | Ansage, Anrufer wählen per Taste (0–9, \*, #); je Taste ein eigener Zweig, dazu „Keine Eingabe“. Optional dürfen Anrufer Nebenstellen direkt wählen. |
+| Telefone klingeln | Ausgewählte Nebenstellen klingeln gleichzeitig oder nacheinander; nimmt niemand ab, geht es mit dem Zweig „Keine Antwort“ weiter. |
+| Audio abspielen | Spielt eine Ansage und macht dann weiter. |
+| Zeitplan | Verzweigt nach einer Zeitsteuerung (Öffnungszeiten, Feiertage, Schließtage) in „Geöffnet“ und „Geschlossen“. |
+| Voicemail | Anrufer hinterlassen eine Nachricht; jeder ausgewählte Empfänger bekommt sie in seine Voicemail-Box (mit E-Mail und Transkription wie gewohnt). |
+| Weiterleiten | Zu Nebenstelle, Rufgruppe, Warteschlange, anderem Smart Attendant … |
+| Anruf parken | Parkt auf einem freien Platz `*51`–`*59`; von jedem Telefon aus heranholbar. |
+| Gehe zu Schritt | Springt zu einem anderen Schritt, z. B. „zurück zum Hauptmenü“. |
+| Auflegen | Verabschiedet sich und beendet den Anruf. |
+
+Ein leerer Zweig beendet den Anruf. Ansagen werden wie bei der Voicemail mit
+der Computerstimme generiert, im Browser aufgenommen oder hochgeladen (siehe
+[Voicemail](voicemail.md#ansagen-und-audio)). Sprachmenüs aus TalkOps 1.0
+werden beim Update automatisch in einen Smart Attendant mit Tastenmenü
+übernommen.
 
 ## Warteschlangen
 
 Anrufer warten mit Musik, bis ein Agent frei ist (FreeSWITCH `mod_callcenter`).
-Strategien: am längsten frei, alle klingeln, reihum, der Reihe nach, wenigste
-Gespräche, zufällig. Einstellbar sind maximale Wartezeit, Klingeldauer je
-Agent und eine Pause nach jedem Gespräch. Agenten mit „Nicht stören“ oder ohne
-Geräte erhalten keine Anrufe. Nach Ablauf der Wartezeit – oder wenn 30 Sekunden
-lang kein Agent verfügbar ist – geht der Anruf an das Ausweichziel.
+Jede Warteschlange hat eine eigene Seite mit drei Reitern:
+
+- **Allgemein:** Nummer, Name, Agenten (Reihenfolge per Pfeil). Agenten mit
+  „Nicht stören“ oder ohne Geräte erhalten keine Anrufe.
+- **Zeitplan:** eine Zeitsteuerung als Öffnungszeiten; außerhalb davon geht
+  der Anruf an das Ziel „Außerhalb der Öffnungszeiten“.
+- **Anrufbehandlung:**
+  - *Begrüßung* (einmal vor dem Warten) und *Wartemusik* (in Schleife; ohne
+    eigene Datei die Systemmusik),
+  - *Anrufverteilung*: am längsten frei, alle klingeln, reihum, der Reihe
+    nach, wenigste Gespräche, zufällig; Klingeldauer je Agent, Pause nach
+    jedem Gespräch,
+  - *Größe*: höchstens wartende Anrufer – weitere gehen an das Überlaufziel,
+  - *Wenn niemand annimmt* (nach der maximalen Wartezeit oder wenn 30
+    Sekunden lang kein Agent verfügbar ist): weiterleiten **oder** eine
+    Nachricht für einen oder mehrere Empfänger aufnehmen.
 
 ## Parken und Weitervermitteln
 

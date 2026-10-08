@@ -47,7 +47,7 @@ Die Station erscheint danach in der **Übersicht** unter *Registrierte Geräte* 
 | Feld | Bedeutung |
 |---|---|
 | Nebenstelle | die Nebenstelle aus Schritt 1 – jeder Anruf von ihr ist ein Klingeln |
-| Klingeln geht an | Nebenstelle, Rufgruppe, Zeitsteuerung, Sprachmenü, Warteschlange oder Voicemail |
+| Klingeln geht an | Nebenstelle, Rufgruppe, Zeitsteuerung, Smart Attendant, Warteschlange oder Voicemail |
 | Tasten | für Mehrfamilien-Stationen: gewählte Nummer (z. B. `9902`) → eigenes Ziel; `9902#0` und `9902` gelten als gleich |
 | HTTP-Zugang | IP/Port und Web-Login der Station; ohne Host nur Klingeln, kein Türöffner/Bild/Protokoll |
 | Schlösser | `2`, wenn ein zweites Schloss über das RS-485-Modul (z. B. DEE1010B) angeschlossen ist |

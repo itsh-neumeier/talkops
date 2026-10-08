@@ -32,7 +32,8 @@
 		language = 'de',
 		defaultText = '',
 		legacy = null,
-		hints = {}
+		hints = {},
+		optional = false
 	}: {
 		mode: AudioMode;
 		clipId: string | null;
@@ -43,6 +44,8 @@
 		legacy?: { mode: AudioMode; src: string; text?: string } | null;
 		/** Extra explanation per mode. */
 		hints?: Partial<Record<AudioMode, string>>;
+		/** Without text, recording or file, [ensure] yields no clip instead of failing. */
+		optional?: boolean;
 	} = $props();
 
 	const SOURCE_MODE: Record<Clip['source'], AudioMode> = {
@@ -178,11 +181,16 @@
 	export async function ensure(): Promise<string | null> {
 		if (mode === 'default' || mode === 'none') return null;
 		if (mode === 'generate') {
-			if (!normalize(text)) throw new Error(t('audio.textRequired'));
+			if (!normalize(text)) {
+				if (optional) return null;
+				throw new Error(t('audio.textRequired'));
+			}
 			return (shown ?? (await generate())).id;
 		}
 		if (shown) return shown.id;
 		if (legacy?.mode === mode) return null;
+		// Nothing recorded or uploaded yet: keep the current audio.
+		if (optional) return clipId;
 		throw new Error(mode === 'record' ? t('audio.recordFirst') : t('audio.uploadFirst'));
 	}
 

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
-	import IvrMenus from '#lib/components/routing/IvrMenus.svelte';
+	import Attendants from '#lib/components/routing/Attendants.svelte';
 	import Queues from '#lib/components/routing/Queues.svelte';
 	import RingGroups from '#lib/components/routing/RingGroups.svelte';
 	import TimeConditions from '#lib/components/routing/TimeConditions.svelte';
@@ -63,7 +63,7 @@
 	{#if loaded}
 		{#if tab === 'groups'}<RingGroups />
 		{:else if tab === 'schedules'}<TimeConditions />
-		{:else if tab === 'menus'}<IvrMenus />
+		{:else if tab === 'menus'}<Attendants />
 		{:else}<Queues />{/if}
 	{/if}
 </div>

@@ -3,9 +3,9 @@
 
 import {
 	api,
+	type Attendant,
 	type DestinationType,
 	type Extension,
-	type IvrMenu,
 	type Queue,
 	type RingGroup,
 	type TimeCondition
@@ -16,7 +16,7 @@ export const targets = $state({
 	extensions: [] as Extension[],
 	groups: [] as RingGroup[],
 	conditions: [] as TimeCondition[],
-	menus: [] as IvrMenu[],
+	menus: [] as Attendant[],
 	queues: [] as Queue[]
 });
 
@@ -25,7 +25,7 @@ export async function loadTargets() {
 		api.get<Extension[]>('/extensions'),
 		api.get<RingGroup[]>('/ring-groups'),
 		api.get<TimeCondition[]>('/time-conditions'),
-		api.get<IvrMenu[]>('/ivr-menus'),
+		api.get<Attendant[]>('/attendants'),
 		api.get<Queue[]>('/queues')
 	]);
 	Object.assign(targets, { extensions, groups, conditions, menus, queues });

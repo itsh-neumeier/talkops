@@ -447,21 +447,59 @@ export interface MenuOption {
 	id: string | null;
 }
 
-export interface IvrMenu {
+/** One step of a Smart Attendant flow (mirrors talkops_core::attendant::Node). */
+export type FlowNode =
+	| { type: 'play'; id: string; clip_id: string | null; next: FlowNode | null }
+	| {
+			type: 'menu';
+			id: string;
+			clip_id: string | null;
+			timeout_secs: number;
+			max_tries: number;
+			direct_dial: boolean;
+			options: { digit: string; next: FlowNode | null }[];
+			timeout: FlowNode | null;
+	  }
+	| {
+			type: 'ring';
+			id: string;
+			extensions: string[];
+			strategy: 'simultaneous' | 'sequential';
+			ring_secs: number;
+			next: FlowNode | null;
+	  }
+	| {
+			type: 'schedule';
+			id: string;
+			time_condition_id: string | null;
+			open: FlowNode | null;
+			closed: FlowNode | null;
+	  }
+	| {
+			type: 'voicemail';
+			id: string;
+			recipients: string[];
+			clip_id: string | null;
+			max_message_secs: number;
+	  }
+	| { type: 'park'; id: string }
+	| {
+			type: 'transfer';
+			id: string;
+			destination_type: DestinationType;
+			destination_id: string | null;
+	  }
+	| { type: 'goto'; id: string; target: string }
+	| { type: 'hangup'; id: string };
+
+export type FlowNodeType = FlowNode['type'];
+
+export interface Attendant {
 	id: string;
 	number: string | null;
 	name: string;
 	language: 'de' | 'en' | null;
-	greeting: 'tts' | 'upload' | 'clip' | 'none';
-	greeting_text: string;
-	greeting_status: 'none' | 'pending' | 'ready' | 'failed';
-	greeting_clip_id: string | null;
-	timeout_secs: number;
-	max_tries: number;
-	direct_dial: boolean;
-	options: MenuOption[];
-	timeout_type: DestinationType;
-	timeout_id: string | null;
+	flow: FlowNode;
 }
 
 export interface Queue {

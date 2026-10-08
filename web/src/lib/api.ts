@@ -514,6 +514,16 @@ export interface Queue {
 	timeout_id: string | null;
 	enabled: boolean;
 	members: string[];
+	greeting_clip_id: string | null;
+	moh_clip_id: string | null;
+	max_callers: number;
+	overflow_type: DestinationType;
+	overflow_id: string | null;
+	time_condition_id: string | null;
+	closed_type: DestinationType;
+	closed_id: string | null;
+	voicemail_recipients: string[];
+	voicemail_clip_id: string | null;
 }
 
 export interface HolidayCalendar {

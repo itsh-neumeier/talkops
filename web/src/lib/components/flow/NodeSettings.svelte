@@ -6,7 +6,7 @@
 	import { targets } from '#lib/destinations.svelte.ts';
 	import { DIGITS, ICONS, typeHint, typeKey, walk } from '#lib/flow.ts';
 	import { t } from '#lib/i18n/index.svelte.ts';
-	import ExtensionPicker from './ExtensionPicker.svelte';
+	import ExtensionPicker from '#lib/components/ExtensionPicker.svelte';
 	import type { FlowEditor } from './editor.svelte.ts';
 
 	let {

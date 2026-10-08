@@ -713,7 +713,26 @@ const de: Record<keyof typeof en, string> = {
 		'Abläufe für eingehende Anrufe: begrüßen, Auswahl anbieten, Telefone klingeln lassen, Nachrichten aufnehmen – je nach Uhrzeit.',
 	'flow.new': 'Neuer Smart Attendant',
 	'flow.steps': '{n} Schritte',
-	'flow.view': 'Anzeigen'
+	'flow.view': 'Anzeigen',
+	'queues.tab.general': 'Allgemein',
+	'queues.tab.schedule': 'Zeitplan',
+	'queues.tab.handling': 'Anrufbehandlung',
+	'queues.hours': 'Öffnungszeiten',
+	'queues.alwaysOpen': 'Immer geöffnet',
+	'queues.afterHours': 'Außerhalb der Öffnungszeiten',
+	'queues.greeting': 'Begrüßung',
+	'queues.greetingNone': 'Anrufer kommen direkt in die Warteschlange.',
+	'queues.moh': 'Wartemusik',
+	'queues.mohDefault': 'Die Systemmusik.',
+	'queues.mohHint':
+		'Läuft in Schleife, solange Anrufer warten. Nur Musik mit passenden Rechten verwenden.',
+	'queues.distribution': 'Anrufverteilung',
+	'queues.capacity': 'Größe der Warteschlange',
+	'queues.maxCallers': 'Höchstens wartende Anrufer (0 = unbegrenzt)',
+	'queues.overflow': 'Wenn die Warteschlange voll ist',
+	'queues.unanswered': 'Wenn niemand annimmt',
+	'queues.toDestination': 'Weiterleiten',
+	'queues.toVoicemail': 'Nachricht aufnehmen'
 };
 
 export default de;

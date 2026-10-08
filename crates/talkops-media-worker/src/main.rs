@@ -18,7 +18,7 @@ use sqlx::postgres::PgListener;
 use talkops_core::jobs::{self, Job};
 use talkops_core::recordings::{self, Source};
 use talkops_core::telemetry::{self, LogFormat};
-use talkops_core::{audio, ivr, settings, voicemail};
+use talkops_core::{audio, settings, voicemail};
 use tokio::sync::Notify;
 
 use crate::transcribe::Whisper;
@@ -26,11 +26,7 @@ use crate::tts::Piper;
 
 /// Job kinds per lane; each lane works through its jobs one at a time.
 const LANES: &[&[&str]] = &[
-    &[
-        audio::JOB_TTS_CLIP,
-        voicemail::JOB_TTS_GREETING,
-        ivr::JOB_TTS_IVR,
-    ],
+    &[audio::JOB_TTS_CLIP, voicemail::JOB_TTS_GREETING],
     &[recordings::JOB_TRANSCRIBE],
 ];
 
@@ -263,7 +259,6 @@ async fn run(ctx: &Ctx, job: &Job) -> anyhow::Result<()> {
     match job.kind.as_str() {
         audio::JOB_TTS_CLIP => tts_clip(ctx, job).await,
         voicemail::JOB_TTS_GREETING => tts_greeting(ctx, job).await,
-        ivr::JOB_TTS_IVR => tts_ivr(ctx, job).await,
         recordings::JOB_TRANSCRIBE => transcribe(ctx, job).await,
         other => anyhow::bail!("no handler for job kind `{other}`"),
     }
@@ -346,7 +341,7 @@ async fn shutdown_signal() {
 /// Payload of the TTS jobs: text to render into a file below a media volume.
 #[derive(serde::Deserialize)]
 struct TtsPayload {
-    #[serde(alias = "extension_id", alias = "menu_id")]
+    #[serde(alias = "extension_id")]
     owner: uuid::Uuid,
     text: String,
     language: String,
@@ -364,20 +359,6 @@ impl TtsPayload {
         );
         Ok(p)
     }
-}
-
-/// Renders an IVR greeting into the sounds volume.
-async fn tts_ivr(ctx: &Ctx, job: &Job) -> anyhow::Result<()> {
-    let p = TtsPayload::parse(job)?;
-    let result = ctx
-        .piper
-        .render(
-            &p.language,
-            &[(p.text.clone(), ctx.sounds_dir.join(&p.file))],
-        )
-        .await;
-    ivr::set_greeting_status(&ctx.pool, p.owner, &p.text, result.is_ok()).await?;
-    result
 }
 
 /// Payload of `transcribe` jobs.

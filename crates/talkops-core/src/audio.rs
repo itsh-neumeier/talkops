@@ -235,10 +235,11 @@ pub async fn ensure_exists(pool: &PgPool, tenant: TenantId, id: Option<Uuid>) ->
     Ok(())
 }
 
-/// Columns that reference clips; unreferenced clips are cleaned up.
-pub const REFERENCES: &[(&str, &str)] = &[
-    ("voicemail_boxes", "greeting_clip_id"),
-    ("ivr_menus", "greeting_clip_id"),
+/// Where clips are used (`r` is the referencing row, `c` the clip);
+/// unreferenced clips are cleaned up.
+pub const REFERENCES: &[&str] = &[
+    "voicemail_boxes r WHERE r.greeting_clip_id = c.id",
+    "ivr_menus r WHERE c.id = ANY (r.clip_ids)",
 ];
 
 /// Deletes clips nobody references that are older than a day (previews,
@@ -247,9 +248,7 @@ pub const REFERENCES: &[(&str, &str)] = &[
 pub async fn purge_unused(pool: &PgPool) -> CoreResult<Vec<(TenantId, Uuid)>> {
     let refs = REFERENCES
         .iter()
-        .map(|(table, column)| {
-            format!("AND NOT EXISTS (SELECT 1 FROM {table} r WHERE r.{column} = c.id)")
-        })
+        .map(|r| format!("AND NOT EXISTS (SELECT 1 FROM {r})"))
         .collect::<Vec<_>>()
         .join("\n");
     let sql = format!(

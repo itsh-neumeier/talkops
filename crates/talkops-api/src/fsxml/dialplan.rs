@@ -8,6 +8,7 @@
 use std::collections::HashMap;
 
 use sqlx::PgPool;
+use talkops_core::attendant::{self, Node, RingStrategy};
 use talkops_core::cdr::Direction;
 use talkops_core::dialing::{DialPlanSettings, Dialed, NumberFormat};
 use talkops_core::error::CoreResult;
@@ -18,7 +19,7 @@ use talkops_core::settings::{self, TenantSettings};
 use talkops_core::tenant::TenantId;
 use talkops_core::trunks::{self, NumberDestination, OutboundRoute, gateway_name};
 use talkops_core::voicemail;
-use talkops_core::{doors, ivr, numbering, prompts, recordings};
+use talkops_core::{doors, numbering, prompts, recordings};
 use talkops_core::{queues, time_conditions};
 use uuid::Uuid;
 
@@ -329,7 +330,7 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
 const CONFIRM_TONE: &str = "tone_stream://%(200,100,800);%(300,0,1200)";
 
 /// Parking lot used for all slots.
-const PARK_LOT: &str = "talkops";
+pub const PARK_LOT: &str = "talkops";
 
 /// `*51` … `*59`: call park slots.
 fn park_slot(dest: &str) -> Option<&str> {
@@ -832,6 +833,13 @@ async fn plan_transfer(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
         .var("talkops_caller_name")
         .unwrap_or_default()
         .to_owned();
+    if let Some(rest) = req.destination.strip_prefix("attendant:") {
+        let (id, step) = rest.split_once(':').unwrap_or_default();
+        return match id.parse::<Uuid>() {
+            Ok(id) => attendant_ring(r, tenant, id, step).await,
+            Err(_) => Ok(reject("404 Not Found")),
+        };
+    }
     let target = if let Some(rest) = req.destination.strip_prefix("dest:") {
         let (kind, id) = rest.split_once(':').unwrap_or_default();
         let kind: Option<NumberDestination> = serde_json::from_value(serde_json::json!(kind)).ok();
@@ -940,15 +948,10 @@ pub fn route_to<'a>(
                 Err(_) => unavailable(),
             },
             NumberDestination::Ivr => {
-                if ivr::get(r.pool, tenant, id).await.is_err() {
+                if attendant::get(r.pool, tenant, id).await.is_err() {
                     return unavailable();
                 }
-                Ok(vec![
-                    set("talkops_app", "ivr"),
-                    set("talkops_ivr_id", id.to_string()),
-                    set("verbose_events", "true"),
-                    ("socket", format!("{} async full", r.socket)),
-                ])
+                Ok(attendant_socket(r, id, None))
             }
             NumberDestination::Queue => match queues::get(r.pool, tenant, id).await {
                 Ok(q) if q.enabled => {
@@ -1033,41 +1036,11 @@ async fn ring_group(
         return fallback().await;
     }
     let timeout = group.ring_timeout_secs;
-    let mut legs: Vec<Vec<String>> = Vec::new();
-    for member in &group.members {
-        let Ok(ext) = extensions::get(r.pool, tenant, *member).await else {
-            continue;
-        };
-        if !ext.enabled || ext.dnd {
-            continue;
-        }
-        let mut endpoints: Vec<String> = extensions::ring_targets(r.pool, ext.id)
-            .await?
-            .iter()
-            .map(|d| format!("user/{}@{SIP_DOMAIN}", sanitize_value(d)))
-            .collect();
-        if endpoints.is_empty() {
-            continue;
-        }
-        endpoints.push(format!("pickup/{}", pickup_group(&ext)));
-        legs.push(endpoints);
-    }
+    let legs = ring_legs(r, tenant, &group.members).await?;
     if legs.is_empty() {
         return fallback().await;
     }
-    let dial = if group.strategy == "sequential" {
-        legs.iter()
-            .map(|eps| {
-                eps.iter()
-                    .map(|e| format!("[leg_timeout={timeout}]{e}"))
-                    .collect::<Vec<_>>()
-                    .join(",")
-            })
-            .collect::<Vec<_>>()
-            .join("|")
-    } else {
-        legs.concat().join(",")
-    };
+    let dial = dial_string(&legs, group.strategy == "sequential", timeout);
     let mut a = vec![
         set(
             "talkops_destination",
@@ -1104,6 +1077,110 @@ async fn ring_group(
         a.push(("hangup", String::new()));
     } else {
         a.extend(after);
+    }
+    Ok(a)
+}
+
+/// Dial strings of the extensions that can ring now (enabled, not on do
+/// not disturb, with devices), one leg per extension.
+async fn ring_legs(
+    r: &Routing<'_>,
+    tenant: TenantId,
+    members: &[Uuid],
+) -> CoreResult<Vec<Vec<String>>> {
+    let mut legs: Vec<Vec<String>> = Vec::new();
+    for member in members {
+        let Ok(ext) = extensions::get(r.pool, tenant, *member).await else {
+            continue;
+        };
+        if !ext.enabled || ext.dnd {
+            continue;
+        }
+        let mut endpoints: Vec<String> = extensions::ring_targets(r.pool, ext.id)
+            .await?
+            .iter()
+            .map(|d| format!("user/{}@{SIP_DOMAIN}", sanitize_value(d)))
+            .collect();
+        if endpoints.is_empty() {
+            continue;
+        }
+        endpoints.push(format!("pickup/{}", pickup_group(&ext)));
+        legs.push(endpoints);
+    }
+    Ok(legs)
+}
+
+/// All legs at once, or one after the other with `timeout` seconds each.
+fn dial_string(legs: &[Vec<String>], sequential: bool, timeout: i32) -> String {
+    if sequential {
+        legs.iter()
+            .map(|eps| {
+                eps.iter()
+                    .map(|e| format!("[leg_timeout={timeout}]{e}"))
+                    .collect::<Vec<_>>()
+                    .join(",")
+            })
+            .collect::<Vec<_>>()
+            .join("|")
+    } else {
+        legs.concat().join(",")
+    }
+}
+
+/// Hands the call to the Smart Attendant engine (outbound socket), at its
+/// first step or at `step`.
+fn attendant_socket(r: &Routing<'_>, id: Uuid, step: Option<&str>) -> Vec<Action> {
+    vec![
+        set("talkops_app", "ivr"),
+        set("talkops_ivr_id", id.to_string()),
+        // Empty unsets a step left over from another attendant.
+        set("talkops_attendant_step", step.unwrap_or_default()),
+        set("verbose_events", "true"),
+        ("socket", format!("{} async full", r.socket)),
+    ]
+}
+
+/// The "ring phones" step of a Smart Attendant; unanswered calls return to
+/// the attendant at the following step.
+async fn attendant_ring(
+    r: &Routing<'_>,
+    tenant: TenantId,
+    id: Uuid,
+    step: &str,
+) -> CoreResult<Vec<Action>> {
+    let Ok(att) = attendant::get(r.pool, tenant, id).await else {
+        return Ok(reject("404 Not Found"));
+    };
+    let index = att.flow.index();
+    let Some(Node::Ring {
+        extensions,
+        strategy,
+        ring_secs,
+        next,
+        ..
+    }) = index.get(step).copied()
+    else {
+        return Ok(reject("404 Not Found"));
+    };
+    let mut a = vec![set(
+        "talkops_destination",
+        att.number
+            .clone()
+            .unwrap_or_else(|| sanitize_value(&att.name)),
+    )];
+    let legs = ring_legs(r, tenant, extensions).await?;
+    if !legs.is_empty() {
+        let sequential = *strategy == RingStrategy::Sequential;
+        if !sequential {
+            a.push(set("call_timeout", ring_secs.to_string()));
+        }
+        a.push(set("hangup_after_bridge", "true"));
+        a.push(set("continue_on_fail", "true"));
+        a.push(("bridge", dial_string(&legs, sequential, *ring_secs)));
+    }
+    match next {
+        Some(next) => a.extend(attendant_socket(r, id, Some(next.id()))),
+        None => a.push(("hangup", String::new())),
     }
     Ok(a)
 }

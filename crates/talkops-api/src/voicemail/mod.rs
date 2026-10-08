@@ -4,7 +4,7 @@
 //! - `vm_check` (`*97`): the caller's own box, no PIN.
 //! - `vm_login` (`*98`): any box after extension number and PIN.
 //!
-//! [`handle`] also dispatches IVR menus (`ivr`, see [`crate::menu`]).
+//! [`handle`] also dispatches Smart Attendants (`ivr`, see [`crate::attendant`]).
 //!
 //! Prompts come from the media worker (`talkops_core::prompts`); missing
 //! prompt files are skipped, so a box keeps working without TTS.
@@ -23,8 +23,8 @@ use talkops_esl::EslError;
 use talkops_esl::outbound::OutboundSession;
 use uuid::Uuid;
 
+use crate::attendant::Outcome;
 use crate::fsxml::sanitize_value;
-use crate::menu::Outcome;
 use crate::telephony::Telephony;
 use crate::{AppState, MediaPaths};
 use ivr::{Call, Ivr, Seq};
@@ -67,7 +67,7 @@ pub async fn handle(mut session: OutboundSession, ctx: VmContext) {
         "vm_deposit" | "vm_check" | "vm_login" => {
             run(&mut session, &ctx, &app).await.map(|()| Outcome::Done)
         }
-        "ivr" => run_menu(&mut session, &ctx).await,
+        "ivr" => run_attendant(&mut session, &ctx).await,
         "door_open" => open_door(&mut session, &ctx).await.map(|()| Outcome::Done),
         other => {
             tracing::warn!(%uuid, app = other, "unknown interactive application");
@@ -100,17 +100,19 @@ impl From<std::io::Error> for FlowError {
 
 type FlowResult<T> = Result<T, FlowError>;
 
-async fn run_menu<C: Call>(call: &mut C, ctx: &VmContext) -> FlowResult<Outcome> {
+async fn run_attendant<C: Call>(call: &mut C, ctx: &VmContext) -> FlowResult<Outcome> {
     let tenant = call
         .var("talkops_tenant_id")
         .and_then(|v| v.parse().ok())
         .map(TenantId)
         .ok_or_else(|| FlowError::Other("call without tenant".into()))?;
-    let menu = call
+    let attendant = call
         .var("talkops_ivr_id")
         .and_then(|v| v.parse::<Uuid>().ok())
-        .ok_or_else(|| FlowError::Other("call without menu".into()))?;
-    crate::menu::run(call, ctx, tenant, menu).await
+        .ok_or_else(|| FlowError::Other("call without attendant".into()))?;
+    // Back from ringing phones nobody answered: continue at this step.
+    let step = call.var("talkops_attendant_step").filter(|s| !s.is_empty());
+    crate::attendant::run(call, ctx, tenant, attendant, step.as_deref()).await
 }
 
 /// `*85`/`*86`: opens a door and says whether it worked.
@@ -214,13 +216,28 @@ async fn deposit<C: Call>(
     if !greeting.is_empty() {
         ivr.play(&greeting).await?;
     }
+    store_message(&mut ivr, ctx, tenant, &[ext], vbox.max_message_secs).await
+}
+
+/// Beep, record, and store the message in every box of `recipients` (each
+/// gets its own copy), then update their lamps.
+pub(crate) async fn store_message<C: Call>(
+    ivr: &mut Ivr<'_, C>,
+    ctx: &VmContext,
+    tenant: TenantId,
+    recipients: &[Uuid],
+    max_secs: i32,
+) -> FlowResult<()> {
+    let Some(&first) = recipients.first() else {
+        return Ok(());
+    };
     let mut beep = Seq::default();
     ivr.beep(&mut beep);
     ivr.play(&beep).await?;
 
     let id = Uuid::new_v4();
-    let path = ctx.path(&voicemail::message_file(tenant, ext, id));
-    let secs = ivr.record(&path, vbox.max_message_secs).await?;
+    let path = ctx.path(&voicemail::message_file(tenant, first, id));
+    let secs = ivr.record(&path, max_secs).await?;
     if secs < MIN_MESSAGE_SECS {
         let _ = tokio::fs::remove_file(&path).await;
         return Ok(());
@@ -236,21 +253,32 @@ async fn deposit<C: Call>(
         .map(|n| sanitize_value(&n))
         .filter(|n| *n != caller_number)
         .unwrap_or_default();
-    voicemail::create_message(
-        &ctx.db,
-        tenant,
-        &NewMessage {
-            id,
-            extension_id: ext,
-            caller_number,
-            caller_name,
-            duration_secs: secs as i32,
-            call_uuid: ivr.call.var("Unique-ID").or_else(|| ivr.call.var("uuid")),
-        },
-    )
-    .await?;
-    tracing::info!(extension = %ext, secs, "voicemail stored");
-    update_mwi(ctx, ext).await;
+    let call_uuid = ivr.call.var("Unique-ID").or_else(|| ivr.call.var("uuid"));
+    for &ext in recipients {
+        let msg_id = if ext == first { id } else { Uuid::new_v4() };
+        if ext != first {
+            let copy = ctx.path(&voicemail::message_file(tenant, ext, msg_id));
+            if let Some(dir) = copy.parent() {
+                tokio::fs::create_dir_all(dir).await?;
+            }
+            tokio::fs::copy(&path, &copy).await?;
+        }
+        voicemail::create_message(
+            &ctx.db,
+            tenant,
+            &NewMessage {
+                id: msg_id,
+                extension_id: ext,
+                caller_number: caller_number.clone(),
+                caller_name: caller_name.clone(),
+                duration_secs: secs as i32,
+                call_uuid: call_uuid.clone(),
+            },
+        )
+        .await?;
+        tracing::info!(extension = %ext, secs, "voicemail stored");
+        update_mwi(ctx, ext).await;
+    }
     if !ivr.call.is_hung_up() {
         let bye = ivr.keys(&["vm_saved"]);
         ivr.play(&bye).await?;

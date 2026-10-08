@@ -7,6 +7,7 @@ use std::path::Path;
 use sqlx::PgPool;
 use talkops_core::extensions::{self, ExtensionInput};
 use talkops_core::tenant::TenantId;
+use talkops_core::time_conditions;
 use talkops_core::voicemail::{self, VoicemailBoxInput};
 use talkops_esl::{EslError, Event, Headers};
 
@@ -333,45 +334,44 @@ async fn login_with_pin_and_record_greeting(pool: PgPool) {
     std::fs::remove_dir_all(dir).unwrap();
 }
 
-mod menus {
+mod attendants {
     use super::*;
-    use crate::menu::{Outcome, run as run_menu};
-    use talkops_core::ivr::{self, IvrMenuInput, MenuOption};
-    use talkops_core::trunks::NumberDestination;
+    use crate::attendant::{Outcome, run as run_attendant};
+    use serde_json::json;
+    use talkops_core::attendant::{self, AttendantInput};
 
-    async fn menu(pool: &PgPool, ext: Uuid, direct: bool, timeout: bool) -> Uuid {
-        ivr::save(
+    async fn save(pool: &PgPool, flow: serde_json::Value) -> Uuid {
+        attendant::save(
             pool,
             T,
             None,
-            &IvrMenuInput {
+            &AttendantInput {
                 number: None,
                 name: "Main".into(),
                 language: None,
-                greeting: "tts".into(),
-                greeting_text: "Willkommen".into(),
-                greeting_clip_id: None,
-                timeout_secs: 4,
-                max_tries: 2,
-                direct_dial: direct,
-                options: vec![MenuOption {
-                    digit: "1".into(),
-                    kind: NumberDestination::Extension,
-                    id: Some(ext),
-                }],
-                timeout_type: if timeout {
-                    NumberDestination::Voicemail
-                } else {
-                    NumberDestination::None
-                },
-                timeout_id: timeout.then_some(ext),
+                flow: serde_json::from_value(flow).unwrap(),
             },
             &[],
-            "de",
         )
         .await
         .unwrap()
         .id
+    }
+
+    async fn menu(pool: &PgPool, ext: Uuid, direct: bool, timeout: bool) -> Uuid {
+        let timeout = timeout.then(|| {
+            json!({"type": "transfer", "id": "t", "destination_type": "voicemail",
+                   "destination_id": ext})
+        });
+        save(
+            pool,
+            json!({"type": "menu", "id": "start", "clip_id": null, "timeout_secs": 4,
+                   "max_tries": 2, "direct_dial": direct,
+                   "options": [{"digit": "1", "next": {"type": "transfer", "id": "one",
+                       "destination_type": "extension", "destination_id": ext}}],
+                   "timeout": timeout}),
+        )
+        .await
     }
 
     fn transfers(c: &FakeCall) -> Vec<String> {
@@ -391,7 +391,7 @@ mod menus {
         let mut c = call("ivr", None);
         c.digits.push_back("1");
         assert_eq!(
-            run_menu(&mut c, &ctx, T, id).await.unwrap(),
+            run_attendant(&mut c, &ctx, T, id, None).await.unwrap(),
             Outcome::Transferred
         );
         assert_eq!(transfers(&c), [format!("dest:extension:{ext} XML talkops")]);
@@ -403,9 +403,12 @@ mod menus {
         assert!(pgd.1.starts_with("1 1 2 4000 none "), "{}", pgd.1);
         assert!(pgd.1.contains("^[1]$"));
 
-        // No input, no timeout destination: goodbye, caller is hung up.
+        // No input, nothing after the menu: goodbye, caller is hung up.
         let mut c = call("ivr", None);
-        assert_eq!(run_menu(&mut c, &ctx, T, id).await.unwrap(), Outcome::Done);
+        assert_eq!(
+            run_attendant(&mut c, &ctx, T, id, None).await.unwrap(),
+            Outcome::Done
+        );
         assert!(transfers(&c).is_empty());
 
         // Direct dial of an existing number; unknown numbers time out.
@@ -413,14 +416,119 @@ mod menus {
         let mut c = call("ivr", None);
         c.digits.push_back("20");
         assert_eq!(
-            run_menu(&mut c, &ctx, T, id).await.unwrap(),
+            run_attendant(&mut c, &ctx, T, id, None).await.unwrap(),
             Outcome::Transferred
         );
         assert_eq!(transfers(&c), ["dial:20 XML talkops"]);
         let mut c = call("ivr", None);
         c.digits.push_back("99");
-        run_menu(&mut c, &ctx, T, id).await.unwrap();
+        run_attendant(&mut c, &ctx, T, id, None).await.unwrap();
         assert_eq!(transfers(&c), [format!("dest:voicemail:{ext} XML talkops")]);
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+    async fn schedule_ring_voicemail_park_and_loops(pool: PgPool) {
+        let (ctx, ext, dir) = setup(&pool).await;
+        let other = extensions::create(
+            &pool,
+            T,
+            &ExtensionInput {
+                number: "21".into(),
+                display_name: "Shop".into(),
+                user_id: None,
+                outbound_number_id: None,
+                hide_caller_id: false,
+                ring_timeout_secs: 30,
+                enabled: true,
+                dnd: false,
+                forward_all: None,
+                record_calls: "inherit".into(),
+            },
+            &[],
+        )
+        .await
+        .unwrap()
+        .id;
+        let schedule = |forced: &str| time_conditions::TimeConditionInput {
+            number: None,
+            name: format!("Hours {forced}"),
+            schedule: Default::default(),
+            holiday_region: None,
+            closed_dates: vec![],
+            r#override: forced.into(),
+            open_type: talkops_core::trunks::NumberDestination::None,
+            open_id: None,
+            closed_type: talkops_core::trunks::NumberDestination::None,
+            closed_id: None,
+        };
+        let open = time_conditions::create(&pool, T, &schedule("open"), &[])
+            .await
+            .unwrap()
+            .id;
+        let closed = time_conditions::create(&pool, T, &schedule("closed"), &[])
+            .await
+            .unwrap()
+            .id;
+        let flow = |tc: Uuid| {
+            json!({"type": "schedule", "id": "start", "time_condition_id": tc,
+                "open": {"type": "ring", "id": "ring", "extensions": [ext, other], "ring_secs": 20,
+                    "next": {"type": "voicemail", "id": "vm", "recipients": [ext, other],
+                             "clip_id": null}},
+                "closed": {"type": "park", "id": "park"}})
+        };
+
+        // Open: ring the phones (the dialplan does the ringing).
+        let id = save(&pool, flow(open)).await;
+        let mut c = call("ivr", None);
+        assert_eq!(
+            run_attendant(&mut c, &ctx, T, id, None).await.unwrap(),
+            Outcome::Transferred
+        );
+        assert_eq!(transfers(&c), [format!("attendant:{id}:ring XML talkops")]);
+
+        // Nobody answered: back at the voicemail step, for both boxes.
+        let mut c = call("ivr", None);
+        c.record_secs.push_back(3);
+        assert_eq!(
+            run_attendant(&mut c, &ctx, T, id, Some("vm"))
+                .await
+                .unwrap(),
+            Outcome::Done
+        );
+        assert!(
+            c.executed
+                .iter()
+                .any(|(a, d)| a == "playback" && d.contains("vm_greeting_default"))
+        );
+        for box_ext in [ext, other] {
+            let msgs = voicemail::list_messages(&pool, T, box_ext).await.unwrap();
+            assert_eq!(msgs.len(), 1, "one copy per recipient");
+            assert_eq!(msgs[0].duration_secs, 3);
+            assert!(ctx.path(&msgs[0].file).is_file());
+        }
+
+        // Closed: park; without FreeSWITCH there is no free slot.
+        let id = save(&pool, flow(closed)).await;
+        let mut c = call("ivr", None);
+        assert_eq!(
+            run_attendant(&mut c, &ctx, T, id, None).await.unwrap(),
+            Outcome::Done
+        );
+        assert!(transfers(&c).is_empty());
+
+        // A flow that loops without input ends.
+        let id = save(
+            &pool,
+            json!({"type": "play", "id": "start", "clip_id": null,
+                   "next": {"type": "goto", "id": "again", "target": "start"}}),
+        )
+        .await;
+        let mut c = call("ivr", None);
+        assert_eq!(
+            run_attendant(&mut c, &ctx, T, id, None).await.unwrap(),
+            Outcome::Done
+        );
         std::fs::remove_dir_all(dir).unwrap();
     }
 }

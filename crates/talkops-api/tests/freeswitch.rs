@@ -714,25 +714,39 @@ async fn ivr_routing_and_transfers(db: PgPool) {
     let f = fixture(&router).await;
     let id = |e: &Value| e["id"].as_str().unwrap().to_owned();
 
+    let ext = |e: &Value| {
+        json!({"type": "transfer", "id": "one",
+        "destination_type": "extension", "destination_id": id(e)})
+    };
     let (status, _) = f
         .admin
         .post(
-            "/api/v1/ivr-menus",
-            json!({"name": "Bad", "greeting_text": "x",
-                   "options": [{"digit": "12", "type": "extension", "id": id(&f.ext20)}]}),
+            "/api/v1/attendants",
+            json!({"name": "Bad", "flow": {"type": "menu", "id": "start", "clip_id": null,
+                   "options": [{"digit": "12", "next": ext(&f.ext20)}]}}),
         )
         .await;
     assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
     let (status, menu) = f
         .admin
         .post(
-            "/api/v1/ivr-menus",
-            json!({"number": "70", "name": "Main", "greeting_text": "Willkommen bei Beispiel.",
-                   "options": [{"digit": "1", "type": "extension", "id": id(&f.ext20)}]}),
+            "/api/v1/attendants",
+            json!({"number": "70", "name": "Main", "flow": {
+            "type": "menu", "id": "start", "clip_id": null,
+            "options": [
+                {"digit": "1", "next": ext(&f.ext20)},
+                {"digit": "2", "next": {"type": "ring", "id": "ring",
+                    "extensions": [id(&f.ext20)], "ring_secs": 15,
+                    "next": {"type": "goto", "id": "back", "target": "start"}}},
+                {"digit": "3", "next": {"type": "ring", "id": "ring-last",
+                    "extensions": [id(&f.ext20)], "strategy": "sequential"}}
+            ]}}),
         )
         .await;
     assert_eq!(status, StatusCode::OK, "{menu}");
-    assert_eq!(menu["greeting_status"], "pending");
+    let (status, list) = f.admin.get("/api/v1/attendants").await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(list[0]["flow"]["options"][1]["next"]["ring_secs"], 15);
 
     // Calling the menu hands the call to TalkOps.
     let a = internal_call(&router, &f.ext21, "70").await;
@@ -770,57 +784,29 @@ async fn ivr_routing_and_transfers(db: PgPool) {
     let a = transfer("dial:20".into(), false).await;
     assert!(has(&a, "respond", "403 Forbidden"));
 
-    // WAV upload replaces the TTS greeting.
-    let mut wav = Vec::new();
-    {
-        let spec = hound::WavSpec {
-            channels: 1,
-            sample_rate: 8000,
-            bits_per_sample: 16,
-            sample_format: hound::SampleFormat::Int,
-        };
-        let mut w = hound::WavWriter::new(std::io::Cursor::new(&mut wav), spec).unwrap();
-        for _ in 0..800 {
-            w.write_sample(0i16).unwrap();
-        }
-        w.finalize().unwrap();
-    }
-    let upload = |data: Vec<u8>| {
-        let router = router.clone();
-        let admin = (f.admin.cookie.clone(), f.admin.csrf.clone());
-        let path = format!("/api/v1/ivr-menus/{}/greeting", id(&menu));
-        async move {
-            let mut body =
-                b"--b\r\nContent-Disposition: form-data; name=\"file\"; filename=\"g.wav\"\r\n\r\n"
-                    .to_vec();
-            body.extend(data);
-            body.extend(b"\r\n--b--\r\n");
-            let res = raw(
-                &router,
-                axum::http::Request::post(path)
-                    .header("cookie", admin.0)
-                    .header("x-requested-with", "TalkOps")
-                    .header("x-csrf-token", admin.1)
-                    .header("content-type", "multipart/form-data; boundary=b")
-                    .body(axum::body::Body::from(body))
-                    .unwrap(),
-            )
-            .await;
-            let status = res.status();
-            (status, body_json(res).await)
-        }
-    };
-    let (status, _) = upload(b"not a wav".to_vec()).await;
-    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
-    let (status, m) = upload(wav).await;
-    assert_eq!(status, StatusCode::OK, "{m}");
-    assert_eq!(m["greeting"], "upload");
-    assert_eq!(m["greeting_status"], "ready");
-    let (status, _) = f
-        .admin
-        .get(&format!("/api/v1/ivr-menus/{}/greeting", id(&menu)))
-        .await;
-    assert_eq!(status, StatusCode::OK);
+    // "Ring phones" steps ring through the dialplan and come back to the
+    // attendant at the following step, or hang up after the last one.
+    let a = transfer(format!("attendant:{}:ring", id(&menu)), true).await;
+    assert!(has(&a, "set", "call_timeout=15"), "{a:?}");
+    assert!(has(&a, "bridge", &ring20(&f)), "{a:?}");
+    assert!(has(&a, "set", "talkops_attendant_step=back"), "{a:?}");
+    assert!(has(&a, "socket", "127.0.0.1:8084 async full"));
+    let a = transfer(format!("attendant:{}:ring-last", id(&menu)), true).await;
+    assert!(
+        a.iter()
+            .any(|(app, d)| app == "bridge" && d.contains("leg_timeout=30")),
+        "{a:?}"
+    );
+    assert_eq!(a.last().unwrap().0, "hangup");
+    let a = transfer(format!("attendant:{}:start", id(&menu)), true).await;
+    assert!(has(&a, "respond", "404 Not Found"), "not a ring step");
+    // Entering an attendant clears a step left from another one.
+    let a = internal_call(&router, &f.ext21, "70").await;
+    assert!(
+        a.iter()
+            .any(|(app, d)| app == "set" && d == "talkops_attendant_step="),
+        "{a:?}"
+    );
 }
 
 #[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]

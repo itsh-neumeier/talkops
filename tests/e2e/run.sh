@@ -157,14 +157,14 @@ printf 'SEQUENTIAL\n50;\n' > "$WORK/group.csv"
     || { cat "$WORK/group.log" 2>/dev/null; fail "ring group call failed"; }
 wait_vm_count 2 || fail "ring group fallback did not reach voicemail"
 
-log "IVR menu routes key 1"
-api POST /api/v1/ivr-menus "{\"number\":\"70\",\"name\":\"E2E menu\",\"greeting_text\":\"Drücken Sie die 1.\",\"timeout_secs\":4,\"options\":[{\"digit\":\"1\",\"type\":\"voicemail\",\"id\":\"$EXT22\"}]}" >/dev/null \
-    || fail "create IVR menu"
+log "Smart Attendant routes key 1 to its voicemail step"
+api POST /api/v1/attendants "{\"number\":\"70\",\"name\":\"E2E attendant\",\"flow\":{\"type\":\"menu\",\"id\":\"start\",\"clip_id\":null,\"timeout_secs\":4,\"options\":[{\"digit\":\"1\",\"next\":{\"type\":\"voicemail\",\"id\":\"vm\",\"recipients\":[\"$EXT22\"],\"clip_id\":null}}]}}" >/dev/null \
+    || fail "create Smart Attendant"
 printf 'SEQUENTIAL\n70;\n' > "$WORK/ivr.csv"
 (cd "$DIR" && sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/call_ivr.xml" -inf "$WORK/ivr.csv" -s "$CALLER" -au "$CALLER" -ap "$CALLER_PW" \
     -m 1 -p 5098 -min_rtp_port 16500 -max_rtp_port 16550 -i "$SIP_HOST" -timeout 60 -timeout_error -trace_err -error_file "$WORK/ivr.log" >/dev/null) \
     || { cat "$WORK/ivr.log" 2>/dev/null; fail "IVR call failed"; }
-wait_vm_count 3 || fail "IVR choice did not reach voicemail"
+wait_vm_count 3 || fail "attendant choice did not reach voicemail"
 
 log "queue offers the call to an agent"
 api POST /api/v1/queues "{\"number\":\"80\",\"name\":\"E2E queue\",\"strategy\":\"ring-all\",\"members\":[\"$EXT21\"]}" >/dev/null \

@@ -25,9 +25,3 @@ ALTER TABLE voicemail_boxes
         CHECK (greeting IN ('default', 'tts', 'recorded', 'clip', 'none')),
     ADD COLUMN greeting_clip_id UUID REFERENCES audio_clips (id) ON DELETE SET NULL;
 
--- Voice menus: greeting from a clip, or none.
-ALTER TABLE ivr_menus DROP CONSTRAINT ivr_menus_greeting_check;
-ALTER TABLE ivr_menus
-    ADD CONSTRAINT ivr_menus_greeting_check
-        CHECK (greeting IN ('tts', 'upload', 'clip', 'none')),
-    ADD COLUMN greeting_clip_id UUID REFERENCES audio_clips (id) ON DELETE SET NULL;

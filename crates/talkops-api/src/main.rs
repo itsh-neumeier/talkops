@@ -182,6 +182,11 @@ async fn serve(config: Config) -> anyhow::Result<()> {
     }));
     talkops_api::mailer::spawn(state.db.clone(), state.secrets.clone(), state.media.clone());
     talkops_api::retention::spawn(db.clone(), state.media.clone());
+    match talkops_core::attendant::adopt_legacy_greetings(&db, &state.media.sounds).await {
+        Ok(0) => {}
+        Ok(n) => tracing::info!(count = n, "moved voice menu greetings to audio clips"),
+        Err(err) => tracing::warn!(error = %err, "cannot move voice menu greetings"),
+    }
     talkops_api::sip_guard::spawn(db.clone(), state.telephony.esl.clone());
     if let Some(cfg) = &state.backup {
         backup::spawn(db.clone(), cfg.clone());

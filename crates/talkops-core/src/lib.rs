@@ -1,6 +1,7 @@
 //! Core domain types, database access and the Postgres-backed job queue shared
 //! by all TalkOps services.
 
+pub mod attendant;
 pub mod audio;
 pub mod audit;
 pub mod backups;
@@ -13,7 +14,7 @@ pub mod error;
 pub mod extensions;
 pub mod holidays;
 pub mod identity;
-pub mod ivr;
+
 pub mod jobs;
 pub mod mail;
 pub mod mfa;

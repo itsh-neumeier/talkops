@@ -1,5 +1,6 @@
 //! TalkOps control plane HTTP server.
 
+pub mod attendant;
 pub mod auth;
 pub mod backup;
 pub mod callcenter;
@@ -10,7 +11,6 @@ pub mod esl;
 pub mod fsxml;
 pub mod ldap;
 pub mod mailer;
-pub mod menu;
 pub mod retention;
 pub mod routes;
 pub mod sip_guard;
@@ -192,7 +192,7 @@ pub fn api_router() -> (Router<AppState>, utoipa::openapi::OpenApi) {
         .merge(routes::voicemail::router())
         .merge(routes::groups::router())
         .merge(routes::time_conditions::router())
-        .merge(routes::ivr::router())
+        .merge(routes::attendants::router())
         .merge(routes::queues::router())
         .merge(routes::recordings::router())
         .merge(routes::doors::router())

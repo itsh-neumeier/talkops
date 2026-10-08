@@ -47,6 +47,8 @@ pub struct LiveStatus {
 pub struct Telephony {
     pub esl: EslHandle,
     status: Arc<RwLock<LiveStatus>>,
+    /// Park slots just handed out, until the call shows up in the lot.
+    park_reservations: Arc<std::sync::Mutex<HashMap<String, std::time::Instant>>>,
 }
 
 impl Telephony {
@@ -185,6 +187,25 @@ impl Telephony {
         }
     }
 
+    /// Reserves a free park slot (`*51` … `*59`) for a call about to be
+    /// parked; `None` if all are taken or FreeSWITCH is unreachable.
+    pub async fn reserve_park_slot(&self) -> Option<String> {
+        let client = self.esl.get().await?;
+        let lot = crate::fsxml::dialplan::PARK_LOT;
+        let info = client.api(&format!("valet_info {lot}")).await.ok()?;
+        let taken = parse_valet_slots(&info);
+        let mut reserved = self
+            .park_reservations
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        reserved.retain(|_, at| at.elapsed() < Duration::from_secs(10));
+        let slot = (1..=9)
+            .map(|n| format!("*5{n}"))
+            .find(|s| !taken.contains(s) && !reserved.contains_key(s))?;
+        reserved.insert(slot.clone(), std::time::Instant::now());
+        Some(slot)
+    }
+
     /// Restarts the external profile (needed when its own parameters change,
     /// e.g. the public IP). Interrupts active trunk calls.
     pub async fn restart_external_profile(&self) {
@@ -194,6 +215,17 @@ impl Telephony {
             }
         }
     }
+}
+
+/// Slot names in `valet_info` output (`<extension uuid="…">*51</extension>`).
+fn parse_valet_slots(xml: &str) -> HashSet<String> {
+    xml.split("<extension")
+        .skip(1)
+        .filter_map(|part| {
+            let inner = &part[part.find('>')? + 1..];
+            Some(inner[..inner.find("</extension>")?].trim().to_owned())
+        })
+        .collect()
 }
 
 fn parse_registrations(json: &str) -> Vec<Registration> {
@@ -260,6 +292,16 @@ fn parse_gateways(xml: &str) -> HashMap<String, GatewayState> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn parses_valet_info() {
+        let xml = "<lots>\n<lot name=\"talkops\">\n<extension uuid=\"a-b\">*51</extension>\n\
+                   <extension uuid=\"c-d\">*53</extension>\n</lot>\n</lots>\n";
+        let slots = parse_valet_slots(xml);
+        assert_eq!(slots.len(), 2);
+        assert!(slots.contains("*51") && slots.contains("*53"));
+        assert!(parse_valet_slots("<lots></lots>").is_empty());
+    }
 
     #[test]
     fn parses_registrations_json() {

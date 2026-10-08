@@ -1,3 +1,4 @@
+pub mod attendants;
 pub mod audio;
 pub mod auth;
 pub mod backups;
@@ -7,7 +8,6 @@ pub mod fs;
 pub mod groups;
 pub mod health;
 pub mod identity;
-pub mod ivr;
 pub mod metrics;
 pub mod oidc;
 pub mod phones;

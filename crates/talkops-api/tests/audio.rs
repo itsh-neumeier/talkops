@@ -182,13 +182,19 @@ async fn audio_clips(db: PgPool) {
 
     let (status, menu) = admin
         .post(
-            "/api/v1/ivr-menus",
-            json!({"name": "Main", "greeting": "clip", "greeting_clip_id": tts_id}),
+            "/api/v1/attendants",
+            json!({"name": "Main", "flow": {"type": "play", "id": "start", "clip_id": tts_id}}),
         )
         .await;
     assert_eq!(status, StatusCode::OK, "{menu}");
-    assert_eq!(menu["greeting_clip_id"], tts_id.as_str());
-    assert_eq!(menu["greeting_status"], "none");
+    let (status, _) = admin
+        .post(
+            "/api/v1/attendants",
+            json!({"name": "Bad", "flow": {"type": "play", "id": "start",
+                   "clip_id": Uuid::new_v4()}}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "unknown clip");
 
     // Cleanup: unreferenced clips older than a day go, with their files.
     sqlx::query("UPDATE audio_clips SET created_at = now() - interval '2 days'")

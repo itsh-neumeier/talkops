@@ -294,16 +294,29 @@ async fn internal_routing(db: PgPool) {
         )
         .await;
     assert_eq!(status, StatusCode::OK);
+    let a = internal_call(&router, &f.ext20, "030123456").await;
+    assert!(
+        has(&a, "set", "effective_caller_id_number=anonymous"),
+        "{a:?}"
+    );
+    assert!(has(&a, "set", "sip_h_Privacy=id"));
     assert!(has(
-        &internal_call(&router, &f.ext20, "030123456").await,
-        "privacy",
-        "full"
+        &a,
+        "set",
+        "sip_h_P-Asserted-Identity=<sip:49891234567@sip.leovoice.online>"
     ));
-    assert!(!has(
-        &internal_call(&router, &f.ext20, "112").await,
-        "privacy",
-        "full"
-    ));
+    assert!(!has(&a, "set", "effective_caller_id_number=49891234567"));
+    let a = internal_call(&router, &f.ext20, "112").await;
+    assert!(!has(&a, "set", "sip_h_Privacy=id"));
+    assert!(has(&a, "set", "effective_caller_id_number=49891234567"));
+    // Per call: *31 / #31# before the number.
+    let a = internal_call(&router, &f.ext21, "*31030123456").await;
+    assert!(has(&a, "set", "sip_h_Privacy=id"), "{a:?}");
+    assert!(has(&a, "set", "talkops_destination=+4930123456"));
+    let a = internal_call(&router, &f.ext21, "#31#030123456").await;
+    assert!(has(&a, "set", "effective_caller_id_number=anonymous"));
+    let a = internal_call(&router, &f.ext21, "030123456").await;
+    assert!(!has(&a, "set", "sip_h_Privacy=id"));
 
     // Unauthenticated internal call is refused.
     let (_, xml) = fs_post(

@@ -237,6 +237,11 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
         .chars()
         .filter(|c| c.is_ascii_digit() || *c == '+' || *c == '*' || *c == '#')
         .collect();
+    // `*31<number>` or `#31#<number>`: hide the own number for this call.
+    let (dest, hide_once) = match dest.strip_prefix("#31#").or(dest.strip_prefix("*31")) {
+        Some(rest) if !rest.is_empty() => (rest.to_owned(), true),
+        _ => (dest, false),
+    };
 
     let mut actions = vec![
         ("export", format!("talkops_tenant_id={tenant}")),
@@ -335,7 +340,7 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
         &caller_e164,
         dialed_e164.as_deref(),
         &raw_dial,
-        caller.hide_caller_id && !emergency,
+        (caller.hide_caller_id || hide_once) && !emergency,
     )?);
     Ok(actions)
 }
@@ -723,8 +728,27 @@ fn outbound_actions(
         Srtp::Required => a.push(set("rtp_secure_media", "mandatory")),
     }
     if hide_caller_id {
-        a.push(set("sip_cid_type", "pid"));
-        a.push(("privacy", "full".to_owned()));
+        // CLIR (RFC 3325): From and display show "anonymous"; the provider
+        // still learns the line from P-Asserted-Identity, and `Privacy: id`
+        // tells it not to pass the number on.
+        a.retain(|(app, data)| {
+            !(*app == "set"
+                && (data.starts_with("effective_caller_id_") || data.starts_with("sip_cid_type=")))
+        });
+        a.push(set("effective_caller_id_name", "Anonymous"));
+        a.push(set("effective_caller_id_number", "anonymous"));
+        a.push(set("sip_cid_type", "none"));
+        if sip.caller_id_header != CallerIdHeader::Ppi {
+            a.push(set(
+                "sip_h_P-Asserted-Identity",
+                format!(
+                    "<sip:{}@{}>",
+                    caller_formatted,
+                    domain.split(':').next().unwrap_or_default()
+                ),
+            ));
+        }
+        a.push(set("sip_h_Privacy", "id"));
     }
     a.push(set("hangup_after_bridge", "true"));
     a.push(set("continue_on_fail", "true"));

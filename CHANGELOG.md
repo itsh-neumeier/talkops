@@ -4,6 +4,16 @@ All notable changes to TalkOps. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [1.1.4] – 2026-10-08
+
+### Fixed
+
+- Browser softphone calls still hung up when answered: FreeSWITCH only
+  accepts public ICE candidates by default (`wan.auto`), so browsers in the
+  local network or over VPN were rejected. The internal profile now also
+  accepts local and private (RFC 1918) addresses. FreeSWITCH reads this when
+  the profile starts: restart the FreeSWITCH container after updating.
+
 ## [1.1.3] – 2026-10-08
 
 ### Added

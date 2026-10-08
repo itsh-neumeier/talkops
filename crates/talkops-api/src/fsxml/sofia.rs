@@ -204,6 +204,12 @@ pub fn render(settings: &ProfileSettings, gateways: &[GatewaySpec]) -> String {
     // SIP over WebSocket for the browser softphone; only TalkOps (same host)
     // connects here and relays it to logged-in users.
     w.param("ws-binding", WS_BINDING);
+    // ICE candidates of browsers: FreeSWITCH only accepts public addresses
+    // by default (wan.auto); browsers in the local network or over VPN
+    // offer private ones.
+    for acl in ["localnet.auto", "rfc1918.auto", "wan.auto"] {
+        w.param("apply-candidate-acl", acl);
+    }
     w.close("settings");
     w.close("profile");
 
@@ -309,5 +315,12 @@ mod tests {
         assert_eq!(param("ping").as_deref(), Some("30"));
         assert!(xml.contains("value=\"$${local_ip_v4}\""));
         assert!(!xml.contains("ext-rtp-ip"));
+        // Browsers in the local network may offer private ICE candidates.
+        let acls: Vec<_> = doc
+            .descendants()
+            .filter(|n| n.attribute("name") == Some("apply-candidate-acl"))
+            .filter_map(|n| n.attribute("value"))
+            .collect();
+        assert_eq!(acls, ["localnet.auto", "rfc1918.auto", "wan.auto"]);
     }
 }

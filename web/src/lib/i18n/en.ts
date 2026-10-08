@@ -721,7 +721,14 @@ export default {
 	'queues.greeting': 'Greeting',
 	'queues.greetingNone': 'Callers go straight into the queue.',
 	'queues.moh': 'Music on hold',
-	'queues.mohDefault': 'The system music.',
+	'music.title': 'Music on hold',
+	'music.hint':
+		'Callers hear this music while you hold their call, and while they wait in a queue without its own music.',
+	'music.all': 'All built-in pieces (shuffled)',
+	'music.own': 'Own music or announcement',
+	'music.unavailable':
+		'Built-in pieces become available once FreeSWITCH has started with this version.',
+	'queues.mohDefault': 'The music on hold from the settings.',
 	'queues.mohHint': 'Plays in a loop while callers wait. Use music you are licensed to play.',
 	'queues.distribution': 'Call distribution',
 	'queues.capacity': 'Queue size',

@@ -127,11 +127,20 @@ async fn callcenter_conf(state: &AppState) -> Option<String> {
         let queues = talkops_core::queues::list_all(&state.db).await?;
         let (agents, tiers) =
             talkops_core::queues::desired_agents(&state.db, fsxml::SIP_DOMAIN).await?;
+        let mut hold_music = std::collections::HashMap::new();
+        for q in &queues {
+            if let std::collections::hash_map::Entry::Vacant(slot) = hold_music.entry(q.tenant_id) {
+                let s = talkops_core::settings::get(&state.db, q.tenant_id).await?;
+                let moh = fsxml::dialplan::hold_music(&state.media.sounds, q.tenant_id, &s);
+                slot.insert(moh);
+            }
+        }
         talkops_core::error::CoreResult::Ok(fsxml::callcenter::render(
             &queues,
             &agents,
             &tiers,
             &state.media.sounds,
+            &hold_music,
         ))
     }
     .await;

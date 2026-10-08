@@ -2,17 +2,26 @@
 //! database. Agents and tiers are only read when the module loads; later
 //! changes are applied by [`crate::callcenter`] over the event socket.
 
+use std::collections::HashMap;
 use std::path::Path;
 
 use talkops_core::audio;
 use talkops_core::queues::{Agent, Queue, Tier};
+use talkops_core::tenant::TenantId;
 
 use super::XmlWriter;
 
 /// Music on hold for waiting callers.
 pub const MOH: &str = "local_stream://default";
 
-pub fn render(queues: &[Queue], agents: &[Agent], tiers: &[Tier], sounds: &Path) -> String {
+/// `hold_music`: each tenant's music on hold, the default for its queues.
+pub fn render(
+    queues: &[Queue],
+    agents: &[Agent],
+    tiers: &[Tier],
+    sounds: &Path,
+    hold_music: &HashMap<TenantId, String>,
+) -> String {
     let mut w = XmlWriter::document();
     w.open("section", &[("name", "configuration")]);
     w.open(
@@ -27,7 +36,9 @@ pub fn render(queues: &[Queue], agents: &[Agent], tiers: &[Tier], sounds: &Path)
     w.open("queues", &[]);
     for q in queues.iter().filter(|q| q.enabled) {
         w.open("queue", &[("name", &q.cc_name())]);
-        for (name, value) in queue_params(q, sounds) {
+        for (name, value) in
+            queue_params(q, sounds, hold_music.get(&q.tenant_id).map(String::as_str))
+        {
             w.param(name, &value);
         }
         w.close("queue");
@@ -78,20 +89,24 @@ pub fn contact(a: &Agent) -> String {
         .join(",")
 }
 
-/// The queue's own music on hold (an audio clip, looped), or the system's.
-fn moh(q: &Queue, sounds: &Path) -> String {
+/// The queue's own music on hold (an audio clip, looped), or the tenant's.
+fn moh(q: &Queue, sounds: &Path, default: Option<&str>) -> String {
     q.moh_clip_id
         .map(|id| sounds.join(audio::clip_file(q.tenant_id, id)))
         .filter(|p| p.is_file())
         .map(|p| p.to_string_lossy().into_owned())
         .filter(|p| !p.contains([' ', '$', '{', '}']))
-        .unwrap_or_else(|| MOH.to_owned())
+        .unwrap_or_else(|| default.unwrap_or(MOH).to_owned())
 }
 
-pub fn queue_params(q: &Queue, sounds: &Path) -> Vec<(&'static str, String)> {
+pub fn queue_params(
+    q: &Queue,
+    sounds: &Path,
+    default_moh: Option<&str>,
+) -> Vec<(&'static str, String)> {
     vec![
         ("strategy", q.strategy.clone()),
-        ("moh-sound", moh(q, sounds)),
+        ("moh-sound", moh(q, sounds, default_moh)),
         ("time-base-score", "system".to_owned()),
         ("max-wait-time", q.max_wait_secs.to_string()),
         // Nobody available: leave the queue after 30 s.
@@ -137,7 +152,7 @@ mod tests {
             agent: "a-1".into(),
             position: 1,
         };
-        let xml = render(&[q], &[a], &[t], Path::new("/nonexistent"));
+        let xml = render(&[q], &[a], &[t], Path::new("/nonexistent"), &HashMap::new());
         let doc = roxmltree::Document::parse(&xml).unwrap();
         let queue = doc.descendants().find(|n| n.has_tag_name("queue")).unwrap();
         assert_eq!(

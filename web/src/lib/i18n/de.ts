@@ -722,7 +722,14 @@ const de: Record<keyof typeof en, string> = {
 	'queues.greeting': 'Begrüßung',
 	'queues.greetingNone': 'Anrufer kommen direkt in die Warteschlange.',
 	'queues.moh': 'Wartemusik',
-	'queues.mohDefault': 'Die Systemmusik.',
+	'music.title': 'Wartemusik',
+	'music.hint':
+		'Diese Musik hören Anrufer, während Sie das Gespräch halten, und in Warteschlangen ohne eigene Musik.',
+	'music.all': 'Alle mitgelieferten Stücke (gemischt)',
+	'music.own': 'Eigene Musik oder Ansage',
+	'music.unavailable':
+		'Die mitgelieferten Stücke stehen bereit, sobald FreeSWITCH mit dieser Version gestartet ist.',
+	'queues.mohDefault': 'Die Wartemusik aus den Einstellungen.',
 	'queues.mohHint':
 		'Läuft in Schleife, solange Anrufer warten. Nur Musik mit passenden Rechten verwenden.',
 	'queues.distribution': 'Anrufverteilung',

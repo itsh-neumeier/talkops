@@ -1264,3 +1264,67 @@ async fn call_recording(db: PgPool) {
         StatusCode::FORBIDDEN
     );
 }
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn hold_music_selection(db: PgPool) {
+    let state = state(db.clone());
+    let sounds = state.media.sounds.clone();
+    let router = talkops_api::app(state, None);
+    let f = fixture(&router).await;
+    let hold = |a: &[(String, String)]| {
+        a.iter()
+            .find_map(|(app, d)| {
+                (app == "export")
+                    .then(|| d.strip_prefix("hold_music="))
+                    .flatten()
+            })
+            .map(str::to_owned)
+    };
+    // Default: all built-in pieces shuffled.
+    let a = internal_call(&router, &f.ext21, "20").await;
+    assert_eq!(hold(&a).as_deref(), Some("local_stream://default"));
+
+    // The list of built-in pieces; a chosen piece once FreeSWITCH copied it.
+    let (_, music) = f.admin.get("/api/v1/audio/music").await;
+    assert_eq!(music.as_array().unwrap().len(), 4);
+    assert_eq!(music[0]["available"], false);
+    let track = "ponce-preludio-in-e-major";
+    write_wav(&sounds.join(format!("music/{track}.wav")), 1);
+    let (status, _) = f.admin.get(&format!("/api/v1/audio/music/{track}")).await;
+    assert_eq!(status, StatusCode::OK);
+    let (_, mut s) = f.admin.get("/api/v1/settings").await;
+    s["hold_music"] = json!(track);
+    let (status, _) = f.admin.put("/api/v1/settings", s.clone()).await;
+    assert_eq!(status, StatusCode::OK);
+    let a = internal_call(&router, &f.ext21, "20").await;
+    let path = sounds.join(format!("music/{track}.wav"));
+    assert_eq!(hold(&a).as_deref(), path.to_str());
+
+    // An own clip wins; unknown pieces and clips are rejected.
+    let tenant = talkops_core::tenant::TenantId::DEFAULT;
+    let clip = uuid::Uuid::from_u128(7);
+    write_wav(
+        &sounds.join(talkops_core::audio::clip_file(tenant, clip)),
+        1,
+    );
+    talkops_core::audio::create_file(&db, tenant, None, clip, "upload", 1000)
+        .await
+        .unwrap();
+    s["hold_music_clip_id"] = json!(clip);
+    assert_eq!(
+        f.admin.put("/api/v1/settings", s.clone()).await.0,
+        StatusCode::OK
+    );
+    let a = internal_call(&router, &f.ext21, "20").await;
+    let clip_path = sounds.join(talkops_core::audio::clip_file(tenant, clip));
+    assert_eq!(hold(&a).as_deref(), clip_path.to_str());
+    let mut bad = s.clone();
+    bad["hold_music"] = json!("../../etc/passwd");
+    assert_eq!(
+        f.admin.put("/api/v1/settings", bad).await.0,
+        StatusCode::UNPROCESSABLE_ENTITY
+    );
+    let mut bad = s;
+    bad["hold_music_clip_id"] = json!(uuid::Uuid::from_u128(8));
+    assert_ne!(f.admin.put("/api/v1/settings", bad).await.0, StatusCode::OK);
+}

@@ -62,6 +62,17 @@ RUN cd freeswitch \
     && find /usr/local/freeswitch -name '*.la' -delete \
     && (strip --strip-unneeded /usr/local/freeswitch/bin/* /usr/local/freeswitch/lib/*.so* /usr/local/freeswitch/mod/*.so 2>/dev/null || true)
 
+# Music on hold: the four classical guitar pieces FreeSWITCH ships as its
+# default hold music (https://files.freeswitch.org/releases/sounds/).
+FROM debian:${DEBIAN_RELEASE}-slim AS music
+ARG MUSIC_URL=https://files.freeswitch.org/releases/sounds/freeswitch-sounds-music-8000-1.0.52.tar.gz
+ARG MUSIC_SHA256=2491dcb92a69c629b03ea070d2483908a52e2c530dd77791f49a45a4d70aaa07
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && curl -fsSLo /tmp/music.tgz "$MUSIC_URL" \
+    && echo "$MUSIC_SHA256  /tmp/music.tgz" | sha256sum -c - \
+    && mkdir -p /music && tar -xzf /tmp/music.tgz -C /music --strip-components=2 music/8000
+
 FROM debian:${DEBIAN_RELEASE}-slim
 
 ARG FREESWITCH_VERSION=v1.10.12
@@ -79,6 +90,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY --from=build /usr/local/lib/ /usr/local/lib/
 COPY --from=build /usr/local/freeswitch/ /usr/local/freeswitch/
+COPY --from=music /music/ /usr/local/freeswitch/share/freeswitch/sounds/music/default/
 
 # Fail the build if any shared library dependency is missing at runtime.
 RUN ldconfig \

@@ -110,6 +110,35 @@ pub fn clip_file(tenant: TenantId, id: Uuid) -> String {
     format!("clips/{tenant}/{id}.wav")
 }
 
+/// Built-in music on hold: FreeSWITCH's default pieces (classical guitar),
+/// which the FreeSWITCH container copies to `sounds/music/<id>.wav`.
+pub const MUSIC: &[(&str, &str)] = &[
+    (
+        "suite-espanola-op-47-leyenda",
+        "Isaac Albéniz – Asturias (Leyenda)",
+    ),
+    (
+        "danza-espanola-op-37-h-142-xii-arabesca",
+        "Enrique Granados – Danza española Nr. 12 (Arabesca)",
+    ),
+    (
+        "partita-no-3-in-e-major-bwv-1006-1-preludio",
+        "J. S. Bach – Partita Nr. 3 BWV 1006, Preludio",
+    ),
+    (
+        "ponce-preludio-in-e-major",
+        "Manuel M. Ponce – Preludio in E-Dur",
+    ),
+];
+
+/// Path of a built-in piece below the sounds directory; `None` if unknown.
+pub fn music_file(track: &str) -> Option<String> {
+    MUSIC
+        .iter()
+        .any(|(id, _)| *id == track)
+        .then(|| format!("music/{track}.wav"))
+}
+
 /// Creates a generated clip and queues its rendering.
 pub async fn create_tts(
     pool: &PgPool,
@@ -241,6 +270,7 @@ pub const REFERENCES: &[&str] = &[
     "voicemail_boxes r WHERE r.greeting_clip_id = c.id",
     "ivr_menus r WHERE c.id = ANY (r.clip_ids)",
     "queues r WHERE c.id IN (r.greeting_clip_id, r.moh_clip_id, r.voicemail_clip_id)",
+    "tenant_settings r WHERE r.hold_music_clip_id = c.id",
 ];
 
 /// Deletes clips nobody references that are older than a day (previews,

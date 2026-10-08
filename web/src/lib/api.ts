@@ -209,6 +209,10 @@ export interface Settings {
 	recording_announcement: boolean;
 	recording_retention_days: number;
 	transcription_enabled: boolean;
+	/** Built-in piece, '' for all pieces shuffled. */
+	hold_music: string;
+	/** Own music on hold (takes precedence). */
+	hold_music_clip_id: string | null;
 }
 
 export interface Registration {

@@ -248,6 +248,10 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
         set("talkops_extension_id", caller.id.to_string()),
         set("talkops_caller_number", caller.number.clone()),
         set("talkops_caller_name", sanitize_value(&caller.display_name)),
+        (
+            "export",
+            format!("hold_music={}", hold_music(r.sounds, tenant, &settings)),
+        ),
     ];
 
     // A door station rings: whatever it dials goes to its configured target.
@@ -794,6 +798,13 @@ async fn plan_public(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Actio
         set("talkops_caller_name", name.clone()),
         set("effective_caller_id_number", display),
         set("effective_caller_id_name", name.clone()),
+        (
+            "export",
+            format!(
+                "hold_music={}",
+                hold_music(r.sounds, tenant, &tenant_settings)
+            ),
+        ),
     ];
     if number.destination_type == NumberDestination::Extension {
         if let Some(ext) = number.destination_id {
@@ -1087,6 +1098,20 @@ async fn queue(
 }
 
 /// Path of an audio clip FreeSWITCH can play, if it exists.
+/// What the other party hears while a call is on hold: the tenant's own
+/// clip, a chosen built-in piece, or all built-in pieces shuffled.
+pub fn hold_music(sounds: &std::path::Path, tenant: TenantId, s: &TenantSettings) -> String {
+    let usable = |file: String| {
+        let path = sounds.join(file);
+        let text = path.to_string_lossy().into_owned();
+        (path.is_file() && !text.contains([' ', '$', '{', '}'])).then_some(text)
+    };
+    s.hold_music_clip_id
+        .and_then(|id| usable(talkops_core::audio::clip_file(tenant, id)))
+        .or_else(|| talkops_core::audio::music_file(&s.hold_music).and_then(usable))
+        .unwrap_or_else(|| super::callcenter::MOH.to_owned())
+}
+
 fn clip_path(r: &Routing<'_>, tenant: TenantId, clip: Option<Uuid>) -> Option<String> {
     let path = r.sounds.join(talkops_core::audio::clip_file(tenant, clip?));
     let text = path.to_string_lossy().into_owned();

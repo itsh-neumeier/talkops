@@ -365,6 +365,7 @@ async fn trunks_accounts_numbers_routes(pool: PgPool) {
     assert_eq!(s.country_code, "49");
     s.area_code = "89".into();
     s.default_number_id = Some(num.id);
+    s.hold_music = "ponce-preludio-in-e-major".into();
     let s2 = settings::update(&pool, T, &s).await.unwrap();
     assert_eq!(s2, s);
     trunks::delete(&pool, T, trunk.id).await.unwrap();

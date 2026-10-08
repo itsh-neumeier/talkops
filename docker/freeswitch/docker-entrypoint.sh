@@ -37,6 +37,15 @@ check() {
 } > "$out"
 chmod 600 "$out"
 
+# Built-in hold music into the shared sounds volume, so TalkOps can offer the
+# pieces for preview and select one (missing files only; never overwrite).
+music=/var/lib/talkops/sounds/music
+if mkdir -p "$music" 2>/dev/null; then
+    for f in /usr/local/freeswitch/share/freeswitch/sounds/music/default/*.wav; do
+        [ -e "$f" ] && [ ! -e "$music/${f##*/}" ] && cp "$f" "$music/" || true
+    done
+fi
+
 if [ "$#" -gt 0 ]; then
     exec "$@"
 fi

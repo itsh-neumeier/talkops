@@ -56,6 +56,9 @@ fn validate(s: &TenantSettings) -> Result<(), ApiError> {
                 && h.chars()
                     .all(|c| c.is_ascii_alphanumeric() || ".-:".contains(c))
         });
+    if !s.hold_music.is_empty() && talkops_core::audio::music_file(&s.hold_music).is_none() {
+        return Err(ApiError::BadRequest("unknown hold music".into()));
+    }
     if !ip_ok {
         return Err(ApiError::BadRequest(
             "external IP must be an IP address or stun:host[:port]".into(),
@@ -74,6 +77,7 @@ pub async fn update_settings(
 ) -> ApiResult<Json<TenantSettings>> {
     auth.require(Role::Admin)?;
     validate(&input)?;
+    talkops_core::audio::ensure_exists(&state.db, auth.tenant, input.hold_music_clip_id).await?;
     let before = settings::get(&state.db, auth.tenant).await?;
     let after = settings::update(&state.db, auth.tenant, &input).await?;
     audit::record(

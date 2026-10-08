@@ -2,6 +2,9 @@
 	import { onMount } from 'svelte';
 	import { api, type PhoneNumber, type Settings, type SmtpSettings } from '#lib/api.ts';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
+	import AudioPicker, { type AudioMode } from '#lib/components/AudioPicker.svelte';
+	import AudioPlayer from '#lib/components/AudioPlayer.svelte';
+	import { musicUrl, type MusicTrack } from '#lib/audio.ts';
 	import BackupSettings from '#lib/components/BackupSettings.svelte';
 	import IdentitySettings from '#lib/components/IdentitySettings.svelte';
 	import SipGuardSettings from '#lib/components/SipGuardSettings.svelte';
@@ -24,6 +27,13 @@
 	let smtpError = $state('');
 	let smtpInfo = $state('');
 	let testTo = $state('');
+	let tracks = $state<MusicTrack[]>([]);
+	/** '' = all pieces, a piece id, or 'own' for an own clip. */
+	let music = $state('');
+	let musicMode = $state<AudioMode>('upload');
+	let musicPicker = $state<ReturnType<typeof AudioPicker>>();
+	let musicError = $state('');
+	let musicSaved = $state(false);
 	// Zones with a matching Yealink time zone entry (talkops-provisioning).
 	const timezones = [
 		'Europe/Berlin',
@@ -40,6 +50,8 @@
 		try {
 			settings = await api.get<Settings>('/settings');
 			emergency = settings.emergency_numbers.join(', ');
+			music = settings.hold_music_clip_id ? 'own' : settings.hold_music;
+			if (hasRole('admin')) tracks = await api.get<MusicTrack[]>('/audio/music');
 			if (hasRole('operator')) numbers = await api.get<PhoneNumber[]>('/numbers');
 			if (hasRole('admin')) smtp = await api.get<SmtpSettings>('/settings/smtp');
 		} catch (err) {
@@ -78,6 +90,24 @@
 			recSaved = true;
 		} catch (err) {
 			recError = errorMessage(err);
+		}
+	}
+
+	async function saveMusic(e: SubmitEvent) {
+		e.preventDefault();
+		musicError = '';
+		musicSaved = false;
+		try {
+			const own = music === 'own' ? ((await musicPicker?.ensure()) ?? null) : null;
+			settings = await api.put<Settings>('/settings', {
+				...settings,
+				hold_music: music === 'own' ? '' : music,
+				hold_music_clip_id: own
+			});
+			music = settings.hold_music_clip_id ? 'own' : settings.hold_music;
+			musicSaved = true;
+		} catch (err) {
+			musicError = errorMessage(err);
 		}
 	}
 
@@ -242,6 +272,60 @@
 				{t('rec.transcription')}</label
 			>
 			<p class="hint">{t('rec.transcriptionHint')}</p>
+			<div class="flex justify-end">
+				<button class="btn btn-primary">{t('common.save')}</button>
+			</div>
+		</form>
+	{/if}
+
+	{#if settings && hasRole('admin')}
+		<form class="card space-y-3" onsubmit={saveMusic}>
+			<h2>{t('music.title')}</h2>
+			<p class="text-sm text-slate-600 dark:text-slate-300">{t('music.hint')}</p>
+			<ErrorBox error={musicError} />
+			{#if musicSaved}<p class="text-sm text-emerald-700 dark:text-emerald-400">
+					{t('common.saved')}
+				</p>{/if}
+			<div class="space-y-2" role="radiogroup" aria-label={t('music.title')}>
+				<label class="flex items-center gap-2"
+					><input type="radio" name="hold-music" value="" bind:group={music} />
+					{t('music.all')}</label
+				>
+				{#each tracks as tr (tr.id)}
+					<div class="space-y-1">
+						<label class="flex items-center gap-2"
+							><input
+								type="radio"
+								name="hold-music"
+								value={tr.id}
+								bind:group={music}
+								disabled={!tr.available}
+							/>
+							{tr.title}</label
+						>
+						{#if tr.available && music === tr.id}
+							<div class="pl-6"><AudioPlayer src={musicUrl(tr.id)} /></div>
+						{/if}
+					</div>
+				{/each}
+				{#if tracks.some((tr) => !tr.available)}
+					<p class="hint">{t('music.unavailable')}</p>
+				{/if}
+				<label class="flex items-center gap-2"
+					><input type="radio" name="hold-music" value="own" bind:group={music} />
+					{t('music.own')}</label
+				>
+			</div>
+			{#if music === 'own'}
+				<AudioPicker
+					bind:this={musicPicker}
+					bind:mode={musicMode}
+					bind:clipId={settings.hold_music_clip_id}
+					modes={['upload', 'record', 'generate']}
+					language={settings.default_language === 'en' ? 'en' : 'de'}
+					hints={{ upload: t('queues.mohHint') }}
+				/>
+			{/if}
 			<div class="flex justify-end">
 				<button class="btn btn-primary">{t('common.save')}</button>
 			</div>

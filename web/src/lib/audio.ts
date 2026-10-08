@@ -24,6 +24,16 @@ export interface Voice {
 
 export const clipUrl = (id: string) => `/api/v1/audio/clips/${id}/audio`;
 
+/** Built-in music on hold. */
+export interface MusicTrack {
+	id: string;
+	title: string;
+	/** False until FreeSWITCH has started once. */
+	available: boolean;
+}
+
+export const musicUrl = (id: string) => `/api/v1/audio/music/${id}`;
+
 const RATE = 16000;
 
 /** Decodes audio data and resamples it to 16 kHz mono. */

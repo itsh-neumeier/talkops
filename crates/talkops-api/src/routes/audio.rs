@@ -8,6 +8,7 @@ use axum::response::Response;
 use serde_json::json;
 use talkops_core::audio::{self, Clip, TtsInput, Voice};
 use talkops_core::audit;
+use utoipa::ToSchema;
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
 use uuid::Uuid;
@@ -28,6 +29,8 @@ pub fn router() -> OpenApiRouter<AppState> {
         .routes(routes!(generate_clip))
         .routes(routes!(get_clip))
         .routes(routes!(clip_audio))
+        .routes(routes!(list_music))
+        .routes(routes!(music_audio))
         .merge(upload)
 }
 
@@ -183,6 +186,41 @@ pub async fn clip_audio(
         return Err(ApiError::NotFound);
     }
     super::voicemail::wav(state.media.sounds.join(audio::clip_file(auth.tenant, id))).await
+}
+
+#[derive(serde::Serialize, ToSchema)]
+pub struct MusicTrack {
+    pub id: &'static str,
+    pub title: &'static str,
+    /// False until FreeSWITCH has copied the piece into the sounds volume.
+    pub available: bool,
+}
+
+/// Built-in music on hold.
+#[utoipa::path(get, path = "/api/v1/audio/music", tag = "audio", responses((status = 200, body = [MusicTrack])))]
+pub async fn list_music(State(state): State<AppState>, _auth: AuthUser) -> Json<Vec<MusicTrack>> {
+    Json(
+        audio::MUSIC
+            .iter()
+            .map(|(id, title)| MusicTrack {
+                id,
+                title,
+                available: audio::music_file(id)
+                    .is_some_and(|f| state.media.sounds.join(f).is_file()),
+            })
+            .collect(),
+    )
+}
+
+/// A built-in piece of music on hold (WAV).
+#[utoipa::path(get, path = "/api/v1/audio/music/{id}", tag = "audio", params(("id" = String, Path)), responses((status = 200, content_type = "audio/wav", body = Vec<u8>)))]
+pub async fn music_audio(
+    State(state): State<AppState>,
+    _auth: AuthUser,
+    Path(id): Path<String>,
+) -> ApiResult<Response> {
+    let file = audio::music_file(&id).ok_or(ApiError::NotFound)?;
+    super::voicemail::wav(state.media.sounds.join(file)).await
 }
 
 #[cfg(test)]

@@ -3,5 +3,7 @@
   <X-PRE-PROCESS cmd="include" data="vars_env.xml"/>
 
   <X-PRE-PROCESS cmd="set" data="default_language=de"/>
+  <!-- Played to the other party while a call is on hold. -->
+  <X-PRE-PROCESS cmd="set" data="hold_music=local_stream://default"/>
   <X-PRE-PROCESS cmd="set" data="console_loglevel=$${talkops_log_level}"/>
 </include>

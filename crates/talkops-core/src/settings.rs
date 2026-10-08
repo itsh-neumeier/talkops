@@ -36,6 +36,12 @@ pub struct TenantSettings {
     /// Transcribe recordings and voicemails (media worker, whisper.cpp).
     #[serde(default)]
     pub transcription_enabled: bool,
+    /// Music on hold: a built-in piece ([crate::audio::MUSIC]), empty for
+    /// all pieces shuffled. An own clip takes precedence.
+    #[serde(default)]
+    pub hold_music: String,
+    #[serde(default)]
+    pub hold_music_clip_id: Option<Uuid>,
 }
 
 fn yes() -> bool {
@@ -61,7 +67,7 @@ impl TenantSettings {
 const COLUMNS: &str = "country_code, area_code, national_prefix, international_prefix, \
                        emergency_numbers, external_ip, default_language, default_number_id, timezone, \
                        record_inbound, record_outbound, record_internal, recording_announcement, \
-                       recording_retention_days, transcription_enabled";
+                       recording_retention_days, transcription_enabled, hold_music, hold_music_clip_id";
 
 pub async fn get<'e>(db: impl PgExecutor<'e>, tenant: TenantId) -> CoreResult<TenantSettings> {
     let sql = format!("SELECT {COLUMNS} FROM tenant_settings WHERE tenant_id = $1");
@@ -79,7 +85,8 @@ pub async fn update<'e>(
              default_language = $8, default_number_id = $9, timezone = $10,
              record_inbound = $11, record_outbound = $12, record_internal = $13,
              recording_announcement = $14, recording_retention_days = $15,
-             transcription_enabled = $16, updated_at = now()
+             transcription_enabled = $16, hold_music = $17, hold_music_clip_id = $18,
+             updated_at = now()
          WHERE tenant_id = $1 RETURNING {COLUMNS}"
     );
     Ok(sqlx::query_as(&sql)
@@ -99,6 +106,8 @@ pub async fn update<'e>(
         .bind(s.recording_announcement)
         .bind(s.recording_retention_days)
         .bind(s.transcription_enabled)
+        .bind(&s.hold_music)
+        .bind(s.hold_music_clip_id)
         .fetch_one(db)
         .await?)
 }

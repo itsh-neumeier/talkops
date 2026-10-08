@@ -4,6 +4,18 @@ All notable changes to TalkOps. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [1.1.1] – 2026-10-08
+
+### Fixed
+
+- Browser softphone behind an HTTPS reverse proxy (e.g. Zoraxy): the
+  registration got no answer from FreeSWITCH (transport `WSS` in Via); it
+  now registers. Softphone sessions are logged.
+- Softphone origin check accepts `X-Forwarded-Host`/`Forwarded` from reverse
+  proxies that rewrite `Host`.
+- The softphone page shows only a hint (no "not found") when the user has no
+  extension yet.
+
 ## [1.1.0] – 2026-10-13
 
 Upgrading from 1.0 is automatic; voice menus become Smart Attendants.

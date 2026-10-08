@@ -162,6 +162,7 @@ const de: Record<keyof typeof en, string> = {
 	'settings.externalIp': 'Öffentliche IP für Trunks',
 	'settings.externalIpHint':
 		'Leer, eine IP-Adresse oder stun:host. Eine Änderung startet das Trunk-Profil neu.',
+	'settings.setup': 'Einrichtung',
 	'settings.section.telephony': 'Telefonie',
 	'settings.section.calls': 'Anrufbehandlung',
 	'settings.section.email': 'E-Mail',

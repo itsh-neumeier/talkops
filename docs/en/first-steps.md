@@ -8,7 +8,7 @@ checklist that ticks off these steps as they are done.
    password (at least 10 characters) of the first admin account.
 2. **Dialing rules.** *Settings*: country code (default 49) and area code
    without 0. Emergency numbers (110, 112) are preset.
-3. **Trunk.** *Trunks → New trunk*: pick the provider preset and enter your
+3. **Trunk.** *Settings → Trunks → New trunk*: pick the provider preset and enter your
    credentials (e.g. [LEONET](leonet.md)). Unknown provider: preset
    “Generic SIP provider”.
 4. **Default number.** Set *Settings → Default number* – without it, no
@@ -23,7 +23,7 @@ checklist that ticks off these steps as they are done.
 
    All devices of an extension ring at the same time. Yealink
    auto-provisioning follows in phase 2.
-7. **Route numbers.** *Phone numbers*: choose the extension each number rings at.
+7. **Route numbers.** *Settings → Phone numbers*: choose the extension each number rings at.
 
 After login, users find their devices and credentials under *My phones* and
 their calls under *Call log*.

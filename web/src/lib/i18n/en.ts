@@ -170,6 +170,7 @@ export default {
 	'settings.externalIp': 'Public IP for trunks',
 	'settings.externalIpHint':
 		'Empty, an IP address or stun:host. Changing it restarts the trunk profile.',
+	'settings.setup': 'Setup',
 	'settings.section.telephony': 'Telephony',
 	'settings.section.calls': 'Call handling',
 	'settings.section.email': 'E-mail',

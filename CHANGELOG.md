@@ -21,6 +21,9 @@ All notable changes to TalkOps. The format follows
 
 ### Changed
 
+- **Leaner main menu:** setup pages – Trunks, Phone numbers, Phones
+  (provisioning) and Audit log – moved under *Settings → Setup*. The main
+  menu keeps the everyday pages.
 - **Video only where switched on:** extensions and trunks get a *Video
   calls* switch (off by default). Internal calls carry video only between
   two extensions that both have it on; calls to a provider only if the trunk

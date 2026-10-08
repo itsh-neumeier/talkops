@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { settingsPages } from '#lib/components/SettingsNav.svelte';
 	import '../app.css';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
@@ -22,21 +23,17 @@
 
 	const nav: { href: string; key: MessageKey; role: 'admin' | 'operator' | 'user' }[] = [
 		{ href: '/', key: 'nav.dashboard', role: 'user' },
-		{ href: '/me', key: 'nav.myPhones', role: 'user' },
 		{ href: '/phone', key: 'nav.phone', role: 'user' },
+		{ href: '/calls', key: 'nav.calls', role: 'user' },
 		{ href: '/voicemail', key: 'nav.voicemail', role: 'user' },
 		{ href: '/doors', key: 'nav.doors', role: 'user' },
+		{ href: '/phonebook', key: 'nav.phonebook', role: 'user' },
+		{ href: '/search', key: 'nav.search', role: 'user' },
+		{ href: '/me', key: 'nav.myPhones', role: 'user' },
 		{ href: '/extensions', key: 'nav.extensions', role: 'operator' },
 		{ href: '/users', key: 'nav.users', role: 'operator' },
-		{ href: '/trunks', key: 'nav.trunks', role: 'operator' },
-		{ href: '/numbers', key: 'nav.numbers', role: 'operator' },
 		{ href: '/routing', key: 'nav.routing', role: 'operator' },
-		{ href: '/phones', key: 'nav.phones', role: 'operator' },
-		{ href: '/phonebook', key: 'nav.phonebook', role: 'user' },
-		{ href: '/calls', key: 'nav.calls', role: 'user' },
-		{ href: '/search', key: 'nav.search', role: 'user' },
-		{ href: '/settings', key: 'nav.settings', role: 'user' },
-		{ href: '/audit', key: 'nav.audit', role: 'admin' }
+		{ href: '/settings', key: 'nav.settings', role: 'user' }
 	];
 
 	onMount(async () => {
@@ -51,7 +48,10 @@
 
 	function active(href: string) {
 		const path = page.url.pathname;
-		return href === '/' ? path === '/' : path === href || path.startsWith(href + '/');
+		const under = (h: string) => path === h || path.startsWith(h + '/');
+		// Setup pages are part of the settings area.
+		if (href === '/settings') return under(href) || settingsPages.some((p) => under(p.href));
+		return href === '/' ? path === '/' : under(href);
 	}
 </script>
 

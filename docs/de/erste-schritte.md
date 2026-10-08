@@ -8,7 +8,7 @@ Schritte abhakt, sobald sie erledigt sind.
    und Passwort (mind. 10 Zeichen) für das erste Admin-Konto.
 2. **Wählregeln.** *Einstellungen*: Ländervorwahl (Standard 49) und Ortsvorwahl
    ohne 0 eintragen. Notrufnummern (110, 112) sind vorbelegt.
-3. **Trunk.** *Trunks → Neuer Trunk*: Anbieter-Vorlage wählen und Zugangsdaten
+3. **Trunk.** *Einstellungen → Trunks → Neuer Trunk*: Anbieter-Vorlage wählen und Zugangsdaten
    eintragen (z. B. [LEONET](leonet.md)). Unbekannter Anbieter: Vorlage
    „Generic SIP provider“.
 4. **Standardrufnummer.** *Einstellungen → Standardrufnummer* setzen – ohne sie
@@ -24,7 +24,7 @@ Schritte abhakt, sobald sie erledigt sind.
 
    Mehrere Geräte einer Nebenstelle klingeln gleichzeitig.
    Yealink-Autoprovisioning folgt in Phase 2.
-7. **Rufnummern zuordnen.** *Rufnummern*: für jede Rufnummer die Nebenstelle
+7. **Rufnummern zuordnen.** *Einstellungen → Rufnummern*: für jede Rufnummer die Nebenstelle
    wählen, bei der sie klingeln soll.
 
 Benutzer sehen nach dem Login unter *Meine Telefone* ihre Geräte samt

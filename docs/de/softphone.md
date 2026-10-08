@@ -25,9 +25,8 @@ dort deaktiviert oder gelöscht werden.
   dafür nur auf `127.0.0.1:5066`.
 - Sprache und Video gehen direkt zwischen Browser und FreeSWITCH (UDP,
   RTP-Portbereich aus `.env`). Im lokalen Netz und über VPN funktioniert
-  das ohne weitere Einstellungen. **Unterwegs ohne VPN** braucht es eine
-  öffentliche IP mit freigegebenen RTP-Ports bzw. einen TURN-Server – das
-  ist noch nicht eingebaut.
+  das ohne weitere Einstellungen. **Unterwegs ohne VPN** oder bei gesperrtem UDP
+  hilft der TURN-Server (siehe unten).
 
 ## Bedienen mit der Tastatur
 
@@ -44,6 +43,35 @@ lehnt ab oder leert das Wählfeld.
   sowie `X-Forwarded-For` (Adresse des Browsers für die Sprachverbindung).
 - Keine eigene Permission-Policy setzen – TalkOps erlaubt Mikrofon und
   Kamera selbst.
+
+## TURN-Server (Sprache über einen Port)
+
+Ohne TURN läuft die Sprache direkt per UDP auf den RTP-Ports (16384–16999).
+Ist das nicht möglich – unterwegs ohne VPN, strenge Firewall, Gäste-WLAN –,
+leitet ein TURN-Server (coturn) sie über **einen** Port (3478) weiter.
+TalkOps bringt coturn als optionalen Dienst mit und erzeugt für jeden
+Softphone-Login eigene, 24 Stunden gültige Zugangsdaten.
+
+1. In der `.env` bzw. den Stack-Variablen setzen:
+   ```sh
+   COMPOSE_PROFILES=turn
+   TALKOPS_TURN_SECRET=$(openssl rand -hex 32)   # langer Zufallswert
+   TALKOPS_TURN_PEER_IP=192.168.140.30           # LAN-Adresse dieses Servers
+   TALKOPS_TURN_URLS=turn:talk.example.de:3478?transport=udp,turn:talk.example.de:3478?transport=tcp
+   ```
+   `TALKOPS_TURN_URLS` ist die Adresse, unter der Browser coturn erreichen
+   (Domain oder IP).
+2. Stack neu deployen; im Log steht `TURN enabled for softphones`.
+3. Erreichbarkeit: Port **3478 (UDP und TCP)** zum Server freigeben – im LAN
+   in der Firewall des Servers, für unterwegs zusätzlich als Portweiterleitung
+   im Router. Mit Zoraxy geht das als **Stream Proxy** (TCP/UDP 3478 →
+   `192.168.140.30:3478`).
+4. Optional `TALKOPS_TURN_RELAY_ONLY=true`: Die Sprache läuft dann immer über
+   TURN, auch wenn der direkte Weg ginge (zum Testen oder bei gesperrtem UDP).
+
+coturn leitet nur zu `TALKOPS_TURN_PEER_IP` weiter, nie in den Rest des
+Netzes. Die Relay-Ports 49160–49200 werden nur intern zwischen coturn und
+FreeSWITCH genutzt und müssen nicht freigegeben werden.
 
 ## Video
 

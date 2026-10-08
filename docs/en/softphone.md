@@ -24,8 +24,8 @@ there.
   `127.0.0.1:5066` only.
 - Voice and video flow directly between browser and FreeSWITCH (UDP, RTP
   port range from `.env`). This works in the local network and over VPN
-  without further settings. **On the road without VPN** you need a public IP
-  with open RTP ports or a TURN server – not built in yet.
+  without further settings. **On the road without VPN** or with blocked UDP,
+  the TURN server helps (see below).
 
 ## Keyboard
 
@@ -41,6 +41,34 @@ answers, **Esc** hangs up, declines or clears the number.
   `X-Forwarded-For` (the browser's address for the media connection).
 - Do not add your own permission policy – TalkOps allows microphone and
   camera itself.
+
+## TURN server (media over one port)
+
+Without TURN, media runs directly over UDP on the RTP ports (16384–16999).
+Where that is not possible – on the road without VPN, strict firewalls, guest
+Wi-Fi – a TURN server (coturn) relays it over **one** port (3478). TalkOps
+ships coturn as an optional service and issues own credentials for every
+softphone login, valid for 24 hours.
+
+1. Set in `.env` or the stack variables:
+   ```sh
+   COMPOSE_PROFILES=turn
+   TALKOPS_TURN_SECRET=$(openssl rand -hex 32)   # long random value
+   TALKOPS_TURN_PEER_IP=192.168.140.30           # LAN address of this server
+   TALKOPS_TURN_URLS=turn:talk.example.com:3478?transport=udp,turn:talk.example.com:3478?transport=tcp
+   ```
+   `TALKOPS_TURN_URLS` is where browsers reach coturn (domain or IP).
+2. Redeploy the stack; the log shows `TURN enabled for softphones`.
+3. Reachability: allow port **3478 (UDP and TCP)** to the server – in the
+   server's firewall for the LAN, plus a port forwarding in the router for use
+   on the road. With Zoraxy this is a **stream proxy** (TCP/UDP 3478 →
+   `192.168.140.30:3478`).
+4. Optional `TALKOPS_TURN_RELAY_ONLY=true`: media always goes through TURN,
+   even when the direct path would work (for testing or blocked UDP).
+
+coturn relays only to `TALKOPS_TURN_PEER_IP`, never into the rest of the
+network. The relay ports 49160–49200 are only used internally between coturn
+and FreeSWITCH and need no forwarding.
 
 ## Video
 

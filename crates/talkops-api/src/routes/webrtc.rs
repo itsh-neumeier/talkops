@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use talkops_core::audit;
 use talkops_core::extensions::{self, DeviceInput, DeviceKind};
+use talkops_core::turn::{self, IceServer};
 use tokio_tungstenite::tungstenite::{self, client::IntoClientRequest};
 use utoipa::ToSchema;
 use utoipa_axum::router::OpenApiRouter;
@@ -46,6 +47,10 @@ pub struct WebrtcAccount {
     pub sip_domain: &'static str,
     /// WebSocket path on this server (wss:// when served over HTTPS).
     pub ws_path: &'static str,
+    /// TURN relays with short-lived credentials (empty: direct media only).
+    pub ice_servers: Vec<IceServer>,
+    /// Use only the TURN relays for media.
+    pub relay_only: bool,
 }
 
 /// SIP account of the own browser softphone; created on first use.
@@ -105,6 +110,19 @@ pub async fn webrtc_account(
         sip_password: password,
         sip_domain: SIP_DOMAIN,
         ws_path: "/api/v1/webrtc/ws",
+        ice_servers: state
+            .turn
+            .as_ref()
+            .and_then(|t| {
+                let now = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_secs())
+                    .unwrap_or_default();
+                turn::ice_server(&t.urls, &t.secret, &auth.id.to_string(), now)
+            })
+            .into_iter()
+            .collect(),
+        relay_only: state.turn.as_ref().is_some_and(|t| t.relay_only),
     }))
 }
 

@@ -13,6 +13,9 @@
 		sip_password: string;
 		sip_domain: string;
 		ws_path: string;
+		/** TURN relays (with short-lived credentials), if configured. */
+		ice_servers: RTCIceServer[];
+		relay_only: boolean;
 	};
 	type State = 'offline' | 'connecting' | 'ready' | 'calling' | 'ringing' | 'incall';
 
@@ -59,7 +62,17 @@
 				authorizationUsername: account.sip_username,
 				authorizationPassword: account.sip_password,
 				displayName: account.display_name,
-				logBuiltinEnabled: false
+				logBuiltinEnabled: false,
+				sessionDescriptionHandlerFactoryOptions: {
+					// Without TURN no external STUN server is asked: TalkOps finds
+					// the browser's address itself.
+					peerConnectionConfiguration: {
+						iceServers: account.ice_servers,
+						iceTransportPolicy: account.relay_only ? 'relay' : 'all'
+					},
+					// TURN over TCP takes a moment to allocate.
+					iceGatheringTimeout: account.ice_servers.length ? 3000 : 500
+				}
 			},
 			delegate: {
 				onRegistered: () => (status = 'ready'),

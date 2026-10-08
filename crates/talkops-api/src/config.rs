@@ -71,6 +71,20 @@ pub struct Config {
     #[arg(long, env = "TALKOPS_FS_PEERS", value_delimiter = ',', value_parser = parse_peer)]
     pub fs_peers: Vec<(std::net::IpAddr, u8)>,
 
+    /// TURN servers for the browser softphone (comma-separated), e.g.
+    /// `turn:pbx.example.com:3478?transport=udp,turn:pbx.example.com:3478?transport=tcp`.
+    #[arg(long, env = "TALKOPS_TURN_URLS", value_delimiter = ',')]
+    pub turn_urls: Vec<String>,
+
+    /// Secret shared with coturn (`static-auth-secret`).
+    #[arg(long, env = "TALKOPS_TURN_SECRET", hide_env_values = true)]
+    pub turn_secret: Option<String>,
+
+    /// Send all softphone media through TURN (for networks where direct UDP
+    /// to the server is blocked).
+    #[arg(long, env = "TALKOPS_TURN_RELAY_ONLY", default_value_t = false)]
+    pub turn_relay_only: bool,
+
     /// Enables the Prometheus endpoint `/metrics`; scrapers send this as
     /// bearer token.
     #[arg(long, env = "TALKOPS_METRICS_TOKEN", hide_env_values = true)]

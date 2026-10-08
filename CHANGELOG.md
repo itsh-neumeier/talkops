@@ -4,6 +4,22 @@ All notable changes to TalkOps. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [1.2.0] – 2026-10-08
+
+### Added
+
+- **TURN relay for the browser softphone:** optional coturn service
+  (`COMPOSE_PROFILES=turn`) so softphone media runs over one port (3478)
+  instead of the RTP range – from outside without VPN, through strict
+  firewalls or a reverse proxy's stream forwarding. TalkOps issues
+  short-lived credentials per login (`TALKOPS_TURN_URLS`,
+  `TALKOPS_TURN_SECRET`, optional `TALKOPS_TURN_RELAY_ONLY`); coturn only
+  relays to FreeSWITCH (`TALKOPS_TURN_PEER_IP`).
+
+### Changed
+
+- The softphone no longer asks a public STUN server (Google) for its address.
+
 ## [1.1.4] – 2026-10-08
 
 ### Fixed

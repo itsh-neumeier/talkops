@@ -163,7 +163,15 @@ async fn serve(config: Config) -> anyhow::Result<()> {
     .with_sip_ws(&config.sip_ws_url)
     .with_metrics_token(config.metrics_token.as_deref())
     .with_backup(BackupConfig::from_storage(&config.storage))
-    .with_fs_peers(config.fs_peers.clone());
+    .with_fs_peers(config.fs_peers.clone())
+    .with_turn(
+        config.turn_urls.clone(),
+        config.turn_secret.clone(),
+        config.turn_relay_only,
+    );
+    if let Some(turn) = &state.turn {
+        tracing::info!(urls = ?turn.urls, relay_only = turn.relay_only, "TURN enabled for softphones");
+    }
     let queue_sync = talkops_api::callcenter::spawn(db.clone(), state.telephony.esl.clone());
     let state = state.with_queue_sync(queue_sync);
     state

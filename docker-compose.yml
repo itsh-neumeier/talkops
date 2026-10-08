@@ -66,6 +66,9 @@ services:
       TALKOPS_SIP_PORT: ${TALKOPS_SIP_PORT:-5060}
       TALKOPS_SIP_TRUNK_PORT: ${TALKOPS_SIP_TRUNK_PORT:-5080}
       TALKOPS_METRICS_TOKEN: ${TALKOPS_METRICS_TOKEN:-}
+      TALKOPS_TURN_URLS: ${TALKOPS_TURN_URLS:-}
+      TALKOPS_TURN_SECRET: ${TALKOPS_TURN_SECRET:-}
+      TALKOPS_TURN_RELAY_ONLY: ${TALKOPS_TURN_RELAY_ONLY:-false}
     volumes:
       - recordings:/var/lib/talkops/recordings
       - voicemail:/var/lib/talkops/voicemail
@@ -118,6 +121,36 @@ services:
       - voicemail:/var/lib/talkops/voicemail
       - sounds:/var/lib/talkops/sounds
       - models:/var/lib/talkops/models
+
+  # Optional TURN relay for the browser softphone (media over one port, e.g.
+  # from outside without VPN or through strict firewalls). Enable with
+  # COMPOSE_PROFILES=turn and set TALKOPS_TURN_URLS, TALKOPS_TURN_SECRET and
+  # TALKOPS_TURN_PEER_IP (the address FreeSWITCH sends media from).
+  coturn:
+    image: coturn/coturn:4.18.0-trixie
+    profiles: ["turn"]
+    restart: unless-stopped
+    network_mode: host
+    <<: *hardened
+    # The coturn binary carries this file capability; without it in the
+    # bounding set the container cannot even start it.
+    cap_add:
+      - NET_BIND_SERVICE
+    command:
+      - -n
+      - --log-file=stdout
+      - --listening-port=${TALKOPS_TURN_PORT:-3478}
+      - --min-port=${TALKOPS_TURN_MIN_PORT:-49160}
+      - --max-port=${TALKOPS_TURN_MAX_PORT:-49200}
+      - --realm=talkops
+      - --use-auth-secret
+      - --static-auth-secret=${TALKOPS_TURN_SECRET:-}
+      - --fingerprint
+      - --no-tls
+      - --no-multicast-peers
+      # Relay only to FreeSWITCH, never into the rest of the network.
+      - --denied-peer-ip=0.0.0.0-255.255.255.255
+      - --allowed-peer-ip=${TALKOPS_TURN_PEER_IP:-127.0.0.1}
 
   # Optional HTTPS reverse proxy with automatic certificates (ACME).
   # Enable with: COMPOSE_PROFILES=caddy and TALKOPS_DOMAIN=pbx.example.com

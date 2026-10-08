@@ -63,6 +63,17 @@ pub struct AppState {
     /// Networks besides loopback that may call `/fs/*` (FreeSWITCH on
     /// another address, e.g. macvlan).
     pub fs_peers: Arc<Vec<(std::net::IpAddr, u8)>>,
+    /// TURN relay for the browser softphone; `None`: direct media only.
+    pub turn: Option<Arc<TurnSettings>>,
+}
+
+/// TURN servers handed to browser softphones.
+#[derive(Debug, Clone)]
+pub struct TurnSettings {
+    pub urls: Vec<String>,
+    pub secret: String,
+    /// Media only through TURN (`iceTransportPolicy: relay`).
+    pub relay_only: bool,
 }
 
 impl AppState {
@@ -92,6 +103,7 @@ impl AppState {
             metrics_token: None,
             backup: None,
             fs_peers: Arc::new(Vec::new()),
+            turn: None,
         }
     }
 }
@@ -141,6 +153,29 @@ impl AppState {
 
     pub fn with_fs_peers(mut self, peers: Vec<(std::net::IpAddr, u8)>) -> Self {
         self.fs_peers = Arc::new(peers);
+        self
+    }
+
+    /// Enables TURN for softphones when URLs and a secret are set.
+    pub fn with_turn(
+        mut self,
+        urls: Vec<String>,
+        secret: Option<String>,
+        relay_only: bool,
+    ) -> Self {
+        let urls: Vec<String> = urls
+            .into_iter()
+            .map(|u| u.trim().to_owned())
+            .filter(|u| !u.is_empty())
+            .collect();
+        self.turn = match secret.filter(|s| !s.is_empty()) {
+            Some(secret) if !urls.is_empty() => Some(Arc::new(TurnSettings {
+                urls,
+                secret,
+                relay_only,
+            })),
+            _ => None,
+        };
         self
     }
 

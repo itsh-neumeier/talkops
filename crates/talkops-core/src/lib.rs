@@ -32,6 +32,7 @@ pub mod telemetry;
 pub mod tenant;
 pub mod time_conditions;
 pub mod trunks;
+pub mod turn;
 pub mod users;
 pub mod voicemail;
 

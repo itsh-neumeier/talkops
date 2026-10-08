@@ -82,3 +82,22 @@ Jede Warteschlange hat eine eigene Seite mit drei Reitern:
   überwachen.
 - **Weitervermitteln** (Blind-Transfer) vom Telefon funktioniert zu internen
   Nummern, Parkplätzen und externen Rufnummern (über die Standardrufnummer).
+
+## Anrufsperre
+
+**Anrufsteuerung → Anrufsperre** weist eingehende Anrufe ab (SIP `603 Decline`):
+
+- **Gesperrte Nummern**: einzelne Nummern (`+4930123456`) oder ganze
+  Vorwahlen mit `*` am Ende (`+49900*` für Mehrwertnummern).
+- **Anonyme Anrufer** (Rufnummer unterdrückt) abweisen.
+- **PhoneBlock** ([phoneblock.net](https://phoneblock.net/phoneblock/)):
+  kostenlose Community-Liste von Spam- und Werbeanrufern. Auf phoneblock.net ein
+  Konto anlegen, unter *Einstellungen → API-Schlüssel* einen Schlüssel
+  (`pbt_…`) erzeugen und hier eintragen. Jeder eingehende Anruf wird mit
+  höchstens 1,5 s Wartezeit geprüft; Antworten werden 6 Stunden
+  zwischengespeichert. Ist PhoneBlock nicht erreichbar, klingelt der Anruf
+  normal. *Nötige Meldungen*: PhoneBlock selbst sperrt ab 4.
+  PhoneBlock rät, auf geschäftlichen Leitungen vorsichtig zu sperren.
+- **Nummer testen** zeigt, ob und warum ein Anruf gesperrt würde.
+
+Gesperrte Anrufe stehen im Log mit `inbound call blocked` und dem Grund.

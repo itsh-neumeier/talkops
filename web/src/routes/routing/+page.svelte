@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
 	import Attendants from '#lib/components/routing/Attendants.svelte';
+	import CallBlocking from '#lib/components/routing/CallBlocking.svelte';
 	import Queues from '#lib/components/routing/Queues.svelte';
 	import RingGroups from '#lib/components/routing/RingGroups.svelte';
 	import TimeConditions from '#lib/components/routing/TimeConditions.svelte';
@@ -13,7 +14,8 @@
 		{ id: 'groups', key: 'routing.groups' },
 		{ id: 'schedules', key: 'routing.schedules' },
 		{ id: 'menus', key: 'routing.menus' },
-		{ id: 'queues', key: 'routing.queues' }
+		{ id: 'queues', key: 'routing.queues' },
+		{ id: 'blocking', key: 'routing.blocking' }
 	];
 	let tab = $state('groups');
 	let loaded = $state(false);
@@ -64,6 +66,7 @@
 		{#if tab === 'groups'}<RingGroups />
 		{:else if tab === 'schedules'}<TimeConditions />
 		{:else if tab === 'menus'}<Attendants />
+		{:else if tab === 'blocking'}<CallBlocking />
 		{:else}<Queues />{/if}
 	{/if}
 </div>

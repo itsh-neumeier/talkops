@@ -2,6 +2,7 @@ pub mod attendants;
 pub mod audio;
 pub mod auth;
 pub mod backups;
+pub mod blocking;
 pub mod dashboard;
 pub mod diagnostics;
 pub mod doors;

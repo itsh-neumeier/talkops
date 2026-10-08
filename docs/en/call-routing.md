@@ -74,3 +74,21 @@ Every queue has its own page with three tabs:
   watch a slot with the value `park+*51`.
 - **Blind transfers** from phones work to internal numbers, park slots and
   external numbers (via the default number).
+
+## Call blocking
+
+**Call routing → Call blocking** rejects inbound calls (SIP `603 Decline`):
+
+- **Blocked numbers**: single numbers (`+4930123456`) or whole prefixes with
+  a trailing `*` (`+49900*` for premium-rate numbers).
+- Reject **anonymous callers** (number withheld).
+- **PhoneBlock** ([phoneblock.net](https://phoneblock.net/phoneblock/)): a free
+  community list of spam and cold-call numbers. Create an account on
+  phoneblock.net, create an API key (`pbt_…`) under *Settings → API keys* and
+  enter it here. Each inbound call is checked with at most 1.5 s delay;
+  answers are cached for 6 hours. If PhoneBlock is unreachable, the call
+  rings normally. *Reports needed*: PhoneBlock itself blocks from 4.
+  PhoneBlock advises caution on business lines.
+- **Test a number** shows whether and why a call would be blocked.
+
+Blocked calls are logged as `inbound call blocked` with the reason.

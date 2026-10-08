@@ -18,6 +18,9 @@ All notable changes to TalkOps. The format follows
   large-v3, *German-optimized* = primeLine large-v3-turbo German) and a list
   of names and terms; audio is normalized and VAD keeps word edges.
   `talkops-media-worker transcribe` compares levels on a file.
+- **Call blocking** (Call routing → Call blocking): own list of numbers and
+  prefixes, anonymous callers, and the PhoneBlock community spam list
+  (phoneblock.net, own API key, cached, fails open).
 
 ## [1.3.0] – 2026-10-08
 

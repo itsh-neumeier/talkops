@@ -13,9 +13,11 @@ pub mod esl;
 pub mod fsxml;
 pub mod ldap;
 pub mod mailer;
+pub mod phoneblock;
 pub mod retention;
 pub mod routes;
 pub mod sip_guard;
+pub mod spam;
 pub mod telephony;
 pub mod util;
 pub mod voicemail;
@@ -69,6 +71,7 @@ pub struct AppState {
     pub turn: Option<Arc<TurnSettings>>,
     /// Log capture and restarts (settings → system).
     pub diagnostics: Arc<diagnostics::Diagnostics>,
+    pub spam: Arc<spam::SpamCheck>,
 }
 
 /// TURN servers handed to browser softphones.
@@ -90,6 +93,7 @@ impl AppState {
         profile: ProfileSettings,
         xmlcurl_password: &str,
     ) -> Self {
+        let spam = Arc::new(spam::SpamCheck::new(secrets.clone()));
         Self {
             db,
             telephony: Telephony::default(),
@@ -109,6 +113,7 @@ impl AppState {
             fs_peers: Arc::new(Vec::new()),
             turn: None,
             diagnostics: Arc::default(),
+            spam,
         }
     }
 }
@@ -135,6 +140,11 @@ impl Default for MediaPaths {
 }
 
 impl AppState {
+    pub fn with_spam(mut self, spam: spam::SpamCheck) -> Self {
+        self.spam = Arc::new(spam);
+        self
+    }
+
     pub fn with_diagnostics(mut self, diagnostics: diagnostics::Diagnostics) -> Self {
         self.diagnostics = Arc::new(diagnostics);
         self
@@ -244,6 +254,7 @@ pub fn api_router() -> (Router<AppState>, utoipa::openapi::OpenApi) {
         .merge(routes::webrtc::router())
         .merge(routes::backups::router())
         .merge(routes::diagnostics::router())
+        .merge(routes::blocking::router())
         .merge(routes::dashboard::router())
         .merge(routes::audio::router())
         .merge(routes::security::router())

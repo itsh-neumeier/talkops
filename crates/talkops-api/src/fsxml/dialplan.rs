@@ -97,6 +97,8 @@ pub struct Routing<'a> {
     pub sounds: &'a std::path::Path,
     /// Live state (queue lengths).
     pub telephony: &'a crate::telephony::Telephony,
+    /// Call blocking (own list, anonymous, PhoneBlock).
+    pub spam: &'a crate::spam::SpamCheck,
 }
 
 /// Decides how to handle a call. Never fails open: errors become rejections.
@@ -841,6 +843,24 @@ async fn plan_public(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Actio
             ),
         ),
     ];
+    let blocked = r
+        .spam
+        .check(pool, tenant, caller_e164.as_deref())
+        .await
+        .unwrap_or_else(|err| {
+            tracing::warn!(error = %err, "call blocking check failed");
+            None
+        });
+    if let Some(blocked) = blocked {
+        tracing::info!(
+            caller = caller_e164.as_deref().unwrap_or("anonymous"),
+            reason = %blocked.reason(),
+            "inbound call blocked"
+        );
+        actions.push(set("talkops_blocked", sanitize_value(&blocked.reason())));
+        actions.push(("respond", "603 Decline".to_owned()));
+        return Ok(actions);
+    }
     if number.destination_type == NumberDestination::Extension {
         if let Some(ext) = number.destination_id {
             actions.push(set("talkops_extension_id", ext.to_string()));

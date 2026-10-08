@@ -1379,3 +1379,147 @@ async fn conference_legs_offer_real_codecs(db: PgPool) {
             .any(|(_, d)| d.starts_with("absolute_codec_string"))
     );
 }
+
+/// A stand-in for PhoneBlock's `/num/{phone}` answering with fixed votes.
+async fn fake_phoneblock() -> String {
+    use axum::extract::Path;
+    use axum::http::HeaderMap;
+    async fn num(Path(phone): Path<String>, headers: HeaderMap) -> axum::response::Response {
+        use axum::response::IntoResponse;
+        if headers.get("authorization").and_then(|v| v.to_str().ok()) != Some("Bearer pbt_test") {
+            return StatusCode::UNAUTHORIZED.into_response();
+        }
+        let votes = match phone.as_str() {
+            "+4930555000" => 12,
+            "+4930555001" => 2,
+            _ => 0,
+        };
+        axum::Json(
+            json!({"phone": phone, "votes": votes, "rating": "E_ADVERTISING",
+                          "blackListed": false, "whiteListed": false}),
+        )
+        .into_response()
+    }
+    let app = axum::Router::new().route("/num/{phone}", axum::routing::get(num));
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+    format!("http://{addr}")
+}
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn call_blocking(db: PgPool) {
+    let base = fake_phoneblock().await;
+    let spam = talkops_api::spam::SpamCheck::with_base_url(
+        talkops_core::crypto::SecretBox::from_hex(KEY).unwrap(),
+        &base,
+    );
+    let router = talkops_api::app(state(db).with_spam(spam), None);
+    let f = fixture(&router).await;
+    let call = |caller: &'static str| {
+        let router = router.clone();
+        async move {
+            let (_, xml) = fs_post(
+                &router,
+                "/fs/xml",
+                &[
+                    ("section", "dialplan"),
+                    ("Caller-Context", "public"),
+                    ("Caller-Destination-Number", "+49891234567"),
+                    ("Caller-Caller-ID-Number", caller),
+                ],
+            )
+            .await;
+            actions(&xml)
+        }
+    };
+    let blocked = |a: &[(String, String)]| has(a, "respond", "603 Decline");
+
+    // Nothing configured: everyone rings.
+    assert!(!blocked(&call("+4930555000").await));
+    assert!(!blocked(&call("anonymous").await));
+
+    // Own list: number and prefix.
+    for (pattern, status) in [
+        ("+49 30 999 888", StatusCode::CREATED),
+        ("+49900*", StatusCode::CREATED),
+        ("0900123", StatusCode::UNPROCESSABLE_ENTITY),
+        ("+4930999888", StatusCode::CONFLICT),
+    ] {
+        let (s, body) = f
+            .admin
+            .post(
+                "/api/v1/call-blocks",
+                json!({"pattern": pattern, "label": "Werbung"}),
+            )
+            .await;
+        assert_eq!(s, status, "{pattern}: {body}");
+    }
+    let a = call("+4930999888").await;
+    assert!(blocked(&a), "{a:?}");
+    assert!(has(&a, "set", "talkops_blocked=list:+4930999888"));
+    assert!(has(&a, "set", "talkops_direction=inbound"));
+    assert!(blocked(&call("+499001234567").await));
+    assert!(!blocked(&call("+4930999889").await));
+
+    // Anonymous callers.
+    let (s, body) = f
+        .admin
+        .put(
+            "/api/v1/call-blocks/settings",
+            json!({"block_anonymous": true, "phoneblock_enabled": false}),
+        )
+        .await;
+    assert_eq!(s, StatusCode::OK, "{body}");
+    assert!(blocked(&call("anonymous").await));
+
+    // PhoneBlock needs a token; the token is never returned.
+    let (s, _) = f
+        .admin
+        .put(
+            "/api/v1/call-blocks/settings",
+            json!({"block_anonymous": true, "phoneblock_enabled": true}),
+        )
+        .await;
+    assert_eq!(s, StatusCode::UNPROCESSABLE_ENTITY);
+    let (s, body) = f
+        .admin
+        .put(
+            "/api/v1/call-blocks/settings",
+            json!({"block_anonymous": true, "phoneblock_enabled": true,
+                   "phoneblock_token": "pbt_test", "phoneblock_min_votes": 4}),
+        )
+        .await;
+    assert_eq!(s, StatusCode::OK, "{body}");
+    assert_eq!(body["phoneblock_token_set"], true);
+    assert!(body.get("phoneblock_token").is_none());
+    let a = call("+4930555000").await;
+    assert!(has(&a, "set", "talkops_blocked=phoneblock:12"), "{a:?}");
+    assert!(!blocked(&call("+4930555001").await)); // 2 < 4 votes
+    assert!(!blocked(&call("+4930123123").await));
+
+    let (_, r) = f
+        .admin
+        .post("/api/v1/call-blocks/test", json!({"number": "+4930555000"}))
+        .await;
+    assert_eq!(r, json!({"blocked": true, "reason": "phoneblock:12"}));
+
+    // A wrong token or an unreachable PhoneBlock never blocks.
+    f.admin
+        .put(
+            "/api/v1/call-blocks/settings",
+            json!({"block_anonymous": false, "phoneblock_enabled": true,
+                   "phoneblock_token": "pbt_wrong", "phoneblock_min_votes": 4}),
+        )
+        .await;
+    assert!(!blocked(&call("+4930555001").await));
+
+    let (_, list) = f.admin.get("/api/v1/call-blocks").await;
+    assert_eq!(list.as_array().unwrap().len(), 2);
+    let first = list[0]["id"].as_str().unwrap();
+    let (s, _) = f
+        .admin
+        .call("DELETE", &format!("/api/v1/call-blocks/{first}"), None)
+        .await;
+    assert_eq!(s, StatusCode::NO_CONTENT);
+}

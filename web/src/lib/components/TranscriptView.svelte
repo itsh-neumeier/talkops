@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import { api, type Transcript, type TranscriptStatus } from '#lib/api.ts';
 	import { t } from '#lib/i18n/index.svelte.ts';
 
@@ -8,14 +8,22 @@
 	let transcript = $state<Transcript | null>(null);
 	let failed = $state(false);
 
-	onMount(async () => {
-		if (status !== 'done') return;
+	let timer: ReturnType<typeof setTimeout> | undefined;
+
+	async function load() {
 		try {
 			transcript = await api.get<Transcript>(url);
+			// A more accurate second pass follows: check again later.
+			if (!transcript.final) timer = setTimeout(load, 15_000);
 		} catch {
 			failed = true;
 		}
+	}
+
+	onMount(() => {
+		if (status === 'done') load();
 	});
+	onDestroy(() => clearTimeout(timer));
 
 	const time = (s: number) =>
 		`${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
@@ -27,7 +35,10 @@
 	{:else if status === 'failed' || failed}
 		<p class="text-slate-500">{t('rec.transcriptFailed')}</p>
 	{:else if transcript && transcript.segments.length === 0}
-		<p class="text-slate-500">{t('rec.transcriptEmpty')}</p>
+		<p class="text-slate-500">
+			{t('rec.transcriptEmpty')}{#if !transcript.final}
+				· {t('stt.preliminary')}{/if}
+		</p>
 	{:else if transcript}
 		<ul class="space-y-1">
 			{#each transcript.segments as seg, i (i)}
@@ -47,6 +58,13 @@
 				</li>
 			{/each}
 		</ul>
-		<p class="hint mt-2">{t('rec.transcriptHint')}</p>
+		<p class="hint mt-2">
+			{#if !transcript.final}<span
+					class="badge badge-warn mr-1"
+					data-testid="transcript-preliminary">{t('stt.preliminary')}</span
+				>{/if}
+			{t('rec.transcriptHint')}
+			{#if transcript.engine}<span class="font-mono">({transcript.engine})</span>{/if}
+		</p>
 	{/if}
 </div>

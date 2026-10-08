@@ -191,7 +191,13 @@ Standardrufnummer.
   Stereokanäle, rechnet auf 16 kHz um, ruft `whisper-cli` je Kanal auf und
   führt die Segmente nach Zeit zusammen (`transcripts`, `tsvector` 'simple'
   mit GIN-Index). Voicemails: die Mail (`mail.voicemail`) wird erst nach dem
-  Transkript eingeplant.
+  (ersten) Transkript eingeplant.
+- Zwei Durchgänge ([ADR 0019](adr/0019-transkription-in-zwei-durchgaengen-und-ki-api.md)):
+  `transcription_quality` (erster) und `transcription_refine` (zweiter,
+  optional; Job `transcribe` mit `pass: 2`, Priorität −1). Jeder Durchgang
+  lokal (whisper.cpp) oder `api` (OpenAI-kompatibel, `media-worker/src/api.rs`,
+  Schlüssel verschlüsselt in `tenant_settings.transcription_api_key_enc`).
+  `transcripts.final`/`engine` zeigen Stand und Modell.
 - Suche: `websearch_to_tsquery`, Ausschnitte per `ts_headline`; Benutzer sehen
   nur Treffer ihrer Nebenstellen. Löschfrist: stündlicher Lauf
   (`talkops_api::retention`).

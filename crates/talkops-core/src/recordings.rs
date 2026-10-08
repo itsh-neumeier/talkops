@@ -188,18 +188,44 @@ pub struct Transcript {
     pub text: String,
     #[schema(value_type = Vec<Segment>)]
     pub segments: sqlx::types::Json<Vec<Segment>>,
+    /// e.g. `whisper:large-v3-turbo-q5_0` or `api:whisper-1`.
+    pub engine: String,
+    /// False while a more accurate second pass is still to come.
+    #[sqlx(rename = "final")]
+    #[serde(rename = "final")]
+    pub is_final: bool,
     pub created_at: DateTime<Utc>,
 }
 
-const T_COLUMNS: &str = "id, recording_id, voicemail_id, language, text, segments, created_at";
+const T_COLUMNS: &str =
+    "id, recording_id, voicemail_id, language, text, segments, engine, final, created_at";
 
-/// Stores a finished transcript and marks its source done.
+/// How a transcript was made.
+#[derive(Debug, Clone, Copy)]
+pub struct TranscriptMeta<'a> {
+    pub engine: &'a str,
+    /// False if a second, more accurate pass follows.
+    pub is_final: bool,
+}
+
+impl Default for TranscriptMeta<'_> {
+    fn default() -> Self {
+        Self {
+            engine: "",
+            is_final: true,
+        }
+    }
+}
+
+/// Stores a finished transcript (replacing an earlier pass) and marks its
+/// source done.
 pub async fn save_transcript(
     pool: &PgPool,
     tenant: TenantId,
     source: Source,
     language: &str,
     segments: &[Segment],
+    meta: TranscriptMeta<'_>,
 ) -> CoreResult<Transcript> {
     let text = segments
         .iter()
@@ -219,8 +245,9 @@ pub async fn save_transcript(
         .execute(&mut *tx)
         .await?;
     let sql = format!(
-        "INSERT INTO transcripts (tenant_id, recording_id, voicemail_id, language, text, segments)
-         VALUES ($1, $2, $3, $4, $5, $6) RETURNING {T_COLUMNS}"
+        "INSERT INTO transcripts (tenant_id, recording_id, voicemail_id, language, text, segments,
+                                  engine, final)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING {T_COLUMNS}"
     );
     let t: Transcript = sqlx::query_as(&sql)
         .bind(tenant)
@@ -229,6 +256,8 @@ pub async fn save_transcript(
         .bind(language)
         .bind(&text)
         .bind(sqlx::types::Json(segments))
+        .bind(meta.engine)
+        .bind(meta.is_final)
         .fetch_one(&mut *tx)
         .await?;
     set_status(&mut tx, source, "done").await?;
@@ -248,6 +277,22 @@ async fn set_status(db: &mut sqlx::PgConnection, source: Source, status: &str) -
         ),
     };
     sqlx::query(sql).bind(id).bind(status).execute(db).await?;
+    Ok(())
+}
+
+/// The second pass failed for good: the first transcript stays and is
+/// no longer marked preliminary.
+pub async fn finalize_transcript(pool: &PgPool, source: Source) -> CoreResult<()> {
+    let (col, id) = match source {
+        Source::Recording(id) => ("recording_id", id),
+        Source::Voicemail(id) => ("voicemail_id", id),
+    };
+    sqlx::query(&format!(
+        "UPDATE transcripts SET final = true WHERE {col} = $1"
+    ))
+    .bind(id)
+    .execute(pool)
+    .await?;
     Ok(())
 }
 

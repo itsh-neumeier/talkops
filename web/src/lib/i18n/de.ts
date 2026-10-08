@@ -472,14 +472,47 @@ const de: Record<keyof typeof en, string> = {
 		'Ältere Aufnahmen samt Transkript werden automatisch gelöscht. 0 = unbegrenzt.',
 	'rec.transcription': 'Aufnahmen und Sprachnachrichten transkribieren',
 	'rec.transcriptionHint':
-		'Läuft lokal mit Whisper auf diesem Server; kein Audio verlässt das System. Die erste Transkription lädt das Sprachmodell (ca. 550 MB).',
-	'rec.quality': 'Genauigkeit der Transkription',
+		'Lokal mit Whisper läuft alles auf diesem Server, kein Audio verlässt das System; die erste Transkription lädt das Sprachmodell (ca. 550 MB). Nur mit der KI-API geht Audio an den Anbieter.',
 	'rec.qualityFast': 'Schnell (large-v3-turbo)',
 	'rec.qualityAccurate': 'Genau (large-v3, komprimiert) – ca. 2 GB RAM, mehrfach langsamer',
 	'rec.qualityBest': 'Beste (large-v3, voll) – ca. 4 GB RAM, am langsamsten',
 	'rec.qualityGerman': 'Für Deutsch optimiert (large-v3-turbo German, primeLine) – ca. 2 GB RAM',
 	'rec.qualityHint':
 		'Genauere Stufen laden beim ersten Mal ein größeres Modell (1,1 bzw. 3,1 GB) und brauchen je Gespräch länger; der Text erscheint später.',
+	'stt.pass1': 'Erste Transkription (sofort)',
+	'stt.pass1Hint':
+		'Läuft direkt nach dem Gespräch; ihr Text erscheint zuerst und geht mit der Voicemail-Mail raus. Am schnellsten: „Schnell“.',
+	'stt.pass2': 'Zweite, genauere Transkription (danach)',
+	'stt.pass2None': 'Keine',
+	'stt.pass2Hint':
+		'Läuft im Anschluss mit niedrigerer Priorität und ersetzt das erste Transkript, sobald sie fertig ist. Bis dahin ist das Transkript als „vorläufig“ markiert. Schlägt sie fehl, bleibt das erste.',
+	'stt.pass2Same': 'Gleich wie die erste Transkription – es läuft nur ein Durchgang.',
+	'stt.engineApi': 'KI-API (OpenAI, Groq, Mistral oder eigener Server)',
+	'stt.apiTitle': 'KI-API für Transkription',
+	'stt.privacy':
+		'Mit der KI-API werden Gesprächsaufnahmen und Voicemails an den Anbieter geschickt. Gesprächspartner und Datenschutz (DSGVO, Auftragsverarbeitung) beachten. Ein eigener Server im LAN hält die Daten im Haus.',
+	'stt.provider': 'Anbieter',
+	'stt.provider.openai': 'OpenAI',
+	'stt.provider.groq': 'Groq',
+	'stt.provider.mistral': 'Mistral (Voxtral)',
+	'stt.provider.custom': 'Eigener Server (OpenAI-kompatibel, z. B. Speaches, LocalAI)',
+	'stt.url': 'API-URL',
+	'stt.urlHint': 'Basis-URL mit Version, ohne /audio/transcriptions.',
+	'stt.model': 'Modell',
+	'stt.modelHint':
+		'whisper-1 und Groq liefern Zeitstempel; bei Modellen ohne (z. B. gpt-4o-transcribe) schickt TalkOps jeden Gesprächsabschnitt einzeln.',
+	'stt.key': 'API-Schlüssel',
+	'stt.keyStored': 'gespeichert – leer lassen zum Beibehalten',
+	'stt.keyNone': 'kein Schlüssel (z. B. eigener Server)',
+	'stt.keyRemove': 'Schlüssel entfernen',
+	'stt.test': 'Verbindung testen',
+	'stt.saveApi': 'API speichern',
+	'stt.testOk': 'Verbindung, Schlüssel und Modell in Ordnung.',
+	'stt.testReachable':
+		'Server erreicht; er listet keine Modelle, Schlüssel und Modell zeigen sich bei der ersten Transkription.',
+	'stt.testNoModel':
+		'Verbindung in Ordnung, aber das Modell „{model}“ bietet der Server nicht an. Sprachmodelle dort: {models}',
+	'stt.preliminary': 'Vorläufig – genauere Fassung folgt',
 	'rec.vocabulary': 'Namen und Begriffe',
 	'rec.vocabularyPlaceholder': 'z. B. Neumeier, TalkOps, Yealink, Musterstraße',
 	'rec.vocabularyHint':

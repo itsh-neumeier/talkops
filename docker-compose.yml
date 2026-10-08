@@ -115,6 +115,8 @@ services:
         condition: service_healthy
     environment:
       <<: *talkops-env
+      # Decrypts the key of the optional transcription API.
+      TALKOPS_SECRET_KEY: ${TALKOPS_SECRET_KEY:?set TALKOPS_SECRET_KEY}
       TALKOPS_WHISPER_MODEL: ${TALKOPS_WHISPER_MODEL:-large-v3-turbo-q5_0}
       TALKOPS_WHISPER_VAD: ${TALKOPS_WHISPER_VAD:-true}
     volumes:

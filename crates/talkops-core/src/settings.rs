@@ -42,9 +42,14 @@ pub struct TenantSettings {
     pub hold_music: String,
     #[serde(default)]
     pub hold_music_clip_id: Option<Uuid>,
-    /// `fast`, `accurate`, `best` or `german` (see [TranscriptionQuality]).
+    /// Engine of the first (quick) pass: `fast`, `accurate`, `best`,
+    /// `german` (see [TranscriptionQuality]) or `api` (see [TranscriptionEngine]).
     #[serde(default = "default_quality")]
     pub transcription_quality: String,
+    /// Engine of an optional second, more accurate pass that replaces the
+    /// first transcript; empty = none.
+    #[serde(default)]
+    pub transcription_refine: String,
     /// Names and terms passed to Whisper as context, comma-separated.
     #[serde(default)]
     pub transcription_vocabulary: String,
@@ -80,6 +85,34 @@ impl TranscriptionQuality {
     }
 }
 
+/// Where a transcription runs: a local Whisper model or an
+/// OpenAI-compatible API ([crate::transcription_api]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TranscriptionEngine {
+    Local(TranscriptionQuality),
+    Api,
+}
+
+impl TranscriptionEngine {
+    pub fn parse(s: &str) -> Option<Self> {
+        match s {
+            "api" => Some(Self::Api),
+            other => TranscriptionQuality::parse(other).map(Self::Local),
+        }
+    }
+
+    /// The engine of the second pass, if one is configured and differs
+    /// from the first.
+    pub fn refine(settings: &TenantSettings) -> Option<Self> {
+        if settings.transcription_refine.is_empty()
+            || settings.transcription_refine == settings.transcription_quality
+        {
+            return None;
+        }
+        Self::parse(&settings.transcription_refine)
+    }
+}
+
 /// Longest accepted vocabulary (Whisper's prompt holds ~220 tokens).
 pub const MAX_VOCABULARY: usize = 600;
 
@@ -107,7 +140,7 @@ const COLUMNS: &str = "country_code, area_code, national_prefix, international_p
                        emergency_numbers, external_ip, default_language, default_number_id, timezone, \
                        record_inbound, record_outbound, record_internal, recording_announcement, \
                        recording_retention_days, transcription_enabled, hold_music, hold_music_clip_id, \
-                       transcription_quality, transcription_vocabulary";
+                       transcription_quality, transcription_vocabulary, transcription_refine";
 
 pub async fn get<'e>(db: impl PgExecutor<'e>, tenant: TenantId) -> CoreResult<TenantSettings> {
     let sql = format!("SELECT {COLUMNS} FROM tenant_settings WHERE tenant_id = $1");
@@ -127,7 +160,7 @@ pub async fn update<'e>(
              recording_announcement = $14, recording_retention_days = $15,
              transcription_enabled = $16, hold_music = $17, hold_music_clip_id = $18,
              transcription_quality = $19, transcription_vocabulary = $20,
-             updated_at = now()
+             transcription_refine = $21, updated_at = now()
          WHERE tenant_id = $1 RETURNING {COLUMNS}"
     );
     Ok(sqlx::query_as(&sql)
@@ -151,6 +184,7 @@ pub async fn update<'e>(
         .bind(s.hold_music_clip_id)
         .bind(&s.transcription_quality)
         .bind(s.transcription_vocabulary.trim())
+        .bind(&s.transcription_refine)
         .fetch_one(db)
         .await?)
 }

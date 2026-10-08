@@ -213,7 +213,10 @@ export interface Settings {
 	recording_announcement: boolean;
 	recording_retention_days: number;
 	transcription_enabled: boolean;
-	transcription_quality: 'fast' | 'accurate' | 'best' | 'german';
+	/** Engine of the quick first pass. */
+	transcription_quality: TranscriptionEngine;
+	/** Engine of the more accurate second pass; '' = none. */
+	transcription_refine: TranscriptionEngine | '';
 	/** Names and terms Whisper should recognise, comma-separated. */
 	transcription_vocabulary: string;
 	/** Built-in piece, '' for all pieces shuffled. */
@@ -308,6 +311,10 @@ export interface Transcript {
 	language: string;
 	text: string;
 	segments: TranscriptSegment[];
+	/** e.g. `whisper:large-v3-turbo-q5_0` or `api:whisper-1`. */
+	engine: string;
+	/** False while a more accurate second pass is still to come. */
+	final: boolean;
 	created_at: string;
 }
 
@@ -432,6 +439,15 @@ export interface VoicemailMessage {
 	created_at: string;
 	heard_at: string | null;
 	transcript_status: TranscriptStatus;
+}
+
+export type TranscriptionEngine = 'fast' | 'accurate' | 'best' | 'german' | 'api';
+
+/** OpenAI-compatible transcription API (key never returned). */
+export interface TranscriptionApi {
+	url: string;
+	model: string;
+	has_key: boolean;
 }
 
 export interface SmtpSettings {

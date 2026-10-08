@@ -25,5 +25,6 @@ nächste freie Nummer; überholte ADRs werden nicht gelöscht, sondern auf
 | [0016](0016-betrieb-sicherung-und-sip-schutz.md) | Betrieb: Datensicherung, SIP-Anmeldeschutz und Härtung | Angenommen |
 | [0017](0017-audio-clips-und-smart-attendant.md) | Audio-Clips, Smart Attendant und Warteschlangen-Einstellungen | Angenommen |
 | [0018](0018-turn-fuer-das-softphone.md) | TURN für das Browser-Softphone | Angenommen |
+| [0019](0019-transkription-in-zwei-durchgaengen-und-ki-api.md) | Transkription in zwei Durchgängen, optional über eine KI-API | Angenommen |
 
 Vorlage: [`template.md`](template.md)

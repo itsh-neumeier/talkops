@@ -10,6 +10,7 @@
 	import IdentitySettings from '#lib/components/IdentitySettings.svelte';
 	import SipGuardSettings from '#lib/components/SipGuardSettings.svelte';
 	import SystemDiagnostics from '#lib/components/SystemDiagnostics.svelte';
+	import TranscriptionApiSettings from '#lib/components/TranscriptionApiSettings.svelte';
 	import TwoFactor from '#lib/components/TwoFactor.svelte';
 	import SettingsNav, { sections, type Section } from '#lib/components/SettingsNav.svelte';
 	import { t } from '#lib/i18n/index.svelte.ts';
@@ -292,15 +293,32 @@
 						<p class="hint">{t('rec.transcriptionHint')}</p>
 						{#if settings.transcription_enabled}
 							<div>
-								<label for="s-tq">{t('rec.quality')}</label>
+								<label for="s-tq">{t('stt.pass1')}</label>
 								<select id="s-tq" class="input" bind:value={settings.transcription_quality}>
 									<option value="fast">{t('rec.qualityFast')}</option>
 									<option value="accurate">{t('rec.qualityAccurate')}</option>
 									<option value="best">{t('rec.qualityBest')}</option>
 									<option value="german">{t('rec.qualityGerman')}</option>
+									<option value="api">{t('stt.engineApi')}</option>
 								</select>
-								<p class="hint">{t('rec.qualityHint')}</p>
+								<p class="hint">{t('stt.pass1Hint')}</p>
 							</div>
+							<div>
+								<label for="s-tr">{t('stt.pass2')}</label>
+								<select id="s-tr" class="input" bind:value={settings.transcription_refine}>
+									<option value="">{t('stt.pass2None')}</option>
+									<option value="accurate">{t('rec.qualityAccurate')}</option>
+									<option value="best">{t('rec.qualityBest')}</option>
+									<option value="german">{t('rec.qualityGerman')}</option>
+									<option value="fast">{t('rec.qualityFast')}</option>
+									<option value="api">{t('stt.engineApi')}</option>
+								</select>
+								<p class="hint">{t('stt.pass2Hint')}</p>
+								{#if settings.transcription_refine === settings.transcription_quality}
+									<p class="hint text-amber-700 dark:text-amber-400">{t('stt.pass2Same')}</p>
+								{/if}
+							</div>
+							<p class="hint">{t('rec.qualityHint')}</p>
 							<div>
 								<label for="s-tv">{t('rec.vocabulary')}</label>
 								<input
@@ -312,6 +330,9 @@
 								/>
 								<p class="hint">{t('rec.vocabularyHint')}</p>
 							</div>
+							{#if settings.transcription_quality === 'api' || settings.transcription_refine === 'api'}
+								<TranscriptionApiSettings />
+							{/if}
 						{/if}
 						<div class="flex justify-end">
 							<button class="btn btn-primary">{t('common.save')}</button>

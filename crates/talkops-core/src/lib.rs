@@ -32,6 +32,7 @@ pub mod stats;
 pub mod telemetry;
 pub mod tenant;
 pub mod time_conditions;
+pub mod transcription_api;
 pub mod trunks;
 pub mod turn;
 pub mod users;

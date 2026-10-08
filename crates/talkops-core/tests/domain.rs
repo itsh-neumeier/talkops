@@ -909,11 +909,51 @@ async fn voicemail_boxes_messages_and_smtp(pool: PgPool) {
             speaker: String::new(),
             text: " Ruf mich zurück.".into(),
         }],
+        Default::default(),
     )
     .await
     .unwrap();
     let third = voicemail::get_message(&pool, T, third.id).await.unwrap();
     assert_eq!(third.transcript_status, "done");
+    let source = recordings::Source::Voicemail(third.id);
+    let t = recordings::transcript_of(&pool, T, source).await.unwrap();
+    assert!(t.is_final);
+    // A first pass with a second one to come, then the second fails.
+    let meta = recordings::TranscriptMeta {
+        engine: "whisper:base",
+        is_final: false,
+    };
+    let seg = recordings::Segment {
+        start: 0.0,
+        end: 2.0,
+        speaker: String::new(),
+        text: " Ruf mich zurück.".into(),
+    };
+    recordings::save_transcript(&pool, T, source, "de", std::slice::from_ref(&seg), meta)
+        .await
+        .unwrap();
+    let t = recordings::transcript_of(&pool, T, source).await.unwrap();
+    assert_eq!((t.engine.as_str(), t.is_final), ("whisper:base", false));
+    recordings::finalize_transcript(&pool, source)
+        .await
+        .unwrap();
+    let t = recordings::transcript_of(&pool, T, source).await.unwrap();
+    assert!(t.is_final);
+    // Engines and second pass.
+    use talkops_core::settings::{TranscriptionEngine, TranscriptionQuality};
+    let mut s = talkops_core::settings::get(&pool, T).await.unwrap();
+    assert_eq!(TranscriptionEngine::refine(&s), None);
+    s.transcription_refine = "api".into();
+    assert_eq!(
+        TranscriptionEngine::refine(&s),
+        Some(TranscriptionEngine::Api)
+    );
+    s.transcription_quality = "api".into();
+    assert_eq!(TranscriptionEngine::refine(&s), None);
+    assert_eq!(
+        TranscriptionEngine::parse("best"),
+        Some(TranscriptionEngine::Local(TranscriptionQuality::Best))
+    );
     let info = voicemail::mail_info(&pool, third.id)
         .await
         .unwrap()

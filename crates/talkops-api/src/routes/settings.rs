@@ -59,9 +59,16 @@ fn validate(s: &TenantSettings) -> Result<(), ApiError> {
     if !s.hold_music.is_empty() && talkops_core::audio::music_file(&s.hold_music).is_none() {
         return Err(ApiError::BadRequest("unknown hold music".into()));
     }
-    if settings::TranscriptionQuality::parse(&s.transcription_quality).is_none() {
+    if settings::TranscriptionEngine::parse(&s.transcription_quality).is_none() {
         return Err(ApiError::BadRequest(
-            "transcription quality must be fast, accurate, best or german".into(),
+            "transcription quality must be fast, accurate, best, german or api".into(),
+        ));
+    }
+    if !s.transcription_refine.is_empty()
+        && settings::TranscriptionEngine::parse(&s.transcription_refine).is_none()
+    {
+        return Err(ApiError::BadRequest(
+            "second transcription pass must be empty, fast, accurate, best, german or api".into(),
         ));
     }
     if s.transcription_vocabulary.chars().count() > settings::MAX_VOCABULARY

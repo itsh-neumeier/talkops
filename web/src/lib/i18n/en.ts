@@ -477,14 +477,47 @@ export default {
 		'Older recordings and their transcripts are deleted automatically. 0 = keep forever.',
 	'rec.transcription': 'Transcribe recordings and voicemails',
 	'rec.transcriptionHint':
-		'Runs locally with Whisper on this server; no audio leaves the system. The first transcription downloads the speech model (about 550 MB).',
-	'rec.quality': 'Transcription accuracy',
+		'Locally with Whisper everything runs on this server and no audio leaves the system; the first transcription downloads the speech model (about 550 MB). Only with the AI API is audio sent to the provider.',
 	'rec.qualityFast': 'Fast (large-v3-turbo)',
 	'rec.qualityAccurate': 'Accurate (large-v3, compressed) – ~2 GB RAM, several times slower',
 	'rec.qualityBest': 'Best (large-v3, full) – ~4 GB RAM, slowest',
 	'rec.qualityGerman': 'German-optimized (large-v3-turbo German, primeLine) – ~2 GB RAM',
 	'rec.qualityHint':
 		'More accurate levels download a larger model on first use (1.1 or 3.1 GB) and take longer per call; transcripts appear later.',
+	'stt.pass1': 'First transcription (immediately)',
+	'stt.pass1Hint':
+		'Runs right after the call; its text appears first and goes out with the voicemail e-mail. Quickest: "Fast".',
+	'stt.pass2': 'Second, more accurate transcription (afterwards)',
+	'stt.pass2None': 'None',
+	'stt.pass2Hint':
+		'Runs afterwards at lower priority and replaces the first transcript once done. Until then the transcript is marked "preliminary". If it fails, the first one stays.',
+	'stt.pass2Same': 'Same as the first transcription – only one pass runs.',
+	'stt.engineApi': 'AI API (OpenAI, Groq, Mistral or own server)',
+	'stt.apiTitle': 'AI API for transcription',
+	'stt.privacy':
+		'With the AI API, call recordings and voicemails are sent to the provider. Mind the other parties and data protection (GDPR, data processing agreement). An own server in the LAN keeps the data in-house.',
+	'stt.provider': 'Provider',
+	'stt.provider.openai': 'OpenAI',
+	'stt.provider.groq': 'Groq',
+	'stt.provider.mistral': 'Mistral (Voxtral)',
+	'stt.provider.custom': 'Own server (OpenAI-compatible, e.g. Speaches, LocalAI)',
+	'stt.url': 'API URL',
+	'stt.urlHint': 'Base URL including the version, without /audio/transcriptions.',
+	'stt.model': 'Model',
+	'stt.modelHint':
+		'whisper-1 and Groq return timestamps; for models without (e.g. gpt-4o-transcribe) TalkOps sends each part of the conversation on its own.',
+	'stt.key': 'API key',
+	'stt.keyStored': 'stored – leave empty to keep',
+	'stt.keyNone': 'no key (e.g. own server)',
+	'stt.keyRemove': 'Remove key',
+	'stt.test': 'Test connection',
+	'stt.saveApi': 'Save API',
+	'stt.testOk': 'Connection, key and model are fine.',
+	'stt.testReachable':
+		'Server reached; it lists no models, key and model show with the first transcription.',
+	'stt.testNoModel':
+		'Connection is fine, but the server does not offer the model "{model}". Speech models there: {models}',
+	'stt.preliminary': 'Preliminary – a more accurate version follows',
 	'rec.vocabulary': 'Names and terms',
 	'rec.vocabularyPlaceholder': 'e.g. Neumeier, TalkOps, Yealink, Musterstraße',
 	'rec.vocabularyHint':

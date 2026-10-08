@@ -1,6 +1,6 @@
 # 0012 – Gesprächsaufzeichnung mit record_session, lokale Transkription mit whisper.cpp
 
-- Status: Angenommen
+- Status: Angenommen, ergänzt durch [0019](0019-transkription-in-zwei-durchgaengen-und-ki-api.md)
 - Datum: 2026-10-06
 
 ## Kontext

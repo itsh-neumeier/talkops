@@ -68,7 +68,7 @@ voicemail into text:
 
 Choosing a model (`.env`):
 
-**Accuracy** (Settings → Recording): *Fast* uses the model from
+**Accuracy** (Settings → Call handling): *Fast* uses the model from
 `TALKOPS_WHISPER_MODEL`. *Accurate* (`large-v3-q5_0`, 1.1 GB, ~2 GB RAM) and
 *Best* (`large-v3`, 3.1 GB, ~4 GB RAM) use the full large-v3 with a wider
 search: clearly fewer wrong words, but two to four times slower. **Names and
@@ -90,6 +90,51 @@ half of the call duration. If you set `base` explicitly, remove or change
 that line in your `.env`. Place other models as `ggml-<name>.bin` in the
 `models` volume yourself and set their name. Further option:
 `TALKOPS_WHISPER_THREADS` (CPU threads per transcription, default up to 4).
+
+### Two passes: quick first, accurate later
+
+*Settings → Call handling* offers two passes:
+
+- **First transcription (immediately)** runs right after the call. Its text
+  appears first and goes out with the voicemail e-mail – best *Fast*.
+- **Second, more accurate transcription (afterwards)** runs afterwards at
+  lower priority (new first passes go first) and replaces the first
+  transcript once done, e.g. *Best* (large-v3) or the AI API. Until then the
+  transcript shows *Preliminary – a more accurate version follows*; the view
+  refreshes by itself. If the second pass fails (one retry), the first
+  transcript stays.
+
+The transcript shows which model made it (e.g.
+`whisper:large-v3-turbo-q5_0` or `api:whisper-1`).
+
+### AI API (OpenAI, Groq, Mistral, own server)
+
+Instead of local Whisper, either pass can use an OpenAI-compatible
+transcription API (`POST …/audio/transcriptions`). Pick *AI API*, then enter
+provider, URL, model and key and *Test connection* (lists the server's speech
+models without sending audio):
+
+| Provider | URL | Models (examples) |
+|---|---|---|
+| OpenAI | `https://api.openai.com/v1` | `whisper-1`, `gpt-4o-transcribe`, `gpt-4o-mini-transcribe` |
+| Groq | `https://api.groq.com/openai/v1` | `whisper-large-v3-turbo`, `whisper-large-v3` |
+| Mistral | `https://api.mistral.ai/v1` | `voxtral-mini-latest` |
+| own server (Speaches, LocalAI, …) | e.g. `http://192.168.1.10:8000/v1` | depends on the server |
+
+- **Privacy:** with the AI API, recordings and voicemails go to the provider.
+  Inform the other parties and sign a data processing agreement (GDPR); an
+  own server in the LAN keeps the data in-house.
+- Each side of a call is sent separately (16 kHz mono WAV), long calls in
+  chunks of up to 10 minutes. Models with timestamps (`whisper-1`, Groq)
+  return sentences with times; for models without (e.g. `gpt-4o-transcribe`)
+  TalkOps sends each part of the conversation on its own so the order is
+  right. Servers that do not know the OpenAI options get only file, model and
+  language.
+- The key is stored encrypted (like the SMTP password) and never shown. The
+  media worker needs `TALKOPS_SECRET_KEY` for it (set in
+  `docker-compose.yml` from 1.5 on).
+- Tested against a simulated OpenAI-compatible server; the individual
+  providers are implemented following their documentation.
 
 ## Search
 

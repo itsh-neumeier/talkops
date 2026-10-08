@@ -4,10 +4,23 @@ All notable changes to TalkOps. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
-## [1.4.1] – 2026-10-08
+## [1.5.0] – 2026-10-08
 
 ### Added
 
+- **Transcription in two passes:** a quick first transcript right after the
+  call (shown at once and sent with the voicemail e-mail), then optionally a
+  more accurate second pass (e.g. large-v3 or an AI API) that replaces it.
+  Until then the transcript is marked *preliminary* and refreshes by itself;
+  each transcript shows the model that made it.
+- **AI API for transcription:** any OpenAI-compatible
+  `/audio/transcriptions` endpoint – OpenAI (`whisper-1`,
+  `gpt-4o-transcribe`), Groq, Mistral (Voxtral) or an own server such as
+  Speaches – for the first or second pass, with connection test. The key is
+  stored encrypted; models without timestamps get each part of the
+  conversation on its own. **The media worker now needs
+  `TALKOPS_SECRET_KEY`** (set in `docker-compose.yml`; Portainer stacks
+  using the shipped file pick it up from the stack variables).
 - **Settings → System → Sessions with the provider:** end all calls (a BYE
   for every leg) and/or sign all trunks off and on again, for providers that
   reject calls with "Too many simultaneous sessions".

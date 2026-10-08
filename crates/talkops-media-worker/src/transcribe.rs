@@ -23,7 +23,7 @@ use talkops_core::recordings::Segment;
 use talkops_core::settings::TranscriptionQuality;
 use tokio::process::Command;
 
-const SAMPLE_RATE: u32 = 16_000;
+pub(crate) const SAMPLE_RATE: u32 = 16_000;
 const MODEL_URL: &str = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main";
 
 /// primeLine's German fine-tune of large-v3-turbo (Apache-2.0,
@@ -113,7 +113,7 @@ impl Default for Options {
 
 /// Context for Whisper: a well-punctuated sentence in the call's language
 /// (it imitates the style) followed by the vocabulary.
-fn initial_prompt(language: &str, vocabulary: &str) -> String {
+pub(crate) fn initial_prompt(language: &str, vocabulary: &str) -> String {
     let base = match language {
         "de" => "Ein Telefongespräch auf Deutsch. Hallo, guten Tag!",
         _ => "A phone call in English. Hello, good morning!",
@@ -143,7 +143,7 @@ pub struct Whisper {
 
 impl Whisper {
     /// The model for a quality level; `fast` is the configured model.
-    fn model_name(&self, quality: TranscriptionQuality) -> &str {
+    pub fn model_name(&self, quality: TranscriptionQuality) -> &str {
         match quality {
             TranscriptionQuality::Fast => &self.model,
             TranscriptionQuality::Accurate => "large-v3-q5_0",
@@ -326,11 +326,11 @@ fn sha256_file(path: &Path) -> anyhow::Result<String> {
 }
 
 /// A temporary directory removed on drop.
-struct TempDir {
-    path: PathBuf,
+pub(crate) struct TempDir {
+    pub(crate) path: PathBuf,
 }
 
-fn tempdir() -> anyhow::Result<TempDir> {
+pub(crate) fn tempdir() -> anyhow::Result<TempDir> {
     let path = std::env::temp_dir().join(format!("talkops-whisper-{}", uuid::Uuid::new_v4()));
     std::fs::create_dir_all(&path)?;
     Ok(TempDir { path })
@@ -347,7 +347,10 @@ const SILENCE_PEAK: f32 = 0.01;
 
 /// Splits a WAV file into 16 kHz mono files: one per non-silent channel of a
 /// stereo recording (`caller`, `called`), or one without speaker.
-fn prepare(wav: &Path, work: &Path) -> anyhow::Result<Vec<(&'static str, PathBuf, Vec<f32>)>> {
+pub(crate) fn prepare(
+    wav: &Path,
+    work: &Path,
+) -> anyhow::Result<Vec<(&'static str, PathBuf, Vec<f32>)>> {
     let mut reader =
         hound::WavReader::open(wav).with_context(|| format!("open {}", wav.display()))?;
     let spec = reader.spec();
@@ -465,7 +468,7 @@ fn resample(input: &[f32], from: u32, to: u32) -> Vec<f32> {
         .collect()
 }
 
-fn write_wav(path: &Path, samples: &[f32]) -> anyhow::Result<()> {
+pub(crate) fn write_wav(path: &Path, samples: &[f32]) -> anyhow::Result<()> {
     let spec = hound::WavSpec {
         channels: 1,
         sample_rate: SAMPLE_RATE,

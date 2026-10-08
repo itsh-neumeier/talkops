@@ -5,6 +5,7 @@
 //! long transcription never delays a greeting. Unknown job kinds are never
 //! claimed.
 
+mod api;
 mod transcribe;
 mod tts;
 
@@ -15,10 +16,12 @@ use anyhow::Context;
 use clap::Parser;
 use sqlx::PgPool;
 use sqlx::postgres::PgListener;
+use talkops_core::crypto::SecretBox;
 use talkops_core::jobs::{self, Job};
 use talkops_core::recordings::{self, Source};
+use talkops_core::settings::TranscriptionEngine;
 use talkops_core::telemetry::{self, LogFormat};
-use talkops_core::{audio, settings, voicemail};
+use talkops_core::{audio, settings, transcription_api, voicemail};
 use tokio::sync::Notify;
 
 use crate::transcribe::Whisper;
@@ -125,6 +128,10 @@ struct Args {
     )]
     models_dir: PathBuf,
 
+    /// Key that decrypts the transcription API key (same as talkops-api).
+    #[arg(long, env = "TALKOPS_SECRET_KEY", hide_env_values = true)]
+    secret_key: Option<String>,
+
     #[arg(long, env = "TALKOPS_LOG_FORMAT", default_value = "pretty")]
     log_format: LogFormat,
 
@@ -224,6 +231,10 @@ async fn main() -> anyhow::Result<()> {
             voices_dir: args.voices_dir.clone(),
         },
         whisper,
+        secrets: match args.secret_key.as_deref().filter(|k| !k.is_empty()) {
+            Some(k) => Some(SecretBox::from_hex(k).context("invalid TALKOPS_SECRET_KEY")?),
+            None => None,
+        },
         voicemail_dir: args.voicemail_dir.clone(),
         sounds_dir: args.sounds_dir.clone(),
         recordings_dir: args.recordings_dir.clone(),
@@ -287,6 +298,8 @@ struct Ctx {
     pool: PgPool,
     piper: Piper,
     whisper: Whisper,
+    /// Decrypts the transcription API key; `None` without TALKOPS_SECRET_KEY.
+    secrets: Option<SecretBox>,
     voicemail_dir: PathBuf,
     sounds_dir: PathBuf,
     recordings_dir: PathBuf,
@@ -418,24 +431,29 @@ impl TtsPayload {
 }
 
 /// Payload of `transcribe` jobs.
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 struct TranscribePayload {
     recording_id: Option<uuid::Uuid>,
     voicemail_id: Option<uuid::Uuid>,
+    /// 1 = quick first pass (default), 2 = more accurate second pass.
+    #[serde(default = "first_pass")]
+    pass: u8,
 }
 
-/// Transcribes a call recording or voicemail. A voicemail's e-mail waits for
-/// the transcript and is sent once it is there or has finally failed.
+fn first_pass() -> u8 {
+    1
+}
+
+/// Transcribes a call recording or voicemail in up to two passes: a quick
+/// one whose transcript is shown (and mailed) right away, then optionally a
+/// more accurate one that replaces it. A voicemail's e-mail waits for the
+/// first pass and is sent once it is there or has finally failed.
 async fn transcribe(ctx: &Ctx, job: &Job) -> anyhow::Result<()> {
     let p: TranscribePayload =
         serde_json::from_value(job.payload.clone()).context("invalid payload")?;
     let tenant = job.tenant_id;
     let tenant_settings = settings::get(&ctx.pool, tenant).await?;
-    let opts = transcribe::Options {
-        quality: settings::TranscriptionQuality::parse(&tenant_settings.transcription_quality)
-            .unwrap_or(settings::TranscriptionQuality::Fast),
-        vocabulary: tenant_settings.transcription_vocabulary.clone(),
-    };
+    let refine = TranscriptionEngine::refine(&tenant_settings);
     let (source, file, language) = match (p.recording_id, p.voicemail_id) {
         (Some(id), None) => {
             let rec = recordings::get(&ctx.pool, tenant, id).await?;
@@ -463,31 +481,97 @@ async fn transcribe(ctx: &Ctx, job: &Job) -> anyhow::Result<()> {
         }
         _ => anyhow::bail!("payload needs recording_id or voicemail_id"),
     };
+    let engine = if p.pass >= 2 {
+        match refine {
+            Some(engine) => engine,
+            // Switched off since the first pass.
+            None => return Ok(recordings::finalize_transcript(&ctx.pool, source).await?),
+        }
+    } else {
+        TranscriptionEngine::parse(&tenant_settings.transcription_quality).unwrap_or(
+            TranscriptionEngine::Local(settings::TranscriptionQuality::Fast),
+        )
+    };
     let language = talkops_core::prompts::language(&language);
     let started = std::time::Instant::now();
-    let result = ctx.whisper.transcribe(&file, language, &opts).await;
+    let result = run_engine(ctx, tenant, engine, &file, language, &tenant_settings).await;
+    let last_attempt = job.attempts >= job.max_attempts;
     let finished = match &result {
-        Ok(segments) => {
-            recordings::save_transcript(&ctx.pool, tenant, source, language, segments).await?;
+        Ok((segments, label)) => {
+            let is_final = p.pass >= 2 || refine.is_none();
+            let meta = recordings::TranscriptMeta {
+                engine: label,
+                is_final,
+            };
+            recordings::save_transcript(&ctx.pool, tenant, source, language, segments, meta)
+                .await?;
             tracing::info!(
                 ?source,
+                pass = p.pass,
+                engine = %label,
                 segments = segments.len(),
-                quality = %tenant_settings.transcription_quality,
                 secs = started.elapsed().as_secs(),
                 "transcribed"
             );
+            if !is_final {
+                let payload = TranscribePayload { pass: 2, ..p };
+                let mut next =
+                    jobs::NewJob::new(recordings::JOB_TRANSCRIBE, serde_json::to_value(&payload)?);
+                next.tenant_id = tenant;
+                // After new first passes; one retry, the first transcript stays anyway.
+                next.priority = -1;
+                next.max_attempts = 2;
+                jobs::enqueue(&ctx.pool, next).await?;
+            }
             true
         }
-        Err(_) if job.attempts >= job.max_attempts => {
+        Err(_) if last_attempt && p.pass >= 2 => {
+            recordings::finalize_transcript(&ctx.pool, source).await?;
+            false
+        }
+        Err(_) if last_attempt => {
             recordings::transcript_failed(&ctx.pool, source).await?;
             true
         }
         Err(_) => false,
     };
-    if let (true, Source::Voicemail(id)) = (finished, source) {
+    if let (true, 1, Source::Voicemail(id)) = (finished, p.pass, source) {
         let msg = voicemail::get_message(&ctx.pool, tenant, id).await?;
         let mut conn = ctx.pool.acquire().await?;
         voicemail::enqueue_mail(&mut conn, tenant, &msg).await?;
     }
     result.map(|_| ())
+}
+
+/// Runs one transcription; returns the segments and an engine label.
+async fn run_engine(
+    ctx: &Ctx,
+    tenant: talkops_core::tenant::TenantId,
+    engine: TranscriptionEngine,
+    file: &Path,
+    language: &str,
+    s: &settings::TenantSettings,
+) -> anyhow::Result<(Vec<recordings::Segment>, String)> {
+    match engine {
+        TranscriptionEngine::Local(quality) => {
+            let opts = transcribe::Options {
+                quality,
+                vocabulary: s.transcription_vocabulary.clone(),
+            };
+            let segments = ctx.whisper.transcribe(file, language, &opts).await?;
+            Ok((
+                segments,
+                format!("whisper:{}", ctx.whisper.model_name(quality)),
+            ))
+        }
+        TranscriptionEngine::Api => {
+            let secrets = ctx.secrets.as_ref().context(
+                "TALKOPS_SECRET_KEY is not set for the media worker (needed for the API key)",
+            )?;
+            let cfg = transcription_api::config(&ctx.pool, tenant, secrets).await?;
+            let segments =
+                api::transcribe(&cfg, file, language, &s.transcription_vocabulary).await?;
+            Ok((segments, format!("api:{}", cfg.model)))
+        }
+    }
 }

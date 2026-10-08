@@ -1236,6 +1236,7 @@ async fn call_recording(db: PgPool) {
             seg("caller", " Hallo, wegen der Rechnung 4711."),
             seg("called", " Die Rechnung ist bezahlt."),
         ],
+        Default::default(),
     )
     .await
     .unwrap();

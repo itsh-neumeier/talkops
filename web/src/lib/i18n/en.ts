@@ -549,6 +549,8 @@ export default {
 	'phone.number': 'Number',
 	'phone.call': 'Call',
 	'phone.videoCall': 'Video',
+	'phone.unknown': 'Unknown',
+	'phone.onHold': 'on hold',
 	'phone.hangup': 'Hang up',
 	'phone.mute': 'Mute',
 	'phone.unmute': 'Unmute',

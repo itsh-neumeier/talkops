@@ -547,6 +547,8 @@ const de: Record<keyof typeof en, string> = {
 	'phone.number': 'Rufnummer',
 	'phone.call': 'Anrufen',
 	'phone.videoCall': 'Video',
+	'phone.unknown': 'Unbekannt',
+	'phone.onHold': 'gehalten',
 	'phone.hangup': 'Auflegen',
 	'phone.mute': 'Stumm',
 	'phone.unmute': 'Ton an',

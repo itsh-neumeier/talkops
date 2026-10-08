@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
-	import { Web } from 'sip.js';
+	import { Web, type Session } from 'sip.js';
 	import { ApiError, api } from '#lib/api.ts';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
 	import { t } from '#lib/i18n/index.svelte.ts';
@@ -27,6 +27,12 @@
 	let held = $state(false);
 	let error = $state('');
 	let noExtension = $state(false);
+	/** The other party of the current call. */
+	let peer = $state<{ name: string; number: string } | null>(null);
+	/** For redialling: an empty number calls the last one again. */
+	let lastDialed = $state('');
+	let connectedAt = $state(0);
+	let now = $state(Date.now());
 	let localVideo = $state<HTMLVideoElement>();
 	let remoteVideo = $state<HTMLVideoElement>();
 	let remoteAudio = $state<HTMLAudioElement>();
@@ -34,6 +40,17 @@
 	const secure = typeof window !== 'undefined' && window.isSecureContext;
 
 	const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#'];
+
+	/** Caller or callee as FreeSWITCH presents it (device logins `20-1` → `20`). */
+	function readPeer() {
+		const session = (user as unknown as { session?: Session } | null)?.session;
+		const id = session?.remoteIdentity;
+		if (!id) return;
+		const raw = id.uri.user ?? '';
+		const number = raw.replace(/^(\d+)-\d+$/, '$1');
+		const name = id.displayName && id.displayName !== raw ? id.displayName : '';
+		peer = { name, number };
+	}
 
 	function media(withVideo: boolean) {
 		return {
@@ -81,17 +98,27 @@
 					status = 'offline';
 					error = t('phone.disconnected');
 				},
-				onCallCreated: () => (status = 'calling'),
-				onCallReceived: () => (status = 'ringing'),
+				onCallCreated: () => {
+					status = 'calling';
+					readPeer();
+				},
+				onCallReceived: () => {
+					status = 'ringing';
+					readPeer();
+				},
 				onCallAnswered: () => {
 					status = 'incall';
 					muted = false;
 					held = false;
+					connectedAt = Date.now();
 				},
 				onCallHangup: () => {
 					status = user ? 'ready' : 'offline';
 					muted = false;
 					held = false;
+					peer = null;
+					connectedAt = 0;
+					number = '';
 				},
 				onCallHold: (h) => (held = h)
 			}
@@ -117,9 +144,11 @@
 	});
 
 	async function call(withVideo: boolean) {
-		const dest = number.replace(/[^0-9*#+]/g, '');
+		const dest = (number || lastDialed).replace(/[^0-9*#+]/g, '');
 		if (!user || !dest || !account) return;
 		error = '';
+		lastDialed = dest;
+		peer = { name: '', number: dest };
 		video = withVideo;
 		try {
 			await user.call(`sip:${dest}@${account.sip_domain}`, {
@@ -200,6 +229,18 @@
 		}
 	}
 
+	// Call duration.
+	$effect(() => {
+		if (!connectedAt) return;
+		const timer = setInterval(() => (now = Date.now()), 1000);
+		return () => clearInterval(timer);
+	});
+	const duration = $derived.by(() => {
+		const secs = connectedAt ? Math.max(0, Math.floor((now - connectedAt) / 1000)) : 0;
+		const mm = String(Math.floor(secs / 60)).padStart(2, '0');
+		return `${mm}:${String(secs % 60).padStart(2, '0')}`;
+	});
+
 	const busy = $derived(status === 'calling' || status === 'incall' || status === 'ringing');
 	const badge = $derived(
 		status === 'ready' || status === 'incall'
@@ -248,7 +289,18 @@
 				<div
 					class="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-900/80 text-white"
 				>
-					<p class="text-lg">📞 {t('phone.incoming')}</p>
+					<p class="text-sm text-slate-300">📞 {t('phone.incoming')}</p>
+					{#if peer}
+						<p class="text-center">
+							<span class="block text-2xl font-semibold" data-testid="peer-name"
+								>{peer.name || peer.number || t('phone.unknown')}</span
+							>
+							{#if peer.name && peer.number}<span
+									class="block font-mono text-slate-300"
+									data-testid="peer-number">{peer.number}</span
+								>{/if}
+						</p>
+					{/if}
 					<div class="flex flex-wrap justify-center gap-2">
 						<button class="btn btn-primary" onclick={() => answer(false)}
 							>{t('phone.answer')}</button
@@ -260,6 +312,20 @@
 							>{t('phone.decline')}</button
 						>
 					</div>
+				</div>
+			{:else if busy && peer}
+				<div
+					class="absolute top-2 left-2 rounded-lg bg-slate-900/70 px-3 py-1.5 text-sm text-white"
+					data-testid="peer"
+				>
+					<span class="font-medium">{peer.name || peer.number || t('phone.unknown')}</span>
+					{#if peer.name && peer.number}<span class="ml-1 font-mono text-slate-300"
+							>{peer.number}</span
+						>{/if}
+					<span class="ml-2 font-mono text-slate-300"
+						>{status === 'incall' ? duration : t('phone.state.calling')}</span
+					>
+					{#if held}<span class="ml-2 text-amber-300">{t('phone.onHold')}</span>{/if}
 				</div>
 			{:else if !busy}
 				<div class="absolute inset-0 flex items-center justify-center text-sm text-slate-400">
@@ -273,7 +339,7 @@
 				id="phone-number"
 				class="input mt-0 text-center font-mono text-lg"
 				bind:value={number}
-				placeholder={t('phone.number')}
+				placeholder={lastDialed && !number ? lastDialed : t('phone.number')}
 				aria-label={t('phone.number')}
 				disabled={status === 'incall'}
 			/>

@@ -172,6 +172,7 @@ impl AppState {
         (name = "routing", description = "Ring groups, time conditions, menus and queues"),
         (name = "recordings", description = "Call recordings, transcripts and search"),
         (name = "doors", description = "Door stations: opener, live picture, events"),
+        (name = "audio", description = "Audio clips: computer voice, uploads, recordings"),
     )
 )]
 pub struct ApiDoc;
@@ -197,6 +198,7 @@ pub fn api_router() -> (Router<AppState>, utoipa::openapi::OpenApi) {
         .merge(routes::doors::router())
         .merge(routes::webrtc::router())
         .merge(routes::backups::router())
+        .merge(routes::audio::router())
         .merge(routes::security::router())
         .split_for_parts();
     (router, api)

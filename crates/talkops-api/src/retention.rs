@@ -28,6 +28,20 @@ pub async fn purge(db: &PgPool, dir: &Path) -> CoreResult<usize> {
     Ok(expired.len())
 }
 
+/// Deletes audio clips nobody uses any more (previews, replaced greetings).
+pub async fn purge_clips(db: &PgPool, sounds: &Path) -> CoreResult<usize> {
+    let gone = talkops_core::audio::purge_unused(db).await?;
+    for (tenant, id) in &gone {
+        let path = sounds.join(talkops_core::audio::clip_file(*tenant, *id));
+        match tokio::fs::remove_file(&path).await {
+            Ok(()) => {}
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
+            Err(err) => tracing::warn!(error = %err, file = %path.display(), "cannot remove clip"),
+        }
+    }
+    Ok(gone.len())
+}
+
 pub fn spawn(db: PgPool, media: Arc<MediaPaths>) {
     tokio::spawn(async move {
         loop {
@@ -50,6 +64,11 @@ pub fn spawn(db: PgPool, media: Arc<MediaPaths>) {
                 Ok(0) => {}
                 Ok(n) => tracing::info!(count = n, "expired door events deleted"),
                 Err(err) => tracing::warn!(error = %err, "door event retention failed"),
+            }
+            match purge_clips(&db, &media.sounds).await {
+                Ok(0) => {}
+                Ok(n) => tracing::info!(count = n, "unused audio clips deleted"),
+                Err(err) => tracing::warn!(error = %err, "audio clip cleanup failed"),
             }
             tokio::time::sleep(INTERVAL).await;
         }

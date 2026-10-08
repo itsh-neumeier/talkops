@@ -31,11 +31,13 @@ pub struct IvrMenu {
     pub number: Option<String>,
     pub name: String,
     pub language: Option<String>,
-    /// `tts` or `upload`.
+    /// `tts`, `upload`, `clip` (an audio clip) or `none`.
     pub greeting: String,
     pub greeting_text: String,
     /// `none`, `pending`, `ready` or `failed`.
     pub greeting_status: String,
+    /// The audio clip played when `greeting` is `clip`.
+    pub greeting_clip_id: Option<Uuid>,
     pub timeout_secs: i32,
     pub max_tries: i32,
     pub direct_dial: bool,
@@ -63,6 +65,8 @@ pub struct IvrMenuInput {
     pub greeting: String,
     #[serde(default)]
     pub greeting_text: String,
+    #[serde(default)]
+    pub greeting_clip_id: Option<Uuid>,
     #[serde(default = "five")]
     pub timeout_secs: i32,
     #[serde(default = "three")]
@@ -96,7 +100,7 @@ pub fn greeting_file(tenant: TenantId, menu: Uuid) -> String {
 }
 
 const COLUMNS: &str = "id, number, name, language, greeting, greeting_text, greeting_status, \
-                       timeout_secs, max_tries, direct_dial, options, timeout_type, timeout_id";
+                       greeting_clip_id, timeout_secs, max_tries, direct_dial, options, timeout_type, timeout_id";
 
 pub async fn list(pool: &PgPool, tenant: TenantId) -> CoreResult<Vec<IvrMenu>> {
     let sql = format!(
@@ -141,7 +145,10 @@ async fn validate(
         "tts" if input.greeting_text.trim().is_empty() => {
             return Err(CoreError::Validation("greeting text is required".into()));
         }
-        "tts" | "upload" => {}
+        "clip" if input.greeting_clip_id.is_none() => {
+            return Err(CoreError::Validation("choose an audio clip".into()));
+        }
+        "tts" | "upload" | "clip" | "none" => {}
         _ => return Err(CoreError::Validation("invalid greeting type".into())),
     }
     if input.greeting_text.chars().count() > 2000 {
@@ -201,6 +208,10 @@ pub async fn save(
         None => None,
     };
     validate(pool, tenant, id, input, emergency).await?;
+    let clip = (input.greeting == "clip")
+        .then_some(input.greeting_clip_id)
+        .flatten();
+    crate::audio::ensure_exists(pool, tenant, clip).await?;
     let text = input.greeting_text.trim();
     let rerender = input.greeting == "tts"
         && old.as_ref().is_none_or(|o| {
@@ -211,7 +222,9 @@ pub async fn save(
         });
     let status = if rerender {
         "pending".to_owned()
-    } else if input.greeting == "upload" && old.as_ref().is_none_or(|o| o.greeting != "upload") {
+    } else if matches!(input.greeting.as_str(), "clip" | "none")
+        || (input.greeting == "upload" && old.as_ref().is_none_or(|o| o.greeting != "upload"))
+    {
         "none".to_owned()
     } else {
         old.as_ref()
@@ -226,8 +239,9 @@ pub async fn save(
         None => {
             let sql = format!(
                 "INSERT INTO ivr_menus (tenant_id, number, name, language, greeting, greeting_text,
-                     greeting_status, timeout_secs, max_tries, direct_dial, options, timeout_type, timeout_id)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING {COLUMNS}"
+                     greeting_status, timeout_secs, max_tries, direct_dial, options, timeout_type, timeout_id,
+                     greeting_clip_id)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING {COLUMNS}"
             );
             sqlx::query_as(&sql)
                 .bind(tenant)
@@ -243,6 +257,7 @@ pub async fn save(
                 .bind(sqlx::types::Json(&input.options))
                 .bind(input.timeout_type)
                 .bind(timeout_id)
+                .bind(clip)
                 .fetch_one(&mut *tx)
                 .await?
         }
@@ -251,7 +266,7 @@ pub async fn save(
                 "UPDATE ivr_menus SET number = $3, name = $4, language = $5, greeting = $6,
                      greeting_text = $7, greeting_status = $8, timeout_secs = $9, max_tries = $10,
                      direct_dial = $11, options = $12, timeout_type = $13, timeout_id = $14,
-                     updated_at = now()
+                     greeting_clip_id = $15, updated_at = now()
                  WHERE tenant_id = $1 AND id = $2 RETURNING {COLUMNS}"
             );
             sqlx::query_as(&sql)
@@ -269,6 +284,7 @@ pub async fn save(
                 .bind(sqlx::types::Json(&input.options))
                 .bind(input.timeout_type)
                 .bind(timeout_id)
+                .bind(clip)
                 .fetch_one(&mut *tx)
                 .await?
         }
@@ -315,7 +331,8 @@ pub async fn set_greeting_status(
 /// An uploaded greeting is in place.
 pub async fn set_uploaded_greeting(pool: &PgPool, tenant: TenantId, menu: Uuid) -> CoreResult<()> {
     let res = sqlx::query(
-        "UPDATE ivr_menus SET greeting = 'upload', greeting_status = 'ready', updated_at = now()
+        "UPDATE ivr_menus SET greeting = 'upload', greeting_status = 'ready', greeting_clip_id = NULL,
+             updated_at = now()
          WHERE tenant_id = $1 AND id = $2",
     )
     .bind(tenant)

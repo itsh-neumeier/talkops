@@ -68,7 +68,18 @@ pub async fn run<C: Call>(
 
     let mut ivr = Ivr::new(call, &ctx.media.sounds, &lang);
     let mut greeting = Seq::default();
-    if menu.greeting_status == "ready" {
+    let clip = menu
+        .greeting_clip_id
+        .map(|id| {
+            ctx.media
+                .sounds
+                .join(talkops_core::audio::clip_file(tenant, id))
+        })
+        .filter(|p| menu.greeting == "clip" && p.is_file());
+    if let Some(clip) = clip {
+        ivr.file(&mut greeting, &clip);
+    } else if matches!(menu.greeting.as_str(), "tts" | "upload") && menu.greeting_status == "ready"
+    {
         ivr.file(
             &mut greeting,
             &ctx.media.sounds.join(ivr::greeting_file(tenant, menu.id)),
@@ -126,6 +137,7 @@ mod tests {
             greeting: "tts".into(),
             greeting_text: "Hallo".into(),
             greeting_status: "ready".into(),
+            greeting_clip_id: None,
             timeout_secs: 5,
             max_tries: 3,
             direct_dial: direct,

@@ -148,6 +148,7 @@ async fn setup(pool: &PgPool) -> (VmContext, Uuid, std::path::PathBuf) {
             greeting: "default".into(),
             greeting_text: String::new(),
             max_message_secs: 60,
+            greeting_clip_id: None,
         },
         "de",
     )
@@ -182,6 +183,59 @@ async fn deposit_stores_messages(pool: PgPool) {
     assert_eq!(msgs[0].caller_name, "Anna");
     assert!(ctx.path(&msgs[0].file).is_file());
 
+    // A clip as greeting, or none at all.
+    let clip = Uuid::new_v4();
+    let clip_path = ctx
+        .media
+        .sounds
+        .join(talkops_core::audio::clip_file(T, clip));
+    std::fs::create_dir_all(clip_path.parent().unwrap()).unwrap();
+    write_wav(&clip_path, 1);
+    talkops_core::audio::create_file(&pool, T, None, clip, "upload", 1000)
+        .await
+        .unwrap();
+    for (greeting, clip_id, expect) in [
+        ("clip", Some(clip), Some(clip.to_string())),
+        ("none", None, None),
+    ] {
+        voicemail::update_box(
+            &pool,
+            T,
+            ext,
+            &VoicemailBoxInput {
+                enabled: true,
+                pin: None,
+                email_notify: false,
+                attach_audio: true,
+                language: None,
+                greeting: greeting.into(),
+                greeting_text: String::new(),
+                max_message_secs: 60,
+                greeting_clip_id: clip_id,
+            },
+            "de",
+        )
+        .await
+        .unwrap();
+        let mut c = call("vm_deposit", Some(ext));
+        c.record_secs.push_back(0);
+        run(&mut c, &ctx, "vm_deposit").await.unwrap();
+        let played: Vec<_> = c
+            .executed
+            .iter()
+            .filter(|(a, d)| a == "playback" && !d.starts_with("silence") && !d.contains("tone"))
+            .map(|(_, d)| d.clone())
+            .collect();
+        assert!(
+            !played.iter().any(|d| d.contains("vm_greeting_default")),
+            "{greeting}: {played:?}"
+        );
+        match expect {
+            Some(id) => assert!(played.iter().any(|d| d.contains(&id)), "{played:?}"),
+            None => assert!(!played.iter().any(|d| d.contains("clips/")), "{played:?}"),
+        }
+    }
+
     // Hang-up during the greeting: nothing is stored.
     let mut c = call("vm_deposit", Some(ext));
     c.record_secs.push_back(0);
@@ -203,6 +257,7 @@ async fn deposit_stores_messages(pool: PgPool) {
             greeting: vbox.greeting,
             greeting_text: vbox.greeting_text,
             max_message_secs: 60,
+            greeting_clip_id: None,
         },
         "de",
     )
@@ -295,6 +350,7 @@ mod menus {
                 language: None,
                 greeting: "tts".into(),
                 greeting_text: "Willkommen".into(),
+                greeting_clip_id: None,
                 timeout_secs: 4,
                 max_tries: 2,
                 direct_dial: direct,

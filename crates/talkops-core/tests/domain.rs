@@ -686,6 +686,7 @@ fn vm_input() -> VoicemailBoxInput {
         greeting: "default".into(),
         greeting_text: String::new(),
         max_message_secs: 120,
+        greeting_clip_id: None,
     }
 }
 

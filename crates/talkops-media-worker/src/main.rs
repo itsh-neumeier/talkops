@@ -18,7 +18,7 @@ use sqlx::postgres::PgListener;
 use talkops_core::jobs::{self, Job};
 use talkops_core::recordings::{self, Source};
 use talkops_core::telemetry::{self, LogFormat};
-use talkops_core::{ivr, settings, voicemail};
+use talkops_core::{audio, ivr, settings, voicemail};
 use tokio::sync::Notify;
 
 use crate::transcribe::Whisper;
@@ -26,7 +26,11 @@ use crate::tts::Piper;
 
 /// Job kinds per lane; each lane works through its jobs one at a time.
 const LANES: &[&[&str]] = &[
-    &[voicemail::JOB_TTS_GREETING, ivr::JOB_TTS_IVR],
+    &[
+        audio::JOB_TTS_CLIP,
+        voicemail::JOB_TTS_GREETING,
+        ivr::JOB_TTS_IVR,
+    ],
     &[recordings::JOB_TRANSCRIBE],
 ];
 
@@ -257,11 +261,44 @@ async fn drain_queue(ctx: &Ctx, worker_id: &str, kinds: &[&str]) -> anyhow::Resu
 
 async fn run(ctx: &Ctx, job: &Job) -> anyhow::Result<()> {
     match job.kind.as_str() {
+        audio::JOB_TTS_CLIP => tts_clip(ctx, job).await,
         voicemail::JOB_TTS_GREETING => tts_greeting(ctx, job).await,
         ivr::JOB_TTS_IVR => tts_ivr(ctx, job).await,
         recordings::JOB_TRANSCRIBE => transcribe(ctx, job).await,
         other => anyhow::bail!("no handler for job kind `{other}`"),
     }
+}
+
+/// Renders a generated audio clip; its status tells the UI the outcome.
+async fn tts_clip(ctx: &Ctx, job: &Job) -> anyhow::Result<()> {
+    #[derive(serde::Deserialize)]
+    struct Payload {
+        clip_id: uuid::Uuid,
+    }
+    let p: Payload = serde_json::from_value(job.payload.clone()).context("invalid payload")?;
+    let clip = audio::render_job(&ctx.pool, p.clip_id).await?;
+    let path = ctx
+        .sounds_dir
+        .join(audio::clip_file(clip.tenant_id, p.clip_id));
+    let voice = audio::voice(&clip.language, clip.voice);
+    let result = ctx
+        .piper
+        .render_with(voice.model, &[(clip.text.clone(), path.clone())])
+        .await;
+    let duration = match &result {
+        Ok(()) => Some(wav_duration_ms(&path).unwrap_or(0)),
+        Err(_) => None,
+    };
+    audio::set_rendered(&ctx.pool, p.clip_id, duration).await?;
+    result
+}
+
+/// Length of a WAV file in milliseconds.
+fn wav_duration_ms(path: &Path) -> anyhow::Result<i32> {
+    let reader = hound::WavReader::open(path)?;
+    let spec = reader.spec();
+    let ms = u64::from(reader.duration()) * 1000 / u64::from(spec.sample_rate.max(1));
+    Ok(i32::try_from(ms).unwrap_or(i32::MAX))
 }
 
 /// Renders a voicemail greeting; the box status tells the UI the outcome.

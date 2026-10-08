@@ -196,12 +196,24 @@ async fn deposit<C: Call>(
     ivr.set("playback_terminators", "#").await?;
     let mut greeting = Seq::default();
     let custom = ctx.path(&voicemail::greeting_file(tenant, ext));
-    if vbox.uses_custom_greeting() && custom.is_file() {
+    let clip = vbox
+        .greeting_clip_id
+        .map(|id| {
+            ctx.media
+                .sounds
+                .join(talkops_core::audio::clip_file(tenant, id))
+        })
+        .filter(|p| vbox.greeting == "clip" && p.is_file());
+    if let Some(clip) = clip {
+        ivr.file(&mut greeting, &clip);
+    } else if vbox.uses_custom_greeting() && custom.is_file() {
         ivr.file(&mut greeting, &custom);
-    } else {
+    } else if vbox.greeting != "none" {
         ivr.prompt(&mut greeting, "vm_greeting_default");
     }
-    ivr.play(&greeting).await?;
+    if !greeting.is_empty() {
+        ivr.play(&greeting).await?;
+    }
     let mut beep = Seq::default();
     ivr.beep(&mut beep);
     ivr.play(&beep).await?;

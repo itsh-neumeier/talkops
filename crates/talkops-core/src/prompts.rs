@@ -17,10 +17,7 @@ pub const MAX_NUMBER: u32 = 99;
 
 /// Piper voice used for a language (model file `<voice>.onnx`).
 pub fn voice(lang: &str) -> &'static str {
-    match lang {
-        "en" => "en_US-ljspeech-medium",
-        _ => "de_DE-thorsten-medium",
-    }
+    crate::audio::voice(language(lang), 1).model
 }
 
 /// Normalizes a language code to a supported one (default German).

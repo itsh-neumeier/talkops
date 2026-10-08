@@ -20,24 +20,36 @@ pub struct Piper {
 }
 
 impl Piper {
-    fn model(&self, lang: &str) -> PathBuf {
-        self.voices_dir
-            .join(format!("{}.onnx", prompts::voice(prompts::language(lang))))
+    fn model_path(&self, model: &str) -> PathBuf {
+        self.voices_dir.join(format!("{model}.onnx"))
     }
 
-    /// True if the binary and the voice for `lang` are installed.
+    /// True if the binary and the system voice for `lang` are installed.
     pub fn available(&self, lang: &str) -> bool {
-        self.bin.is_file() && self.model(lang).is_file()
+        self.bin.is_file()
+            && self
+                .model_path(prompts::voice(prompts::language(lang)))
+                .is_file()
     }
 
-    /// Renders `(text, file)` pairs in one Piper run.
+    /// Renders `(text, file)` pairs in one Piper run with the system voice.
     pub async fn render(&self, lang: &str, items: &[(String, PathBuf)]) -> anyhow::Result<()> {
+        self.render_with(prompts::voice(prompts::language(lang)), items)
+            .await
+    }
+
+    /// Renders `(text, file)` pairs in one Piper run with voice `model`.
+    pub async fn render_with(
+        &self,
+        model: &str,
+        items: &[(String, PathBuf)],
+    ) -> anyhow::Result<()> {
         if items.is_empty() {
             return Ok(());
         }
-        let model = self.model(lang);
+        let model = self.model_path(model);
         anyhow::ensure!(
-            self.available(lang),
+            self.bin.is_file() && model.is_file(),
             "Piper or voice {} not installed",
             model.display()
         );

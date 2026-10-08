@@ -29,11 +29,13 @@ pub struct VoicemailBox {
     pub attach_audio: bool,
     /// `de`, `en` or `null` (tenant default).
     pub language: Option<String>,
-    /// `default`, `tts` or `recorded`.
+    /// `default`, `tts`, `recorded` (on the phone), `clip` or `none`.
     pub greeting: String,
     pub greeting_text: String,
     /// `none`, `pending`, `ready` or `failed`.
     pub greeting_status: String,
+    /// The audio clip played when `greeting` is `clip`.
+    pub greeting_clip_id: Option<Uuid>,
     pub max_message_secs: i32,
 }
 
@@ -49,6 +51,7 @@ impl VoicemailBox {
             greeting: "default".into(),
             greeting_text: String::new(),
             greeting_status: "none".into(),
+            greeting_clip_id: None,
             max_message_secs: 180,
         }
     }
@@ -64,9 +67,10 @@ impl VoicemailBox {
             .is_some_and(|hash| crypto::verify_password(pin, hash))
     }
 
-    /// True when the custom greeting file should be played.
+    /// True when the custom greeting file (TTS or recorded on the phone)
+    /// should be played.
     pub fn uses_custom_greeting(&self) -> bool {
-        self.greeting != "default" && self.greeting_status == "ready"
+        matches!(self.greeting.as_str(), "tts" | "recorded") && self.greeting_status == "ready"
     }
 }
 
@@ -82,11 +86,14 @@ pub struct VoicemailBoxInput {
     pub attach_audio: bool,
     #[serde(default)]
     pub language: Option<String>,
-    /// `default`, `tts` or `recorded` (the latter is set by recording on the phone).
+    /// `default`, `tts`, `recorded` (set by recording on the phone), `clip`
+    /// (with `greeting_clip_id`) or `none`.
     #[serde(default = "default_greeting")]
     pub greeting: String,
     #[serde(default)]
     pub greeting_text: String,
+    #[serde(default)]
+    pub greeting_clip_id: Option<Uuid>,
     #[serde(default = "default_max_secs")]
     pub max_message_secs: i32,
 }
@@ -102,7 +109,8 @@ fn default_max_secs() -> i32 {
 }
 
 const BOX_COLUMNS: &str = "extension_id, enabled, pin_hash, email_notify, attach_audio, language, \
-                           greeting, greeting_text, greeting_status, max_message_secs";
+                           greeting, greeting_text, greeting_status, greeting_clip_id, \
+                           max_message_secs";
 
 /// Relative path of a box's custom greeting.
 pub fn greeting_file(tenant: TenantId, extension: Uuid) -> String {
@@ -144,8 +152,11 @@ fn validate(input: &VoicemailBoxInput) -> CoreResult<()> {
             )));
         }
     }
-    if !["default", "tts", "recorded"].contains(&input.greeting.as_str()) {
+    if !["default", "tts", "recorded", "clip", "none"].contains(&input.greeting.as_str()) {
         return Err(CoreError::Validation("invalid greeting type".into()));
+    }
+    if input.greeting == "clip" && input.greeting_clip_id.is_none() {
+        return Err(CoreError::Validation("choose or create a greeting".into()));
     }
     if input.greeting == "tts" && input.greeting_text.trim().is_empty() {
         return Err(CoreError::Validation("greeting text is required".into()));
@@ -171,6 +182,10 @@ pub async fn update_box(
     default_language: &str,
 ) -> CoreResult<VoicemailBox> {
     validate(input)?;
+    let clip = (input.greeting == "clip")
+        .then_some(input.greeting_clip_id)
+        .flatten();
+    crate::audio::ensure_exists(pool, tenant, clip).await?;
     let mut tx = pool.begin().await?;
     let old = get_box(&mut *tx, tenant, extension).await?;
     let pin_hash = match input.pin.as_deref() {
@@ -186,7 +201,7 @@ pub async fn update_box(
             || old.language != language
             || old.greeting_status == "failed");
     let status = match input.greeting.as_str() {
-        "default" => "none",
+        "default" | "clip" | "none" => "none",
         _ if rerender => "pending",
         // Switching back to a recording requires one to exist.
         "recorded" if old.greeting != "recorded" => {
@@ -199,13 +214,13 @@ pub async fn update_box(
     let sql = format!(
         "INSERT INTO voicemail_boxes (extension_id, tenant_id, enabled, pin_hash, email_notify,
                                       attach_audio, language, greeting, greeting_text,
-                                      greeting_status, max_message_secs)
-         SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+                                      greeting_status, max_message_secs, greeting_clip_id)
+         SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
          WHERE EXISTS (SELECT 1 FROM extensions WHERE id = $1 AND tenant_id = $2)
          ON CONFLICT (extension_id) DO UPDATE SET
              enabled = $3, pin_hash = $4, email_notify = $5, attach_audio = $6, language = $7,
              greeting = $8, greeting_text = $9, greeting_status = $10, max_message_secs = $11,
-             updated_at = now()
+             greeting_clip_id = $12, updated_at = now()
          RETURNING {BOX_COLUMNS}"
     );
     let saved: VoicemailBox = sqlx::query_as(&sql)
@@ -220,6 +235,7 @@ pub async fn update_box(
         .bind(text)
         .bind(status)
         .bind(input.max_message_secs)
+        .bind(clip)
         .fetch_optional(&mut *tx)
         .await?
         .ok_or(CoreError::NotFound)?;

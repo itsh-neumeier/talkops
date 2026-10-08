@@ -19,8 +19,10 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 
 # Piper 2023.11.14-2 (https://github.com/rhasspy/piper/releases) and voices
 # from https://huggingface.co/rhasspy/piper-voices (v1.0.0):
-#   de_DE-thorsten-medium – dataset CC0
-#   en_US-ljspeech-medium – dataset public domain
+#   de_DE-thorsten-medium – dataset CC0 (German voice 1)
+#   de_DE-kerstin-low     – dataset CC0 (German voice 2)
+#   en_US-ljspeech-medium – dataset public domain (English voice 1)
+#   en_US-joe-medium      – dataset CC0 (English voice 2)
 FROM debian:${DEBIAN_RELEASE}-slim AS piper
 ARG TARGETARCH
 ARG PIPER_URL=https://github.com/rhasspy/piper/releases/download/2023.11.14-2
@@ -41,11 +43,19 @@ RUN set -eux; \
     curl -fsSLo de_DE-thorsten-medium.onnx.json "$VOICES_URL/de/de_DE/thorsten/medium/de_DE-thorsten-medium.onnx.json"; \
     curl -fsSLo en_US-ljspeech-medium.onnx "$VOICES_URL/en/en_US/ljspeech/medium/en_US-ljspeech-medium.onnx"; \
     curl -fsSLo en_US-ljspeech-medium.onnx.json "$VOICES_URL/en/en_US/ljspeech/medium/en_US-ljspeech-medium.onnx.json"; \
+    curl -fsSLo de_DE-kerstin-low.onnx "$VOICES_URL/de/de_DE/kerstin/low/de_DE-kerstin-low.onnx"; \
+    curl -fsSLo de_DE-kerstin-low.onnx.json "$VOICES_URL/de/de_DE/kerstin/low/de_DE-kerstin-low.onnx.json"; \
+    curl -fsSLo en_US-joe-medium.onnx "$VOICES_URL/en/en_US/joe/medium/en_US-joe-medium.onnx"; \
+    curl -fsSLo en_US-joe-medium.onnx.json "$VOICES_URL/en/en_US/joe/medium/en_US-joe-medium.onnx.json"; \
     printf '%s\n' \
       "7e64762d8e5118bb578f2eea6207e1a35a8e0c30595010b666f983fc87bb7819  de_DE-thorsten-medium.onnx" \
       "974adee790533adb273a1ac88f49027d2a1b8f0f2cf4905954a4791e79264e85  de_DE-thorsten-medium.onnx.json" \
       "6f52a751e2349abe7a76735eb09dc1875298c77ea2342ffd2fef79ff81b87f22  en_US-ljspeech-medium.onnx" \
       "141d612cc0a95ed7efc1ca936b845c2364967f2e9217c5dbfcf69fc4d6c65860  en_US-ljspeech-medium.onnx.json" \
+      "d352a7641892cebf2903859af94e9ba81a141110215fe3943bcda7f7da401b7a  de_DE-kerstin-low.onnx" \
+      "56e708556b7b9b7a53c4f8957e021421e69f11a600962bba554cffbe72cf2d47  de_DE-kerstin-low.onnx.json" \
+      "58afce0321b8d9c46d7cdf9c16500cc55a793b4220212dba6b70fb788b3baf06  en_US-joe-medium.onnx" \
+      "3d6d5410b3795cb1950595247ef8f06190719e6fdbfa3a2356d8ec368e1aad33  en_US-joe-medium.onnx.json" \
       | sha256sum -c -
 
 # whisper.cpp v1.9.4 (MIT, https://github.com/ggml-org/whisper.cpp). On

@@ -378,7 +378,17 @@ const de: Record<keyof typeof en, string> = {
 		'Ältere Aufnahmen samt Transkript werden automatisch gelöscht. 0 = unbegrenzt.',
 	'rec.transcription': 'Aufnahmen und Sprachnachrichten transkribieren',
 	'rec.transcriptionHint':
-		'Läuft lokal mit Whisper auf diesem Server; kein Audio verlässt das System. Die erste Transkription lädt das Sprachmodell (ca. 150 MB).',
+		'Läuft lokal mit Whisper auf diesem Server; kein Audio verlässt das System. Die erste Transkription lädt das Sprachmodell (ca. 550 MB).',
+	'rec.quality': 'Genauigkeit der Transkription',
+	'rec.qualityFast': 'Schnell (large-v3-turbo)',
+	'rec.qualityAccurate': 'Genau (large-v3, komprimiert) – ca. 2 GB RAM, mehrfach langsamer',
+	'rec.qualityBest': 'Beste (large-v3, voll) – ca. 4 GB RAM, am langsamsten',
+	'rec.qualityHint':
+		'Genauere Stufen laden beim ersten Mal ein größeres Modell (1,1 bzw. 3,1 GB) und brauchen je Gespräch länger; der Text erscheint später.',
+	'rec.vocabulary': 'Namen und Begriffe',
+	'rec.vocabularyPlaceholder': 'z. B. Neumeier, TalkOps, Yealink, Musterstraße',
+	'rec.vocabularyHint':
+		'Durch Komma getrennt; hilft, Namen, Firmen und Fachbegriffe richtig zu erkennen.',
 	'rec.extensionPolicy': 'Gesprächsaufzeichnung',
 	'rec.inherit': 'Vorgabe (Einstellungen)',
 	'rec.always': 'Immer aufzeichnen',

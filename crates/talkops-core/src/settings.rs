@@ -42,7 +42,42 @@ pub struct TenantSettings {
     pub hold_music: String,
     #[serde(default)]
     pub hold_music_clip_id: Option<Uuid>,
+    /// `fast`, `accurate` or `best` (see [TranscriptionQuality]).
+    #[serde(default = "default_quality")]
+    pub transcription_quality: String,
+    /// Names and terms passed to Whisper as context, comma-separated.
+    #[serde(default)]
+    pub transcription_vocabulary: String,
 }
+
+fn default_quality() -> String {
+    "fast".into()
+}
+
+/// Accuracy of transcriptions; better costs time and memory.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TranscriptionQuality {
+    /// The worker's configured model (default `large-v3-turbo-q5_0`).
+    Fast,
+    /// `large-v3-q5_0`: full decoder, about 2 GB RAM, several times slower.
+    Accurate,
+    /// `large-v3`: unquantized, about 4 GB RAM, slowest.
+    Best,
+}
+
+impl TranscriptionQuality {
+    pub fn parse(s: &str) -> Option<Self> {
+        match s {
+            "fast" => Some(Self::Fast),
+            "accurate" => Some(Self::Accurate),
+            "best" => Some(Self::Best),
+            _ => None,
+        }
+    }
+}
+
+/// Longest accepted vocabulary (Whisper's prompt holds ~220 tokens).
+pub const MAX_VOCABULARY: usize = 600;
 
 fn yes() -> bool {
     true
@@ -67,7 +102,8 @@ impl TenantSettings {
 const COLUMNS: &str = "country_code, area_code, national_prefix, international_prefix, \
                        emergency_numbers, external_ip, default_language, default_number_id, timezone, \
                        record_inbound, record_outbound, record_internal, recording_announcement, \
-                       recording_retention_days, transcription_enabled, hold_music, hold_music_clip_id";
+                       recording_retention_days, transcription_enabled, hold_music, hold_music_clip_id, \
+                       transcription_quality, transcription_vocabulary";
 
 pub async fn get<'e>(db: impl PgExecutor<'e>, tenant: TenantId) -> CoreResult<TenantSettings> {
     let sql = format!("SELECT {COLUMNS} FROM tenant_settings WHERE tenant_id = $1");
@@ -86,6 +122,7 @@ pub async fn update<'e>(
              record_inbound = $11, record_outbound = $12, record_internal = $13,
              recording_announcement = $14, recording_retention_days = $15,
              transcription_enabled = $16, hold_music = $17, hold_music_clip_id = $18,
+             transcription_quality = $19, transcription_vocabulary = $20,
              updated_at = now()
          WHERE tenant_id = $1 RETURNING {COLUMNS}"
     );
@@ -108,6 +145,8 @@ pub async fn update<'e>(
         .bind(s.transcription_enabled)
         .bind(&s.hold_music)
         .bind(s.hold_music_clip_id)
+        .bind(&s.transcription_quality)
+        .bind(s.transcription_vocabulary.trim())
         .fetch_one(db)
         .await?)
 }

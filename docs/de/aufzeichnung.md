@@ -71,6 +71,14 @@ Aufnahme und jede neue Sprachnachricht in Text um:
   Whisper transkribiert. Das verhindert erfundene Sätze in Pausen und
   macht die Erkennung schneller. Abschalten mit `TALKOPS_WHISPER_VAD=false`.
 
+**Genauigkeit** (Einstellungen → Aufzeichnung): *Schnell* nutzt das Modell
+aus `TALKOPS_WHISPER_MODEL`. *Genau* (`large-v3-q5_0`, 1,1 GB, ca. 2 GB RAM)
+und *Beste* (`large-v3`, 3,1 GB, ca. 4 GB RAM) nutzen das volle large-v3 mit
+breiterer Suche: deutlich weniger falsche Wörter, aber zwei- bis viermal
+langsamer. **Namen und Begriffe** (durch Komma getrennt) helfen bei Namen,
+Firmen und Fachwörtern. Zum Vergleichen im Container:
+`talkops-media-worker transcribe --quality accurate --vocabulary "Name, Firma" datei.wav`.
+
 Modell wählen (`.env`):
 
 | `TALKOPS_WHISPER_MODEL` | Größe | Hinweis |

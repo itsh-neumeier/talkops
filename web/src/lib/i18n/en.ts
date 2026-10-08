@@ -385,7 +385,17 @@ export default {
 		'Older recordings and their transcripts are deleted automatically. 0 = keep forever.',
 	'rec.transcription': 'Transcribe recordings and voicemails',
 	'rec.transcriptionHint':
-		'Runs locally with Whisper on this server; no audio leaves the system. The first transcription downloads the speech model (about 150 MB).',
+		'Runs locally with Whisper on this server; no audio leaves the system. The first transcription downloads the speech model (about 550 MB).',
+	'rec.quality': 'Transcription accuracy',
+	'rec.qualityFast': 'Fast (large-v3-turbo)',
+	'rec.qualityAccurate': 'Accurate (large-v3, compressed) – ~2 GB RAM, several times slower',
+	'rec.qualityBest': 'Best (large-v3, full) – ~4 GB RAM, slowest',
+	'rec.qualityHint':
+		'More accurate levels download a larger model on first use (1.1 or 3.1 GB) and take longer per call; transcripts appear later.',
+	'rec.vocabulary': 'Names and terms',
+	'rec.vocabularyPlaceholder': 'e.g. Neumeier, TalkOps, Yealink, Musterstraße',
+	'rec.vocabularyHint':
+		'Comma-separated; helps recognise names, companies and technical terms correctly.',
 	'rec.extensionPolicy': 'Call recording',
 	'rec.inherit': 'Default (settings)',
 	'rec.always': 'Always record',

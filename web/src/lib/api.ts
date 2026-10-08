@@ -209,6 +209,9 @@ export interface Settings {
 	recording_announcement: boolean;
 	recording_retention_days: number;
 	transcription_enabled: boolean;
+	transcription_quality: 'fast' | 'accurate' | 'best';
+	/** Names and terms Whisper should recognise, comma-separated. */
+	transcription_vocabulary: string;
 	/** Built-in piece, '' for all pieces shuffled. */
 	hold_music: string;
 	/** Own music on hold (takes precedence). */

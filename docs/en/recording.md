@@ -68,6 +68,14 @@ voicemail into text:
 
 Choosing a model (`.env`):
 
+**Accuracy** (Settings → Recording): *Fast* uses the model from
+`TALKOPS_WHISPER_MODEL`. *Accurate* (`large-v3-q5_0`, 1.1 GB, ~2 GB RAM) and
+*Best* (`large-v3`, 3.1 GB, ~4 GB RAM) use the full large-v3 with a wider
+search: clearly fewer wrong words, but two to four times slower. **Names and
+terms** (comma-separated) help with names, companies and technical words. To
+compare in the container:
+`talkops-media-worker transcribe --quality accurate --vocabulary "Name, Company" file.wav`.
+
 | `TALKOPS_WHISPER_MODEL` | Size | Note |
 |---|---|---|
 | `large-v3-turbo-q5_0` (default) | ~550 MB | very accurate, also at phone quality; ~2 GB RAM |

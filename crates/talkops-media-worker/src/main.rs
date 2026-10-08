@@ -139,6 +139,19 @@ enum Command {
         #[arg(long, default_value_t = 120)]
         max_age_secs: u64,
     },
+    /// Transcribes a WAV file and prints the text, e.g. to compare quality
+    /// levels: `talkops-media-worker transcribe --quality best call.wav`.
+    Transcribe {
+        file: PathBuf,
+        /// `fast`, `accurate` or `best`.
+        #[arg(long, default_value = "fast")]
+        quality: String,
+        #[arg(long, default_value = "de")]
+        language: String,
+        /// Names and terms, comma-separated.
+        #[arg(long, default_value = "")]
+        vocabulary: String,
+    },
 }
 
 fn default_worker_id() -> String {
@@ -152,6 +165,40 @@ async fn main() -> anyhow::Result<()> {
         return healthcheck(&args.heartbeat_file, Duration::from_secs(max_age_secs));
     }
     telemetry::init(args.log_format);
+    let threads = args.whisper_threads.unwrap_or_else(|| {
+        std::thread::available_parallelism()
+            .map(|n| n.get().min(4))
+            .unwrap_or(2)
+    });
+    let whisper = Whisper {
+        bin: args.whisper_bin.clone(),
+        models_dir: args.models_dir.clone(),
+        model: args.whisper_model.clone(),
+        threads: threads.max(1),
+        vad: args.whisper_vad,
+    };
+    if let Some(Command::Transcribe {
+        file,
+        quality,
+        language,
+        vocabulary,
+    }) = &args.command
+    {
+        let opts = transcribe::Options {
+            quality: settings::TranscriptionQuality::parse(quality)
+                .context("quality must be fast, accurate or best")?,
+            vocabulary: vocabulary.clone(),
+        };
+        let started = std::time::Instant::now();
+        for seg in whisper.transcribe(file, language, &opts).await? {
+            println!(
+                "[{:7.2}–{:7.2}] {:>6} {}",
+                seg.start, seg.end, seg.speaker, seg.text
+            );
+        }
+        eprintln!("{:.1} s", started.elapsed().as_secs_f32());
+        return Ok(());
+    }
     tracing::info!(version = talkops_core::VERSION, worker_id = %args.worker_id, "media worker starting");
 
     let pool = talkops_core::db::connect_lazy(&args.database_url, 4)?;
@@ -168,24 +215,13 @@ async fn main() -> anyhow::Result<()> {
         }
     };
 
-    let threads = args.whisper_threads.unwrap_or_else(|| {
-        std::thread::available_parallelism()
-            .map(|n| n.get().min(4))
-            .unwrap_or(2)
-    });
     let ctx = std::sync::Arc::new(Ctx {
         pool: pool.clone(),
         piper: Piper {
             bin: args.piper_bin.clone(),
             voices_dir: args.voices_dir.clone(),
         },
-        whisper: Whisper {
-            bin: args.whisper_bin.clone(),
-            models_dir: args.models_dir.clone(),
-            model: args.whisper_model.clone(),
-            threads: threads.max(1),
-            vad: args.whisper_vad,
-        },
+        whisper,
         voicemail_dir: args.voicemail_dir.clone(),
         sounds_dir: args.sounds_dir.clone(),
         recordings_dir: args.recordings_dir.clone(),
@@ -384,10 +420,16 @@ async fn transcribe(ctx: &Ctx, job: &Job) -> anyhow::Result<()> {
     let p: TranscribePayload =
         serde_json::from_value(job.payload.clone()).context("invalid payload")?;
     let tenant = job.tenant_id;
+    let tenant_settings = settings::get(&ctx.pool, tenant).await?;
+    let opts = transcribe::Options {
+        quality: settings::TranscriptionQuality::parse(&tenant_settings.transcription_quality)
+            .unwrap_or(settings::TranscriptionQuality::Fast),
+        vocabulary: tenant_settings.transcription_vocabulary.clone(),
+    };
     let (source, file, language) = match (p.recording_id, p.voicemail_id) {
         (Some(id), None) => {
             let rec = recordings::get(&ctx.pool, tenant, id).await?;
-            let lang = settings::get(&ctx.pool, tenant).await?.default_language;
+            let lang = tenant_settings.default_language.clone();
             (
                 Source::Recording(id),
                 ctx.recordings_dir.join(rec.file),
@@ -401,7 +443,7 @@ async fn transcribe(ctx: &Ctx, job: &Job) -> anyhow::Result<()> {
                 .language
             {
                 Some(lang) => lang,
-                None => settings::get(&ctx.pool, tenant).await?.default_language,
+                None => tenant_settings.default_language.clone(),
             };
             (
                 Source::Voicemail(id),
@@ -413,13 +455,14 @@ async fn transcribe(ctx: &Ctx, job: &Job) -> anyhow::Result<()> {
     };
     let language = talkops_core::prompts::language(&language);
     let started = std::time::Instant::now();
-    let result = ctx.whisper.transcribe(&file, language).await;
+    let result = ctx.whisper.transcribe(&file, language, &opts).await;
     let finished = match &result {
         Ok(segments) => {
             recordings::save_transcript(&ctx.pool, tenant, source, language, segments).await?;
             tracing::info!(
                 ?source,
                 segments = segments.len(),
+                quality = %tenant_settings.transcription_quality,
                 secs = started.elapsed().as_secs(),
                 "transcribed"
             );

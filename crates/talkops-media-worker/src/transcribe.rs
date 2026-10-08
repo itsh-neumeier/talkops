@@ -20,6 +20,7 @@ use anyhow::{Context, bail};
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use talkops_core::recordings::Segment;
+use talkops_core::settings::TranscriptionQuality;
 use tokio::process::Command;
 
 const SAMPLE_RATE: u32 = 16_000;
@@ -70,7 +71,54 @@ const KNOWN_MODELS: &[(&str, &str, u64)] = &[
         "1fc70f774d38eb169993ac391eea357ef47c88757ef72ee5943879b7e8e2bc69",
         1_624_555_275,
     ),
+    (
+        "large-v3-q5_0",
+        "d75795ecff3f83b5faa89d1900604ad8c780abd5739fae406de19f23ecd98ad1",
+        1_081_140_203,
+    ),
+    (
+        "large-v3",
+        "64d182b440b98d5203c4f9bd541544d84c605196c4f7b845dfa11fb23594d1e2",
+        3_095_033_483,
+    ),
 ];
+
+/// Per-tenant choices for one transcription.
+#[derive(Debug, Clone)]
+pub struct Options {
+    pub quality: TranscriptionQuality,
+    /// Names and terms to recognise (comma-separated).
+    pub vocabulary: String,
+}
+
+impl Default for Options {
+    fn default() -> Self {
+        Self {
+            quality: TranscriptionQuality::Fast,
+            vocabulary: String::new(),
+        }
+    }
+}
+
+/// Context for Whisper: a well-punctuated sentence in the call's language
+/// (it imitates the style) followed by the vocabulary.
+fn initial_prompt(language: &str, vocabulary: &str) -> String {
+    let base = match language {
+        "de" => "Ein Telefongespräch auf Deutsch. Hallo, guten Tag!",
+        _ => "A phone call in English. Hello, good morning!",
+    };
+    let words = vocabulary.trim();
+    if words.is_empty() {
+        base.to_owned()
+    } else {
+        let label = if language == "de" {
+            "Begriffe"
+        } else {
+            "Terms"
+        };
+        format!("{base} {label}: {words}.")
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct Whisper {
@@ -83,17 +131,22 @@ pub struct Whisper {
 }
 
 impl Whisper {
-    fn model_file(&self) -> PathBuf {
-        self.models_dir.join(format!("ggml-{}.bin", self.model))
+    /// The model for a quality level; `fast` is the configured model.
+    fn model_name(&self, quality: TranscriptionQuality) -> &str {
+        match quality {
+            TranscriptionQuality::Fast => &self.model,
+            TranscriptionQuality::Accurate => "large-v3-q5_0",
+            TranscriptionQuality::Best => "large-v3",
+        }
     }
 
     /// Returns the model file, downloading a known model if it is missing.
-    pub async fn ensure_model(&self) -> anyhow::Result<PathBuf> {
-        let file = self.model_file();
+    pub async fn ensure_model(&self, name: &str) -> anyhow::Result<PathBuf> {
+        let file = self.models_dir.join(format!("ggml-{name}.bin"));
         if file.is_file() {
             return Ok(file);
         }
-        let Some(&(_, sum, size)) = KNOWN_MODELS.iter().find(|(n, _, _)| *n == self.model) else {
+        let Some(&(_, sum, size)) = KNOWN_MODELS.iter().find(|(n, _, _)| *n == name) else {
             bail!(
                 "whisper model {} not found; place it there or use one of: {}",
                 file.display(),
@@ -104,7 +157,7 @@ impl Whisper {
                     .join(", ")
             );
         };
-        let url = format!("{MODEL_URL}/ggml-{}.bin", self.model);
+        let url = format!("{MODEL_URL}/ggml-{name}.bin");
         download(&url, &file, sum, size).await?;
         Ok(file)
     }
@@ -120,8 +173,15 @@ impl Whisper {
     }
 
     /// Arguments for whisper-cli besides input and output.
-    async fn decode_args(&self, model: &Path, language: &str) -> anyhow::Result<Vec<String>> {
+    async fn decode_args(
+        &self,
+        model: &Path,
+        language: &str,
+        opts: &Options,
+    ) -> anyhow::Result<Vec<String>> {
         let mut args = vec![
+            "--prompt".to_owned(),
+            initial_prompt(language, &opts.vocabulary),
             "-m".to_owned(),
             model.to_string_lossy().into_owned(),
             "-l".to_owned(),
@@ -131,12 +191,22 @@ impl Whisper {
             // No "[Musik]", "(lacht)" and the like.
             "-sns".to_owned(),
         ];
+        if opts.quality != TranscriptionQuality::Fast {
+            // Wider beam search: slower, fewer wrong words.
+            args.extend(["-bs", "8", "-bo", "8"].map(str::to_owned));
+        }
         if self.vad {
             match self.ensure_vad_model().await {
                 Ok(vad) => args.extend([
                     "--vad".to_owned(),
                     "-vm".to_owned(),
                     vad.to_string_lossy().into_owned(),
+                    // Keep word beginnings and endings (default 30 ms cuts
+                    // them off), and do not split at short pauses.
+                    "-vp".to_owned(),
+                    "200".to_owned(),
+                    "-vsd".to_owned(),
+                    "300".to_owned(),
                 ]),
                 // Without the VAD model, transcribe everything.
                 Err(err) => tracing::warn!(error = %err, "VAD model unavailable"),
@@ -147,9 +217,14 @@ impl Whisper {
 
     /// Transcribes a WAV file. Stereo files are split into `caller` and
     /// `called`; mono files get no speaker.
-    pub async fn transcribe(&self, wav: &Path, language: &str) -> anyhow::Result<Vec<Segment>> {
-        let model = self.ensure_model().await?;
-        let args = self.decode_args(&model, language).await?;
+    pub async fn transcribe(
+        &self,
+        wav: &Path,
+        language: &str,
+        opts: &Options,
+    ) -> anyhow::Result<Vec<Segment>> {
+        let model = self.ensure_model(self.model_name(opts.quality)).await?;
+        let args = self.decode_args(&model, language, opts).await?;
         let work = tempdir()?;
         let channels = {
             let (wav, work) = (wav.to_owned(), work.path.clone());
@@ -288,11 +363,32 @@ fn prepare(wav: &Path, work: &Path) -> anyhow::Result<Vec<(&'static str, PathBuf
             continue;
         }
         let file = work.join(format!("ch{i}.wav"));
-        let resampled = resample(&channel, spec.sample_rate, SAMPLE_RATE);
+        let mut resampled = resample(&channel, spec.sample_rate, SAMPLE_RATE);
+        normalize(&mut resampled);
         write_wav(&file, &resampled)?;
         out.push((*name, file, resampled));
     }
     Ok(out)
+}
+
+/// Brings quiet telephone audio to a uniform level: the loudest parts (99.9th
+/// percentile, ignoring clicks) to 0.9, at most 10× louder.
+fn normalize(samples: &mut [f32]) {
+    if samples.is_empty() {
+        return;
+    }
+    let mut mags: Vec<f32> = samples.iter().map(|s| s.abs()).collect();
+    let k = (mags.len() as f64 * 0.999) as usize;
+    let k = k.min(mags.len() - 1);
+    let (_, peak, _) = mags.select_nth_unstable_by(k, f32::total_cmp);
+    let peak = *peak;
+    if peak <= f32::EPSILON {
+        return;
+    }
+    let gain = (0.9 / peak).min(10.0);
+    for s in samples.iter_mut() {
+        *s = (*s * gain).clamp(-1.0, 1.0);
+    }
 }
 
 /// Whisper often starts a segment at the end of the previous one, i.e. at
@@ -409,6 +505,22 @@ fn parse_output(json: &[u8], speaker: &str) -> anyhow::Result<Vec<Segment>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn prompts_and_normalizes() {
+        assert_eq!(
+            initial_prompt("de", " Neumeier, TalkOps "),
+            "Ein Telefongespräch auf Deutsch. Hallo, guten Tag! Begriffe: Neumeier, TalkOps."
+        );
+        assert!(initial_prompt("en", "").starts_with("A phone call"));
+        let mut quiet: Vec<f32> = (0..16000).map(|i| (i as f32 * 0.05).sin() * 0.2).collect();
+        normalize(&mut quiet);
+        let peak = quiet.iter().fold(0.0f32, |m, s| m.max(s.abs()));
+        assert!((0.85..=0.95).contains(&peak), "{peak}");
+        let mut silence = vec![0.0f32; 100];
+        normalize(&mut silence);
+        assert!(silence.iter().all(|s| *s == 0.0));
+    }
 
     #[test]
     fn resamples_to_16k() {

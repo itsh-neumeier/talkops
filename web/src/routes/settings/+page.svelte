@@ -272,6 +272,28 @@
 				{t('rec.transcription')}</label
 			>
 			<p class="hint">{t('rec.transcriptionHint')}</p>
+			{#if settings.transcription_enabled}
+				<div>
+					<label for="s-tq">{t('rec.quality')}</label>
+					<select id="s-tq" class="input" bind:value={settings.transcription_quality}>
+						<option value="fast">{t('rec.qualityFast')}</option>
+						<option value="accurate">{t('rec.qualityAccurate')}</option>
+						<option value="best">{t('rec.qualityBest')}</option>
+					</select>
+					<p class="hint">{t('rec.qualityHint')}</p>
+				</div>
+				<div>
+					<label for="s-tv">{t('rec.vocabulary')}</label>
+					<input
+						id="s-tv"
+						class="input"
+						maxlength="600"
+						bind:value={settings.transcription_vocabulary}
+						placeholder={t('rec.vocabularyPlaceholder')}
+					/>
+					<p class="hint">{t('rec.vocabularyHint')}</p>
+				</div>
+			{/if}
 			<div class="flex justify-end">
 				<button class="btn btn-primary">{t('common.save')}</button>
 			</div>

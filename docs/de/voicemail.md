@@ -10,6 +10,8 @@ Jede Nebenstelle kann eine Mailbox haben. Unbeantwortete, besetzte und
 auf der Seite der Nebenstelle:
 
 - **Voicemail aktiv** einschalten.
+- **Voicemail nimmt ab nach** … Sekunden (5–300, etwa 5 s je Klingeln) –
+  gilt auch für die Weiterleitung bei Nichtmelden.
 - **PIN** (4–10 Ziffern) – nötig für den Abruf von einem fremden Telefon.
 - **Sprache der Ansagen**: Deutsch oder Englisch (Standard aus den Einstellungen).
 - **Ansage**: *Standard*, *Generieren*, *Aufnehmen*, *Hochladen* oder *Keine*

@@ -65,7 +65,7 @@ Jede Warteschlange hat eine eigene Seite mit drei Reitern:
   der Anruf an das Ziel „Außerhalb der Öffnungszeiten“.
 - **Anrufbehandlung:**
   - *Begrüßung* (einmal vor dem Warten) und *Wartemusik* (in Schleife; ohne
-    eigene Datei die Systemmusik),
+    eigene Datei die Wartemusik aus Einstellungen → *Wartemusik*),
   - *Anrufverteilung*: am längsten frei, alle klingeln, reihum, der Reihe
     nach, wenigste Gespräche, zufällig; Klingeldauer je Agent, Pause nach
     jedem Gespräch,

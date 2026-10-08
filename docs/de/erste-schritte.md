@@ -40,3 +40,4 @@ Zugangsdaten und unter *Anrufliste* ihre Gespräche.
 | `030 1234567` | national |
 | `0043 1 234567`, `+43…` | international |
 | `1234567` | Ortsnetz (mit hinterlegter Ortsvorwahl) |
+| `*31 030 1234567`, `#31#030 1234567` | dieser Anruf mit unterdrückter Rufnummer |

@@ -38,3 +38,4 @@ their calls under *Call log*.
 | `030 1234567` | national |
 | `0043 1 234567`, `+43…` | international |
 | `1234567` | local (with the configured area code) |
+| `*31 030 1234567`, `#31#030 1234567` | this call with the caller ID hidden |

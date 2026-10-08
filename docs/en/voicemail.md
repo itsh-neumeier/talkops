@@ -10,6 +10,8 @@ e-mail with the recording can be sent.
 the extension page:
 
 - Turn **Voicemail enabled** on.
+- **Voicemail answers after** … seconds (5–300, about 5 s per ring) – also
+  used for forwarding on no answer.
 - **PIN** (4–10 digits) – needed to check the box from another phone.
 - **Prompt language**: German or English (default from the settings).
 - **Greeting**: *Default*, *Generate*, *Record*, *Upload* or *None* (callers

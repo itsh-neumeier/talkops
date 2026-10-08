@@ -73,6 +73,25 @@ coturn leitet nur zu `TALKOPS_TURN_PEER_IP` weiter, nie in den Rest des
 Netzes. Die Relay-Ports 49160–49200 werden nur intern zwischen coturn und
 FreeSWITCH genutzt und müssen nicht freigegeben werden.
 
+## Im Gespräch
+
+- **Anzeige**: Bei eingehenden Anrufen zeigt das Softphone Name und Nummer
+  des Anrufers, im Gespräch die Gegenstelle, die Dauer und „gehalten“.
+  Nach dem Auflegen wird das Wählfeld geleert; **Anrufen** mit leerem Feld
+  wählt die letzte Nummer erneut.
+- **Halten**: Die Gegenstelle hört die Wartemusik (Einstellungen →
+  *Wartemusik*: alle mitgelieferten Stücke, ein bestimmtes Stück oder
+  eigene Musik/Ansage).
+- **Konferenz**: Im Gespräch **Konferenz** wählen, Nummer eingeben,
+  **Hinzufügen**. Das Gespräch wird zur Konferenz, der neue Teilnehmer
+  wird angerufen (intern oder extern, wie ein normaler Anruf der eigenen
+  Nebenstelle). Weitere Teilnehmer lassen sich genauso hinzufügen. Legt der
+  Initiator auf, endet die Konferenz für alle.
+- **Tastentöne** (Voicemail, Sprachmenüs) gehen als RTP-Telefonie-Events
+  (RFC 2833) hinaus.
+- **Rufnummer unterdrücken** für einen Anruf: `*31` oder `#31#` vor die
+  Nummer setzen. Dauerhaft: Nebenstelle → *Rufnummer unterdrücken*.
+
 ## Video
 
 Video zu Tischtelefonen (z. B. Yealink T58W, VP59) und Türsprechstellen
@@ -87,3 +106,6 @@ Browsern läuft auch VP8.
 | „getrennt“ | TalkOps oder FreeSWITCH nicht erreichbar; Seite neu laden |
 | Klingelt, aber kein Ton | UDP/RTP zwischen Browser und Server blockiert (Firewall, Netz ohne VPN) |
 | Kein Mikrofon | Browser-Berechtigung für die Seite prüfen |
+
+Für genauere Fehlersuche in der Browser-Konsole `localStorage['talkops.sipDebug'] = '1'`
+setzen und die Seite neu laden: Das Softphone protokolliert dann alle SIP-Nachrichten.

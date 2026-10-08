@@ -70,6 +70,24 @@ coturn relays only to `TALKOPS_TURN_PEER_IP`, never into the rest of the
 network. The relay ports 49160–49200 are only used internally between coturn
 and FreeSWITCH and need no forwarding.
 
+## During a call
+
+- **Display**: incoming calls show the caller's name and number; during a
+  call you see the other party, the duration and "on hold". The number field
+  is cleared after the call; **Call** with an empty field redials the last
+  number.
+- **Hold**: the other party hears the music on hold (Settings → *Music on
+  hold*: all built-in pieces, one piece or own music/announcement).
+- **Conference**: during a call choose **Conference**, enter a number,
+  **Add**. The call becomes a conference and the new participant is called
+  (internal or external, like a normal call from your extension). Add more
+  participants the same way. When the initiator hangs up, the conference
+  ends for everyone.
+- **Key tones** (voicemail, menus) are sent as RTP telephone events
+  (RFC 2833).
+- **Hide your number** for one call: put `*31` or `#31#` before the number.
+  Permanently: extension → *Hide caller ID*.
+
 ## Video
 
 Video to desk phones (e.g. Yealink T58W, VP59) and door stations uses H.264;
@@ -84,3 +102,6 @@ as well.
 | "offline" | TalkOps or FreeSWITCH not reachable; reload the page |
 | Rings, but no audio | UDP/RTP between browser and server blocked (firewall, network without VPN) |
 | No microphone | check the browser permission for the page |
+
+For detailed troubleshooting set `localStorage['talkops.sipDebug'] = '1'` in the
+browser console and reload the page: the softphone then logs all SIP messages.

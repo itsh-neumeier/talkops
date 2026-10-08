@@ -4,6 +4,44 @@ All notable changes to TalkOps. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [1.3.0] – 2026-10-08
+
+### Added
+
+- **Music on hold:** holding a call now plays music to the other party
+  (FreeSWITCH's built-in pieces ship with the image). Settings → *Music on
+  hold*: all pieces shuffled, one piece (with preview) or an own clip
+  (upload, recording or computer voice); also the default for queues.
+- **Softphone conference:** add participants to the current call
+  (internal or external); the call becomes a conference that ends when the
+  initiator hangs up.
+- Softphone shows the caller's name and number, the other party, call
+  duration and hold state; the number field is cleared after a call and an
+  empty field redials.
+- `*31` / `#31#` before a number hides the caller ID for that call.
+- Users set how long their phone rings before voicemail answers
+  (voicemail settings).
+- Transcription: default model `large-v3-turbo-q5_0` (much more accurate
+  than `base`) with Silero voice activity detection, which skips silence and
+  hold music; more models selectable (`medium`, `large-v3-turbo` variants).
+  If you set `TALKOPS_WHISPER_MODEL=base` yourself, change or remove it.
+- `localStorage['talkops.sipDebug'] = '1'` logs the softphone's SIP traffic.
+
+### Fixed
+
+- Hold only muted the softphone: the held party heard silence.
+- Key tones from the softphone did not reach voicemail and menus; they are
+  now sent as RTP telephone events (RFC 2833).
+- Hidden caller ID could still show the number on trunks that carry it in
+  the From header; now From is anonymous with P-Asserted-Identity and
+  `Privacy: id` (RFC 3325).
+
+### Upgrade notes
+
+- Pull and redeploy **all** images (FreeSWITCH carries the music and the
+  conference profile, the media worker the new models). The first
+  transcription downloads the new model (~550 MB).
+
 ## [1.2.0] – 2026-10-08
 
 ### Added

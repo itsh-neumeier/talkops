@@ -59,7 +59,7 @@ Every queue has its own page with three tabs:
   to the "outside business hours" destination.
 - **Call handling:**
   - *Greeting* (once before waiting) and *music on hold* (looped; without an
-    own file the system music),
+    own file the music from Settings → *Music on hold*),
   - *Call distribution*: longest idle, ring all, round robin, in order, fewest
     calls, random; ring time per agent, pause after each call,
   - *Queue size*: callers waiting at most – more go to the overflow destination,

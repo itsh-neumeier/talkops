@@ -90,6 +90,14 @@ and FreeSWITCH and need no forwarding.
 
 ## Video
 
+Video is switched on per extension (extension → *Video calls*, off by
+default). Internal calls carry video only when both extensions have it on;
+calls via a trunk only if the trunk's *Video calls via this trunk* is on as
+well (only for providers with video). Otherwise calls are audio-only – also
+from the video button, which the softphone hides without video. Door stations
+always send their picture.
+
+
 Video to desk phones (e.g. Yealink T58W, VP59) and door stations uses H.264;
 Chrome, Edge, Firefox and Safari offer H.264. Between two browsers VP8 works
 as well.

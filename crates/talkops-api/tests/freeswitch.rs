@@ -1372,11 +1372,11 @@ async fn conference_legs_offer_real_codecs(db: PgPool) {
         "{a:?}"
     );
     assert!(has(&a, "bridge", &ring20(&f)));
-    // Normal calls negotiate late, without a fixed list.
+    // Normal calls do not export the list to the other leg.
     let a = internal_call(&router, &f.ext21, "20").await;
     assert!(
         !a.iter()
-            .any(|(_, d)| d.starts_with("absolute_codec_string"))
+            .any(|(_, d)| d.starts_with("nolocal:absolute_codec_string"))
     );
 }
 
@@ -1522,4 +1522,86 @@ async fn call_blocking(db: PgPool) {
         .call("DELETE", &format!("/api/v1/call-blocks/{first}"), None)
         .await;
     assert_eq!(s, StatusCode::NO_CONTENT);
+}
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn video_only_where_enabled(db: PgPool) {
+    let router = router(db);
+    let f = fixture(&router).await;
+    let codecs = |a: &[(String, String)]| {
+        a.iter()
+            .filter(|(app, d)| {
+                (app == "set" || app == "export") && d.starts_with("absolute_codec_string=")
+            })
+            .map(|(app, d)| format!("{app} {d}"))
+            .collect::<Vec<_>>()
+    };
+    let audio = "export absolute_codec_string=OPUS,G722,PCMA,PCMU".to_owned();
+
+    // Default: internal calls are audio-only, trunk calls too.
+    assert_eq!(
+        codecs(&internal_call(&router, &f.ext21, "20").await),
+        std::slice::from_ref(&audio)
+    );
+    assert_eq!(
+        codecs(&internal_call(&router, &f.ext21, "030123456").await),
+        ["set absolute_codec_string=G722,PCMA,PCMU"]
+    );
+
+    let enable = |e: &Value| {
+        let mut e = e.clone();
+        e["video_enabled"] = json!(true);
+        e
+    };
+    for e in [&f.ext20, &f.ext21] {
+        let (s, body) = f
+            .admin
+            .put(
+                &format!("/api/v1/extensions/{}", e["id"].as_str().unwrap()),
+                enable(e),
+            )
+            .await;
+        assert_eq!(s, StatusCode::OK, "{body}");
+        assert_eq!(body["video_enabled"], true);
+    }
+    let ext21 = enable(&f.ext21);
+    // Both sides allow video: the browser's offer passes unchanged.
+    assert!(codecs(&internal_call(&router, &ext21, "20").await).is_empty());
+    // Not a single extension (voicemail, groups, ...): audio-only.
+    assert_eq!(
+        codecs(&internal_call(&router, &ext21, "*97").await).len(),
+        0
+    );
+    // Trunk without video: still audio-only.
+    assert_eq!(
+        codecs(&internal_call(&router, &ext21, "030123456").await),
+        ["set absolute_codec_string=G722,PCMA,PCMU"]
+    );
+    // Trunk with video enabled.
+    let (_, trunks) = f.admin.get("/api/v1/trunks").await;
+    let mut t = trunks[0].clone();
+    t["video_enabled"] = json!(true);
+    let (s, body) = f
+        .admin
+        .put(&format!("/api/v1/trunks/{}", t["id"].as_str().unwrap()), t)
+        .await;
+    assert_eq!(s, StatusCode::OK, "{body}");
+    assert_eq!(
+        codecs(&internal_call(&router, &ext21, "030123456").await),
+        ["export absolute_codec_string=G722,PCMA,PCMU,H264,VP8"]
+    );
+    // ... but not for an extension without video.
+    let mut e20 = f.ext20.clone();
+    e20["video_enabled"] = json!(false);
+    f.admin
+        .put(
+            &format!("/api/v1/extensions/{}", e20["id"].as_str().unwrap()),
+            e20.clone(),
+        )
+        .await;
+    assert_eq!(
+        codecs(&internal_call(&router, &e20, "030123456").await),
+        ["set absolute_codec_string=G722,PCMA,PCMU"]
+    );
+    assert_eq!(codecs(&internal_call(&router, &ext21, "20").await), [audio]);
 }

@@ -77,6 +77,12 @@ export default {
 	'ext.outboundNumber': 'Outgoing number',
 	'ext.defaultNumber': 'Default number',
 	'ext.hideCallerId': 'Hide caller ID (CLIR)',
+	'ext.video': 'Video calls',
+	'ext.videoHint':
+		'Internal calls to another extension with video switched on can carry video; everything else is audio-only. Door stations always show their video.',
+	'trunk.video': 'Video calls via this trunk',
+	'trunk.videoHint':
+		'Only if the provider supports video (H.264/VP8). Off: calls to the provider are audio-only, even from the video button.',
 	'ext.ringTimeout': 'Ring time before voicemail/forwarding (seconds)',
 	'ext.new': 'New extension',
 	'ext.devices': 'Devices',

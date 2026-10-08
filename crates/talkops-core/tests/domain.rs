@@ -37,6 +37,7 @@ fn ext(number: &str) -> ExtensionInput {
         dnd: false,
         forward_all: None,
         record_calls: "inherit".into(),
+        video_enabled: false,
     }
 }
 
@@ -208,6 +209,7 @@ async fn trunks_accounts_numbers_routes(pool: PgPool) {
         preset: "vodafone-privat".into(),
         overrides: json!({}),
         enabled: true,
+        video_enabled: false,
     };
     assert!(matches!(
         trunks::create(&pool, T, &cat, &bad).await,
@@ -228,6 +230,7 @@ async fn trunks_accounts_numbers_routes(pool: PgPool) {
             preset: "leonet".into(),
             overrides: json!({}),
             enabled: true,
+            video_enabled: false,
         },
     )
     .await
@@ -348,6 +351,7 @@ async fn trunks_accounts_numbers_routes(pool: PgPool) {
             preset: "leonet".into(),
             overrides: json!({}),
             enabled: false,
+            video_enabled: false,
         },
     )
     .await

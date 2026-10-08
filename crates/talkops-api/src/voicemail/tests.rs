@@ -131,6 +131,7 @@ async fn setup(pool: &PgPool) -> (VmContext, Uuid, std::path::PathBuf) {
             dnd: false,
             forward_all: None,
             record_calls: "inherit".into(),
+            video_enabled: false,
         },
         &[],
     )
@@ -472,6 +473,7 @@ mod attendants {
                 dnd: false,
                 forward_all: None,
                 record_calls: "inherit".into(),
+                video_enabled: false,
             },
             &[],
         )

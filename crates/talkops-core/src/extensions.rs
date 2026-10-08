@@ -28,6 +28,8 @@ pub struct Extension {
     pub forward_all: Option<String>,
     /// Call recording: `inherit` (tenant defaults), `always` or `never`.
     pub record_calls: String,
+    /// Internal video calls (both sides need it); otherwise audio only.
+    pub video_enabled: bool,
 }
 
 #[derive(Debug, Clone, Deserialize, utoipa::ToSchema)]
@@ -50,6 +52,8 @@ pub struct ExtensionInput {
     pub forward_all: Option<String>,
     #[serde(default = "inherit")]
     pub record_calls: String,
+    #[serde(default)]
+    pub video_enabled: bool,
 }
 
 fn inherit() -> String {
@@ -63,7 +67,7 @@ fn yes() -> bool {
     true
 }
 
-const EXT_COLUMNS: &str = "id, number, display_name, user_id, outbound_number_id, hide_caller_id, ring_timeout_secs, enabled, dnd, forward_all, record_calls";
+const EXT_COLUMNS: &str = "id, number, display_name, user_id, outbound_number_id, hide_caller_id, ring_timeout_secs, enabled, dnd, forward_all, record_calls, video_enabled";
 
 pub async fn list<'e>(db: impl PgExecutor<'e>, tenant: TenantId) -> CoreResult<Vec<Extension>> {
     let sql = format!("SELECT {EXT_COLUMNS} FROM extensions WHERE tenant_id = $1 ORDER BY number");
@@ -152,8 +156,8 @@ pub async fn create(
     let sql = format!(
         "INSERT INTO extensions (tenant_id, number, display_name, user_id, outbound_number_id,
                                  hide_caller_id, ring_timeout_secs, enabled, dnd, forward_all,
-                                 record_calls)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING {EXT_COLUMNS}"
+                                 record_calls, video_enabled)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING {EXT_COLUMNS}"
     );
     Ok(sqlx::query_as(&sql)
         .bind(tenant)
@@ -167,6 +171,7 @@ pub async fn create(
         .bind(input.dnd)
         .bind(forward_value(input))
         .bind(&input.record_calls)
+        .bind(input.video_enabled)
         .fetch_one(db)
         .await?)
 }
@@ -211,7 +216,7 @@ pub async fn update(
     let sql = format!(
         "UPDATE extensions SET number = $3, display_name = $4, user_id = $5, outbound_number_id = $6,
              hide_caller_id = $7, ring_timeout_secs = $8, enabled = $9, dnd = $10, forward_all = $11,
-             record_calls = $12, updated_at = now()
+             record_calls = $12, video_enabled = $13, updated_at = now()
          WHERE tenant_id = $1 AND id = $2 RETURNING {EXT_COLUMNS}"
     );
     Ok(sqlx::query_as(&sql)
@@ -227,6 +232,7 @@ pub async fn update(
         .bind(input.dnd)
         .bind(forward_value(input))
         .bind(&input.record_calls)
+        .bind(input.video_enabled)
         .fetch_one(db)
         .await?)
 }
@@ -569,6 +575,7 @@ mod tests {
             dnd: false,
             forward_all: None,
             record_calls: "inherit".into(),
+            video_enabled: false,
         };
         assert!(validate(&mk("20"), &emergency).is_ok());
         assert!(

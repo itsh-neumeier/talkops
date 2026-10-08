@@ -287,6 +287,17 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
 
     if let Some((kind, id)) = numbering::resolve(pool, tenant, &dest).await? {
         actions.push(set("talkops_direction", "internal"));
+        // Video between two extensions that both have it switched on;
+        // everything else is audio-only.
+        let video = caller.video_enabled
+            && kind == NumberDestination::Extension
+            && extensions::get(pool, tenant, id)
+                .await
+                .is_ok_and(|e| e.video_enabled);
+        if !video {
+            // Exported: the called leg must not be offered video either.
+            actions.push(("export", format!("absolute_codec_string={AUDIO_CODECS}")));
+        }
         let name = sanitize_value(&caller.display_name);
         actions.extend(route_to(r, tenant, kind, Some(id), &name, 0).await?);
         return Ok(actions);
@@ -344,8 +355,25 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
         &raw_dial,
         (caller.hide_caller_id || hide_once) && !emergency,
     )?);
+    // Video to the provider only when the trunk and the caller allow it.
+    // Exported, so the provider leg is offered video too (the trunk
+    // profile itself only lists audio codecs).
+    if caller.video_enabled && route.video_enabled {
+        for (app, data) in &mut actions {
+            if *app == "set" && data.starts_with("absolute_codec_string=") {
+                *app = "export";
+                data.push(',');
+                data.push_str(VIDEO_CODECS);
+            }
+        }
+    }
     Ok(actions)
 }
+
+/// Audio codecs for internal calls without video (browser and phones).
+const AUDIO_CODECS: &str = "OPUS,G722,PCMA,PCMU";
+/// Video codecs added where video is allowed.
+const VIDEO_CODECS: &str = "H264,VP8";
 
 /// Codecs offered to participants dialled into a conference.
 const CONFERENCE_CODECS: &str = "OPUS,G722,PCMA,PCMU";

@@ -94,6 +94,14 @@ FreeSWITCH genutzt und müssen nicht freigegeben werden.
 
 ## Video
 
+Video ist pro Nebenstelle freizuschalten (Nebenstelle → *Videoanrufe*, Standard
+aus). Interne Anrufe übertragen Video nur, wenn beide Nebenstellen es
+eingeschaltet haben; Anrufe über einen Trunk nur, wenn zusätzlich am Trunk
+*Videoanrufe über diesen Trunk* an ist (nur bei Anbietern mit Video). Sonst wird
+nur Audio übertragen – auch über die Video-Taste, die das Softphone ohne
+Freischaltung gar nicht erst anzeigt. Türsprechstellen senden ihr Bild immer.
+
+
 Video zu Tischtelefonen (z. B. Yealink T58W, VP59) und Türsprechstellen
 nutzt H.264; Chrome, Edge, Firefox und Safari bieten H.264 an. Zwischen zwei
 Browsern läuft auch VP8.

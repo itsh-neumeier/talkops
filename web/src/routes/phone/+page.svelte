@@ -17,6 +17,7 @@
 		/** TURN relays (with short-lived credentials), if configured. */
 		ice_servers: RTCIceServer[];
 		relay_only: boolean;
+		video_enabled: boolean;
 	};
 	type State = 'offline' | 'connecting' | 'ready' | 'calling' | 'ringing' | 'incall';
 
@@ -365,9 +366,11 @@
 						<button class="btn btn-primary" onclick={() => answer(false)}
 							>{t('phone.answer')}</button
 						>
-						<button class="btn btn-primary" onclick={() => answer(true)}
-							>{t('phone.answerVideo')}</button
-						>
+						{#if account?.video_enabled}
+							<button class="btn btn-primary" onclick={() => answer(true)}
+								>{t('phone.answerVideo')}</button
+							>
+						{/if}
 						<button class="btn btn-danger" onclick={() => user?.decline()}
 							>{t('phone.decline')}</button
 						>
@@ -453,13 +456,15 @@
 					>{t('phone.hangup')}</button
 				>
 			{:else if status !== 'ringing'}
-				<div class="grid grid-cols-2 gap-2">
+				<div class="grid gap-2 {account?.video_enabled ? 'grid-cols-2' : 'grid-cols-1'}">
 					<button class="btn btn-primary" disabled={status !== 'ready'} onclick={() => call(false)}
 						>📞 {t('phone.call')}</button
 					>
-					<button class="btn btn-primary" disabled={status !== 'ready'} onclick={() => call(true)}
-						>🎥 {t('phone.videoCall')}</button
-					>
+					{#if account?.video_enabled}
+						<button class="btn btn-primary" disabled={status !== 'ready'} onclick={() => call(true)}
+							>🎥 {t('phone.videoCall')}</button
+						>
+					{/if}
 				</div>
 				{#if number}
 					<button class="btn btn-sm w-full" onclick={() => (number = number.slice(0, -1))}>⌫</button

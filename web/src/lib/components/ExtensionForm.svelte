@@ -28,6 +28,7 @@
 		ring_timeout_secs: extension?.ring_timeout_secs ?? 30,
 		enabled: extension?.enabled ?? true,
 		record_calls: extension?.record_calls ?? 'inherit',
+		video_enabled: extension?.video_enabled ?? false,
 		// edited separately (CallSettings), passed through unchanged
 		dnd: extension?.dnd ?? false,
 		forward_all: extension?.forward_all ?? null
@@ -109,6 +110,12 @@
 	<label class="flex items-center gap-2"
 		><input type="checkbox" bind:checked={form.hide_caller_id} /> {t('ext.hideCallerId')}</label
 	>
+	<div>
+		<label class="flex items-center gap-2"
+			><input type="checkbox" bind:checked={form.video_enabled} /> {t('ext.video')}</label
+		>
+		<p class="hint">{t('ext.videoHint')}</p>
+	</div>
 	<label class="flex items-center gap-2"
 		><input type="checkbox" bind:checked={form.enabled} /> {t('common.enabled')}</label
 	>

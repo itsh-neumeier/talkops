@@ -31,6 +31,7 @@
 	let edit = $state({
 		name: '',
 		enabled: true,
+		video_enabled: false,
 		registrar: '',
 		proxy: '',
 		outbound_proxy: '',
@@ -81,6 +82,7 @@
 		edit = {
 			name: trunk!.name,
 			enabled: trunk!.enabled,
+			video_enabled: trunk!.video_enabled,
 			registrar: o.registrar ?? '',
 			proxy: o.proxy ?? '',
 			outbound_proxy: o.outbound_proxy ?? '',
@@ -102,7 +104,8 @@
 				name: edit.name,
 				preset: trunk!.preset,
 				overrides,
-				enabled: edit.enabled
+				enabled: edit.enabled,
+				video_enabled: edit.video_enabled
 			});
 			editOpen = false;
 			await load();
@@ -319,6 +322,10 @@
 		<label class="flex items-center gap-2"
 			><input type="checkbox" bind:checked={edit.enabled} /> {t('common.enabled')}</label
 		>
+		<label class="flex items-center gap-2"
+			><input type="checkbox" bind:checked={edit.video_enabled} /> {t('trunk.video')}</label
+		>
+		<p class="hint">{t('trunk.videoHint')}</p>
 		<div>
 			<label for="te-reg">{t('trunks.registrar')}</label>
 			<input

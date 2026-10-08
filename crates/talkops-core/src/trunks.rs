@@ -17,6 +17,8 @@ pub struct Trunk {
     #[schema(value_type = Object)]
     pub overrides: serde_json::Value,
     pub enabled: bool,
+    /// Offer video to the provider (only if it supports it).
+    pub video_enabled: bool,
 }
 
 #[derive(Debug, Clone, Deserialize, utoipa::ToSchema)]
@@ -28,6 +30,8 @@ pub struct TrunkInput {
     pub overrides: serde_json::Value,
     #[serde(default = "yes")]
     pub enabled: bool,
+    #[serde(default)]
+    pub video_enabled: bool,
 }
 
 fn empty_object() -> serde_json::Value {
@@ -37,7 +41,7 @@ fn yes() -> bool {
     true
 }
 
-const TRUNK_COLUMNS: &str = "id, name, preset, overrides, enabled";
+const TRUNK_COLUMNS: &str = "id, name, preset, overrides, enabled, video_enabled";
 
 /// Validates the preset reference and overrides; returns the preset.
 pub fn validate_trunk<'p>(
@@ -84,7 +88,8 @@ pub async fn create<'e>(
 ) -> CoreResult<Trunk> {
     validate_trunk(catalog, input)?;
     let sql = format!(
-        "INSERT INTO trunks (tenant_id, name, preset, overrides, enabled) VALUES ($1, $2, $3, $4, $5)
+        "INSERT INTO trunks (tenant_id, name, preset, overrides, enabled, video_enabled)
+         VALUES ($1, $2, $3, $4, $5, $6)
          RETURNING {TRUNK_COLUMNS}"
     );
     Ok(sqlx::query_as(&sql)
@@ -93,6 +98,7 @@ pub async fn create<'e>(
         .bind(&input.preset)
         .bind(&input.overrides)
         .bind(input.enabled)
+        .bind(input.video_enabled)
         .fetch_one(db)
         .await?)
 }
@@ -106,7 +112,8 @@ pub async fn update<'e>(
 ) -> CoreResult<Trunk> {
     validate_trunk(catalog, input)?;
     let sql = format!(
-        "UPDATE trunks SET name = $3, preset = $4, overrides = $5, enabled = $6, updated_at = now()
+        "UPDATE trunks SET name = $3, preset = $4, overrides = $5, enabled = $6,
+             video_enabled = $7, updated_at = now()
          WHERE tenant_id = $1 AND id = $2 RETURNING {TRUNK_COLUMNS}"
     );
     Ok(sqlx::query_as(&sql)
@@ -116,6 +123,7 @@ pub async fn update<'e>(
         .bind(&input.preset)
         .bind(&input.overrides)
         .bind(input.enabled)
+        .bind(input.video_enabled)
         .fetch_one(db)
         .await?)
 }
@@ -521,6 +529,7 @@ pub struct OutboundRoute {
     pub overrides: serde_json::Value,
     pub account_id: Uuid,
     pub account_username: String,
+    pub video_enabled: bool,
 }
 
 /// Resolves the outbound route for a caller number: its trunk and the account
@@ -532,7 +541,7 @@ pub async fn outbound_route(
 ) -> CoreResult<Option<OutboundRoute>> {
     Ok(sqlx::query_as(
         "SELECT n.id AS number_id, n.e164, t.id AS trunk_id, t.preset, t.overrides,
-                a.id AS account_id, a.username AS account_username
+                a.id AS account_id, a.username AS account_username, t.video_enabled
          FROM numbers n
          JOIN trunks t ON t.id = n.trunk_id AND t.enabled
          JOIN LATERAL (

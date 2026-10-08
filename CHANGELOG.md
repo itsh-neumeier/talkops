@@ -16,6 +16,16 @@ All notable changes to TalkOps. The format follows
   10 minutes. Takes effect after the trunk profile restarts (restart
   FreeSWITCH once).
 
+### Changed
+
+- **Video only where switched on:** extensions and trunks get a *Video
+  calls* switch (off by default). Internal calls carry video only between
+  two extensions that both have it on; calls to a provider only if the trunk
+  and the caller allow it. Everything else is audio-only, even from the
+  video button (which the softphone hides without video). Door stations
+  always send their video. **Switch video on for the extensions that use
+  it after updating.**
+
 ## [1.4.0] – 2026-10-08
 
 ### Added

@@ -53,6 +53,8 @@ pub struct WebrtcAccount {
     pub ice_servers: Vec<IceServer>,
     /// Use only the TURN relays for media.
     pub relay_only: bool,
+    /// Video calls are allowed for this extension.
+    pub video_enabled: bool,
 }
 
 /// SIP account of the own browser softphone; created on first use.
@@ -125,6 +127,7 @@ pub async fn webrtc_account(
             .into_iter()
             .collect(),
         relay_only: state.turn.as_ref().is_some_and(|t| t.relay_only),
+        video_enabled: ext.video_enabled,
     }))
 }
 

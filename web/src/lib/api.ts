@@ -92,6 +92,8 @@ export interface Extension {
 	dnd: boolean;
 	forward_all: string | null;
 	record_calls: 'inherit' | 'always' | 'never';
+	/** Internal video calls (both sides need it). */
+	video_enabled: boolean;
 }
 
 export type DeviceKind = 'desk' | 'dect' | 'softphone' | 'mobile' | 'door' | 'other' | 'browser';
@@ -158,6 +160,8 @@ export interface Trunk {
 	preset: string;
 	overrides: Record<string, unknown>;
 	enabled: boolean;
+	/** Offer video to the provider. */
+	video_enabled: boolean;
 }
 
 export interface GatewayState {

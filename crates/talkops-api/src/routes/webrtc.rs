@@ -107,21 +107,32 @@ pub async fn webrtc_account(
 }
 
 /// Same-origin check against cross-site WebSocket hijacking (the session
-/// cookie is SameSite=Strict already; this is defence in depth).
+/// cookie is SameSite=Strict already; this is defence in depth). Behind a
+/// reverse proxy that rewrites `Host`, the original host comes from
+/// `X-Forwarded-Host` or `Forwarded: host=…`.
 fn same_origin(headers: &HeaderMap) -> bool {
-    let host = headers
-        .get("x-forwarded-host")
-        .or_else(|| headers.get(header::HOST))
-        .and_then(|v| v.to_str().ok());
-    let origin = headers.get(header::ORIGIN).and_then(|v| v.to_str().ok());
-    match (origin, host) {
-        (Some(o), Some(h)) => o
-            .split_once("://")
-            .is_some_and(|(_, rest)| rest.trim_end_matches('/') == h),
+    let Some(origin) = headers.get(header::ORIGIN).and_then(|v| v.to_str().ok()) else {
         // Non-browser clients send no Origin.
-        (None, _) => true,
-        _ => false,
-    }
+        return true;
+    };
+    let Some((_, origin_host)) = origin.split_once("://") else {
+        return false;
+    };
+    let origin_host = origin_host.trim_end_matches('/');
+    let header = |name: &str| headers.get(name).and_then(|v| v.to_str().ok());
+    let forwarded = header("forwarded").into_iter().flat_map(|v| {
+        v.split([';', ','])
+            .filter_map(|p| p.trim().strip_prefix("host="))
+            .map(|h| h.trim_matches('"'))
+    });
+    let forwarded_host = header("x-forwarded-host")
+        .into_iter()
+        .flat_map(|v| v.split(',').map(str::trim));
+    header("host")
+        .into_iter()
+        .chain(forwarded_host)
+        .chain(forwarded)
+        .any(|h| h.eq_ignore_ascii_case(origin_host))
 }
 
 /// `GET /api/v1/webrtc/ws`: SIP over WebSocket (subprotocol `sip`) for
@@ -133,12 +144,26 @@ pub async fn sip_ws(
     ws: WebSocketUpgrade,
 ) -> Response {
     if !same_origin(&headers) {
+        let value = |name: header::HeaderName| {
+            headers
+                .get(name)
+                .and_then(|v| v.to_str().ok())
+                .unwrap_or("-")
+                .to_owned()
+        };
+        tracing::warn!(
+            origin = value(header::ORIGIN),
+            host = value(header::HOST),
+            x_forwarded_host = value(header::HeaderName::from_static("x-forwarded-host")),
+            "softphone WebSocket refused: Origin does not match the host \
+             (reverse proxy: pass the original Host or set X-Forwarded-Host)"
+        );
         return ApiError::Forbidden.into_response();
     }
     let url = state.sip_ws_url.to_string();
     ws.protocols(["sip"]).on_upgrade(move |socket| async move {
         if let Err(err) = relay(socket, &url).await {
-            tracing::debug!(error = %err, "SIP WebSocket relay ended");
+            tracing::warn!(url, error = %err, "softphone WebSocket: FreeSWITCH not reachable");
         }
     })
 }
@@ -211,5 +236,18 @@ mod tests {
         )));
         assert!(!same_origin(&h(Some("https://evil.example"), "pbx.local")));
         assert!(same_origin(&h(None, "pbx.local")));
+        // Behind a proxy that rewrites Host.
+        let mut m = h(Some("https://talk.example.de"), "10.0.0.5:8095");
+        assert!(!same_origin(&m));
+        m.insert("x-forwarded-host", "talk.example.de".parse().unwrap());
+        assert!(same_origin(&m));
+        let mut m = h(Some("https://talk.example.de"), "10.0.0.5:8095");
+        m.insert(
+            "forwarded",
+            "for=1.2.3.4;proto=https;host=\"talk.example.de\""
+                .parse()
+                .unwrap(),
+        );
+        assert!(same_origin(&m));
     }
 }

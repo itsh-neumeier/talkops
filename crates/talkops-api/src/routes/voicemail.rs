@@ -11,7 +11,8 @@ use talkops_core::extensions::{self, Extension};
 use talkops_core::mail::{self, SmtpInput, SmtpSettings};
 use talkops_core::users::Role;
 use talkops_core::voicemail::{self, Message, VoicemailBox, VoicemailBoxInput};
-use talkops_core::{audit, settings};
+use talkops_core::voicemail_config::{self as vmc, VoicemailConfig};
+use talkops_core::{audit, jobs, prompts, settings};
 use utoipa::ToSchema;
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
@@ -32,6 +33,7 @@ pub fn router() -> OpenApiRouter<AppState> {
         .routes(routes!(message_transcript))
         .routes(routes!(get_smtp, update_smtp))
         .routes(routes!(test_smtp))
+        .routes(routes!(get_vm_config, update_vm_config))
 }
 
 /// Voicemail is private: the extension's user, or an admin.
@@ -340,4 +342,74 @@ pub async fn test_smtp(
         .map_err(|e| ApiError::BadRequest(e.to_string()))?;
     audit::record(&state.db, &auth.actor(), "test", "smtp", None, json!({})).await?;
     Ok(StatusCode::NO_CONTENT)
+}
+
+/// A prompt that can be reworded, with its default texts.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct EditablePrompt {
+    pub key: &'static str,
+    /// `{placeholders}` the text may use.
+    pub placeholders: &'static [&'static str],
+    /// Default text per language (with placeholders).
+    pub defaults: std::collections::BTreeMap<&'static str, String>,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct VmConfigView {
+    pub config: VoicemailConfig,
+    pub prompts: Vec<EditablePrompt>,
+}
+
+fn vm_config_view(config: VoicemailConfig) -> VmConfigView {
+    let prompts = vmc::EDITABLE
+        .iter()
+        .map(|(key, placeholders)| EditablePrompt {
+            key,
+            placeholders,
+            defaults: prompts::LANGUAGES
+                .iter()
+                .filter_map(|l| Some((*l, prompts::template(key, l)?.into_owned())))
+                .collect(),
+        })
+        .collect();
+    VmConfigView { config, prompts }
+}
+
+/// Voicemail control: menu keys, prompt texts, voices, caller announcement (admin).
+#[utoipa::path(get, path = "/api/v1/settings/voicemail", tag = "voicemail", responses((status = 200, body = VmConfigView)))]
+pub async fn get_vm_config(
+    State(state): State<AppState>,
+    auth: AuthUser,
+) -> ApiResult<Json<VmConfigView>> {
+    auth.require(Role::Admin)?;
+    Ok(Json(vm_config_view(
+        vmc::get(&state.db, auth.tenant).await?,
+    )))
+}
+
+/// Changes the voicemail control; changed prompts are rendered in the
+/// background (until then the default prompt plays).
+#[utoipa::path(put, path = "/api/v1/settings/voicemail", tag = "voicemail", request_body = VoicemailConfig, responses((status = 200, body = VmConfigView)))]
+pub async fn update_vm_config(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Json(input): Json<VoicemailConfig>,
+) -> ApiResult<Json<VmConfigView>> {
+    auth.require(Role::Admin)?;
+    let config = input.normalized();
+    vmc::set(&state.db, auth.tenant, &config).await?;
+    let mut job = jobs::NewJob::new(vmc::JOB_TTS_PROMPTS, json!({}));
+    job.tenant_id = auth.tenant;
+    jobs::enqueue(&state.db, job).await?;
+    audit::record(
+        &state.db,
+        &auth.actor(),
+        "update",
+        "voicemail_config",
+        None,
+        json!({"keys": config.keys, "voices": config.voices, "announce": config.announce,
+               "texts_changed": config.texts.values().map(|t| t.len()).sum::<usize>()}),
+    )
+    .await?;
+    Ok(Json(vm_config_view(config)))
 }

@@ -46,9 +46,35 @@ Audio no longer in use is deleted after a day.
 | `*97` | own mailbox (from the extension's own phone, no PIN) |
 | `*98` | any mailbox: extension + `#`, PIN + `#` |
 
-Main menu: **1** listen to messages, **5** record greeting, **\*** exit.
-During a message: **1** repeat, **7** delete, **9** save, **#** next message.
-When leaving a message, **#** ends the recording.
+Main menu (default): **1** listen to messages, **5** record greeting,
+**\*** exit. During a message: **1** repeat, **7** delete, **9** save, **#**
+next message. When leaving a message, **#** ends the recording.
+
+Before each message TalkOps says who called and when, e.g. "Message 1 from
+Anna Müller, 0 3 0, 1 2 3, 4 5 6. Received on Thursday, October 8, at 2:32 PM."
+The name comes from the phone book or the extension list, otherwise – if
+enabled – from the provider (CNAM). The announcement is made when the message
+is stored; if it is not ready (yet), TalkOps reads only the number.
+
+### Customizing
+
+*Settings → Voicemail* (admin):
+
+- **Keys:** put every function of both menus on any key (0–9, \*, #; each key
+  once per menu). The menu prompts name the chosen keys automatically.
+- **Announcement before each message:** name from the phone book, number
+  (digit by digit, in groups), name sent by the provider, date and time –
+  each can be switched off.
+- **Voice:** one of the bundled voices per language. The language a mailbox
+  speaks is set at the extension's mailbox.
+- **Prompt texts:** every voicemail prompt per language can be reworded;
+  *Default* restores the original. Placeholders: `{listen}` `{greeting}`
+  `{exit}` in the main menu, `{repeat}` `{delete}` `{save}` `{next}` in the
+  message menu, `{caller}` and `{date}` in the announcement before each
+  message.
+
+The media worker renders changed prompts in the background (seconds to a few
+minutes); until then the previous prompt plays.
 
 ## In the browser
 

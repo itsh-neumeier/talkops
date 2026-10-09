@@ -12,6 +12,7 @@
 	import SystemDiagnostics from '#lib/components/SystemDiagnostics.svelte';
 	import TranscriptionApiSettings from '#lib/components/TranscriptionApiSettings.svelte';
 	import TwoFactor from '#lib/components/TwoFactor.svelte';
+	import VoicemailControl from '#lib/components/VoicemailControl.svelte';
 	import SettingsNav, { sections, type Section } from '#lib/components/SettingsNav.svelte';
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import { hasRole, logout } from '#lib/session.svelte.ts';
@@ -399,6 +400,8 @@
 						</div>
 					</form>
 				{/if}
+			{:else if section === 'voicemail'}
+				{#if hasRole('admin')}<VoicemailControl />{/if}
 			{:else if section === 'email'}
 				{#if smtp && hasRole('admin')}
 					<form class="card space-y-3" onsubmit={saveSmtp}>

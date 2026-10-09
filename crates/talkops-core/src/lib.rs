@@ -37,6 +37,7 @@ pub mod trunks;
 pub mod turn;
 pub mod users;
 pub mod voicemail;
+pub mod voicemail_config;
 
 /// Version of the TalkOps build, taken from the workspace manifest.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

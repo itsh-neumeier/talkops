@@ -98,8 +98,8 @@ const PROMPTS: &[Prompt] = &[
     },
     Prompt {
         key: "vm_main_menu",
-        de: "Um Ihre Nachrichten abzuhören, drücken Sie die 1. Um Ihre Ansage aufzunehmen, drücken Sie die 5. Zum Beenden drücken Sie die Stern-Taste.",
-        en: "To listen to your messages, press 1. To record your greeting, press 5. To exit, press star.",
+        de: "Um Ihre Nachrichten abzuhören, drücken Sie {listen}. Um Ihre Ansage aufzunehmen, drücken Sie {greeting}. Zum Beenden drücken Sie {exit}.",
+        en: "To listen to your messages, press {listen}. To record your greeting, press {greeting}. To exit, press {exit}.",
     },
     Prompt {
         key: "vm_message",
@@ -113,8 +113,8 @@ const PROMPTS: &[Prompt] = &[
     },
     Prompt {
         key: "vm_message_menu",
-        de: "Zum Wiederholen drücken Sie die 1, zum Löschen die 7, zum Speichern die 9. Für die nächste Nachricht drücken Sie die Raute-Taste.",
-        en: "To repeat this message, press 1. To delete it, press 7. To save it, press 9. For the next message, press pound.",
+        de: "Zum Wiederholen drücken Sie {repeat}, zum Löschen {delete}, zum Speichern {save}. Für die nächste Nachricht drücken Sie {next}.",
+        en: "To repeat this message, press {repeat}. To delete it, press {delete}. To save it, press {save}. For the next message, press {next}.",
     },
     Prompt {
         key: "vm_deleted",
@@ -168,17 +168,49 @@ const PROMPTS: &[Prompt] = &[
     },
 ];
 
-/// Text of a prompt (`n<number>` for numbers), or `None` for unknown keys.
-pub fn text(key: &str, lang: &str) -> Option<Cow<'static, str>> {
+/// Parts of the announcement before a voicemail message; rendered per
+/// message, never as files of their own.
+const INFO_TEMPLATES: &[Prompt] = &[
+    Prompt {
+        key: "vm_info_caller",
+        de: "von {caller}.",
+        en: "from {caller}.",
+    },
+    Prompt {
+        key: "vm_info_date",
+        de: "Empfangen am {date}.",
+        en: "Received on {date}.",
+    },
+];
+
+/// Default text of a prompt with its `{placeholders}` (menu keys, caller,
+/// date); `n<number>` for numbers; `None` for unknown keys.
+pub fn template(key: &str, lang: &str) -> Option<Cow<'static, str>> {
     if let Some(n) = key.strip_prefix('n').and_then(|n| n.parse::<u32>().ok()) {
         return (n <= MAX_NUMBER).then(|| Cow::Owned(n.to_string()));
     }
-    PROMPTS.iter().find(|p| p.key == key).map(|p| {
-        Cow::Borrowed(match language(lang) {
-            "en" => p.en,
-            _ => p.de,
+    PROMPTS
+        .iter()
+        .chain(INFO_TEMPLATES)
+        .find(|p| p.key == key)
+        .map(|p| {
+            Cow::Borrowed(match language(lang) {
+                "en" => p.en,
+                _ => p.de,
+            })
         })
-    })
+}
+
+/// Default text of a prompt as spoken (menu keys at their default keys).
+pub fn text(key: &str, lang: &str) -> Option<Cow<'static, str>> {
+    let template = template(key, lang)?;
+    if !template.contains('{') {
+        return Some(template);
+    }
+    let keys = crate::voicemail_config::MenuKeys::default();
+    Some(Cow::Owned(crate::voicemail_config::fill_keys(
+        &template, &keys, lang,
+    )))
 }
 
 /// Every prompt key, including the numbers.
@@ -193,14 +225,18 @@ pub fn keys() -> impl Iterator<Item = Cow<'static, str>> {
 pub fn path(sounds_dir: &Path, key: &str, lang: &str) -> Option<PathBuf> {
     let lang = language(lang);
     let text = text(key, lang)?;
-    let digest = Sha256::digest(format!("{}\n{text}", voice(lang)).as_bytes());
+    Some(path_for(sounds_dir, key, lang, voice(lang), &text))
+}
+
+/// File of a prompt spoken by `voice` (Piper model) with `text`; the hash
+/// makes reworded prompts and other voices separate files.
+pub fn path_for(sounds_dir: &Path, key: &str, lang: &str, voice: &str, text: &str) -> PathBuf {
+    let digest = Sha256::digest(format!("{voice}\n{text}").as_bytes());
     let hash = hex::encode(&digest[..4]);
-    Some(
-        sounds_dir
-            .join("system")
-            .join(lang)
-            .join(format!("{key}-{hash}.wav")),
-    )
+    sounds_dir
+        .join("system")
+        .join(language(lang))
+        .join(format!("{key}-{hash}.wav"))
 }
 
 #[cfg(test)]

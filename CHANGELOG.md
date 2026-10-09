@@ -13,6 +13,12 @@ All notable changes to TalkOps. The format follows
   internet (*Settings → Telephony*, on by default). Trunk accounts without a
   phone number (e.g. sip2sip/SIP Thor) get their own destination for
   inbound calls.
+- **Voicemail control editable** (*Settings → Voicemail*): every menu key,
+  every voicemail prompt per language and the voice; the menu prompts name
+  the chosen keys.
+- **Caller announcement before each message:** name from the phone book or
+  extension list (else the provider's name), the number digit by digit in
+  groups, and date and time – each switchable.
 - **Test calls** under *Settings → System*: echo, key test, time and ring
   test by sip5060.net, to check audio and NAT without a provider.
 

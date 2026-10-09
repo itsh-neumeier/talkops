@@ -449,6 +449,24 @@ pub async fn list_contacts<'e>(
     Ok(sqlx::query_as(&sql).bind(tenant).fetch_all(db).await?)
 }
 
+/// Name of the phone book entry with this number (E.164), if any. Entries
+/// are compared after normalizing with the tenant's dial plan.
+pub async fn contact_name<'e>(
+    db: impl PgExecutor<'e>,
+    tenant: TenantId,
+    e164: &str,
+    dial_plan: &crate::dialing::DialPlanSettings,
+) -> CoreResult<Option<String>> {
+    let contacts = list_contacts(db, tenant).await?;
+    Ok(contacts.into_iter().find_map(|c| {
+        [&c.phone_work, &c.phone_mobile, &c.phone_other]
+            .into_iter()
+            .filter(|n| !n.is_empty())
+            .any(|n| dial_plan.normalize_incoming(n).as_deref() == Some(e164))
+            .then_some(c.name)
+    }))
+}
+
 pub async fn create_contact<'e>(
     db: impl PgExecutor<'e>,
     tenant: TenantId,

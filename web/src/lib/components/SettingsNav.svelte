@@ -1,8 +1,10 @@
 <script lang="ts" module>
-	export type Section = 'telephony' | 'calls' | 'email' | 'security' | 'system' | 'account';
+	export type Section =
+		'telephony' | 'calls' | 'voicemail' | 'email' | 'security' | 'system' | 'account';
 	export const sections: { id: Section; icon: string; admin: boolean }[] = [
 		{ id: 'telephony', icon: '☎', admin: true },
 		{ id: 'calls', icon: '🎵', admin: true },
+		{ id: 'voicemail', icon: '📮', admin: true },
 		{ id: 'email', icon: '✉', admin: true },
 		{ id: 'security', icon: '🛡', admin: true },
 		{ id: 'system', icon: '⚙', admin: true },

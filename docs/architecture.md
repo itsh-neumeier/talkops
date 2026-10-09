@@ -220,6 +220,15 @@ Standardrufnummer.
   und MWI an alle Geräte der Nebenstelle; neu registrierte Geräte bekommen den
   aktuellen Stand sofort.
 
+- Bedienung je Mandant (`tenant_settings.voicemail_config`,
+  `talkops_core::voicemail_config`): Tasten beider Menüs, Ansagetexte je
+  Sprache (Vorlagen mit Platzhaltern), Stimme je Sprache, Anruferansage.
+  Geänderte Ansagen rendert der Worker per Job `tts_prompts` unter
+  `system/<lang>/<key>-<hash(stimme, text)>.wav`; die IVR nimmt sie, sobald
+  vorhanden, sonst die Standardansage. Je Nachricht rendert der Job
+  `tts_message_info` die Ansage „von … Empfangen am …“ nach
+  `<id>-info.wav` neben der Aufnahme.
+
 ## Provisioning (Phase 2)
 
 Telefone holen ihre Konfiguration per HTTP(S) von `/provisioning/…` (Basic-Auth

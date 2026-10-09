@@ -46,9 +46,37 @@ oder 2×. Nicht mehr verwendete Audiodateien löscht TalkOps nach einem Tag.
 | `*97` | eigene Mailbox (vom eigenen Telefon, ohne PIN) |
 | `*98` | beliebige Mailbox: Nebenstelle + `#`, PIN + `#` |
 
-Hauptmenü: **1** Nachrichten abhören, **5** Ansage aufnehmen, **\*** Ende.
-Während einer Nachricht: **1** wiederholen, **7** löschen, **9** speichern,
-**#** nächste Nachricht. Beim Aufsprechen beendet **#** die Aufnahme.
+Hauptmenü (Standard): **1** Nachrichten abhören, **5** Ansage aufnehmen,
+**\*** Ende. Während einer Nachricht: **1** wiederholen, **7** löschen,
+**9** speichern, **#** nächste Nachricht. Beim Aufsprechen beendet **#** die
+Aufnahme.
+
+Vor jeder Nachricht sagt TalkOps, wer angerufen hat und wann, z. B. „Nachricht
+1 von Anna Müller, 0 3 0, 1 2 3, 4 5 6. Empfangen am Donnerstag, 8. Oktober, um
+14 Uhr 32.“ Der Name kommt aus dem Telefonbuch bzw. der Nebenstellenliste,
+sonst – falls eingeschaltet – vom Anbieter (CNAM). Die Ansage wird beim
+Speichern der Nachricht erzeugt; ist sie (noch) nicht fertig, liest TalkOps
+nur die Nummer vor.
+
+### Bedienung anpassen
+
+*Einstellungen → Voicemail* (Admin):
+
+- **Tasten:** jede Funktion beider Menüs auf eine beliebige Taste legen
+  (0–9, \*, #; je Menü jede Taste nur einmal). Die Menü-Ansagen nennen die
+  gewählten Tasten automatisch.
+- **Ansage vor jeder Nachricht:** Name aus Telefonbuch, Rufnummer (Ziffer für
+  Ziffer, in Gruppen), Name vom Anbieter, Datum und Uhrzeit – einzeln
+  abschaltbar.
+- **Stimme:** je Sprache eine der mitgelieferten Stimmen. Welche Sprache eine
+  Mailbox spricht, steht an der Mailbox der Nebenstelle.
+- **Ansagetexte:** alle Voicemail-Ansagen je Sprache änderbar, *Standard*
+  stellt den Originaltext wieder her. Platzhalter: `{listen}` `{greeting}`
+  `{exit}` im Hauptmenü, `{repeat}` `{delete}` `{save}` `{next}` im
+  Nachrichtenmenü, `{caller}` und `{date}` in der Ansage vor jeder Nachricht.
+
+Geänderte Ansagen erzeugt der Media-Worker im Hintergrund (Sekunden bis wenige
+Minuten); bis dahin läuft die bisherige Ansage.
 
 ## Im Browser
 

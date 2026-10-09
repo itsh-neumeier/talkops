@@ -18,7 +18,8 @@ use sqlx::PgPool;
 use talkops_core::error::CoreResult;
 use talkops_core::tenant::TenantId;
 use talkops_core::voicemail::{self, NewMessage, VoicemailBox};
-use talkops_core::{extensions, settings};
+use talkops_core::voicemail_config::{self as vmc, VoicemailConfig};
+use talkops_core::{extensions, jobs, phones, settings};
 use talkops_esl::EslError;
 use talkops_esl::outbound::OutboundSession;
 use uuid::Uuid;
@@ -131,7 +132,8 @@ async fn queue_voicemail<C: Call>(call: &mut C, ctx: &VmContext) -> FlowResult<(
     };
     let q = talkops_core::queues::get(&ctx.db, tenant, queue).await?;
     let lang = settings::get(&ctx.db, tenant).await?.default_language;
-    let mut ivr = Ivr::new(call, &ctx.media.sounds, &lang);
+    let config = Arc::new(vmc::get(&ctx.db, tenant).await?);
+    let mut ivr = Ivr::new(call, &ctx.media.sounds, &lang).with_config(config);
     ivr.set("playback_terminators", "#").await?;
     let mut greeting = Seq::default();
     match q
@@ -196,19 +198,20 @@ pub async fn run<C: Call>(call: &mut C, ctx: &VmContext, app: &str) -> FlowResul
         .map(TenantId)
         .ok_or_else(|| FlowError::Other("call without tenant".into()))?;
     let default_lang = settings::get(&ctx.db, tenant).await?.default_language;
+    let config = Arc::new(vmc::get(&ctx.db, tenant).await?);
     let ext = call
         .var("talkops_vm_extension_id")
         .and_then(|v| v.parse::<Uuid>().ok());
     match (app, ext) {
-        ("vm_deposit", Some(ext)) => deposit(call, ctx, tenant, ext, &default_lang).await,
+        ("vm_deposit", Some(ext)) => deposit(call, ctx, &config, tenant, ext, &default_lang).await,
         ("vm_check", Some(ext)) => {
             let vbox = voicemail::get_box(&ctx.db, tenant, ext).await?;
             let lang = vbox.language.clone().unwrap_or(default_lang);
             call.execute("answer", "").await?;
             call.execute("playback", "silence_stream://500").await?;
-            mailbox(call, ctx, tenant, ext, &vbox, &lang).await
+            mailbox(call, ctx, &config, tenant, ext, &vbox, &lang).await
         }
-        ("vm_login", _) => login(call, ctx, tenant, &default_lang).await,
+        ("vm_login", _) => login(call, ctx, &config, tenant, &default_lang).await,
         _ => Err(FlowError::Other(format!("{app} without mailbox"))),
     }
 }
@@ -217,6 +220,7 @@ pub async fn run<C: Call>(call: &mut C, ctx: &VmContext, app: &str) -> FlowResul
 async fn deposit<C: Call>(
     call: &mut C,
     ctx: &VmContext,
+    config: &Arc<VoicemailConfig>,
     tenant: TenantId,
     ext: Uuid,
     default_lang: &str,
@@ -226,7 +230,7 @@ async fn deposit<C: Call>(
         return Ok(());
     }
     let lang = vbox.language.clone().unwrap_or(default_lang.to_owned());
-    let mut ivr = Ivr::new(call, &ctx.media.sounds, &lang);
+    let mut ivr = Ivr::new(call, &ctx.media.sounds, &lang).with_config(config.clone());
     ivr.call.execute("answer", "").await?;
     ivr.call.execute("playback", "silence_stream://500").await?;
     // `#` skips the greeting.
@@ -312,6 +316,11 @@ pub(crate) async fn store_message<C: Call>(
         )
         .await?;
         tracing::info!(extension = %ext, secs, "voicemail stored");
+        if let Err(err) =
+            announce_message(ctx, tenant, ext, msg_id, &caller_number, &caller_name).await
+        {
+            tracing::warn!(error = %err, "caller announcement not queued");
+        }
         update_mwi(ctx, ext).await;
     }
     if !ivr.call.is_hung_up() {
@@ -321,17 +330,73 @@ pub(crate) async fn store_message<C: Call>(
     Ok(())
 }
 
+/// Queues the spoken announcement of a new message ("von Anna Müller, …
+/// Empfangen am …") in the box's language and the tenant's voice.
+async fn announce_message(
+    ctx: &VmContext,
+    tenant: TenantId,
+    ext: Uuid,
+    msg_id: Uuid,
+    caller_number: &str,
+    cnam: &str,
+) -> CoreResult<()> {
+    let config = vmc::get(&ctx.db, tenant).await?;
+    let tenant_settings = settings::get(&ctx.db, tenant).await?;
+    let lang = voicemail::get_box(&ctx.db, tenant, ext)
+        .await?
+        .language
+        .unwrap_or_else(|| tenant_settings.default_language.clone());
+    let dial_plan = tenant_settings.dial_plan();
+    let mut caller = vmc::Caller {
+        cnam: (!cnam.is_empty()).then(|| cnam.to_owned()),
+        ..Default::default()
+    };
+    if caller_number.starts_with('+') {
+        caller.number = Some(dial_plan.for_display(caller_number));
+        caller.name = phones::contact_name(&ctx.db, tenant, caller_number, &dial_plan).await?;
+    } else if !caller_number.is_empty() && caller_number.chars().all(|c| c.is_ascii_digit()) {
+        // An extension.
+        caller.number = Some(caller_number.to_owned());
+        caller.name = extensions::find_by_number(&ctx.db, tenant, caller_number)
+            .await?
+            .map(|e| e.display_name);
+    }
+    let tz = tenant_settings
+        .timezone
+        .parse::<chrono_tz::Tz>()
+        .unwrap_or(chrono_tz::Europe::Berlin);
+    let Some(text) = vmc::message_info(&config, &lang, &caller, chrono::Utc::now(), tz) else {
+        return Ok(());
+    };
+    let payload = vmc::MessageInfoJob {
+        text,
+        voice: config.voice_model(&lang).to_owned(),
+        file: vmc::info_file(&voicemail::message_file(tenant, ext, msg_id)),
+    };
+    let mut job = jobs::NewJob::new(
+        vmc::JOB_TTS_MESSAGE_INFO,
+        serde_json::to_value(&payload)
+            .map_err(|e| talkops_core::error::CoreError::Validation(e.to_string()))?,
+    );
+    job.tenant_id = tenant;
+    // Before anything else: the box owner may call in right away.
+    job.priority = 5;
+    jobs::enqueue(&ctx.db, job).await?;
+    Ok(())
+}
+
 /// `*98`: extension number and PIN, three attempts.
 async fn login<C: Call>(
     call: &mut C,
     ctx: &VmContext,
+    config: &Arc<VoicemailConfig>,
     tenant: TenantId,
     lang: &str,
 ) -> FlowResult<()> {
     call.execute("answer", "").await?;
     call.execute("playback", "silence_stream://500").await?;
     for _ in 0..3 {
-        let mut ivr = Ivr::new(call, &ctx.media.sounds, lang);
+        let mut ivr = Ivr::new(call, &ctx.media.sounds, lang).with_config(config.clone());
         let ask_box = ivr.keys(&["vm_enter_box"]);
         let Some(number) = ivr.ask(&ask_box, 10, "^\\d+$").await? else {
             continue;
@@ -342,29 +407,33 @@ async fn login<C: Call>(
             let vbox = voicemail::get_box(&ctx.db, tenant, ext.id).await?;
             if vbox.enabled && vbox.verify_pin(&pin) {
                 let box_lang = vbox.language.clone().unwrap_or(lang.to_owned());
-                return mailbox(call, ctx, tenant, ext.id, &vbox, &box_lang).await;
+                return mailbox(call, ctx, config, tenant, ext.id, &vbox, &box_lang).await;
             }
         }
         tracing::info!(box_number = %sanitize_value(&number), "voicemail login failed");
         let failed = ivr.keys(&["vm_login_failed"]);
         ivr.play(&failed).await?;
     }
-    let mut ivr = Ivr::new(call, &ctx.media.sounds, lang);
+    let mut ivr = Ivr::new(call, &ctx.media.sounds, lang).with_config(config.clone());
     let bye = ivr.keys(&["vm_goodbye"]);
     ivr.play(&bye).await?;
     Ok(())
 }
 
-/// Main menu of a box: announce counts, listen (1), record greeting (5).
+/// Main menu of a box: announce counts, listen, record greeting, exit
+/// (keys from the tenant's voicemail settings).
 async fn mailbox<C: Call>(
     call: &mut C,
     ctx: &VmContext,
+    config: &Arc<VoicemailConfig>,
     tenant: TenantId,
     ext: Uuid,
     vbox: &VoicemailBox,
     lang: &str,
 ) -> FlowResult<()> {
-    let mut ivr = Ivr::new(call, &ctx.media.sounds, lang);
+    let mut ivr = Ivr::new(call, &ctx.media.sounds, lang).with_config(config.clone());
+    let keys = &config.keys;
+    let choices = menu_regex(&keys.main());
     let mut announce = true;
     loop {
         let mut menu = Seq::default();
@@ -374,18 +443,25 @@ async fn mailbox<C: Call>(
             announce = false;
         }
         ivr.prompt(&mut menu, "vm_main_menu");
-        match ivr.ask(&menu, 1, "^[15*]$").await?.as_deref() {
-            Some("1") => {
-                listen(&mut ivr, ctx, tenant, ext).await?;
+        match ivr.ask(&menu, 1, &choices).await?.as_deref() {
+            Some(k) if k == keys.listen => {
+                listen(&mut ivr, ctx, config, tenant, ext).await?;
                 announce = true;
             }
-            Some("5") => record_greeting(&mut ivr, ctx, tenant, ext, vbox).await?,
+            Some(k) if k == keys.greeting => {
+                record_greeting(&mut ivr, ctx, tenant, ext, vbox).await?
+            }
             _ => break,
         }
     }
     let bye = ivr.keys(&["vm_goodbye"]);
     ivr.play(&bye).await?;
     Ok(())
+}
+
+/// `^[15*]$` for the keys of a menu.
+fn menu_regex(keys: &[(&str, &str)]) -> String {
+    format!("^[{}]$", keys.iter().map(|(_, k)| *k).collect::<String>())
 }
 
 /// "You have 2 new messages and one saved message."
@@ -416,41 +492,51 @@ fn counts_prompt<C: Call>(ivr: &Ivr<'_, C>, seq: &mut Seq, new: u32, saved: u32)
     }
 }
 
-/// Plays all messages, new ones first: 1 repeat, 7 delete, 9 save, # next.
+/// Plays all messages, new ones first, each announced with its caller
+/// and time; then the message menu (repeat, delete, save, next).
 async fn listen<C: Call>(
     ivr: &mut Ivr<'_, C>,
     ctx: &VmContext,
+    config: &VoicemailConfig,
     tenant: TenantId,
     ext: Uuid,
 ) -> FlowResult<()> {
+    let keys = &config.keys;
+    let choices = menu_regex(&keys.message());
     let messages = voicemail::list_messages(&ctx.db, tenant, ext).await?;
     for (i, msg) in messages.iter().enumerate() {
         loop {
             let mut seq = Seq::default();
             ivr.prompt(&mut seq, "vm_message");
             ivr.number(&mut seq, i as u32 + 1);
-            let digits: String = msg
-                .caller_number
-                .chars()
-                .filter(char::is_ascii_digit)
-                .collect();
-            if !digits.is_empty() {
-                ivr.prompt(&mut seq, "vm_from");
-                ivr.digits(&mut seq, &msg.caller_number);
+            let info = ctx.path(&vmc::info_file(&msg.file));
+            if info.is_file() {
+                ivr.file(&mut seq, &info);
+            } else {
+                // Announcement not (yet) rendered: the number digit by digit.
+                let digits: String = msg
+                    .caller_number
+                    .chars()
+                    .filter(char::is_ascii_digit)
+                    .collect();
+                if !digits.is_empty() && config.announce.number {
+                    ivr.prompt(&mut seq, "vm_from");
+                    ivr.digits(&mut seq, &msg.caller_number);
+                }
             }
             ivr.file(&mut seq, &ctx.path(&msg.file));
             ivr.play(&seq).await?;
             let menu = ivr.keys(&["vm_message_menu"]);
-            match ivr.ask(&menu, 1, "^[179#]$").await?.as_deref() {
-                Some("1") => continue,
-                Some("7") => {
+            match ivr.ask(&menu, 1, &choices).await?.as_deref() {
+                Some(k) if k == keys.repeat => continue,
+                Some(k) if k == keys.delete => {
                     delete_message(ctx, tenant, msg.id).await?;
                     let done = ivr.keys(&["vm_deleted"]);
                     ivr.play(&done).await?;
                 }
                 choice => {
                     voicemail::set_message_status(&ctx.db, tenant, msg.id, true).await?;
-                    if choice == Some("9") {
+                    if choice == Some(keys.save.as_str()) {
                         let done = ivr.keys(&["vm_message_saved"]);
                         ivr.play(&done).await?;
                     }
@@ -498,6 +584,8 @@ pub async fn delete_message(ctx: &VmContext, tenant: TenantId, id: Uuid) -> Core
     if let Err(err) = tokio::fs::remove_file(ctx.path(&msg.file)).await {
         tracing::warn!(error = %err, file = %msg.file, "could not remove voicemail file");
     }
+    // The announcement may not exist (not rendered, nothing to say).
+    let _ = tokio::fs::remove_file(ctx.path(&vmc::info_file(&msg.file))).await;
     Ok(())
 }
 

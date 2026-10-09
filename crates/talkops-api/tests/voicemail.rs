@@ -187,3 +187,71 @@ async fn voicemail_api(db: PgPool) {
     assert_eq!(s["has_password"], true);
     assert!(s.get("password").is_none());
 }
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn voicemail_control_settings(db: PgPool) {
+    let router = router(db.clone());
+    let admin = setup_admin(&router).await;
+    admin
+        .post(
+            "/api/v1/users",
+            json!({"username": "ben", "display_name": "Ben", "password": "ben-password-1", "role": "operator"}),
+        )
+        .await;
+    let ben = login(&router, "ben", "ben-password-1").await.unwrap();
+    let (status, _) = ben.get("/api/v1/settings/voicemail").await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+
+    let (status, v) = admin.get("/api/v1/settings/voicemail").await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(v["config"]["keys"]["delete"], "7");
+    assert_eq!(v["config"]["announce"]["date"], true);
+    let menu = v["prompts"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|p| p["key"] == "vm_main_menu")
+        .unwrap();
+    assert_eq!(menu["placeholders"], json!(["listen", "greeting", "exit"]));
+    assert!(
+        menu["defaults"]["de"]
+            .as_str()
+            .unwrap()
+            .contains("{listen}")
+    );
+
+    // The same key twice in one menu, unknown placeholders: refused.
+    let mut c = v["config"].clone();
+    c["keys"]["save"] = json!("7");
+    let (status, _) = admin.put("/api/v1/settings/voicemail", c).await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    let mut c = v["config"].clone();
+    c["texts"] = json!({"de": {"vm_main_menu": "Drück {foo}"}});
+    let (status, _) = admin.put("/api/v1/settings/voicemail", c).await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+
+    let mut c = v["config"].clone();
+    c["keys"]["delete"] = json!("3");
+    c["voices"] = json!({"de": 2, "en": 1});
+    c["announce"]["date"] = json!(false);
+    c["texts"] = json!({"de": {"vm_goodbye": " Tschüss! ", "vm_and": "und"}});
+    let (status, v) = admin.put("/api/v1/settings/voicemail", c).await;
+    assert_eq!(status, StatusCode::OK, "{v}");
+    // Defaults are not stored: voice 1, texts equal to the default.
+    assert_eq!(v["config"]["voices"], json!({"de": 2}));
+    assert_eq!(
+        v["config"]["texts"],
+        json!({"de": {"vm_goodbye": "Tschüss!"}})
+    );
+    assert_eq!(v["config"]["keys"]["delete"], "3");
+    let (_, again) = admin.get("/api/v1/settings/voicemail").await;
+    assert_eq!(again["config"], v["config"]);
+    // The worker renders the changed prompts.
+    let queued: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM jobs WHERE kind = 'tts_prompts' AND status = 'queued'",
+    )
+    .fetch_one(&db)
+    .await
+    .unwrap();
+    assert_eq!(queued, 1);
+}

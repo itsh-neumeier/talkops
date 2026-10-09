@@ -21,6 +21,7 @@ use talkops_core::jobs::{self, Job};
 use talkops_core::recordings::{self, Source};
 use talkops_core::settings::TranscriptionEngine;
 use talkops_core::telemetry::{self, LogFormat};
+use talkops_core::voicemail_config as vmc;
 use talkops_core::{audio, settings, transcription_api, voicemail};
 use tokio::sync::Notify;
 
@@ -29,7 +30,12 @@ use crate::tts::Piper;
 
 /// Job kinds per lane; each lane works through its jobs one at a time.
 const LANES: &[&[&str]] = &[
-    &[audio::JOB_TTS_CLIP, voicemail::JOB_TTS_GREETING],
+    &[
+        audio::JOB_TTS_CLIP,
+        voicemail::JOB_TTS_GREETING,
+        vmc::JOB_TTS_MESSAGE_INFO,
+        vmc::JOB_TTS_PROMPTS,
+    ],
     &[recordings::JOB_TRANSCRIBE],
 ];
 
@@ -244,6 +250,12 @@ async fn main() -> anyhow::Result<()> {
         Ok(n) => tracing::info!(count = n, "system prompts rendered"),
         Err(err) => tracing::error!(error = %err, "rendering system prompts failed"),
     }
+    // Reworded voicemail prompts and other voices (e.g. after a volume reset).
+    match tenant_prompts(&ctx, None).await {
+        Ok(0) => {}
+        Ok(n) => tracing::info!(count = n, "tenant prompts rendered"),
+        Err(err) => tracing::warn!(error = %err, "rendering tenant prompts failed"),
+    }
 
     let wake = std::sync::Arc::new(Notify::new());
     let poll = Duration::from_secs(args.poll_secs);
@@ -328,6 +340,8 @@ async fn run(ctx: &Ctx, job: &Job) -> anyhow::Result<()> {
     match job.kind.as_str() {
         audio::JOB_TTS_CLIP => tts_clip(ctx, job).await,
         voicemail::JOB_TTS_GREETING => tts_greeting(ctx, job).await,
+        vmc::JOB_TTS_MESSAGE_INFO => tts_message_info(ctx, job).await,
+        vmc::JOB_TTS_PROMPTS => tenant_prompts(ctx, Some(job.tenant_id)).await.map(|_| ()),
         recordings::JOB_TRANSCRIBE => transcribe(ctx, job).await,
         other => anyhow::bail!("no handler for job kind `{other}`"),
     }
@@ -375,6 +389,62 @@ async fn tts_greeting(ctx: &Ctx, job: &Job) -> anyhow::Result<()> {
         .await;
     voicemail::set_greeting_status(&ctx.pool, p.owner, &p.text, result.is_ok()).await?;
     result
+}
+
+/// Renders the announcement before a voicemail message (caller, time).
+async fn tts_message_info(ctx: &Ctx, job: &Job) -> anyhow::Result<()> {
+    let p: vmc::MessageInfoJob =
+        serde_json::from_value(job.payload.clone()).context("invalid payload")?;
+    anyhow::ensure!(
+        !p.file
+            .split('/')
+            .any(|part| part == ".." || part.is_empty())
+            && p.file.ends_with("-info.wav"),
+        "invalid output path"
+    );
+    let path = ctx.voicemail_dir.join(&p.file);
+    // The message may be gone already (deleted right away).
+    if !path.parent().is_some_and(Path::is_dir) {
+        return Ok(());
+    }
+    ctx.piper.render_with(&p.voice, &[(p.text, path)]).await
+}
+
+/// Renders the prompts tenants reworded or gave another voice (all tenants
+/// with a voicemail configuration, or one). Returns how many were rendered.
+async fn tenant_prompts(
+    ctx: &Ctx,
+    only: Option<talkops_core::tenant::TenantId>,
+) -> anyhow::Result<usize> {
+    let tenants: Vec<talkops_core::tenant::TenantId> = sqlx::query_scalar(
+        "SELECT tenant_id FROM tenant_settings
+         WHERE voicemail_config <> '{}'::jsonb AND ($1::uuid IS NULL OR tenant_id = $1)",
+    )
+    .bind(only)
+    .fetch_all(&ctx.pool)
+    .await?;
+    let mut rendered = 0;
+    for tenant in tenants {
+        let config = vmc::get(&ctx.pool, tenant).await?;
+        for lang in talkops_core::prompts::LANGUAGES {
+            let model = config.voice_model(lang);
+            let missing: Vec<(String, PathBuf)> = talkops_core::prompts::keys()
+                .filter_map(|key| {
+                    let text = config.text(&key, lang)?;
+                    let path =
+                        talkops_core::prompts::path_for(&ctx.sounds_dir, &key, lang, model, &text);
+                    (!path.is_file()).then_some((text, path))
+                })
+                .collect();
+            if missing.is_empty() {
+                continue;
+            }
+            tracing::info!(%tenant, lang, count = missing.len(), "rendering tenant prompts");
+            ctx.piper.render_with(model, &missing).await?;
+            rendered += missing.len();
+        }
+    }
+    Ok(rendered)
 }
 
 fn touch(path: &Path) {

@@ -562,3 +562,92 @@ mod attendants {
         std::fs::remove_dir_all(dir).unwrap();
     }
 }
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn custom_keys_texts_and_caller_announcement(pool: PgPool) {
+    let (ctx, ext, dir) = setup(&pool).await;
+    talkops_core::phones::create_contact(
+        &pool,
+        T,
+        &talkops_core::phones::ContactInput {
+            name: "Anna Müller".into(),
+            company: String::new(),
+            phone_work: "030 123456".into(),
+            phone_mobile: String::new(),
+            phone_other: String::new(),
+        },
+    )
+    .await
+    .unwrap();
+    let mut config = vmc::VoicemailConfig::default();
+    config.keys.listen = "2".into();
+    config.keys.delete = "3".into();
+    config.texts.insert(
+        "de".into(),
+        std::collections::BTreeMap::from([("vm_goodbye".into(), "Tschüss und bis bald.".into())]),
+    );
+    vmc::set(&pool, T, &config).await.unwrap();
+    // The reworded prompt, rendered with the default voice.
+    let goodbye = talkops_core::prompts::path_for(
+        &ctx.media.sounds,
+        "vm_goodbye",
+        "de",
+        config.voice_model("de"),
+        "Tschüss und bis bald.",
+    );
+    std::fs::create_dir_all(goodbye.parent().unwrap()).unwrap();
+    write_wav(&goodbye, 1);
+
+    // A message from the phone book: its announcement is queued.
+    let mut c = call("vm_deposit", Some(ext));
+    c.record_secs.push_back(3);
+    run(&mut c, &ctx, "vm_deposit").await.unwrap();
+    let msg = voicemail::list_messages(&pool, T, ext).await.unwrap()[0].clone();
+    let job = jobs::claim(&pool, "w", &[vmc::JOB_TTS_MESSAGE_INFO])
+        .await
+        .unwrap()
+        .unwrap();
+    let info: vmc::MessageInfoJob = serde_json::from_value(job.payload).unwrap();
+    assert!(
+        info.text
+            .starts_with("von Anna Müller, 0 3 0, 1 2 3, 4 5 6. Empfangen am "),
+        "{}",
+        info.text
+    );
+    assert_eq!(info.file, vmc::info_file(&msg.file));
+    assert_eq!(info.voice, "de_DE-thorsten-medium");
+    // The worker renders it; listening plays it before the message.
+    write_wav(&ctx.path(&info.file), 1);
+
+    // 2 = listen (moved from 1); 3 = delete (moved from 7); * = exit.
+    let mut c = call("vm_check", Some(ext));
+    c.digits.extend(["2", "3", "*"]);
+    run(&mut c, &ctx, "vm_check").await.unwrap();
+    let menus: Vec<&String> = c
+        .executed
+        .iter()
+        .filter(|(a, _)| a == "play_and_get_digits")
+        .map(|(_, d)| d)
+        .collect();
+    assert!(menus[0].contains("^[25*]$"), "{menus:?}");
+    assert!(menus[1].contains("^[139#]$"), "{menus:?}");
+    assert!(
+        c.executed
+            .iter()
+            .any(|(a, d)| a == "playback" && d.contains(&format!("{}-info.wav", msg.id))),
+        "{:?}",
+        c.executed
+    );
+    assert_eq!(voicemail::counts(&pool, ext).await.unwrap(), (0, 0));
+    assert!(
+        !ctx.path(&info.file).exists(),
+        "announcement deleted with the message"
+    );
+    // The reworded goodbye was played.
+    assert!(
+        c.executed
+            .iter()
+            .any(|(a, d)| a == "playback" && d.contains(&goodbye.to_string_lossy().into_owned()))
+    );
+    std::fs::remove_dir_all(dir).unwrap();
+}

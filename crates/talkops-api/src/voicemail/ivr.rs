@@ -5,7 +5,10 @@
 use std::future::Future;
 use std::path::{Path, PathBuf};
 
+use std::sync::Arc;
+
 use talkops_core::prompts;
+use talkops_core::voicemail_config::VoicemailConfig;
 use talkops_esl::outbound::OutboundSession;
 use talkops_esl::{EslError, Event};
 
@@ -75,6 +78,8 @@ pub struct Ivr<'a, C: Call> {
     sounds: &'a Path,
     lang: &'static str,
     seq: u32,
+    /// Reworded prompts and voice of the tenant (voicemail flows).
+    config: Option<Arc<VoicemailConfig>>,
 }
 
 impl<'a, C: Call> Ivr<'a, C> {
@@ -84,12 +89,33 @@ impl<'a, C: Call> Ivr<'a, C> {
             sounds,
             lang: prompts::language(lang),
             seq: 0,
+            config: None,
         }
     }
 
-    /// Appends a system prompt (skipped if the media worker has not rendered it).
+    /// Speaks the tenant's reworded prompts with its voice.
+    pub fn with_config(mut self, config: Arc<VoicemailConfig>) -> Self {
+        self.config = Some(config);
+        self
+    }
+
+    /// Appends a system prompt (skipped if the media worker has not rendered
+    /// it). Reworded prompts fall back to the default until rendered.
     pub fn prompt(&self, seq: &mut Seq, key: &str) {
-        if let Some(path) = prompts::path(self.sounds, key, self.lang).filter(|p| p.is_file()) {
+        let custom = self.config.as_ref().and_then(|c| {
+            let text = c.text(key, self.lang)?;
+            Some(prompts::path_for(
+                self.sounds,
+                key,
+                self.lang,
+                c.voice_model(self.lang),
+                &text,
+            ))
+        });
+        let path = custom
+            .filter(|p| p.is_file())
+            .or_else(|| prompts::path(self.sounds, key, self.lang).filter(|p| p.is_file()));
+        if let Some(path) = path {
             seq.0.push(path.to_string_lossy().into_owned());
         }
     }

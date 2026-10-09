@@ -4,6 +4,18 @@ All notable changes to TalkOps. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [1.6.0] – 2026-10-09
+
+### Added
+
+- **SIP addresses:** extensions dial `name@domain` (softphone or phone);
+  through a trunk account of the same domain, otherwise directly over the
+  internet (*Settings → Telephony*, on by default). Trunk accounts without a
+  phone number (e.g. sip2sip/SIP Thor) get their own destination for
+  inbound calls.
+- **Test calls** under *Settings → System*: echo, key test, time and ring
+  test by sip5060.net, to check audio and NAT without a provider.
+
 ## [1.5.0] – 2026-10-08
 
 ### Added
@@ -31,14 +43,6 @@ All notable changes to TalkOps. The format follows
 - **Copy log:** the debug log under Settings → System can be copied to the
   clipboard (the lines shown, respecting the filter), also when the UI is
   opened over plain HTTP.
-
-- **SIP addresses:** extensions dial `name@domain` (softphone or phone);
-  through a trunk account of the same domain, otherwise directly over the
-  internet (*Settings → Telephony*, on by default). Trunk accounts without a
-  phone number (e.g. sip2sip/SIP Thor) get their own destination for
-  inbound calls.
-- **Test calls** under *Settings → System*: echo, key test, time and ring
-  test by sip5060.net, to check audio and NAT without a provider.
 
 ### Changed
 

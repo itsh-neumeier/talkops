@@ -396,3 +396,14 @@ talkops/
 | 7 | WebRTC & Identität: Softphone mit Video, LDAP/AD, OIDC, 2FA | ✅ |
 | 8 | Betrieb: Backup/Restore, Metriken, Hardening, SIP-Anmeldeschutz, Setup-Assistent, Release 1.0 | ✅ (v1.0.0) |
 | 1.1 | Audio-Clips (Computerstimme, Aufnahme, Upload), Smart Attendant, Warteschlangen wie UniFi Talk, Übersicht mit Statistik, Yealink AX83H/AX86R | ✅ (v1.1.0) |
+
+### Vorgemerkt
+
+- **Testanrufe unter Einstellungen → System (Diagnose):** Knöpfe für die
+  öffentlichen Testziele von [sip5060.net](https://sip5060.net/test-calls/),
+  um Ton und NAT ins Internet unabhängig vom Trunk-Anbieter zu prüfen:
+  `test.echo@sip5060.net` (Echo), `test.dtmf@sip5060.net` (liest gedrückte
+  Tasten vor), `test.time@sip5060.net` (Zeitansage),
+  `test.ring@sip5060.net` (klingelt nur, nimmt nie ab). Voraussetzung:
+  Direktwahl von SIP-Adressen (`name@domain`) über das externe Profil, ohne
+  Trunk – abschaltbar und nur für freigegebene Nebenstellen.

@@ -233,6 +233,13 @@
 							<p class="hint">{t('settings.externalIpHint')}</p>
 						</div>
 						<div>
+							<label class="flex items-center gap-2"
+								><input type="checkbox" bind:checked={settings.sip_uri_dialing} />
+								{t('settings.sipUriDialing')}</label
+							>
+							<p class="hint">{t('settings.sipUriDialingHint')}</p>
+						</div>
+						<div>
 							<label for="s-tz">{t('settings.timezone')}</label>
 							<select id="s-tz" class="input" bind:value={settings.timezone}>
 								{#each timezones as tz (tz)}<option value={tz}>{tz}</option>{/each}

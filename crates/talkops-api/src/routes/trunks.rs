@@ -5,13 +5,13 @@ use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use talkops_core::audit;
 use talkops_core::presets::{AccountMode, TrunkPreset, render_template};
 use talkops_core::trunks::{
     self, AccountInput, NumberDestination, NumberInput, PhoneNumber, Trunk, TrunkAccount,
     TrunkInput,
 };
 use talkops_core::users::Role;
+use talkops_core::{audit, numbering};
 use utoipa::ToSchema;
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
@@ -227,6 +227,13 @@ pub async fn create_account(
     Json(input): Json<AccountInput>,
 ) -> ApiResult<Json<TrunkAccount>> {
     auth.require(Role::Admin)?;
+    numbering::check_destination(
+        &state.db,
+        auth.tenant,
+        input.destination_type,
+        input.destination_id,
+    )
+    .await?;
     let account =
         trunks::create_account(&state.db, auth.tenant, &state.secrets, id, &input).await?;
     audit::record(
@@ -251,6 +258,13 @@ pub async fn update_account(
     Json(input): Json<AccountInput>,
 ) -> ApiResult<Json<TrunkAccount>> {
     auth.require(Role::Admin)?;
+    numbering::check_destination(
+        &state.db,
+        auth.tenant,
+        input.destination_type,
+        input.destination_id,
+    )
+    .await?;
     let account =
         trunks::update_account(&state.db, auth.tenant, &state.secrets, id, &input).await?;
     audit::record(&state.db, &auth.actor(), "update", "trunk_account", Some(id.to_string()), json!({"username": account.username, "enabled": account.enabled, "password_changed": input.password.as_deref().is_some_and(|p| !p.is_empty())})).await?;
@@ -322,6 +336,8 @@ pub async fn add_line(
             auth_username,
             password: Some(input.password.clone()),
             enabled: true,
+            destination_type: NumberDestination::None,
+            destination_id: None,
         },
     )
     .await?;

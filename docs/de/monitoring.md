@@ -94,6 +94,10 @@ groups:
   Gespräch), *Trunks ab- und anmelden* oder beides. Hilft, wenn der Anbieter mit
   „403 Too many simultaneous sessions“ ablehnt. Trunk-Gespräche nutzen
   Session-Timer (600 s), damit der Anbieter verwaiste Gespräche selbst beendet.
+- **Testanrufe**: Echo, Tastentest, Zeitansage und „nur klingeln“ von
+  [sip5060.net](https://sip5060.net/test-calls/) – prüfen Ton und NAT ins
+  Internet ohne Trunk-Anbieter. Der Knopf öffnet das Softphone mit der
+  Adresse; braucht *SIP-Adressen wählen erlauben*.
 - **Neustart**: *FreeSWITCH neu starten* oder *Alle Dienste neu starten*
   (FreeSWITCH, Media-Worker, TalkOps). Die Dienste beenden sich und Docker
   startet sie dank `restart: unless-stopped` neu; laufende Gespräche werden

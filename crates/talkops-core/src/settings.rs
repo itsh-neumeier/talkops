@@ -50,6 +50,9 @@ pub struct TenantSettings {
     /// first transcript; empty = none.
     #[serde(default)]
     pub transcription_refine: String,
+    /// Extensions may dial SIP addresses (`user@domain`).
+    #[serde(default = "yes")]
+    pub sip_uri_dialing: bool,
     /// Names and terms passed to Whisper as context, comma-separated.
     #[serde(default)]
     pub transcription_vocabulary: String,
@@ -140,7 +143,8 @@ const COLUMNS: &str = "country_code, area_code, national_prefix, international_p
                        emergency_numbers, external_ip, default_language, default_number_id, timezone, \
                        record_inbound, record_outbound, record_internal, recording_announcement, \
                        recording_retention_days, transcription_enabled, hold_music, hold_music_clip_id, \
-                       transcription_quality, transcription_vocabulary, transcription_refine";
+                       transcription_quality, transcription_vocabulary, transcription_refine, \
+                       sip_uri_dialing";
 
 pub async fn get<'e>(db: impl PgExecutor<'e>, tenant: TenantId) -> CoreResult<TenantSettings> {
     let sql = format!("SELECT {COLUMNS} FROM tenant_settings WHERE tenant_id = $1");
@@ -160,7 +164,7 @@ pub async fn update<'e>(
              recording_announcement = $14, recording_retention_days = $15,
              transcription_enabled = $16, hold_music = $17, hold_music_clip_id = $18,
              transcription_quality = $19, transcription_vocabulary = $20,
-             transcription_refine = $21, updated_at = now()
+             transcription_refine = $21, sip_uri_dialing = $22, updated_at = now()
          WHERE tenant_id = $1 RETURNING {COLUMNS}"
     );
     Ok(sqlx::query_as(&sql)
@@ -185,6 +189,7 @@ pub async fn update<'e>(
         .bind(&s.transcription_quality)
         .bind(s.transcription_vocabulary.trim())
         .bind(&s.transcription_refine)
+        .bind(s.sip_uri_dialing)
         .fetch_one(db)
         .await?)
 }

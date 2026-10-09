@@ -177,6 +177,9 @@ export interface TrunkAccount {
 	username: string;
 	auth_username: string;
 	enabled: boolean;
+	/** Inbound calls to the account itself (accounts without numbers). */
+	destination_type: DestinationType;
+	destination_id: string | null;
 	gateway: string;
 	state: GatewayState | null;
 }
@@ -217,6 +220,8 @@ export interface Settings {
 	transcription_quality: TranscriptionEngine;
 	/** Engine of the more accurate second pass; '' = none. */
 	transcription_refine: TranscriptionEngine | '';
+	/** Extensions may dial SIP addresses (user@domain). */
+	sip_uri_dialing: boolean;
 	/** Names and terms Whisper should recognise, comma-separated. */
 	transcription_vocabulary: string;
 	/** Built-in piece, '' for all pieces shuffled. */

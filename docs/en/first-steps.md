@@ -39,3 +39,23 @@ their calls under *Call log*.
 | `0043 1 234567`, `+43…` | international |
 | `1234567` | local (with the configured area code) |
 | `*31 030 1234567`, `#31#030 1234567` | this call with the caller ID hidden |
+| `name@domain.com` | SIP address: through a trunk account of the same domain, otherwise directly over the internet |
+
+### SIP addresses and accounts without a phone number
+
+Some providers (e.g. sip2sip.info / SIP Thor) only give you a SIP address like
+`name@sip2sip.info`, no phone number:
+
+1. *Settings → Trunks → New trunk*, preset *Generic SIP provider*, the
+   provider's registrar (e.g. `sip2sip.info`).
+2. In the trunk, *Add account* with username and password – no phone number
+   needed. Under *Inbound calls to this account* pick the extension (or
+   group, voicemail …) that should ring for calls to the SIP address.
+3. Calling out: enter the address in the softphone or on the phone, e.g.
+   `anna@sip2sip.info`. Addresses of the same domain go through the account,
+   all others directly over the internet.
+
+SIP addresses are recognized by letters in the name; plain digits
+(`12345@domain`) stay phone numbers. Switch off under *Settings → Telephony →
+Allow dialing SIP addresses*. For direct calls over the internet the external
+IP should be set, otherwise audio may not arrive.

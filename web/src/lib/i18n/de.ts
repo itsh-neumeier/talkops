@@ -190,6 +190,22 @@ const de: Record<keyof typeof en, string> = {
 	'diag.copy': 'Kopieren',
 	'diag.copied': 'Kopiert',
 	'diag.copyFailed': 'Kopieren fehlgeschlagen – bitte herunterladen',
+	'trunks.accountDestination': 'Eingehende Anrufe an diesen Account',
+	'trunks.accountDestinationNone': 'Nur über Rufnummern',
+	'trunks.accountDestinationHint':
+		'Für Accounts ohne Rufnummer (z. B. eine SIP-Adresse wie name@sip2sip.info): wohin Anrufe an den Account selbst gehen. Accounts mit Rufnummern brauchen das nicht.',
+	'settings.sipUriDialing': 'SIP-Adressen wählen erlauben (name@domain)',
+	'settings.sipUriDialingHint':
+		'Nebenstellen können SIP-Adressen anrufen: über einen Trunk-Account derselben Domain, sonst direkt übers Internet (für guten Ton die externe IP oben eintragen).',
+	'diag.testCalls': 'Testanrufe',
+	'diag.testCallsHint':
+		'Öffentliche Testziele: prüfen Ton und NAT ins Internet, ohne Trunk-Anbieter. Öffnet das Softphone mit der Adresse – dann „Anrufen“.',
+	'diag.testCallsSource':
+		'Testziele von sip5060.net. Braucht „SIP-Adressen wählen“ (Einstellungen → Telefonie).',
+	'diag.test.echo': 'Echo (du hörst dich selbst)',
+	'diag.test.dtmf': 'Tastentest (liest Tasten vor, mit # abschließen)',
+	'diag.test.time': 'Zeitansage',
+	'diag.test.ring': 'Nur klingeln (nimmt nie ab)',
 	'diag.download': 'Herunterladen',
 	'diag.clear': 'Leeren',
 	'diag.empty': 'Noch kein Log. Debug-Logging starten und das Problem nachstellen.',

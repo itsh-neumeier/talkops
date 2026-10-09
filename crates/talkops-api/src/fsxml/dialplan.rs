@@ -280,6 +280,13 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
         return Ok(actions);
     }
 
+    if let Some((user, host)) = sip_address(req) {
+        actions.extend(
+            plan_sip_address(r, tenant, &caller, &settings, &user, &host, hide_once).await?,
+        );
+        return Ok(actions);
+    }
+
     if let Some(feature) = feature_code(r, tenant, &caller, &dest).await? {
         actions.extend(feature);
         return Ok(actions);
@@ -368,6 +375,113 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
         }
     }
     Ok(actions)
+}
+
+/// A SIP address dialed by a phone (`sip:test.echo@sip5060.net`): user
+/// from the request URI's user part (or `user@host` dialed as a whole),
+/// host from the request URI. Only users with letters or `.`/`_`/`-`
+/// count, so phones that put TalkOps' own host name into the request URI
+/// keep dialing numbers; both parts are restricted to characters that are
+/// safe in a dial string.
+fn sip_address(req: &CallRequest) -> Option<(String, String)> {
+    let dest = req.destination.trim();
+    let dest = dest.strip_prefix("sip:").unwrap_or(dest);
+    let (user, host) = match dest.split_once('@') {
+        Some((user, host)) => (user, host),
+        None => (dest, req.var("sip_req_host")?),
+    };
+    let host = host
+        .split([':', ';', '>'])
+        .next()
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    let user_ok = (1..=64).contains(&user.len())
+        && user
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || "._-+~!*()'".contains(c))
+        && user
+            .chars()
+            .any(|c| c.is_ascii_alphabetic() || "._-".contains(c));
+    let host_ok = (3..=253).contains(&host.len())
+        && host
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-')
+        && host.contains('.')
+        && host.chars().any(|c| c.is_ascii_alphabetic())
+        && !host.starts_with(['.', '-'])
+        && host != SIP_DOMAIN
+        && !host.ends_with(".local")
+        && !host.ends_with(".invalid");
+    (user_ok && host_ok).then(|| (user.to_owned(), host))
+}
+
+/// Calls a SIP address: through an account of a trunk with the same
+/// domain (e.g. a sip2sip account calling another sip2sip user), else
+/// directly over the internet via the external profile.
+async fn plan_sip_address(
+    r: &Routing<'_>,
+    tenant: TenantId,
+    caller: &Extension,
+    settings: &TenantSettings,
+    user: &str,
+    host: &str,
+    hide_once: bool,
+) -> CoreResult<Vec<Action>> {
+    if !settings.sip_uri_dialing {
+        return Ok(reject("403 Forbidden"));
+    }
+    let gateway = trunks::active_gateways(r.pool)
+        .await?
+        .into_iter()
+        .filter(|g| g.tenant_id == tenant)
+        .find(|g| {
+            r.catalog
+                .get(&g.preset)
+                .and_then(|p| p.effective_sip(&g.overrides).ok())
+                .is_some_and(|sip| {
+                    [&sip.realm, &sip.registrar, &sip.from_domain]
+                        .into_iter()
+                        .flatten()
+                        .any(|d| d.split([':', ';']).next() == Some(host))
+                })
+        });
+    let hide = caller.hide_caller_id || hide_once;
+    let mut a = vec![
+        set("talkops_direction", "outbound"),
+        set("talkops_destination", format!("{user}@{host}")),
+        set("hangup_after_bridge", "true"),
+        set("dtmf_type", "rfc2833"),
+    ];
+    // Internet peers: Opus first; video only where the caller has it.
+    let mut codecs = AUDIO_CODECS.to_owned();
+    if caller.video_enabled {
+        codecs = format!("{codecs},{VIDEO_CODECS}");
+    }
+    a.push(("export", format!("absolute_codec_string={codecs}")));
+    match gateway {
+        Some(g) => {
+            a.push(set("talkops_trunk_id", g.trunk_id.to_string()));
+            if hide {
+                a.push(("privacy", "full".to_owned()));
+            }
+            a.push((
+                "bridge",
+                format!("sofia/gateway/{}/{user}@{host}", gateway_name(g.account_id)),
+            ));
+        }
+        None => {
+            let (number, name) = if hide {
+                ("anonymous".to_owned(), "Anonymous".to_owned())
+            } else {
+                (caller.number.clone(), sanitize_value(&caller.display_name))
+            };
+            a.push(set("effective_caller_id_number", number));
+            a.push(set("effective_caller_id_name", name));
+            a.push(set("sip_cid_type", "none"));
+            a.push(("bridge", format!("sofia/external/sip:{user}@{host}")));
+        }
+    }
+    Ok(a)
 }
 
 /// Audio codecs for internal calls without video (browser and phones).
@@ -831,7 +945,34 @@ async fn plan_public(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Actio
             }
         }
     }
-    let Some((tenant, number)) = found else {
+    // (tenant, trunk, number, destination)
+    let target = match found {
+        Some((tenant, number)) => Some((
+            tenant,
+            number.trunk_id,
+            Some(number.id),
+            number.destination_type,
+            number.destination_id,
+        )),
+        // An account without (matching) numbers, e.g. a SIP address: its
+        // own destination. Only calls the gateway received carry the id.
+        None => match req.uuid_var("talkops_account_id") {
+            Some(id) => trunks::active_account(pool, id)
+                .await?
+                .filter(|(_, a)| a.destination_type != NumberDestination::None)
+                .map(|(tenant, a)| {
+                    (
+                        tenant,
+                        a.trunk_id,
+                        None,
+                        a.destination_type,
+                        a.destination_id,
+                    )
+                }),
+            None => None,
+        },
+    };
+    let Some((tenant, trunk_id, number_id, destination_type, destination_id)) = target else {
         tracing::info!(destination = %sanitize_value(&req.destination), "inbound call for unknown number");
         return Ok(reject("404 Not Found"));
     };
@@ -854,8 +995,7 @@ async fn plan_public(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Actio
             format!("force_transfer_context={CONTEXT_TRANSFER}"),
         ),
         set("talkops_direction", "inbound"),
-        set("talkops_trunk_id", number.trunk_id.to_string()),
-        set("talkops_number_id", number.id.to_string()),
+        set("talkops_trunk_id", trunk_id.to_string()),
         set(
             "talkops_caller_number",
             caller_e164.clone().unwrap_or_else(|| "anonymous".into()),
@@ -871,6 +1011,9 @@ async fn plan_public(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Actio
             ),
         ),
     ];
+    if let Some(id) = number_id {
+        actions.push(set("talkops_number_id", id.to_string()));
+    }
     let blocked = r
         .spam
         .check(pool, tenant, caller_e164.as_deref())
@@ -889,20 +1032,12 @@ async fn plan_public(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Actio
         actions.push(("respond", "603 Decline".to_owned()));
         return Ok(actions);
     }
-    if number.destination_type == NumberDestination::Extension {
-        if let Some(ext) = number.destination_id {
+    if destination_type == NumberDestination::Extension {
+        if let Some(ext) = destination_id {
             actions.push(set("talkops_extension_id", ext.to_string()));
         }
     }
-    let routed = route_to(
-        r,
-        tenant,
-        number.destination_type,
-        number.destination_id,
-        &name,
-        0,
-    )
-    .await?;
+    let routed = route_to(r, tenant, destination_type, destination_id, &name, 0).await?;
     // A bare rejection needs no call variables.
     if routed.first().is_some_and(|(app, _)| *app == "respond") {
         return Ok(routed);

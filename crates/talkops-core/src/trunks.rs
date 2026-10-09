@@ -151,6 +151,10 @@ pub struct TrunkAccount {
     #[serde(skip)]
     pub password_enc: String,
     pub enabled: bool,
+    /// Inbound calls to this account that match none of its numbers
+    /// (accounts without numbers, e.g. SIP addresses).
+    pub destination_type: NumberDestination,
+    pub destination_id: Option<Uuid>,
 }
 
 impl TrunkAccount {
@@ -175,9 +179,18 @@ pub struct AccountInput {
     pub password: Option<String>,
     #[serde(default = "yes")]
     pub enabled: bool,
+    /// Destination of calls to the account itself (see [TrunkAccount]).
+    #[serde(default = "no_destination")]
+    pub destination_type: NumberDestination,
+    #[serde(default)]
+    pub destination_id: Option<Uuid>,
 }
 
-const ACC_COLUMNS: &str = "id, trunk_id, username, auth_username, password_enc, enabled";
+fn no_destination() -> NumberDestination {
+    NumberDestination::None
+}
+
+const ACC_COLUMNS: &str = "id, trunk_id, username, auth_username, password_enc, enabled, destination_type, destination_id";
 
 pub async fn list_accounts<'e>(
     db: impl PgExecutor<'e>,
@@ -223,8 +236,9 @@ pub async fn create_account<'e>(
         return Err(CoreError::Validation("username is required".into()));
     }
     let sql = format!(
-        "INSERT INTO trunk_accounts (tenant_id, trunk_id, username, auth_username, password_enc, enabled)
-         SELECT $1, t.id, $3, $4, $5, $6 FROM trunks t WHERE t.tenant_id = $1 AND t.id = $2
+        "INSERT INTO trunk_accounts (tenant_id, trunk_id, username, auth_username, password_enc, enabled,
+                                     destination_type, destination_id)
+         SELECT $1, t.id, $3, $4, $5, $6, $7, $8 FROM trunks t WHERE t.tenant_id = $1 AND t.id = $2
          RETURNING {ACC_COLUMNS}"
     );
     Ok(sqlx::query_as(&sql)
@@ -234,6 +248,12 @@ pub async fn create_account<'e>(
         .bind(input.auth_username.trim())
         .bind(secrets.encrypt(password)?)
         .bind(input.enabled)
+        .bind(input.destination_type)
+        .bind(
+            input
+                .destination_id
+                .filter(|_| input.destination_type != NumberDestination::None),
+        )
         .fetch_one(db)
         .await?)
 }
@@ -251,7 +271,8 @@ pub async fn update_account<'e>(
     };
     let sql = format!(
         "UPDATE trunk_accounts SET username = $3, auth_username = $4,
-             password_enc = COALESCE($5, password_enc), enabled = $6, updated_at = now()
+             password_enc = COALESCE($5, password_enc), enabled = $6,
+             destination_type = $7, destination_id = $8, updated_at = now()
          WHERE tenant_id = $1 AND id = $2 RETURNING {ACC_COLUMNS}"
     );
     Ok(sqlx::query_as(&sql)
@@ -261,6 +282,12 @@ pub async fn update_account<'e>(
         .bind(input.auth_username.trim())
         .bind(password_enc)
         .bind(input.enabled)
+        .bind(input.destination_type)
+        .bind(
+            input
+                .destination_id
+                .filter(|_| input.destination_type != NumberDestination::None),
+        )
         .fetch_one(db)
         .await?)
 }
@@ -279,6 +306,28 @@ pub async fn delete_account<'e>(
         return Err(CoreError::NotFound);
     }
     Ok(())
+}
+
+/// An enabled account of an enabled trunk, with its tenant (inbound
+/// routing knows only the account id from the gateway variables).
+pub async fn active_account(
+    pool: &PgPool,
+    account: Uuid,
+) -> CoreResult<Option<(TenantId, TrunkAccount)>> {
+    let sql = format!(
+        "SELECT a.tenant_id, {cols} FROM trunk_accounts a JOIN trunks t ON t.id = a.trunk_id
+         WHERE a.id = $1 AND a.enabled AND t.enabled",
+        cols = ACC_COLUMNS
+            .split(", ")
+            .map(|c| format!("a.{c}"))
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
+    let Some(row) = sqlx::query(&sql).bind(account).fetch_optional(pool).await? else {
+        return Ok(None);
+    };
+    let tenant: TenantId = sqlx::Row::try_get(&row, "tenant_id")?;
+    Ok(Some((tenant, TrunkAccount::from_row(&row)?)))
 }
 
 /// Enabled accounts of enabled trunks across all tenants: the gateways

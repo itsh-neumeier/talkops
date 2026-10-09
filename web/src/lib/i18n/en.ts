@@ -198,6 +198,22 @@ export default {
 	'diag.copy': 'Copy',
 	'diag.copied': 'Copied',
 	'diag.copyFailed': 'Copy failed – use download',
+	'trunks.accountDestination': 'Inbound calls to this account',
+	'trunks.accountDestinationNone': 'Only via phone numbers',
+	'trunks.accountDestinationHint':
+		'For accounts without a phone number (e.g. a SIP address like name@sip2sip.info): where calls to the account itself go. Accounts with numbers do not need this.',
+	'settings.sipUriDialing': 'Allow dialing SIP addresses (name@domain)',
+	'settings.sipUriDialingHint':
+		'Extensions can call SIP addresses: through a trunk account of the same domain, otherwise directly over the internet (enter the external IP above for good audio).',
+	'diag.testCalls': 'Test calls',
+	'diag.testCallsHint':
+		'Public test targets: check audio and NAT to the internet without a trunk provider. Opens the softphone with the address – then "Call".',
+	'diag.testCallsSource':
+		'Test targets by sip5060.net. Needs "Allow dialing SIP addresses" (Settings → Telephony).',
+	'diag.test.echo': 'Echo (you hear yourself)',
+	'diag.test.dtmf': 'Key test (reads keys back, end with #)',
+	'diag.test.time': 'Time announcement',
+	'diag.test.ring': 'Ring only (never answers)',
 	'diag.download': 'Download',
 	'diag.clear': 'Clear',
 	'diag.empty': 'No log yet. Start debug logging and reproduce the problem.',

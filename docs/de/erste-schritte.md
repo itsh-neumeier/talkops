@@ -41,3 +41,25 @@ Zugangsdaten und unter *Anrufliste* ihre Gespräche.
 | `0043 1 234567`, `+43…` | international |
 | `1234567` | Ortsnetz (mit hinterlegter Ortsvorwahl) |
 | `*31 030 1234567`, `#31#030 1234567` | dieser Anruf mit unterdrückter Rufnummer |
+| `name@domain.de` | SIP-Adresse: über einen Trunk-Account derselben Domain, sonst direkt übers Internet |
+
+### SIP-Adressen und Accounts ohne Rufnummer
+
+Manche Anbieter (z. B. sip2sip.info / SIP Thor) vergeben nur eine SIP-Adresse
+wie `name@sip2sip.info`, keine Telefonnummer:
+
+1. *Einstellungen → Trunks → Neuer Trunk*, Vorlage *Generic SIP provider*,
+   Registrar des Anbieters (z. B. `sip2sip.info`).
+2. Im Trunk *Account hinzufügen* mit Benutzername und Passwort – eine
+   Rufnummer ist nicht nötig. Unter *Eingehende Anrufe an diesen Account*
+   die Nebenstelle (oder Gruppe, Voicemail …) wählen, bei der Anrufe an die
+   SIP-Adresse klingeln sollen.
+3. Rauswählen: im Softphone oder am Telefon die Adresse eingeben, z. B.
+   `anna@sip2sip.info`. Adressen derselben Domain gehen über den Account,
+   alle anderen direkt übers Internet.
+
+SIP-Adressen sind erkennbar an Buchstaben im Namen; reine Ziffern
+(`12345@domain`) bleiben Telefonnummern. Abschalten unter *Einstellungen →
+Telefonie → SIP-Adressen wählen erlauben*. Für direkte Anrufe übers
+Internet sollte die externe IP eingetragen sein, sonst kommt der Ton
+womöglich nicht an.

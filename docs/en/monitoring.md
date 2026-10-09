@@ -93,6 +93,10 @@ groups:
   *Sign trunks off and on* or both. Helps when the provider rejects calls with
   "403 Too many simultaneous sessions". Trunk calls use session timers
   (600 s) so the provider ends orphaned calls itself.
+- **Test calls**: echo, key test, time announcement and "ring only" by
+  [sip5060.net](https://sip5060.net/test-calls/) – check audio and NAT to the
+  internet without a trunk provider. The button opens the softphone with the
+  address; needs *Allow dialing SIP addresses*.
 - **Restart**: *Restart FreeSWITCH* or *Restart all services* (FreeSWITCH,
   media worker, TalkOps). The services exit and Docker starts them again
   thanks to `restart: unless-stopped`; active calls are dropped.

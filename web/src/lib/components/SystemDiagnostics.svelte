@@ -53,6 +53,14 @@
 
 	const MAX_SHOWN = 5000;
 
+	/** Public test targets (sip5060.net): sound and NAT without a provider. */
+	const testCalls = [
+		{ uri: 'test.echo@sip5060.net', label: 'diag.test.echo' },
+		{ uri: 'test.dtmf@sip5060.net', label: 'diag.test.dtmf' },
+		{ uri: 'test.time@sip5060.net', label: 'diag.test.time' },
+		{ uri: 'test.ring@sip5060.net', label: 'diag.test.ring' }
+	] as const;
+
 	async function load() {
 		try {
 			view = await api.get<View>('/diagnostics');
@@ -356,6 +364,20 @@
 	{:else}
 		<p class="text-sm text-slate-500 dark:text-slate-400">{t('diag.noChannels')}</p>
 	{/if}
+</section>
+
+<section class="card space-y-3">
+	<h2>{t('diag.testCalls')}</h2>
+	<p class="text-sm text-slate-600 dark:text-slate-300">{t('diag.testCallsHint')}</p>
+	<div class="grid gap-2 sm:grid-cols-2">
+		{#each testCalls as tc (tc.uri)}
+			<a class="btn justify-start text-left" href="/phone?dial={encodeURIComponent(tc.uri)}"
+				><span class="font-medium">{t(tc.label)}</span>
+				<span class="ml-2 font-mono text-xs text-slate-500 dark:text-slate-400">{tc.uri}</span></a
+			>
+		{/each}
+	</div>
+	<p class="hint">{t('diag.testCallsSource')}</p>
 </section>
 
 <section class="card space-y-3">

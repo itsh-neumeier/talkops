@@ -169,6 +169,9 @@
 	}
 
 	onMount(() => {
+		// Test calls from the diagnostics page: `/phone?dial=test.echo@sip5060.net`.
+		const dial = new URLSearchParams(location.search).get('dial');
+		if (dial) number = dial.slice(0, 320);
 		if (secure) start();
 	});
 	onDestroy(() => {
@@ -179,15 +182,25 @@
 			.finally(() => u.disconnect().catch(() => {}));
 	});
 
+	/** A number, or a SIP address (`name@domain`) called as is. */
+	function callTarget(input: string): { display: string; uri: string | null } | null {
+		const raw = input.trim().replace(/^sip:/i, '');
+		const addr = raw.match(/^([A-Za-z0-9._~!*'()+-]{1,64})@([A-Za-z0-9.-]{3,253})$/);
+		if (addr) return { display: raw, uri: `sip:${addr[1]}@${addr[2].toLowerCase()}` };
+		const digits = raw.replace(/[^0-9*#+]/g, '');
+		return digits ? { display: digits, uri: null } : null;
+	}
+
 	async function call(withVideo: boolean) {
-		const dest = (number || lastDialed).replace(/[^0-9*#+]/g, '');
-		if (!user || !dest || !account) return;
+		const target = callTarget(number || lastDialed);
+		if (!user || !target || !account) return;
+		const dest = target.display;
 		error = '';
 		lastDialed = dest;
 		peer = { name: '', number: dest };
 		video = withVideo;
 		try {
-			await user.call(`sip:${dest}@${account.sip_domain}`, {
+			await user.call(target.uri ?? `sip:${dest}@${account.sip_domain}`, {
 				sessionDescriptionHandlerOptions: { constraints: { audio: true, video: withVideo } }
 			});
 		} catch (err) {

@@ -92,6 +92,8 @@ Jede Anfrage im Kontext `internal` (authentifizierte Geräte) bzw. `public`
 | internal | Sonderrufnummer (`11x`) | unverändert über die Rufnummer der Nebenstelle bzw. Standardrufnummer |
 | internal | extern | Wählregeln → E.164 → Format der Vorlage (`number_format`), Absender im Format `caller_id_format` per From/PAI/PPI, optional CLIR (`privacy full`) |
 | public | eigene Rufnummer | Normalisierung (+49…, 0049…, 49…, 0…) → Rufnummer → Ziel-Nebenstelle; Anrufernummer national formatiert (Rückruf ohne Umweg) |
+| internal | SIP-Adresse `name@domain` (Request-URI, Name mit Buchstaben) | über den Gateway eines Accounts derselben Domain (`sofia/gateway/gw-…/name@domain`), sonst direkt `sofia/external/sip:name@domain`; abschaltbar (`sip_uri_dialing`) |
+| public | Account ohne passende Rufnummer (`talkops_account_id` vom Gateway) | Ziel des Accounts (`trunk_accounts.destination_*`), sonst `404` |
 | public | unbekannt | `404` |
 | internal | `*78` / `*79` | Nicht stören an/aus (Bestätigungston, kein CDR) |
 | internal | `*72<Nummer>` / `*73` | Rufumleitung sofort an/aus (Ziel: Nebenstelle oder externe Nummer) |
@@ -396,14 +398,3 @@ talkops/
 | 7 | WebRTC & Identität: Softphone mit Video, LDAP/AD, OIDC, 2FA | ✅ |
 | 8 | Betrieb: Backup/Restore, Metriken, Hardening, SIP-Anmeldeschutz, Setup-Assistent, Release 1.0 | ✅ (v1.0.0) |
 | 1.1 | Audio-Clips (Computerstimme, Aufnahme, Upload), Smart Attendant, Warteschlangen wie UniFi Talk, Übersicht mit Statistik, Yealink AX83H/AX86R | ✅ (v1.1.0) |
-
-### Vorgemerkt
-
-- **Testanrufe unter Einstellungen → System (Diagnose):** Knöpfe für die
-  öffentlichen Testziele von [sip5060.net](https://sip5060.net/test-calls/),
-  um Ton und NAT ins Internet unabhängig vom Trunk-Anbieter zu prüfen:
-  `test.echo@sip5060.net` (Echo), `test.dtmf@sip5060.net` (liest gedrückte
-  Tasten vor), `test.time@sip5060.net` (Zeitansage),
-  `test.ring@sip5060.net` (klingelt nur, nimmt nie ab). Voraussetzung:
-  Direktwahl von SIP-Adressen (`name@domain`) über das externe Profil, ohne
-  Trunk – abschaltbar und nur für freigegebene Nebenstellen.

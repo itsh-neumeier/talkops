@@ -1606,3 +1606,162 @@ async fn video_only_where_enabled(db: PgPool) {
     );
     assert_eq!(codecs(&internal_call(&router, &ext21, "20").await), [audio]);
 }
+
+/// Dials `user` with the request URI host `host`, as a phone or the
+/// softphone does for `user@host`.
+async fn uri_call(
+    router: &axum::Router,
+    ext: &Value,
+    user: &str,
+    host: &str,
+) -> Vec<(String, String)> {
+    let (status, xml) = fs_post(
+        router,
+        "/fs/xml",
+        &[
+            ("section", "dialplan"),
+            ("Caller-Context", "internal"),
+            ("Caller-Destination-Number", user),
+            ("Caller-Caller-ID-Number", "20"),
+            ("variable_sip_req_host", host),
+            ("variable_talkops_tenant_id", TENANT),
+            ("variable_talkops_extension_id", ext["id"].as_str().unwrap()),
+        ],
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    actions(&xml)
+}
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn sip_addresses(db: PgPool) {
+    let router = router(db);
+    let f = fixture(&router).await;
+
+    // Direct over the internet, with the extension as caller.
+    let a = uri_call(&router, &f.ext21, "test.echo", "sip5060.net").await;
+    assert!(
+        has(&a, "bridge", "sofia/external/sip:test.echo@sip5060.net"),
+        "{a:?}"
+    );
+    assert!(has(&a, "set", "talkops_direction=outbound"));
+    assert!(has(&a, "set", "talkops_destination=test.echo@sip5060.net"));
+    assert!(has(&a, "set", "effective_caller_id_number=21"));
+    // Dialed as a whole (`user@host` in the user part) works too.
+    let a = internal_call(&router, &f.ext21, "test.dtmf@SIP5060.net").await;
+    assert!(
+        has(&a, "bridge", "sofia/external/sip:test.dtmf@sip5060.net"),
+        "{a:?}"
+    );
+
+    // Numbers stay numbers, whatever host the phone puts into the URI.
+    let a = uri_call(&router, &f.ext21, "20", "pbx.example.com").await;
+    assert!(has(&a, "bridge", &ring20(&f)), "{a:?}");
+    // Own domain, IPs and unsafe characters are no SIP addresses.
+    for (user, host) in [
+        ("alice", "talkops.local"),
+        ("alice", "192.168.1.10"),
+        ("a${x}", "example.com"),
+        ("alice", "exa mple.com"),
+    ] {
+        let a = uri_call(&router, &f.ext21, user, host).await;
+        assert!(
+            !a.iter().any(|(app, _)| app == "bridge"),
+            "{user}@{host}: {a:?}"
+        );
+    }
+
+    // Switched off.
+    let (_, mut s) = f.admin.get("/api/v1/settings").await;
+    s["sip_uri_dialing"] = json!(false);
+    f.admin.put("/api/v1/settings", s.clone()).await;
+    let a = uri_call(&router, &f.ext21, "test.echo", "sip5060.net").await;
+    assert!(has(&a, "respond", "403 Forbidden"), "{a:?}");
+    s["sip_uri_dialing"] = json!(true);
+    f.admin.put("/api/v1/settings", s).await;
+
+    // An account without numbers on the same domain (e.g. sip2sip).
+    let (status, trunk) = f
+        .admin
+        .post(
+            "/api/v1/trunks",
+            json!({"name": "sip2sip", "preset": "generic", "overrides": {"registrar": "sip2sip.info"}}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{trunk}");
+    let (status, account) = f
+        .admin
+        .post(
+            &format!("/api/v1/trunks/{}/accounts", trunk["id"].as_str().unwrap()),
+            json!({"username": "timo", "password": "pw", "destination_type": "extension",
+                   "destination_id": f.ext20["id"]}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{account}");
+    assert_eq!(account["destination_type"], "extension");
+    let gw = format!("gw-{}", account["id"].as_str().unwrap().replace('-', ""));
+    let a = uri_call(&router, &f.ext21, "anna", "sip2sip.info").await;
+    assert!(
+        has(
+            &a,
+            "bridge",
+            &format!("sofia/gateway/{gw}/anna@sip2sip.info")
+        ),
+        "{a:?}"
+    );
+    assert!(has(
+        &a,
+        "set",
+        &format!("talkops_trunk_id={}", trunk["id"].as_str().unwrap())
+    ));
+
+    // Inbound to the account: its own destination.
+    let inbound = |account: Option<&str>| {
+        let router = router.clone();
+        let account = account.map(str::to_owned);
+        async move {
+            let mut form = vec![
+                ("section", "dialplan"),
+                ("Caller-Context", "public"),
+                ("Caller-Destination-Number", "timo"),
+                ("Caller-Caller-ID-Number", "bob"),
+            ];
+            if let Some(acc) = &account {
+                form.push(("variable_talkops_account_id", acc.as_str()));
+            }
+            let (_, xml) = fs_post(&router, "/fs/xml", &form).await;
+            actions(&xml)
+        }
+    };
+    let a = inbound(account["id"].as_str()).await;
+    assert!(has(&a, "bridge", &ring20(&f)), "{a:?}");
+    assert!(has(&a, "set", "talkops_direction=inbound"));
+    // Unsolicited calls (no gateway) and accounts without destination: 404.
+    assert!(has(&inbound(None).await, "respond", "404 Not Found"));
+    let mut acc = account.clone();
+    acc["destination_type"] = json!("none");
+    acc["destination_id"] = Value::Null;
+    let (status, _) = f
+        .admin
+        .put(
+            &format!("/api/v1/trunk-accounts/{}", account["id"].as_str().unwrap()),
+            acc,
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(has(
+        &inbound(account["id"].as_str()).await,
+        "respond",
+        "404 Not Found"
+    ));
+    // Unknown destinations are refused.
+    let (status, _) = f
+        .admin
+        .put(
+            &format!("/api/v1/trunk-accounts/{}", account["id"].as_str().unwrap()),
+            json!({"username": "timo", "destination_type": "extension",
+                   "destination_id": uuid::Uuid::new_v4()}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+}

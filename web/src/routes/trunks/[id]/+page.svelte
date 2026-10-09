@@ -4,12 +4,14 @@
 	import { onMount } from 'svelte';
 	import {
 		api,
+		type DestinationType,
 		type Extension,
 		type PhoneNumber,
 		type Preset,
 		type TrunkAccount,
 		type TrunkDetail
 	} from '#lib/api.ts';
+	import DestinationSelect from '#lib/components/DestinationSelect.svelte';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
 	import Modal from '#lib/components/Modal.svelte';
 	import NumberDestination from '#lib/components/NumberDestination.svelte';
@@ -47,7 +49,16 @@
 		auth_username: string;
 		password: string;
 		enabled: boolean;
-	}>({ username: '', auth_username: '', password: '', enabled: true });
+		destination_type: DestinationType;
+		destination_id: string | null;
+	}>({
+		username: '',
+		auth_username: '',
+		password: '',
+		enabled: true,
+		destination_type: 'none',
+		destination_id: null
+	});
 	let numberOpen = $state(false);
 	let number = $state({ e164: '', label: '', account_id: '' });
 
@@ -145,9 +156,18 @@
 					username: a.username,
 					auth_username: a.auth_username,
 					password: '',
-					enabled: a.enabled
+					enabled: a.enabled,
+					destination_type: a.destination_type,
+					destination_id: a.destination_id
 				}
-			: { username: '', auth_username: '', password: '', enabled: true };
+			: {
+					username: '',
+					auth_username: '',
+					password: '',
+					enabled: true,
+					destination_type: 'none',
+					destination_id: null
+				};
 		accountOpen = true;
 	}
 
@@ -158,7 +178,9 @@
 			username: account.username,
 			auth_username: account.auth_username,
 			password: account.password || null,
-			enabled: account.enabled
+			enabled: account.enabled,
+			destination_type: account.destination_type,
+			destination_id: account.destination_id
 		};
 		try {
 			if (account.id) await api.put(`/trunk-accounts/${account.id}`, body);
@@ -453,6 +475,16 @@
 				required={!account.id}
 				placeholder={account.id ? t('trunks.passwordKeep') : ''}
 			/>
+		</div>
+		<div>
+			<label for="a-dest">{t('trunks.accountDestination')}</label>
+			<DestinationSelect
+				inputId="a-dest"
+				bind:type={account.destination_type}
+				bind:id={account.destination_id}
+				noneLabel={t('trunks.accountDestinationNone')}
+			/>
+			<p class="hint">{t('trunks.accountDestinationHint')}</p>
 		</div>
 		<label class="flex items-center gap-2"
 			><input type="checkbox" bind:checked={account.enabled} /> {t('common.enabled')}</label

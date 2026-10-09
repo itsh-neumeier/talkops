@@ -245,6 +245,8 @@ async fn trunks_accounts_numbers_routes(pool: PgPool) {
             auth_username: String::new(),
             password: Some("pw".into()),
             enabled: true,
+            destination_type: trunks::NumberDestination::None,
+            destination_id: None,
         },
     )
     .await
@@ -259,7 +261,9 @@ async fn trunks_accounts_numbers_routes(pool: PgPool) {
                 username: "x".into(),
                 auth_username: String::new(),
                 password: Some("pw".into()),
-                enabled: true
+                enabled: true,
+                destination_type: trunks::NumberDestination::None,
+                destination_id: None,
             }
         )
         .await
@@ -334,6 +338,8 @@ async fn trunks_accounts_numbers_routes(pool: PgPool) {
             auth_username: String::new(),
             password: None,
             enabled: true,
+            destination_type: trunks::NumberDestination::None,
+            destination_id: None,
         },
     )
     .await

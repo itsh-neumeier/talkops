@@ -31,10 +31,6 @@
 		{ href: '/doors', key: 'nav.doors', role: 'user' },
 		{ href: '/phonebook', key: 'nav.phonebook', role: 'user' },
 		{ href: '/search', key: 'nav.search', role: 'user' },
-		{ href: '/me', key: 'nav.myPhones', role: 'user' },
-		{ href: '/extensions', key: 'nav.extensions', role: 'operator' },
-		{ href: '/users', key: 'nav.users', role: 'operator' },
-		{ href: '/routing', key: 'nav.routing', role: 'operator' },
 		{ href: '/settings', key: 'nav.settings', role: 'user' }
 	];
 

@@ -13,7 +13,7 @@ interface or Home Assistant.
 
 ## 1. Create an extension for the door
 
-**Extensions → New extension**, e.g. `8001` "Front door". Inside it,
+**Settings → Extensions → New extension**, e.g. `8001` "Front door". Inside it,
 **Add device**, type **Door station**. The station needs the SIP credentials shown
 (user name `8001-1`, password).
 

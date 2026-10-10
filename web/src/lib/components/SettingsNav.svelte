@@ -10,17 +10,34 @@
 		{ id: 'system', icon: '⚙', admin: true },
 		{ id: 'account', icon: '👤', admin: false }
 	];
-	/** Setup pages that live under Settings instead of the main menu. */
+	type PageKey =
+		| 'nav.myPhones'
+		| 'nav.extensions'
+		| 'nav.users'
+		| 'nav.routing'
+		| 'nav.trunks'
+		| 'nav.numbers'
+		| 'nav.phones'
+		| 'nav.audit';
+	/**
+	 * Pages that live under Settings instead of the main menu: personal ones
+	 * (with the sections) and the setup of the system.
+	 */
 	export const settingsPages: {
 		href: string;
-		key: 'nav.trunks' | 'nav.numbers' | 'nav.phones' | 'nav.audit';
+		key: PageKey;
 		icon: string;
-		role: 'admin' | 'operator';
+		role: 'admin' | 'operator' | 'user';
+		group: 'personal' | 'setup';
 	}[] = [
-		{ href: '/trunks', key: 'nav.trunks', icon: '🔌', role: 'operator' },
-		{ href: '/numbers', key: 'nav.numbers', icon: '#', role: 'operator' },
-		{ href: '/phones', key: 'nav.phones', icon: '📟', role: 'operator' },
-		{ href: '/audit', key: 'nav.audit', icon: '📜', role: 'admin' }
+		{ href: '/me', key: 'nav.myPhones', icon: '📱', role: 'user', group: 'personal' },
+		{ href: '/extensions', key: 'nav.extensions', icon: '☏', role: 'operator', group: 'setup' },
+		{ href: '/users', key: 'nav.users', icon: '👥', role: 'operator', group: 'setup' },
+		{ href: '/routing', key: 'nav.routing', icon: '🔀', role: 'operator', group: 'setup' },
+		{ href: '/trunks', key: 'nav.trunks', icon: '🔌', role: 'operator', group: 'setup' },
+		{ href: '/numbers', key: 'nav.numbers', icon: '#', role: 'operator', group: 'setup' },
+		{ href: '/phones', key: 'nav.phones', icon: '📟', role: 'operator', group: 'setup' },
+		{ href: '/audit', key: 'nav.audit', icon: '📜', role: 'admin', group: 'setup' }
 	];
 </script>
 
@@ -40,7 +57,8 @@
 	} = $props();
 
 	const visible = $derived(sections.filter((s) => !s.admin || hasRole('admin')));
-	const pages = $derived(settingsPages.filter((p) => hasRole(p.role)));
+	const personal = $derived(settingsPages.filter((p) => p.group === 'personal' && hasRole(p.role)));
+	const pages = $derived(settingsPages.filter((p) => p.group === 'setup' && hasRole(p.role)));
 	const path = $derived(page.url.pathname);
 	const cls = (on: boolean) =>
 		`flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-left text-sm whitespace-nowrap ${
@@ -70,6 +88,12 @@
 				{t(`settings.section.${s.id}`)}</a
 			>
 		{/if}
+	{/each}
+	{#each personal as p (p.href)}
+		{@const on = path === p.href || path.startsWith(p.href + '/')}
+		<a href={p.href} class={cls(on)} aria-current={on ? 'page' : undefined}
+			><span aria-hidden="true" class="w-5 text-center">{p.icon}</span> {t(p.key)}</a
+		>
 	{/each}
 	{#if pages.length}
 		<p

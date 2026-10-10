@@ -21,7 +21,7 @@ TalkOps can record calls, turn recordings and voicemails into text locally
   deleted automatically (checked hourly). `0` = forever. Default: 90.
 - **Transcribe recordings and voicemails** – switches Whisper on.
 
-Per extension (**Extensions → Edit → Call recording**):
+Per extension (**Settings → Extensions → Edit → Call recording**):
 
 | Setting | Effect |
 |---|---|

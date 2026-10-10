@@ -1,6 +1,6 @@
 # Anrufsteuerung
 
-Unter **Anrufsteuerung** legst du fest, wohin Anrufe gehen. Rufnummern,
+Unter **Einstellungen → Anrufsteuerung** legst du fest, wohin Anrufe gehen. Rufnummern,
 Ausweichziele, Menütasten und Öffnungszeiten können auf jedes dieser Ziele
 zeigen: Nebenstelle, Voicemail einer Nebenstelle, Rufgruppe, Zeitsteuerung,
 Smart Attendant oder Warteschlange. Interne Nummern sind über alle Arten hinweg
@@ -32,7 +32,7 @@ Einstellungen.
 ## Smart Attendant
 
 Ein Smart Attendant ist ein Ablauf für eingehende Anrufe – wie bei UniFi Talk.
-Er wird unter **Anrufsteuerung → Smart Attendant** als Baum aus Schritten
+Er wird unter **Einstellungen → Anrufsteuerung → Smart Attendant** als Baum aus Schritten
 gebaut: Mit **+** kommt ein Schritt hinzu, ein Klick auf einen Schritt öffnet
 rechts seine Einstellungen.
 
@@ -85,7 +85,7 @@ Jede Warteschlange hat eine eigene Seite mit drei Reitern:
 
 ## Anrufsperre
 
-**Anrufsteuerung → Anrufsperre** weist eingehende Anrufe ab (SIP `603 Decline`):
+**Einstellungen → Anrufsteuerung → Anrufsperre** weist eingehende Anrufe ab (SIP `603 Decline`):
 
 - **Gesperrte Nummern**: einzelne Nummern (`+4930123456`) oder ganze
   Vorwahlen mit `*` am Ende (`+49900*` für Mehrwertnummern).

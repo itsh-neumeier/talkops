@@ -18,7 +18,7 @@ via DHCP option 66 on the Wi-Fi network or enter it on the phone under
 
 1. **Phones → Add phone**: enter a name, the MAC address (label on the back)
    and the model.
-2. **Extensions → extension → Add device**: choose the phone under *Phone*.
+2. **Settings → Extensions → extension → Add device**: choose the phone under *Phone*.
    The *account* (1, 2, …) is assigned automatically; on DECT bases it is the
    handset number.
 
@@ -81,7 +81,7 @@ at night between 2 and 4 am.
 
 The phone's DND key toggles *do not disturb* of the extension on account 1.
 Both settings are also available in the web UI on the extension page and
-under *My phones*.
+under *Settings → My phones*.
 
 ## 5. Phonebook
 

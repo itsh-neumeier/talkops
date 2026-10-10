@@ -21,6 +21,10 @@ All notable changes to TalkOps. The format follows
   groups, and date and time – each switchable.
 - **Softphone: hide the own number once** – a checkbox for the next call
   only (dials `*31` in front, also before SIP addresses), then visible again.
+- **Main menu only for everyday use:** Extensions, Users and Call routing
+  moved to *Settings → Setup*, My phones next to My account. The sidebar
+  keeps Dashboard, Softphone, Calls, Voicemail, Door, Phone book, Search and
+  Settings.
 - **Skeleton loading:** lists, detail pages, dashboard and settings show
   placeholders while their data loads instead of an empty page.
 - **Test calls** under *Settings → System*: echo, key test, time and ring

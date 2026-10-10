@@ -18,7 +18,7 @@ Funktionstasten. Ab Firmware 180.86.
 
 1. **Telefone → Telefon hinzufügen**: Name, MAC-Adresse (Aufkleber auf der
    Rückseite) und Modell eintragen.
-2. **Nebenstellen → Nebenstelle → Gerät hinzufügen**: unter *Telefon* das eben
+2. **Einstellungen → Nebenstellen → Nebenstelle → Gerät hinzufügen**: unter *Telefon* das eben
    angelegte Telefon wählen. Das *Konto* (1, 2, …) wird automatisch vergeben;
    bei DECT-Basen entspricht es dem Mobilteil.
 
@@ -82,7 +82,7 @@ nächsten Start bzw. nachts zwischen 2 und 4 Uhr.
 
 Die DND-Taste des Telefons schaltet *Nicht stören* der Nebenstelle auf
 Konto 1. Beides lässt sich auch in der Weboberfläche bei der Nebenstelle bzw.
-unter *Meine Telefone* einstellen.
+unter *Einstellungen → Meine Telefone* einstellen.
 
 ## 5. Telefonbuch
 

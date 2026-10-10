@@ -1,6 +1,6 @@
 # Call routing
 
-**Call routing** decides where calls go. Phone numbers, fallbacks, menu keys
+**Settings → Call routing** decides where calls go. Phone numbers, fallbacks, menu keys
 and opening hours can point to any destination: extension, an extension's
 voicemail, ring group, time condition, Smart Attendant or queue. Internal numbers
 are unique across all of them.
@@ -28,7 +28,7 @@ again"). The time zone from the settings applies.
 ## Smart Attendant
 
 A Smart Attendant is a call flow for incoming calls, like in UniFi Talk. It is
-built under **Call routing → Smart Attendant** as a tree of steps: **+** adds a
+built under **Settings → Call routing → Smart Attendant** as a tree of steps: **+** adds a
 step, clicking a step opens its settings on the right.
 
 | Step | What happens |
@@ -77,7 +77,7 @@ Every queue has its own page with three tabs:
 
 ## Call blocking
 
-**Call routing → Call blocking** rejects inbound calls (SIP `603 Decline`):
+**Settings → Call routing → Call blocking** rejects inbound calls (SIP `603 Decline`):
 
 - **Blocked numbers**: single numbers (`+4930123456`) or whole prefixes with
   a trailing `*` (`+49900*` for premium-rate numbers).

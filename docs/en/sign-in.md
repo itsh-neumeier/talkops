@@ -20,7 +20,7 @@ store them safely; each replaces an app code once.
 
 - Codes are valid for 30 seconds (±30 s tolerance) and only once.
 - After five wrong codes the password has to be entered again.
-- Lost phone: an admin resets two-factor login under **Users → Reset 2FA**
+- Lost phone: an admin resets two-factor login under **Settings → Users → Reset 2FA**
   (audited; the person is logged out).
 
 ## Single sign-on with OpenID Connect
@@ -69,7 +69,7 @@ of a test user.
   your own CA, mount the file into the container and set `SSL_CERT_FILE`.
 - Hourly sync: accounts removed from the directory or the allowed group are
   disabled and logged out; role changes apply right away. To allow an
-  account again, an admin enables it under **Users**.
+  account again, an admin enables it under **Settings → Users**.
 
 ## Roles from groups
 

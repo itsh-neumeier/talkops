@@ -22,7 +22,7 @@ Server.
   automatisch gelöscht (stündlich geprüft). `0` = unbegrenzt. Standard: 90.
 - **Aufnahmen und Sprachnachrichten transkribieren** – schaltet Whisper ein.
 
-Je Nebenstelle (**Nebenstellen → Bearbeiten → Gesprächsaufzeichnung**):
+Je Nebenstelle (**Einstellungen → Nebenstellen → Bearbeiten → Gesprächsaufzeichnung**):
 
 | Einstellung | Wirkung |
 |---|---|

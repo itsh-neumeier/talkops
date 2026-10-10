@@ -21,7 +21,7 @@ einen App-Code.
 
 - Codes gelten 30 Sekunden (±30 s Toleranz) und nur einmal.
 - Nach fünf falschen Codes muss das Passwort erneut eingegeben werden.
-- Handy verloren: ein Admin setzt unter **Benutzer → 2FA zurücksetzen** die
+- Handy verloren: ein Admin setzt unter **Einstellungen → Benutzer → 2FA zurücksetzen** die
   Zwei-Faktor-Anmeldung zurück (protokolliert, die Person wird abgemeldet).
 
 ## Single Sign-on mit OpenID Connect
@@ -71,7 +71,7 @@ Testbenutzer DN, Gruppen und die Rolle, die er bekäme.
   setzen.
 - Stündlicher Abgleich: Wer aus dem Verzeichnis oder der erlaubten Gruppe
   entfernt wurde, wird deaktiviert und abgemeldet; Rollenwechsel greifen
-  sofort. Wieder freischalten: Admin unter **Benutzer**.
+  sofort. Wieder freischalten: Admin unter **Einstellungen → Benutzer**.
 
 ## Rollen aus Gruppen
 

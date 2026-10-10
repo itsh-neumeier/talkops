@@ -13,8 +13,8 @@ Schritte abhakt, sobald sie erledigt sind.
    „Generic SIP provider“.
 4. **Standardrufnummer.** *Einstellungen → Standardrufnummer* setzen – ohne sie
    sind keine Gespräche nach außen und keine Notrufe möglich.
-5. **Benutzer und Nebenstellen.** *Benutzer → Neuer Benutzer*, dann
-   *Nebenstellen → Neue Nebenstelle* (2–8 Ziffern, nicht mit 0 oder 11
+5. **Benutzer und Nebenstellen.** *Einstellungen → Benutzer → Neuer Benutzer*, dann
+   *Einstellungen → Nebenstellen → Neue Nebenstelle* (2–8 Ziffern, nicht mit 0 oder 11
    beginnend) und den Benutzer zuordnen.
 6. **Geräte.** In der Nebenstelle *Gerät hinzufügen*. TalkOps erzeugt
    SIP-Benutzername und -Passwort. Im Telefon eintragen:
@@ -27,7 +27,7 @@ Schritte abhakt, sobald sie erledigt sind.
 7. **Rufnummern zuordnen.** *Einstellungen → Rufnummern*: für jede Rufnummer die Nebenstelle
    wählen, bei der sie klingeln soll.
 
-Benutzer sehen nach dem Login unter *Meine Telefone* ihre Geräte samt
+Benutzer sehen nach dem Login unter *Einstellungen → Meine Telefone* ihre Geräte samt
 Zugangsdaten und unter *Anrufliste* ihre Gespräche.
 
 ## Wählen

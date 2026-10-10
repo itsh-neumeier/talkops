@@ -14,7 +14,7 @@ Telefon, in der Weboberfläche oder per Home Assistant.
 
 ## 1. Nebenstelle für die Tür anlegen
 
-**Nebenstellen → Neue Nebenstelle**, z. B. `8001` „Haustür“. Darin
+**Einstellungen → Nebenstellen → Neue Nebenstelle**, z. B. `8001` „Haustür“. Darin
 **Gerät hinzufügen**, Typ **Türsprechstelle**. Die angezeigten SIP-Zugangsdaten
 (Benutzername `8001-1`, Passwort) braucht die Station.
 

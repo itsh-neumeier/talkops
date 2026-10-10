@@ -13,7 +13,7 @@ checklist that ticks off these steps as they are done.
    “Generic SIP provider”.
 4. **Default number.** Set *Settings → Default number* – without it, no
    external or emergency calls are possible.
-5. **Users and extensions.** *Users → New user*, then *Extensions → New
+5. **Users and extensions.** *Settings → Users → New user*, then *Settings → Extensions → New
    extension* (2–8 digits, not starting with 0 or 11) and assign the user.
 6. **Devices.** In the extension, *Add device*. TalkOps generates SIP username
    and password. Configure the phone with:
@@ -25,7 +25,7 @@ checklist that ticks off these steps as they are done.
    auto-provisioning follows in phase 2.
 7. **Route numbers.** *Settings → Phone numbers*: choose the extension each number rings at.
 
-After login, users find their devices and credentials under *My phones* and
+After login, users find their devices and credentials under *Settings → My phones* and
 their calls under *Call log*.
 
 ## Dialing

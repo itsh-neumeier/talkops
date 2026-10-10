@@ -633,3 +633,86 @@ async fn ringtones_wallpapers_labels_and_phonebook_sections(db: PgPool) {
     assert!(!cfg.contains("ringtone.url"));
     assert!(cfg.contains("remote_phonebook.data.3.url = \n"), "{cfg}");
 }
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn phonebook_csv_import(db: PgPool) {
+    let router = router(db);
+    let admin = setup_admin(&router).await;
+    let sample = include_str!("../../../web/static/telefonbuch-beispiel.csv");
+
+    // Dry run: report only, nothing stored.
+    let (status, report) = admin
+        .post(
+            "/api/v1/contacts/import",
+            json!({"csv": sample, "dry_run": true}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{report}");
+    assert_eq!(report["created"], 6, "{report}");
+    assert_eq!(report["failed"], 0, "{report}");
+    assert_eq!(report["sections_created"], json!(["Familie", "Büro"]));
+    let (_, contacts) = admin.get("/api/v1/contacts").await;
+    assert_eq!(contacts.as_array().unwrap().len(), 0);
+    let (_, sections) = admin.get("/api/v1/phonebook-sections").await;
+    assert_eq!(sections.as_array().unwrap().len(), 0);
+
+    // Import for real; numbers are cleaned, sections created.
+    let (status, report) = admin
+        .post("/api/v1/contacts/import", json!({"csv": sample}))
+        .await;
+    assert_eq!(status, StatusCode::OK, "{report}");
+    assert_eq!(report["created"], 6);
+    let (_, contacts) = admin.get("/api/v1/contacts").await;
+    let contacts = contacts.as_array().unwrap();
+    assert_eq!(contacts.len(), 6);
+    let grandma = contacts
+        .iter()
+        .find(|c| c["name"] == "Oma und Opa")
+        .unwrap();
+    assert_eq!(grandma["phone_other"], "+498999998103");
+    assert!(grandma["section_id"].is_string());
+    let tax = contacts
+        .iter()
+        .find(|c| c["name"] == "Steuerbüro Beispiel")
+        .unwrap();
+    assert_eq!(tax["company"], "Schmidt; Partner");
+
+    // Again: identical rows are unchanged; changed rows only with update_existing.
+    let changed = "Name,Mobile\nPizzeria Bella,0171 3920009\n,0171 1\nNiemand,\n";
+    let (_, report) = admin
+        .post("/api/v1/contacts/import", json!({"csv": sample}))
+        .await;
+    assert_eq!(
+        (report["created"].as_u64(), report["unchanged"].as_u64()),
+        (Some(0), Some(6))
+    );
+    let (_, report) = admin
+        .post("/api/v1/contacts/import", json!({"csv": changed}))
+        .await;
+    assert_eq!(report["skipped"], 1, "{report}");
+    assert_eq!(report["failed"], 2, "{report}");
+    assert_eq!(report["errors"][0]["line"], 3);
+    let (_, report) = admin
+        .post(
+            "/api/v1/contacts/import",
+            json!({"csv": changed, "update_existing": true}),
+        )
+        .await;
+    assert_eq!(report["updated"], 1, "{report}");
+    let (_, contacts) = admin.get("/api/v1/contacts").await;
+    let pizza = contacts
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["name"] == "Pizzeria Bella")
+        .unwrap()
+        .clone();
+    assert_eq!(pizza["phone_mobile"], "01713920009");
+    assert_eq!(pizza["phone_work"], "", "update replaces all numbers");
+
+    // A file without usable columns is rejected as a whole.
+    let (status, _) = admin
+        .post("/api/v1/contacts/import", json!({"csv": "Foo;Bar\n1;2\n"}))
+        .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+}

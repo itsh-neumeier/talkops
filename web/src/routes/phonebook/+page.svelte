@@ -3,6 +3,7 @@
 	import { net } from '#lib/net.svelte.ts';
 	import { onMount } from 'svelte';
 	import { api, type Contact, type PhonebookSection } from '#lib/api.ts';
+	import ContactImport from '#lib/components/ContactImport.svelte';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
 	import Modal from '#lib/components/Modal.svelte';
 	import { t } from '#lib/i18n/index.svelte.ts';
@@ -14,6 +15,7 @@
 	/** '' = all, 'global' = without section, else a section id. */
 	let shown = $state('');
 	let sectionsOpen = $state(false);
+	let importOpen = $state(false);
 	let newSection = $state('');
 	let error = $state('');
 	let search = $state('');
@@ -127,6 +129,7 @@
 		{#if hasRole('operator')}
 			<div class="space-x-1">
 				<button class="btn" onclick={() => (sectionsOpen = true)}>{t('contacts.sections')}</button>
+				<button class="btn" onclick={() => (importOpen = true)}>{t('contacts.import')}</button>
 				<button class="btn btn-primary" onclick={() => open(null)}>{t('contacts.new')}</button>
 			</div>
 		{/if}
@@ -263,3 +266,5 @@
 		</form>
 	</div>
 </Modal>
+
+<ContactImport bind:open={importOpen} {sections} onimported={load} />

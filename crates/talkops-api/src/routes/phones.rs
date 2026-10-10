@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sha2::{Digest, Sha256};
 use talkops_core::audit;
+use talkops_core::contact_import::{self, ImportReport, ImportRequest};
 use talkops_core::phones::{
     self, Contact, ContactInput, Firmware, MediaKind, Phone, PhoneInput, PhoneMedia,
     PhonebookSection, SectionInput,
@@ -35,6 +36,8 @@ use crate::routes::provisioning::{
 const FIRMWARE_LIMIT: usize = 512 * 1024 * 1024;
 /// Largest custom ringtone any supported phone takes (T5x/T4U: 8 MB).
 const RINGTONE_LIMIT: usize = 8 * 1024 * 1024;
+/// Largest phone book CSV accepted (exports carry many unused columns).
+const IMPORT_LIMIT: usize = 8 * 1024 * 1024;
 /// Largest wallpaper Yealink phones take.
 const WALLPAPER_LIMIT: usize = 5 * 1024 * 1024;
 
@@ -45,6 +48,9 @@ pub fn router() -> OpenApiRouter<AppState> {
     let media_upload = OpenApiRouter::new()
         .routes(routes!(list_media, upload_media))
         .layer(DefaultBodyLimit::max(RINGTONE_LIMIT + 64 * 1024));
+    let import = OpenApiRouter::new()
+        .routes(routes!(import_contacts))
+        .layer(DefaultBodyLimit::max(IMPORT_LIMIT));
     OpenApiRouter::new()
         .routes(routes!(list_phones, create_phone))
         .routes(routes!(get_phone, update_phone, delete_phone))
@@ -63,6 +69,7 @@ pub fn router() -> OpenApiRouter<AppState> {
         .routes(routes!(regenerate_provisioning))
         .merge(upload)
         .merge(media_upload)
+        .merge(import)
 }
 
 /// A phone model from the catalog (`presets/phones`).
@@ -883,6 +890,31 @@ pub async fn create_contact(
     )
     .await?;
     Ok(Json(c))
+}
+
+/// Imports contacts from a CSV file (operator or admin). With `dry_run` the
+/// file is only checked and the report says what would happen.
+#[utoipa::path(post, path = "/api/v1/contacts/import", tag = "phones", request_body = ImportRequest, responses((status = 200, body = ImportReport)))]
+pub async fn import_contacts(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Json(input): Json<ImportRequest>,
+) -> ApiResult<Json<ImportReport>> {
+    auth.require(Role::Operator)?;
+    let report = contact_import::import(&state.db, auth.tenant, &input).await?;
+    if !input.dry_run {
+        audit::record(
+            &state.db,
+            &auth.actor(),
+            "import",
+            "contact",
+            None,
+            json!({"created": report.created, "updated": report.updated,
+                   "failed": report.failed, "sections_created": report.sections_created}),
+        )
+        .await?;
+    }
+    Ok(Json(report))
 }
 
 /// Updates a phonebook contact (operator or admin).

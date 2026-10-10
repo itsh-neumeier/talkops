@@ -7,6 +7,7 @@ pub mod audit;
 pub mod backups;
 pub mod blocking;
 pub mod cdr;
+pub mod contact_import;
 pub mod crypto;
 pub mod db;
 pub mod dialing;

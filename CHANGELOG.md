@@ -4,6 +4,20 @@ All notable changes to TalkOps. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- **Phone book import (CSV)** under *Phone book → Import*: preview before
+  importing, row errors with line numbers, sections created from a
+  `Section`/`Bereich` column, optional update of existing contacts. Reads the
+  TalkOps sample file (download in the dialog) as well as Outlook and Google
+  Contacts exports, UTF-8 or Windows encoding.
+
+### Changed
+
+- Phone numbers in contacts may be written as `+49 (0)89 …` or with dots.
+
 ## [1.7.1] – 2026-10-10
 
 ### Added

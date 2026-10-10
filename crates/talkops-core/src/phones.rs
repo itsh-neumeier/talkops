@@ -719,9 +719,16 @@ const CONTACT_COLUMNS: &str =
     "id, name, company, phone_work, phone_mobile, phone_other, section_id";
 
 fn clean_number(n: &str) -> CoreResult<String> {
-    let cleaned: String = n
+    let n = n.trim();
+    // "+49 (0)89 …": the trunk prefix in brackets does not belong to the number.
+    let without_trunk_zero = if n.starts_with('+') {
+        n.replacen("(0)", "", 1)
+    } else {
+        n.to_owned()
+    };
+    let cleaned: String = without_trunk_zero
         .chars()
-        .filter(|c| !matches!(c, ' ' | '-' | '/' | '(' | ')'))
+        .filter(|c| !matches!(c, ' ' | '\u{a0}' | '-' | '/' | '.' | '(' | ')'))
         .collect();
     let digits = cleaned.strip_prefix('+').unwrap_or(&cleaned);
     if !cleaned.is_empty() && (!digits.bytes().all(|b| b.is_ascii_digit()) || digits.len() > 20) {
@@ -730,9 +737,14 @@ fn clean_number(n: &str) -> CoreResult<String> {
     Ok(cleaned)
 }
 
-fn validate_contact(c: &ContactInput) -> CoreResult<[String; 3]> {
+pub(crate) fn validate_contact(c: &ContactInput) -> CoreResult<[String; 3]> {
     if c.name.trim().is_empty() {
         return Err(CoreError::Validation("name is required".into()));
+    }
+    if c.name.trim().chars().count() > 100 || c.company.trim().chars().count() > 100 {
+        return Err(CoreError::Validation(
+            "name and company: at most 100 characters".into(),
+        ));
     }
     let numbers = [
         clean_number(&c.phone_work)?,
@@ -806,8 +818,29 @@ pub async fn create_contact(
     tenant: TenantId,
     c: &ContactInput,
 ) -> CoreResult<Contact> {
-    let [work, mobile, other] = validate_contact(c)?;
+    let numbers = validate_contact(c)?;
     check_section(pool, tenant, c.section_id).await?;
+    insert_contact(pool, tenant, c, &numbers).await
+}
+
+pub async fn update_contact(
+    pool: &PgPool,
+    tenant: TenantId,
+    id: Uuid,
+    c: &ContactInput,
+) -> CoreResult<Contact> {
+    let numbers = validate_contact(c)?;
+    check_section(pool, tenant, c.section_id).await?;
+    write_contact(pool, tenant, id, c, &numbers).await
+}
+
+/// Inserts a contact that passed [`validate_contact`] (`numbers` is its result).
+pub(crate) async fn insert_contact<'e>(
+    db: impl PgExecutor<'e>,
+    tenant: TenantId,
+    c: &ContactInput,
+    [work, mobile, other]: &[String; 3],
+) -> CoreResult<Contact> {
     let sql = format!(
         "INSERT INTO contacts (tenant_id, name, company, phone_work, phone_mobile, phone_other, section_id)
          VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING {CONTACT_COLUMNS}"
@@ -820,18 +853,18 @@ pub async fn create_contact(
         .bind(mobile)
         .bind(other)
         .bind(c.section_id)
-        .fetch_one(pool)
+        .fetch_one(db)
         .await?)
 }
 
-pub async fn update_contact(
-    pool: &PgPool,
+/// Overwrites a contact with values that passed [`validate_contact`].
+pub(crate) async fn write_contact<'e>(
+    db: impl PgExecutor<'e>,
     tenant: TenantId,
     id: Uuid,
     c: &ContactInput,
+    [work, mobile, other]: &[String; 3],
 ) -> CoreResult<Contact> {
-    let [work, mobile, other] = validate_contact(c)?;
-    check_section(pool, tenant, c.section_id).await?;
     let sql = format!(
         "UPDATE contacts SET name = $3, company = $4, phone_work = $5, phone_mobile = $6, phone_other = $7,
              section_id = $8, updated_at = now()
@@ -846,7 +879,28 @@ pub async fn update_contact(
         .bind(mobile)
         .bind(other)
         .bind(c.section_id)
-        .fetch_one(pool)
+        .fetch_one(db)
+        .await?)
+}
+
+/// The contact with this name (case-insensitive) in a section or the global
+/// phone book.
+pub(crate) async fn find_contact<'e>(
+    db: impl PgExecutor<'e>,
+    tenant: TenantId,
+    name: &str,
+    section: Option<Uuid>,
+) -> CoreResult<Option<Contact>> {
+    let sql = format!(
+        "SELECT {CONTACT_COLUMNS} FROM contacts
+         WHERE tenant_id = $1 AND lower(name) = lower($2) AND section_id IS NOT DISTINCT FROM $3
+         ORDER BY id LIMIT 1"
+    );
+    Ok(sqlx::query_as(&sql)
+        .bind(tenant)
+        .bind(name)
+        .bind(section)
+        .fetch_optional(db)
         .await?)
 }
 

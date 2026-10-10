@@ -138,6 +138,36 @@ im Büro:
 Ein gelöschter Bereich verschwindet mit seinen Kontakten auch von den
 Telefonen.
 
+### Kontakte importieren (CSV)
+
+*Telefonbuch → Importieren*: CSV-Datei wählen, TalkOps zeigt sofort eine
+Vorschau (neu / unverändert / fehlerhafte Zeilen mit Zeilennummer), erst
+**Importieren** speichert. Die **Beispieldatei** gibt es im Dialog zum
+Herunterladen (`telefonbuch-beispiel.csv`):
+
+```csv
+Name;Firma;Geschäftlich;Mobil;Privat;Bereich
+Erika Mustermann;Musterfirma GmbH;030 23125 101;0171 3920001;;
+Max Mustermann;;;0171 3920002;030 23125 102;Familie
+```
+
+- **Trennzeichen** Semikolon, Komma oder Tab, Kodierung UTF-8 oder Windows
+  (Excel „CSV (Trennzeichen-getrennt)“) – beides wird erkannt.
+- **Spalten** werden am Namen in der Kopfzeile erkannt, die Reihenfolge ist
+  egal: *Name* (oder *Vorname*/*Nachname*, sonst *Firma*), *Firma*,
+  *Geschäftlich*, *Mobil*, *Privat*/*Sonstige*, *Bereich*. Exporte aus
+  Outlook (deutsch/englisch) und Google Kontakte passen ohne Umbau.
+- **Nummern** national oder international, Leerzeichen, `-`, `/`, `.` und
+  `+49 (0)89 …` sind erlaubt. Excel zeigt lange Nummern gern als `4,9171E+11`
+  – Spalte vorher als *Text* formatieren.
+- **Bereich:** leer = der im Dialog gewählte Bereich (Standard *Global*);
+  unbekannte Bereiche werden angelegt.
+- **Doppelte:** Ein Kontakt mit gleichem Namen im gleichen Bereich wird nicht
+  doppelt angelegt; mit *Vorhandene Kontakte aktualisieren* werden seine
+  Nummern durch die aus der Datei ersetzt.
+
+Bis zu 5000 Zeilen pro Datei; Zeilen ohne Name oder Nummer werden übersprungen.
+
 ## 6. Firmware
 
 Firmware von der Yealink-Supportseite herunterladen (`.rom` bzw. `.bin`) und

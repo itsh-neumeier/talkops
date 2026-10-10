@@ -134,6 +134,36 @@ e.g. *Family* only in the living room, *Suppliers* only in the office:
 
 A deleted section disappears with its contacts from the phones as well.
 
+### Importing contacts (CSV)
+
+*Phone book → Import*: choose a CSV file; TalkOps shows a preview right away
+(new / unchanged / rows with errors and their line number), only **Import**
+stores anything. The dialog offers the **sample file** for download
+(`phonebook-sample.csv`):
+
+```csv
+Name,Company,Work,Mobile,Other,Section
+Erika Mustermann,Musterfirma GmbH,030 23125 101,0171 3920001,,
+Max Mustermann,,,0171 3920002,030 23125 102,Family
+```
+
+- **Delimiter** semicolon, comma or tab; encoding UTF-8 or Windows (Excel
+  "CSV (comma delimited)") – both are detected.
+- **Columns** are matched by their header name, in any order: *Name* (or
+  *First name*/*Last name*, else *Company*), *Company*, *Work*, *Mobile*,
+  *Other*/*Home*, *Section* (German headers work too). Exports from Outlook
+  and Google Contacts work as they are.
+- **Numbers** national or international; spaces, `-`, `/`, `.` and
+  `+49 (0)89 …` are fine. Excel likes to show long numbers as `4.9171E+11` –
+  format the column as *Text* first.
+- **Section:** empty = the section chosen in the dialog (default *Global*);
+  unknown sections are created.
+- **Duplicates:** a contact with the same name in the same section is not
+  created twice; with *Update existing contacts* its numbers are replaced by
+  the ones from the file.
+
+Up to 5000 rows per file; rows without a name or number are skipped.
+
 ## 6. Firmware
 
 Download firmware from the Yealink support site (`.rom` or `.bin`), upload it

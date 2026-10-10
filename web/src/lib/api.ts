@@ -452,6 +452,18 @@ export interface Contact {
 	section_id: string | null;
 }
 
+/** Result of a phone book CSV import (or its dry run). */
+export interface ContactImportReport {
+	created: number;
+	updated: number;
+	unchanged: number;
+	skipped: number;
+	sections_created: string[];
+	failed: number;
+	errors: { line: number; message: string }[];
+	columns: string[];
+}
+
 export interface ProvisioningInfo {
 	url: string;
 	url_with_credentials: string;

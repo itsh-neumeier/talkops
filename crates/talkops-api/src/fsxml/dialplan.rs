@@ -280,9 +280,18 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
         return Ok(actions);
     }
 
-    if let Some((user, host)) = sip_address(req) {
+    if let Some((user, host, hide)) = sip_address(req) {
         actions.extend(
-            plan_sip_address(r, tenant, &caller, &settings, &user, &host, hide_once).await?,
+            plan_sip_address(
+                r,
+                tenant,
+                &caller,
+                &settings,
+                &user,
+                &host,
+                hide_once || hide,
+            )
+            .await?,
         );
         return Ok(actions);
     }
@@ -383,9 +392,14 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
 /// count, so phones that put TalkOps' own host name into the request URI
 /// keep dialing numbers; both parts are restricted to characters that are
 /// safe in a dial string.
-fn sip_address(req: &CallRequest) -> Option<(String, String)> {
+fn sip_address(req: &CallRequest) -> Option<(String, String, bool)> {
     let dest = req.destination.trim();
     let dest = dest.strip_prefix("sip:").unwrap_or(dest);
+    // `*31` / `#31#` in front: hide the own number for this call.
+    let (dest, hide) = match dest.strip_prefix("*31").or(dest.strip_prefix("#31#")) {
+        Some(rest) => (rest, true),
+        None => (dest, false),
+    };
     let (user, host) = match dest.split_once('@') {
         Some((user, host)) => (user, host),
         None => (dest, req.var("sip_req_host")?),
@@ -412,7 +426,7 @@ fn sip_address(req: &CallRequest) -> Option<(String, String)> {
         && host != SIP_DOMAIN
         && !host.ends_with(".local")
         && !host.ends_with(".invalid");
-    (user_ok && host_ok).then(|| (user.to_owned(), host))
+    (user_ok && host_ok).then(|| (user.to_owned(), host, hide))
 }
 
 /// Calls a SIP address: through an account of a trunk with the same

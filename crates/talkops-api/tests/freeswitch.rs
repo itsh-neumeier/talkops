@@ -1647,6 +1647,16 @@ async fn sip_addresses(db: PgPool) {
     assert!(has(&a, "set", "talkops_direction=outbound"));
     assert!(has(&a, "set", "talkops_destination=test.echo@sip5060.net"));
     assert!(has(&a, "set", "effective_caller_id_number=21"));
+    // `*31` in front: this one call without the own number.
+    let a = uri_call(&router, &f.ext21, "*31test.echo", "sip5060.net").await;
+    assert!(
+        has(&a, "bridge", "sofia/external/sip:test.echo@sip5060.net"),
+        "{a:?}"
+    );
+    assert!(
+        has(&a, "set", "effective_caller_id_number=anonymous"),
+        "{a:?}"
+    );
     // Dialed as a whole (`user@host` in the user part) works too.
     let a = internal_call(&router, &f.ext21, "test.dtmf@SIP5060.net").await;
     assert!(

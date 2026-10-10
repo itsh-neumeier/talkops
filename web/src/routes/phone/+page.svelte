@@ -191,6 +191,9 @@
 		return digits ? { display: digits, uri: null } : null;
 	}
 
+	/** Hide the own number for the next call only (`*31` in front). */
+	let hideOnce = $state(false);
+
 	async function call(withVideo: boolean) {
 		const target = callTarget(number || lastDialed);
 		if (!user || !target || !account) return;
@@ -199,8 +202,13 @@
 		lastDialed = dest;
 		peer = { name: '', number: dest };
 		video = withVideo;
+		const prefix = hideOnce ? '*31' : '';
+		hideOnce = false;
+		const uri = target.uri
+			? target.uri.replace(/^sip:/, `sip:${prefix}`)
+			: `sip:${prefix}${dest}@${account.sip_domain}`;
 		try {
-			await user.call(target.uri ?? `sip:${dest}@${account.sip_domain}`, {
+			await user.call(uri, {
 				sessionDescriptionHandlerOptions: { constraints: { audio: true, video: withVideo } }
 			});
 		} catch (err) {
@@ -479,6 +487,10 @@
 						>
 					{/if}
 				</div>
+				<label class="flex items-center gap-2 text-sm"
+					><input type="checkbox" bind:checked={hideOnce} data-testid="hide-once" />
+					{t('phone.hideOnce')}</label
+				>
 				{#if number}
 					<button class="btn btn-sm w-full" onclick={() => (number = number.slice(0, -1))}>⌫</button
 					>

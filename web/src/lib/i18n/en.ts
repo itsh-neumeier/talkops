@@ -758,6 +758,7 @@ export default {
 	'phone.decline': 'Decline',
 	'phone.idle': 'Ready for calls',
 	'phone.number': 'Number',
+	'phone.hideOnce': 'Hide my number once (next call only)',
 	'phone.call': 'Call',
 	'phone.videoCall': 'Video',
 	'phone.unknown': 'Unknown',

@@ -758,6 +758,7 @@ const de: Record<keyof typeof en, string> = {
 	'phone.decline': 'Ablehnen',
 	'phone.idle': 'Bereit für Anrufe',
 	'phone.number': 'Rufnummer',
+	'phone.hideOnce': 'Rufnummer einmalig unterdrücken (nur der nächste Anruf)',
 	'phone.call': 'Anrufen',
 	'phone.videoCall': 'Video',
 	'phone.unknown': 'Unbekannt',

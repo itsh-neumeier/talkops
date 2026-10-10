@@ -4,6 +4,9 @@
 	import InternalNumberInput from '#lib/components/InternalNumberInput.svelte';
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
+	import { describe } from '#lib/destinations.svelte.ts';
+	import { ringsExtension, saveNumber } from '#lib/numbers.ts';
+	import { hasRole } from '#lib/session.svelte.ts';
 
 	let {
 		extension = null,
@@ -36,6 +39,58 @@
 	});
 	let error = $state('');
 
+	/** Incoming numbers that ring this extension, as edited. */
+	// svelte-ignore state_referenced_locally
+	let ringing = $state<string[]>(
+		extension ? numbers.filter((n) => ringsExtension(n, extension.id)).map((n) => n.id) : []
+	);
+
+	function toggleNumber(id: string, on: boolean) {
+		ringing = on ? [...ringing, id] : ringing.filter((x) => x !== id);
+	}
+
+	/** What a number does now, if it does not ring this extension. */
+	function elsewhere(n: PhoneNumber): string {
+		if (n.destination_type === 'none' || !n.destination_id) return '';
+		if (extension && ringsExtension(n, extension.id)) return '';
+		const target =
+			describe(n.destination_type, n.destination_id)?.label ?? t('ext.numberElsewhere');
+		// Ticking adds this extension to another one's number; it replaces anything else.
+		return n.destination_type === 'extension'
+			? t('ext.numberMainIs', { target })
+			: t('ext.numberNow', { target });
+	}
+
+	/** Adds or removes the extension on the numbers whose box changed. */
+	async function applyNumbers(extId: string) {
+		for (const n of numbers) {
+			const was = ringsExtension(n, extId);
+			const now = ringing.includes(n.id);
+			if (was === now) continue;
+			if (now) {
+				await saveNumber(
+					n,
+					n.destination_type === 'extension' && n.destination_id
+						? { extra_extensions: [...n.extra_extensions, extId] }
+						: { destination_type: 'extension', destination_id: extId, extra_extensions: [] }
+				);
+			} else if (n.destination_id === extId) {
+				// The main extension leaves: the next one takes over (voicemail too).
+				const [next, ...rest] = n.extra_extensions;
+				await saveNumber(
+					n,
+					next
+						? { destination_id: next, extra_extensions: rest }
+						: { destination_type: 'none', destination_id: null, extra_extensions: [] }
+				);
+			} else {
+				await saveNumber(n, {
+					extra_extensions: n.extra_extensions.filter((x) => x !== extId)
+				});
+			}
+		}
+	}
+
 	async function save(e: SubmitEvent) {
 		e.preventDefault();
 		error = '';
@@ -49,6 +104,7 @@
 			const saved = extension
 				? await api.put<Extension>(`/extensions/${extension.id}`, body)
 				: await api.post<Extension>('/extensions', body);
+			if (hasRole('admin')) await applyNumbers(saved.id);
 			onsaved(saved);
 		} catch (err) {
 			error = errorMessage(err);
@@ -88,6 +144,28 @@
 			{#each numbers as n (n.id)}<option value={n.id}>{n.e164} {n.label}</option>{/each}
 		</select>
 	</div>
+	{#if hasRole('admin') && numbers.length}
+		<fieldset class="space-y-1">
+			<legend class="text-sm font-medium">{t('ext.incomingNumbers')}</legend>
+			{#each numbers as n (n.id)}
+				<label class="flex flex-wrap items-center gap-2 text-sm font-normal">
+					<input
+						type="checkbox"
+						checked={ringing.includes(n.id)}
+						onchange={(e) => toggleNumber(n.id, e.currentTarget.checked)}
+					/>
+					<span class="font-mono">{n.e164}</span>
+					{n.label}
+					{#if extension && n.destination_type === 'extension' && n.destination_id === extension.id}
+						<span class="badge badge-muted">{t('ext.numberMain')}</span>
+					{:else if elsewhere(n)}
+						<span class="text-xs text-slate-500">({elsewhere(n)})</span>
+					{/if}
+				</label>
+			{/each}
+			<p class="hint">{t('ext.incomingHint')}</p>
+		</fieldset>
+	{/if}
 	<div>
 		<label for="e-ring">{t('ext.ringTimeout')}</label>
 		<input

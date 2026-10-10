@@ -1846,3 +1846,83 @@ async fn star_dials_internal_numbers(db: PgPool) {
     let a = internal_call(&router, &f.ext21, "*777").await;
     assert!(!has(&a, "set", "talkops_direction=internal"), "{a:?}");
 }
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn number_rings_several_extensions(db: PgPool) {
+    let router = router(db);
+    let f = fixture(&router).await;
+    let id = |e: &Value| e["id"].as_str().unwrap().to_owned();
+    // 210 gets a device so both extensions can ring.
+    let (status, dev) = f
+        .admin
+        .post(
+            &format!("/api/v1/extensions/{}/devices", id(&f.ext21)),
+            json!({"name": "Lab", "kind": "desk"}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{dev}");
+
+    // Unknown extensions are refused.
+    let mut n = f.number.clone();
+    n["extra_extensions"] = json!([uuid::Uuid::new_v4()]);
+    let (status, _) = f
+        .admin
+        .put(&format!("/api/v1/numbers/{}", id(&f.number)), n.clone())
+        .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+
+    // 200 stays the main extension, 210 rings as well (duplicates dropped).
+    n["extra_extensions"] = json!([id(&f.ext21), id(&f.ext21), id(&f.ext20)]);
+    let (status, saved) = f
+        .admin
+        .put(&format!("/api/v1/numbers/{}", id(&f.number)), n)
+        .await;
+    assert_eq!(status, StatusCode::OK, "{saved}");
+    assert_eq!(saved["extra_extensions"], json!([id(&f.ext21)]));
+
+    let inbound = || async {
+        let (_, xml) = fs_post(
+            &router,
+            "/fs/xml",
+            &[
+                ("section", "dialplan"),
+                ("Caller-Context", "public"),
+                ("Caller-Destination-Number", "+49891234567"),
+                ("Caller-Caller-ID-Number", "+4930999888"),
+            ],
+        )
+        .await;
+        actions(&xml)
+    };
+    let a = inbound().await;
+    let bridge = a
+        .iter()
+        .find(|(app, _)| app == "bridge")
+        .map(|(_, d)| d.clone())
+        .unwrap_or_default();
+    assert!(
+        bridge.contains("user/200-1@") && bridge.contains("user/210-1@"),
+        "{a:?}"
+    );
+    let main = format!("talkops_dest_extension_id={}", id(&f.ext20));
+    assert!(has(&a, "set", &main), "{a:?}");
+    // Unanswered: the main extension's voicemail (off in the fixture: hang up).
+    assert_eq!(
+        a.last().map(|(app, _)| app.as_str()),
+        Some("hangup"),
+        "{a:?}"
+    );
+
+    // Deleting 210 removes it from the number.
+    let (status, _) = f
+        .admin
+        .call(
+            "DELETE",
+            &format!("/api/v1/extensions/{}", id(&f.ext21)),
+            None,
+        )
+        .await;
+    assert_eq!(status, StatusCode::NO_CONTENT);
+    let (_, numbers) = f.admin.get("/api/v1/numbers").await;
+    assert_eq!(numbers[0]["extra_extensions"], json!([]));
+}

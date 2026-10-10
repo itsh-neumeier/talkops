@@ -9,6 +9,7 @@
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import { hasRole } from '#lib/session.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
+	import { loadTargets } from '#lib/destinations.svelte.ts';
 
 	let extensions = $state<Extension[]>([]);
 	let users = $state<User[]>([]);
@@ -17,6 +18,8 @@
 	let open = $state(false);
 
 	async function load() {
+		// Names of number destinations ("now: group …") in the edit dialog.
+		if (hasRole('admin')) loadTargets().catch(() => {});
 		try {
 			[extensions, users, numbers] = await Promise.all([
 				api.get<Extension[]>('/extensions'),

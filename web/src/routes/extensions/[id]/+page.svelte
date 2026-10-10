@@ -20,6 +20,7 @@
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import { hasRole } from '#lib/session.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
+	import { loadTargets } from '#lib/destinations.svelte.ts';
 
 	let ext = $state<ExtensionWithDevices | null>(null);
 	let users = $state<User[]>([]);
@@ -30,6 +31,8 @@
 	const id = $derived(page.params.id);
 
 	async function load() {
+		// Names of number destinations ("now: group …") in the edit dialog.
+		if (hasRole('admin')) loadTargets().catch(() => {});
 		try {
 			ext = await api.get<ExtensionWithDevices>(`/extensions/${id}`);
 			if (hasRole('operator')) {

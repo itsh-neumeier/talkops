@@ -977,6 +977,11 @@ async fn plan_public(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Actio
             }
         }
     }
+    // Extensions ringing together with the number's main extension.
+    let extra_extensions = found
+        .as_ref()
+        .map(|(_, n)| n.extra_extensions.clone())
+        .unwrap_or_default();
     // (tenant, trunk, number, destination)
     let target = match found {
         Some((tenant, number)) => Some((
@@ -1074,7 +1079,12 @@ async fn plan_public(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Actio
             actions.push(set("talkops_extension_id", ext.to_string()));
         }
     }
-    let routed = route_to(r, tenant, destination_type, destination_id, &name, 0).await?;
+    let routed = match (destination_type, destination_id) {
+        (NumberDestination::Extension, Some(main)) if !extra_extensions.is_empty() => {
+            ring_extensions(r, tenant, main, &extra_extensions).await?
+        }
+        _ => route_to(r, tenant, destination_type, destination_id, &name, 0).await?,
+    };
     // A bare rejection needs no call variables.
     if routed.first().is_some_and(|(app, _)| *app == "respond") {
         return Ok(routed);
@@ -1438,6 +1448,38 @@ async fn ring_group(
         a.extend(after);
     }
     Ok(a)
+}
+
+/// A number that rings several extensions at once: the main one and
+/// `extra`. Unanswered calls go to the main extension's voicemail (its ring
+/// time counts); do not disturb and unavailable extensions are skipped.
+async fn ring_extensions(
+    r: &Routing<'_>,
+    tenant: TenantId,
+    main: Uuid,
+    extra: &[Uuid],
+) -> CoreResult<Vec<Action>> {
+    let Ok(main_ext) = extensions::get(r.pool, tenant, main).await else {
+        return Ok(reject("480 Temporarily Unavailable"));
+    };
+    let members: Vec<Uuid> = std::iter::once(main).chain(extra.iter().copied()).collect();
+    let legs = ring_legs(r, tenant, &members).await?;
+    let vm = voicemail_of(r, tenant, &main_ext).await?;
+    if legs.is_empty() {
+        return Ok(vm.unwrap_or_else(|| reject("480 Temporarily Unavailable")));
+    }
+    let timeout = main_ext.ring_timeout_secs;
+    Ok([
+        set("talkops_destination", main_ext.number.clone()),
+        set("talkops_dest_extension_id", main_ext.id.to_string()),
+        set("call_timeout", timeout.to_string()),
+        set("hangup_after_bridge", "true"),
+        set("continue_on_fail", "true"),
+        ("bridge", dial_string(&legs, false, timeout)),
+    ]
+    .into_iter()
+    .chain(vm.unwrap_or_else(|| vec![("hangup", String::new())]))
+    .collect())
 }
 
 /// Dial strings of the extensions that can ring now (enabled, not on do

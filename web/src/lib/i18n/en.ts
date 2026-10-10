@@ -71,6 +71,17 @@ export default {
 	'roles.operator': 'Operator',
 	'roles.user': 'User',
 
+	'ext.incomingNumbers': 'Incoming numbers that ring here',
+	'ext.incomingHint':
+		'Several extensions per number ring at the same time. The main extension (set on the trunk) gets unanswered calls on its voicemail. A number that went elsewhere rings here once ticked.',
+	'ext.numberMain': 'main · voicemail',
+	'ext.numberMainIs': 'main: {target}',
+	'ext.numberNow': 'now: {target}',
+	'ext.numberElsewhere': 'another destination',
+	'numbers.alsoRings': 'Also rings: {names}',
+	'numbers.addExtensions': 'Ring more extensions …',
+	'numbers.mainHint':
+		'The extension chosen above is the main one: unanswered calls go to its voicemail.',
 	'ext.number': 'Extension',
 	'ext.displayName': 'Name',
 	'ext.user': 'User',

@@ -72,7 +72,7 @@ On the phone's page you can assign keys:
 After saving press **Resync**: the phone reloads its configuration and
 applies the changes **without restarting**. **Restart** restarts it as well
 (a Yealink does not restart during a call). Phones that still have a
-configuration from TalkOps 1.7.4 or older restart one last time on the first
+configuration from TalkOps 1.7.3 or older restart one last time on the first
 resync. Technically: SIP NOTIFY `check-sync;reboot=false` or `reboot=true`
 with `sip.notify_reboot_enable = 0` (Yealink documentation *Phone Reboot* and
 *Trigger the Phone to Perform Auto Provisioning*).

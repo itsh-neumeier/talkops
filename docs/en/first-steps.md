@@ -28,7 +28,11 @@ checklist that ticks off these steps as they are done.
 
    All devices of an extension ring at the same time. Yealink
    auto-provisioning follows in phase 2.
-7. **Route numbers.** *Settings → Phone numbers*: choose the extension each number rings at.
+7. **Route numbers.** *Settings → Phone numbers* (or on the trunk): choose the (main)
+   extension each number rings at. *Ring more extensions …* adds extensions that ring at
+   the same time; unanswered calls go to the main extension's voicemail. The same works
+   from the extension: tick the numbers under *Incoming numbers that ring here* in its
+   *Edit* dialog.
 
 After login, users find their devices and credentials under *Settings → My phones* and
 their calls under *Call log*.

@@ -176,6 +176,7 @@ pub async fn delete_extension(
     auth.require(Role::Admin)?;
     let ext = extensions::get(&state.db, auth.tenant, id).await?;
     extensions::delete(&state.db, auth.tenant, id).await?;
+    talkops_core::trunks::forget_extension(&state.db, auth.tenant, id).await?;
     audit::record(
         &state.db,
         &auth.actor(),

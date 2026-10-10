@@ -208,6 +208,8 @@ export interface PhoneNumber {
 	label: string;
 	destination_type: DestinationType;
 	destination_id: string | null;
+	/** Further extensions ringing together with `destination_id` (the main one). */
+	extra_extensions: string[];
 	enabled: boolean;
 }
 

@@ -386,6 +386,9 @@ pub struct PhoneNumber {
     pub label: String,
     pub destination_type: NumberDestination,
     pub destination_id: Option<Uuid>,
+    /// More extensions that ring together with `destination_id` (only for
+    /// `extension`); unanswered calls go to the first one's voicemail.
+    pub extra_extensions: Vec<Uuid>,
     pub enabled: bool,
 }
 
@@ -401,12 +404,29 @@ pub struct NumberInput {
     pub destination_type: NumberDestination,
     #[serde(default)]
     pub destination_id: Option<Uuid>,
+    #[serde(default)]
+    pub extra_extensions: Vec<Uuid>,
     #[serde(default = "yes")]
     pub enabled: bool,
 }
 
-const NUM_COLUMNS: &str =
-    "id, trunk_id, account_id, e164, label, destination_type, destination_id, enabled";
+const NUM_COLUMNS: &str = "id, trunk_id, account_id, e164, label, destination_type, destination_id, \
+     extra_extensions, enabled";
+
+/// Extra extensions without duplicates and without the main one; empty
+/// unless the number goes to an extension.
+fn extra_extensions(input: &NumberInput) -> Vec<Uuid> {
+    if input.destination_type != NumberDestination::Extension {
+        return Vec::new();
+    }
+    let mut out: Vec<Uuid> = Vec::new();
+    for id in &input.extra_extensions {
+        if Some(*id) != input.destination_id && !out.contains(id) {
+            out.push(*id);
+        }
+    }
+    out
+}
 
 fn validate_number(input: &NumberInput) -> CoreResult<()> {
     let digits = input.e164.strip_prefix('+').unwrap_or("");
@@ -490,6 +510,10 @@ async fn check_refs(pool: &PgPool, tenant: TenantId, input: &NumberInput) -> Cor
     }
     crate::numbering::check_destination(pool, tenant, input.destination_type, input.destination_id)
         .await?;
+    for id in extra_extensions(input) {
+        crate::numbering::check_destination(pool, tenant, NumberDestination::Extension, Some(id))
+            .await?;
+    }
     Ok(())
 }
 
@@ -501,8 +525,9 @@ pub async fn create_number(
     validate_number(input)?;
     check_refs(pool, tenant, input).await?;
     let sql = format!(
-        "INSERT INTO numbers (tenant_id, trunk_id, account_id, e164, label, destination_type, destination_id, enabled)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING {NUM_COLUMNS}"
+        "INSERT INTO numbers (tenant_id, trunk_id, account_id, e164, label, destination_type, destination_id,
+                              enabled, extra_extensions)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING {NUM_COLUMNS}"
     );
     Ok(sqlx::query_as(&sql)
         .bind(tenant)
@@ -517,6 +542,7 @@ pub async fn create_number(
                 .filter(|_| input.destination_type != NumberDestination::None),
         )
         .bind(input.enabled)
+        .bind(extra_extensions(input))
         .fetch_one(pool)
         .await?)
 }
@@ -531,7 +557,7 @@ pub async fn update_number(
     check_refs(pool, tenant, input).await?;
     let sql = format!(
         "UPDATE numbers SET trunk_id = $3, account_id = $4, e164 = $5, label = $6, destination_type = $7,
-             destination_id = $8, enabled = $9, updated_at = now()
+             destination_id = $8, enabled = $9, extra_extensions = $10, updated_at = now()
          WHERE tenant_id = $1 AND id = $2 RETURNING {NUM_COLUMNS}"
     );
     Ok(sqlx::query_as(&sql)
@@ -548,8 +574,27 @@ pub async fn update_number(
                 .filter(|_| input.destination_type != NumberDestination::None),
         )
         .bind(input.enabled)
+        .bind(extra_extensions(input))
         .fetch_one(pool)
         .await?)
+}
+
+/// Removes a deleted extension from the numbers that ring it together with
+/// others.
+pub async fn forget_extension<'e>(
+    db: impl PgExecutor<'e>,
+    tenant: TenantId,
+    extension: Uuid,
+) -> CoreResult<()> {
+    sqlx::query(
+        "UPDATE numbers SET extra_extensions = array_remove(extra_extensions, $2)
+         WHERE tenant_id = $1 AND $2 = ANY(extra_extensions)",
+    )
+    .bind(tenant)
+    .bind(extension)
+    .execute(db)
+    .await?;
+    Ok(())
 }
 
 pub async fn delete_number<'e>(

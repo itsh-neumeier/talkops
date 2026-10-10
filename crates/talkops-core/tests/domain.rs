@@ -311,6 +311,7 @@ async fn trunks_accounts_numbers_routes(pool: PgPool) {
         label: "Main".into(),
         destination_type: NumberDestination::Extension,
         destination_id: Some(e.id),
+        extra_extensions: vec![],
         enabled: true,
     };
     let num = trunks::create_number(&pool, T, &num_input).await.unwrap();

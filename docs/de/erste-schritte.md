@@ -29,8 +29,12 @@ Schritte abhakt, sobald sie erledigt sind.
 
    Mehrere Geräte einer Nebenstelle klingeln gleichzeitig.
    Yealink-Autoprovisioning folgt in Phase 2.
-7. **Rufnummern zuordnen.** *Einstellungen → Rufnummern*: für jede Rufnummer die Nebenstelle
-   wählen, bei der sie klingeln soll.
+7. **Rufnummern zuordnen.** *Einstellungen → Rufnummern* (oder beim Trunk): für jede
+   Rufnummer die (primäre) Nebenstelle wählen, bei der sie klingeln soll. Unter
+   *Weitere Nebenstellen klingeln lassen …* klingeln zusätzliche Nebenstellen
+   gleichzeitig; unbeantwortet geht der Anruf auf die Voicemail der primären.
+   Dasselbe geht von der Nebenstelle aus: im Dialog *Bearbeiten* unter
+   *Eingehende Rufnummern, die hier klingeln* anhaken.
 
 Benutzer sehen nach dem Login unter *Einstellungen → Meine Telefone* ihre Geräte samt
 Zugangsdaten und unter *Anrufliste* ihre Gespräche.

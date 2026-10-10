@@ -75,7 +75,7 @@ Auf der Seite des Telefons lassen sich die Tasten belegen:
 Nach dem Speichern **Resync** drücken: Das Telefon lädt seine Konfiguration
 neu und übernimmt die Änderungen, **ohne neu zu starten**. **Neustarten**
 startet es zusätzlich neu (während eines Gesprächs startet ein Yealink nicht
-neu). Telefone, die noch eine Konfiguration von TalkOps 1.7.4 oder älter
+neu). Telefone, die noch eine Konfiguration von TalkOps 1.7.3 oder älter
 haben, starten beim ersten Resync ein letztes Mal neu. Technisch: SIP NOTIFY
 `check-sync;reboot=false` bzw. `reboot=true` mit
 `sip.notify_reboot_enable = 0` (Yealink-Doku *Phone Reboot* und *Trigger the

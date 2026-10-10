@@ -353,6 +353,7 @@ pub async fn add_line(
             NumberDestination::None
         },
         destination_id: input.destination_extension_id,
+        extra_extensions: vec![],
         enabled: true,
     };
     let number = match trunks::create_number(&state.db, auth.tenant, &number_input).await {

@@ -65,6 +65,17 @@ const de: Record<keyof typeof en, string> = {
 	'roles.admin': 'Administrator',
 	'roles.operator': 'Operator',
 	'roles.user': 'Benutzer',
+	'ext.incomingNumbers': 'Eingehende Rufnummern, die hier klingeln',
+	'ext.incomingHint':
+		'Mehrere Nebenstellen pro Rufnummer klingeln gleichzeitig. Die primäre Nebenstelle (beim Trunk festgelegt) bekommt unbeantwortete Anrufe auf ihre Voicemail. Eine Rufnummer, die bisher woanders hinging, klingelt nach dem Anhaken hier.',
+	'ext.numberMain': 'primär · Voicemail',
+	'ext.numberMainIs': 'primär: {target}',
+	'ext.numberNow': 'jetzt: {target}',
+	'ext.numberElsewhere': 'anderes Ziel',
+	'numbers.alsoRings': 'Klingelt auch bei: {names}',
+	'numbers.addExtensions': 'Weitere Nebenstellen klingeln lassen …',
+	'numbers.mainHint':
+		'Die oben gewählte Nebenstelle ist die primäre: Unbeantwortete Anrufe gehen auf ihre Voicemail.',
 	'ext.number': 'Nebenstelle',
 	'ext.displayName': 'Name',
 	'ext.user': 'Benutzer',

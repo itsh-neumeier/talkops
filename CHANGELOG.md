@@ -25,6 +25,10 @@ All notable changes to TalkOps. The format follows
   moved to *Settings → Setup*, My phones next to My account. The sidebar
   keeps Dashboard, Softphone, Calls, Voicemail, Door, Phone book, Search and
   Settings.
+- **Internal numbers 100–9999 freely:** 11x numbers are allowed now; only
+  115 and numbers that start or are part of an emergency number (110, 112,
+  1120 …) stay blocked. **`*<number>`** (e.g. `*610`) calls an internal number
+  just like `610`; feature codes keep working.
 - **Skeleton loading:** lists, detail pages, dashboard and settings show
   placeholders while their data loads instead of an empty page.
 - **Test calls** under *Settings → System*: echo, key test, time and ring

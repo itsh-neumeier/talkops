@@ -85,8 +85,10 @@ pub async fn ensure_free<'e>(
     }
 }
 
-/// Rules for internal numbers: 2–8 digits, no leading 0 (trunk prefix), no
-/// collision with emergency or 11x service numbers.
+/// Rules for internal numbers: 2–8 digits (e.g. any of 100–9999), no
+/// leading 0 (trunk prefix), not the start or an extension of an emergency
+/// number (110, 112, 1120 …: phones may dial those as soon as they are
+/// typed), not the authority number 115.
 pub fn validate_number(n: &str, emergency: &[String]) -> CoreResult<()> {
     if !(2..=8).contains(&n.len()) || !n.bytes().all(|b| b.is_ascii_digit()) {
         return Err(CoreError::Validation(
@@ -101,7 +103,7 @@ pub fn validate_number(n: &str, emergency: &[String]) -> CoreResult<()> {
     if emergency
         .iter()
         .any(|e| n.starts_with(e.as_str()) || e.starts_with(n))
-        || n.starts_with("11")
+        || n == "115"
     {
         return Err(CoreError::Validation(
             "number collides with emergency or service numbers".into(),
@@ -131,5 +133,34 @@ pub async fn check_destination<'e>(
         Ok(())
     } else {
         Err(CoreError::Validation("unknown destination".into()))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn internal_number_rules() {
+        let emergency = vec!["110".to_owned(), "112".to_owned()];
+        for ok in [
+            "20", "100", "116", "118", "119", "610", "1150", "1180", "9999", "12345678",
+        ] {
+            assert!(validate_number(ok, &emergency).is_ok(), "{ok}");
+        }
+        for bad in [
+            "1",
+            "0815",
+            "110",
+            "112",
+            "1120",
+            "1105",
+            "11",
+            "115",
+            "123456789",
+            "6a0",
+        ] {
+            assert!(validate_number(bad, &emergency).is_err(), "{bad}");
+        }
     }
 }

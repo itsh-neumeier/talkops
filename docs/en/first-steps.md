@@ -14,7 +14,9 @@ checklist that ticks off these steps as they are done.
 4. **Default number.** Set *Settings → Default number* – without it, no
    external or emergency calls are possible.
 5. **Users and extensions.** *Settings → Users → New user*, then *Settings → Extensions → New
-   extension* (2–8 digits, not starting with 0 or 11) and assign the user.
+   extension* (2–8 digits, e.g. any of 100–9999; not starting with 0, not 115, and
+   nothing that starts or is part of an emergency number such as 110, 112,
+   1120) and assign the user.
 6. **Devices.** In the extension, *Add device*. TalkOps generates SIP username
    and password. Configure the phone with:
    - SIP server/registrar: IP address of the TalkOps host, port 5060 (UDP)
@@ -32,7 +34,8 @@ their calls under *Call log*.
 
 | Input | Dialed as |
 |---|---|
-| `21` | extension 21 |
+| `21`, `610` | extension 21 or 610 |
+| `*610` | also extension 610 (star + internal number, 3–4 digits) |
 | `110`, `112` | emergency – always via the default number, never with hidden caller ID |
 | `115`, `11833` | service number, unchanged |
 | `030 1234567` | national |

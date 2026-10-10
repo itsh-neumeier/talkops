@@ -1775,3 +1775,62 @@ async fn sip_addresses(db: PgPool) {
         .await;
     assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
 }
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn star_dials_internal_numbers(db: PgPool) {
+    let router = router(db);
+    let f = fixture(&router).await;
+    // 100–9999 freely, also 11x apart from emergency numbers and 115.
+    for (number, ok) in [
+        ("610", true),
+        ("119", true),
+        ("1180", true),
+        ("1120", false),
+        ("115", false),
+    ] {
+        let (status, body) = f
+            .admin
+            .post(
+                "/api/v1/extensions",
+                json!({"number": number, "display_name": number}),
+            )
+            .await;
+        assert_eq!(status == StatusCode::OK, ok, "{number}: {body}");
+    }
+    let ring = |a: &[(String, String)]| a.iter().any(|(app, _)| app == "bridge");
+    let plain = internal_call(&router, &f.ext21, "610").await;
+    let star = internal_call(&router, &f.ext21, "*610").await;
+    // `*610` does exactly what `610` does (610 has no phone yet: unavailable).
+    assert!(
+        has(&plain, "set", "talkops_direction=internal"),
+        "{plain:?}"
+    );
+    assert_eq!(plain, star);
+    // An extension with phones rings.
+    let (_, e) = f
+        .admin
+        .post(
+            "/api/v1/extensions",
+            json!({"number": "620", "display_name": "620"}),
+        )
+        .await;
+    f.admin
+        .post(
+            &format!("/api/v1/extensions/{}/devices", e["id"].as_str().unwrap()),
+            json!({"name": "Desk", "kind": "desk"}),
+        )
+        .await;
+    assert!(ring(&internal_call(&router, &f.ext21, "*620").await));
+    // Star codes stay: `*78` is do not disturb, `*31…` hides the number.
+    let dnd = internal_call(&router, &f.ext21, "*78").await;
+    assert!(!ring(&dnd), "{dnd:?}");
+    let a = internal_call(&router, &f.ext21, "*31030123456").await;
+    assert!(
+        has(&a, "set", "effective_caller_id_number=anonymous")
+            || a.iter().any(|(_, d)| d.contains("privacy")),
+        "{a:?}"
+    );
+    // Unknown `*` numbers are no internal calls.
+    let a = internal_call(&router, &f.ext21, "*777").await;
+    assert!(!has(&a, "set", "talkops_direction=internal"), "{a:?}");
+}

@@ -239,6 +239,17 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
         .chars()
         .filter(|c| c.is_ascii_digit() || *c == '+' || *c == '*' || *c == '#')
         .collect();
+    // `*<internal number>` (e.g. `*610`): the same as dialing `610`. Checked
+    // before the star codes, so `*310` reaches 310 if it exists.
+    let star_internal = match dest.strip_prefix('*') {
+        Some(rest) if (3..=4).contains(&rest.len()) && rest.bytes().all(|b| b.is_ascii_digit()) => {
+            numbering::resolve(pool, tenant, rest)
+                .await?
+                .map(|_| rest.to_owned())
+        }
+        _ => None,
+    };
+    let dest = star_internal.unwrap_or(dest);
     // `*31<number>` or `#31#<number>`: hide the own number for this call.
     let (dest, hide_once) = match dest.strip_prefix("#31#").or(dest.strip_prefix("*31")) {
         Some(rest) if !rest.is_empty() => (rest.to_owned(), true),

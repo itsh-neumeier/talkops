@@ -124,13 +124,42 @@ async fn first_admin_login_and_sessions(pool: PgPool) {
 #[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
 async fn extensions_and_devices(pool: PgPool) {
     let sb = SecretBox::from_hex(KEY).unwrap();
-    let e = extensions::create(&pool, T, &ext("20"), &emergency())
+    let e = extensions::create(&pool, T, &ext("200"), &emergency())
         .await
         .unwrap();
     assert!(matches!(
-        extensions::create(&pool, T, &ext("20"), &emergency()).await,
+        extensions::create(&pool, T, &ext("200"), &emergency()).await,
         Err(CoreError::Conflict(_))
     ));
+
+    // New numbers start at 100 (*1-*99 are system codes); a 2-digit number
+    // of an older installation is kept on update but cannot be newly set.
+    assert!(matches!(
+        extensions::create(&pool, T, &ext("20"), &emergency()).await,
+        Err(CoreError::Validation(_))
+    ));
+    let legacy = extensions::create(&pool, T, &ext("300"), &emergency())
+        .await
+        .unwrap();
+    sqlx::query("UPDATE extensions SET number = '30' WHERE id = $1")
+        .bind(legacy.id)
+        .execute(&pool)
+        .await
+        .unwrap();
+    let mut renamed = ext("30");
+    renamed.display_name = "Legacy".into();
+    let kept = extensions::update(&pool, T, legacy.id, &renamed, &emergency())
+        .await
+        .unwrap();
+    assert_eq!(
+        (kept.number.as_str(), kept.display_name.as_str()),
+        ("30", "Legacy")
+    );
+    assert!(matches!(
+        extensions::update(&pool, T, legacy.id, &ext("31"), &emergency()).await,
+        Err(CoreError::Validation(_))
+    ));
+    extensions::delete(&pool, T, legacy.id).await.unwrap();
 
     let input = DeviceInput {
         name: "Desk".into(),
@@ -145,27 +174,27 @@ async fn extensions_and_devices(pool: PgPool) {
     let (dev, password) = extensions::create_device(&pool, T, &sb, &e, &input)
         .await
         .unwrap();
-    assert_eq!(dev.sip_username, "20-1");
+    assert_eq!(dev.sip_username, "200-1");
     assert_eq!(sb.decrypt(&dev.sip_password_enc).unwrap(), password);
     let (dev2, _) = extensions::create_device(&pool, T, &sb, &e, &input)
         .await
         .unwrap();
-    assert_eq!(dev2.sip_username, "20-2");
+    assert_eq!(dev2.sip_username, "200-2");
 
-    let auth = extensions::device_auth(&pool, "20-1")
+    let auth = extensions::device_auth(&pool, "200-1")
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(auth.extension_number, "20");
+    assert_eq!(auth.extension_number, "200");
     assert_eq!(
         extensions::ring_targets(&pool, e.id).await.unwrap(),
-        vec!["20-1", "20-2"]
+        vec!["200-1", "200-2"]
     );
 
     let new_pw = extensions::reset_device_password(&pool, T, &sb, dev.id)
         .await
         .unwrap();
-    let auth = extensions::device_auth(&pool, "20-1")
+    let auth = extensions::device_auth(&pool, "200-1")
         .await
         .unwrap()
         .unwrap();
@@ -178,14 +207,14 @@ async fn extensions_and_devices(pool: PgPool) {
         e.id,
         &ExtensionInput {
             enabled: false,
-            ..ext("20")
+            ..ext("200")
         },
         &emergency(),
     )
     .await
     .unwrap();
     assert!(
-        extensions::device_auth(&pool, "20-1")
+        extensions::device_auth(&pool, "200-1")
             .await
             .unwrap()
             .is_none()
@@ -272,7 +301,7 @@ async fn trunks_accounts_numbers_routes(pool: PgPool) {
         .is_err()
     );
 
-    let e = extensions::create(&pool, T, &ext("21"), &emergency())
+    let e = extensions::create(&pool, T, &ext("210"), &emergency())
         .await
         .unwrap();
     let num_input = NumberInput {
@@ -394,9 +423,9 @@ async fn cdr_and_audit(pool: PgPool) {
         id: Uuid::nil(),
         call_uuid: "abc".into(),
         direction: cdr::Direction::Internal,
-        caller_number: "20".into(),
+        caller_number: "200".into(),
         caller_name: "A".into(),
-        destination: "21".into(),
+        destination: "210".into(),
         extension_id: Some(Uuid::new_v4()), // unknown -> stored as NULL
         dest_extension_id: None,
         trunk_id: None,
@@ -514,10 +543,10 @@ async fn phones_accounts_firmware_contacts(pool: PgPool) {
         .is_err()
     );
 
-    let e20 = extensions::create(&pool, T, &ext("20"), &emergency())
+    let e20 = extensions::create(&pool, T, &ext("200"), &emergency())
         .await
         .unwrap();
-    let e21 = extensions::create(&pool, T, &ext("21"), &emergency())
+    let e21 = extensions::create(&pool, T, &ext("210"), &emergency())
         .await
         .unwrap();
     let on_phone = |name: &str| DeviceInput {
@@ -563,7 +592,7 @@ async fn phones_accounts_firmware_contacts(pool: PgPool) {
             .iter()
             .map(|a| a.extension_number.as_str())
             .collect::<Vec<_>>(),
-        ["20", "21"]
+        ["200", "210"]
     );
     assert_eq!(
         (
@@ -930,7 +959,9 @@ fn vm_input() -> VoicemailBoxInput {
 
 #[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
 async fn voicemail_boxes_messages_and_smtp(pool: PgPool) {
-    let e = extensions::create(&pool, T, &ext("20"), &[]).await.unwrap();
+    let e = extensions::create(&pool, T, &ext("200"), &[])
+        .await
+        .unwrap();
 
     // Unconfigured boxes are disabled.
     let b = voicemail::get_box(&pool, T, e.id).await.unwrap();
@@ -1059,7 +1090,7 @@ async fn voicemail_boxes_messages_and_smtp(pool: PgPool) {
         &NewMessage {
             id: Uuid::new_v4(),
             extension_id: e.id,
-            caller_number: "21".into(),
+            caller_number: "210".into(),
             caller_name: String::new(),
             duration_secs: 3,
             call_uuid: Some("abc".into()),
@@ -1080,7 +1111,7 @@ async fn voicemail_boxes_messages_and_smtp(pool: PgPool) {
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(info.extension_number, "20");
+    assert_eq!(info.extension_number, "200");
     assert!(info.email.is_none());
     let mails = jobs::claim(&pool, "w", &[voicemail::JOB_MAIL])
         .await
@@ -1110,7 +1141,7 @@ async fn voicemail_boxes_messages_and_smtp(pool: PgPool) {
         &NewMessage {
             id: Uuid::new_v4(),
             extension_id: e.id,
-            caller_number: "22".into(),
+            caller_number: "220".into(),
             caller_name: String::new(),
             duration_secs: 4,
             call_uuid: None,
@@ -1196,7 +1227,7 @@ async fn voicemail_boxes_messages_and_smtp(pool: PgPool) {
         .unwrap();
     assert_eq!(hits.len(), 1);
     assert_eq!(hits[0].voicemail_id, Some(third.id));
-    assert_eq!(hits[0].destination.as_deref(), Some("20"));
+    assert_eq!(hits[0].destination.as_deref(), Some("200"));
     assert!(
         recordings::search(&pool, T, "zurück", Some(&[]), 10)
             .await

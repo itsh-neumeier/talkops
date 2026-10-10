@@ -24,13 +24,13 @@ async fn fixture(router: &axum::Router) -> Fixture {
     let (_, ext20) = admin
         .post(
             "/api/v1/extensions",
-            json!({"number": "20", "display_name": "Office ${x}"}),
+            json!({"number": "200", "display_name": "Office ${x}"}),
         )
         .await;
     let (_, ext21) = admin
         .post(
             "/api/v1/extensions",
-            json!({"number": "21", "display_name": "Lab"}),
+            json!({"number": "210", "display_name": "Lab"}),
         )
         .await;
     for name in ["Desk", "DECT"] {
@@ -81,7 +81,7 @@ fn actions(xml: &str) -> Vec<(String, String)> {
 /// Bridge string ringing both devices of extension 20 plus its pickup group.
 fn ring20(f: &Fixture) -> String {
     format!(
-        "user/20-1@talkops.local,user/20-2@talkops.local,pickup/ext-{}",
+        "user/200-1@talkops.local,user/200-2@talkops.local,pickup/ext-{}",
         f.ext20["id"].as_str().unwrap().replace('-', "")
     )
 }
@@ -99,7 +99,7 @@ async fn internal_call(router: &axum::Router, ext: &Value, dest: &str) -> Vec<(S
             ("section", "dialplan"),
             ("Caller-Context", "internal"),
             ("Caller-Destination-Number", dest),
-            ("Caller-Caller-ID-Number", "20"),
+            ("Caller-Caller-ID-Number", "200"),
             ("variable_talkops_tenant_id", TENANT),
             ("variable_talkops_extension_id", ext_id),
         ],
@@ -164,7 +164,7 @@ async fn directory_and_sofia_conf(db: PgPool) {
         &[
             ("section", "directory"),
             ("purpose", "gateways"),
-            ("user", "20-1"),
+            ("user", "200-1"),
         ],
     )
     .await;
@@ -197,7 +197,7 @@ async fn requires_basic_auth(db: PgPool) {
         &router,
         axum::http::Request::post("/fs/xml")
             .header("content-type", "application/x-www-form-urlencoded")
-            .body(axum::body::Body::from("section=directory&user=20-1"))
+            .body(axum::body::Body::from("section=directory&user=200-1"))
             .unwrap(),
     )
     .await;
@@ -219,11 +219,11 @@ async fn internal_routing(db: PgPool) {
     let f = fixture(&router).await;
 
     // Extension to extension rings all devices.
-    let a = internal_call(&router, &f.ext21, "20").await;
+    let a = internal_call(&router, &f.ext21, "200").await;
     assert!(has(&a, "bridge", &ring20(&f)), "{a:?}");
     assert!(has(&a, "set", "talkops_direction=internal"));
     // Extension without devices.
-    let a = internal_call(&router, &f.ext20, "21").await;
+    let a = internal_call(&router, &f.ext20, "210").await;
     assert!(has(&a, "respond", "480 Temporarily Unavailable"));
 
     let gw = format!(
@@ -255,29 +255,29 @@ async fn internal_routing(db: PgPool) {
         !a.iter().any(|(_, d)| d.starts_with("talkops_direction")),
         "{a:?}"
     );
-    let a = internal_call(&router, &f.ext21, "20").await;
+    let a = internal_call(&router, &f.ext21, "200").await;
     assert!(has(&a, "respond", "486 Busy Here"), "{a:?}");
     internal_call(&router, &f.ext20, "*79").await;
-    let a = internal_call(&router, &f.ext21, "20").await;
+    let a = internal_call(&router, &f.ext21, "200").await;
     assert!(has(&a, "bridge", &ring20(&f)), "{a:?}");
 
     // Call forwarding to another extension (21 has no devices) and outside.
-    internal_call(&router, &f.ext20, "*7221").await;
-    let a = internal_call(&router, &f.ext21, "20").await;
+    internal_call(&router, &f.ext20, "*72210").await;
+    let a = internal_call(&router, &f.ext21, "200").await;
     assert!(has(&a, "respond", "480 Temporarily Unavailable"), "{a:?}");
     internal_call(&router, &f.ext20, "*72030123456").await;
-    let a = internal_call(&router, &f.ext21, "20").await;
+    let a = internal_call(&router, &f.ext21, "200").await;
     assert!(has(&a, "bridge", &format!("{gw}/030123456")), "{a:?}");
-    assert!(has(&a, "set", "talkops_forwarded_from=20"), "{a:?}");
+    assert!(has(&a, "set", "talkops_forwarded_from=200"), "{a:?}");
     // Forwarding to itself is refused, *73 clears it.
-    let a = internal_call(&router, &f.ext20, "*7220").await;
+    let a = internal_call(&router, &f.ext20, "*72200").await;
     assert!(has(&a, "respond", "484 Address Incomplete"), "{a:?}");
     internal_call(&router, &f.ext20, "*73").await;
-    let a = internal_call(&router, &f.ext21, "20").await;
+    let a = internal_call(&router, &f.ext21, "200").await;
     assert!(has(&a, "bridge", &ring20(&f)), "{a:?}");
 
     // Directed pickup.
-    let a = internal_call(&router, &f.ext21, "**20").await;
+    let a = internal_call(&router, &f.ext21, "**200").await;
     let group = format!("ext-{}", f.ext20["id"].as_str().unwrap().replace('-', ""));
     assert!(has(&a, "pickup", &group), "{a:?}");
     let a = internal_call(&router, &f.ext21, "**99").await;
@@ -325,7 +325,7 @@ async fn internal_routing(db: PgPool) {
         &[
             ("section", "dialplan"),
             ("Caller-Context", "internal"),
-            ("Caller-Destination-Number", "20"),
+            ("Caller-Destination-Number", "200"),
         ],
     )
     .await;
@@ -339,7 +339,7 @@ async fn outbound_without_default_number_is_rejected(db: PgPool) {
     let (_, ext) = admin
         .post(
             "/api/v1/extensions",
-            json!({"number": "20", "display_name": "A"}),
+            json!({"number": "200", "display_name": "A"}),
         )
         .await;
     let a = internal_call(&router, &ext, "030123456").await;
@@ -400,7 +400,7 @@ async fn cdr_ingestion(db: PgPool) {
         r#"<?xml version="1.0"?><cdr><variables>
         <uuid>call-1</uuid><talkops_direction>outbound</talkops_direction>
         <talkops_tenant_id>{TENANT}</talkops_tenant_id><talkops_extension_id>{ext_id}</talkops_extension_id>
-        <talkops_caller_number>20</talkops_caller_number><talkops_destination>%2B4930123456</talkops_destination>
+        <talkops_caller_number>200</talkops_caller_number><talkops_destination>%2B4930123456</talkops_destination>
         <start_epoch>1791150000</start_epoch><answer_epoch>1791150003</answer_epoch><end_epoch>1791150033</end_epoch>
         <duration>33</duration><billsec>30</billsec><hangup_cause>NORMAL_CLEARING</hangup_cause>
         </variables></cdr>"#
@@ -468,14 +468,14 @@ async fn voicemail_routing(db: PgPool) {
     };
 
     // Without a box: unreachable and *97 are rejected as before.
-    let a = internal_call(&router, &f.ext20, "21").await;
+    let a = internal_call(&router, &f.ext20, "210").await;
     assert!(has(&a, "respond", "480 Temporarily Unavailable"));
     let a = internal_call(&router, &f.ext20, "*97").await;
     assert!(has(&a, "respond", "404 Not Found"));
 
     // 21 has no devices: straight to voicemail.
     enable(id(&f.ext21)).await;
-    let a = internal_call(&router, &f.ext20, "21").await;
+    let a = internal_call(&router, &f.ext20, "210").await;
     assert!(has(&a, "set", "talkops_app=vm_deposit"), "{a:?}");
     assert!(has(
         &a,
@@ -486,7 +486,7 @@ async fn voicemail_routing(db: PgPool) {
 
     // 20 rings first; unanswered calls continue to voicemail.
     enable(id(&f.ext20)).await;
-    let a = internal_call(&router, &f.ext21, "20").await;
+    let a = internal_call(&router, &f.ext21, "200").await;
     let bridge = a.iter().position(|(app, _)| app == "bridge").unwrap();
     let sock = a.iter().position(|(app, _)| app == "socket").unwrap();
     assert!(bridge < sock, "{a:?}");
@@ -494,7 +494,7 @@ async fn voicemail_routing(db: PgPool) {
 
     // DND sends callers to voicemail instead of busy.
     internal_call(&router, &f.ext20, "*78").await;
-    let a = internal_call(&router, &f.ext21, "20").await;
+    let a = internal_call(&router, &f.ext21, "200").await;
     assert!(!a.iter().any(|(app, _)| app == "bridge"), "{a:?}");
     assert!(has(&a, "set", "talkops_app=vm_deposit"));
     internal_call(&router, &f.ext20, "*79").await;
@@ -524,7 +524,7 @@ async fn ring_group_routing(db: PgPool) {
         .admin
         .post(
             "/api/v1/ring-groups",
-            json!({"number": "20", "name": "Clash", "members": [id(&f.ext20)]}),
+            json!({"number": "200", "name": "Clash", "members": [id(&f.ext20)]}),
         )
         .await;
     assert_eq!(status, StatusCode::CONFLICT);
@@ -532,7 +532,7 @@ async fn ring_group_routing(db: PgPool) {
         .admin
         .post(
             "/api/v1/ring-groups",
-            json!({"number": "50", "name": "Support", "caller_id_prefix": "Support: ",
+            json!({"number": "500", "name": "Support", "caller_id_prefix": "Support: ",
                    "members": [id(&f.ext21), id(&f.ext20)]}),
         )
         .await;
@@ -542,18 +542,18 @@ async fn ring_group_routing(db: PgPool) {
         .admin
         .post(
             "/api/v1/extensions",
-            json!({"number": "50", "display_name": "Clash"}),
+            json!({"number": "500", "display_name": "Clash"}),
         )
         .await;
     assert_eq!(status, StatusCode::CONFLICT);
 
     // Simultaneous: 21 has no devices and is skipped.
-    let a = internal_call(&router, &f.ext21, "50").await;
+    let a = internal_call(&router, &f.ext21, "500").await;
     assert!(
         has(
             &a,
             "bridge",
-            &format!("user/20-1@talkops.local,user/20-2@talkops.local,{pickup20}")
+            &format!("user/200-1@talkops.local,user/200-2@talkops.local,{pickup20}")
         ),
         "{a:?}"
     );
@@ -562,7 +562,7 @@ async fn ring_group_routing(db: PgPool) {
         has(&a, "set", "effective_caller_id_name=Support: Lab"),
         "{a:?}"
     );
-    assert!(has(&a, "set", "talkops_destination=50"));
+    assert!(has(&a, "set", "talkops_destination=500"));
     assert!(has(&a, "hangup", ""));
 
     // Sequential with a fallback to the voicemail of 21.
@@ -578,20 +578,20 @@ async fn ring_group_routing(db: PgPool) {
         .admin
         .put(
             &format!("/api/v1/ring-groups/{group_id}"),
-            json!({"number": "50", "name": "Support", "strategy": "sequential", "ring_timeout_secs": 15,
+            json!({"number": "500", "name": "Support", "strategy": "sequential", "ring_timeout_secs": 15,
                    "caller_id_prefix": "Support: ",
                    "members": [id(&f.ext20), id(&f.ext21)],
                    "fallback_type": "voicemail", "fallback_id": id(&f.ext21)}),
         )
         .await;
     assert_eq!(status, StatusCode::OK, "{g}");
-    let a = internal_call(&router, &f.ext21, "50").await;
+    let a = internal_call(&router, &f.ext21, "500").await;
     assert!(
         has(
             &a,
             "bridge",
             &format!(
-                "[leg_timeout=15]user/20-1@talkops.local,[leg_timeout=15]user/20-2@talkops.local,\
+                "[leg_timeout=15]user/200-1@talkops.local,[leg_timeout=15]user/200-2@talkops.local,\
                  [leg_timeout=15]{pickup20}"
             )
         ),
@@ -602,7 +602,7 @@ async fn ring_group_routing(db: PgPool) {
 
     // Nobody available (20 on DND): straight to the fallback.
     internal_call(&router, &f.ext20, "*78").await;
-    let a = internal_call(&router, &f.ext21, "50").await;
+    let a = internal_call(&router, &f.ext21, "500").await;
     assert!(!a.iter().any(|(app, _)| app == "bridge"), "{a:?}");
     assert!(has(&a, "set", "talkops_app=vm_deposit"));
     internal_call(&router, &f.ext20, "*79").await;
@@ -667,7 +667,7 @@ async fn time_condition_routing(db: PgPool) {
         .admin
         .post(
             "/api/v1/time-conditions",
-            json!({"number": "60", "name": "Office hours", "schedule": all_day,
+            json!({"number": "600", "name": "Office hours", "schedule": all_day,
                    "open_type": "extension", "open_id": id(&f.ext20),
                    "closed_type": "none"}),
         )
@@ -677,12 +677,12 @@ async fn time_condition_routing(db: PgPool) {
     let tc_id = id(&tc);
 
     // Open: rings extension 20.
-    let a = internal_call(&router, &f.ext21, "60").await;
+    let a = internal_call(&router, &f.ext21, "600").await;
     assert!(has(&a, "set", "talkops_time_condition=open"), "{a:?}");
     assert!(has(&a, "bridge", &ring20(&f)), "{a:?}");
 
     // *30<number> forces it closed (no closed destination: rejected) and back.
-    let a = internal_call(&router, &f.ext21, "*3060").await;
+    let a = internal_call(&router, &f.ext21, "*30600").await;
     assert!(has(&a, "answer", ""), "{a:?}");
     let (_, tc) = f
         .admin
@@ -690,9 +690,9 @@ async fn time_condition_routing(db: PgPool) {
         .await;
     assert_eq!(tc["override"], "closed");
     assert_eq!(tc["state"]["reason"], "override");
-    let a = internal_call(&router, &f.ext21, "60").await;
+    let a = internal_call(&router, &f.ext21, "600").await;
     assert!(has(&a, "respond", "480 Temporarily Unavailable"), "{a:?}");
-    internal_call(&router, &f.ext21, "*3060").await;
+    internal_call(&router, &f.ext21, "*30600").await;
     let (_, tc) = f
         .admin
         .get(&format!("/api/v1/time-conditions/{tc_id}"))
@@ -744,7 +744,7 @@ async fn ivr_routing_and_transfers(db: PgPool) {
         .admin
         .post(
             "/api/v1/attendants",
-            json!({"number": "70", "name": "Main", "flow": {
+            json!({"number": "700", "name": "Main", "flow": {
             "type": "menu", "id": "start", "clip_id": null,
             "options": [
                 {"digit": "1", "next": ext(&f.ext20)},
@@ -762,7 +762,7 @@ async fn ivr_routing_and_transfers(db: PgPool) {
     assert_eq!(list[0]["flow"]["options"][1]["next"]["ring_secs"], 15);
 
     // Calling the menu hands the call to TalkOps.
-    let a = internal_call(&router, &f.ext21, "70").await;
+    let a = internal_call(&router, &f.ext21, "700").await;
     assert!(has(&a, "set", "talkops_app=ivr"), "{a:?}");
     assert!(has(&a, "set", &format!("talkops_ivr_id={}", id(&menu))));
     assert!(has(&a, "socket", "127.0.0.1:8084 async full"));
@@ -790,11 +790,11 @@ async fn ivr_routing_and_transfers(db: PgPool) {
     };
     let a = transfer(format!("dest:extension:{}", id(&f.ext20)), true).await;
     assert!(has(&a, "bridge", &ring20(&f)), "{a:?}");
-    let a = transfer("dial:20".into(), true).await;
+    let a = transfer("dial:200".into(), true).await;
     assert!(has(&a, "bridge", &ring20(&f)), "{a:?}");
     let a = transfer("dest:bogus:x".into(), true).await;
     assert!(has(&a, "respond", "404 Not Found"));
-    let a = transfer("dial:20".into(), false).await;
+    let a = transfer("dial:200".into(), false).await;
     assert!(has(&a, "respond", "403 Forbidden"));
 
     // "Ring phones" steps ring through the dialplan and come back to the
@@ -814,7 +814,7 @@ async fn ivr_routing_and_transfers(db: PgPool) {
     let a = transfer(format!("attendant:{}:start", id(&menu)), true).await;
     assert!(has(&a, "respond", "404 Not Found"), "not a ring step");
     // Entering an attendant clears a step left from another one.
-    let a = internal_call(&router, &f.ext21, "70").await;
+    let a = internal_call(&router, &f.ext21, "700").await;
     assert!(
         a.iter()
             .any(|(app, d)| app == "set" && d == "talkops_attendant_step="),
@@ -829,7 +829,7 @@ async fn parking_and_blind_transfers(db: PgPool) {
     let tenant = "00000000-0000-4000-8000-000000000001";
 
     // Calls carry the tenant to bridged legs and route transfers privately.
-    let a = internal_call(&router, &f.ext21, "20").await;
+    let a = internal_call(&router, &f.ext21, "200").await;
     assert!(
         has(&a, "export", &format!("talkops_tenant_id={tenant}")),
         "{a:?}"
@@ -863,7 +863,7 @@ async fn parking_and_blind_transfers(db: PgPool) {
             actions(&xml)
         }
     };
-    assert!(has(&transfer("20").await, "bridge", &ring20(&f)));
+    assert!(has(&transfer("200").await, "bridge", &ring20(&f)));
     assert!(has(&transfer("*52").await, "valet_park", "talkops *52"));
     let gw = format!(
         "sofia/gateway/gw-{}",
@@ -891,7 +891,7 @@ async fn queue_routing_and_callcenter_conf(db: PgPool) {
         .admin
         .post(
             "/api/v1/queues",
-            json!({"number": "80", "name": "Support", "strategy": "ring-all",
+            json!({"number": "800", "name": "Support", "strategy": "ring-all",
                    "members": [id(&f.ext20), id(&f.ext21)],
                    "timeout_type": "extension", "timeout_id": id(&f.ext21)}),
         )
@@ -899,7 +899,7 @@ async fn queue_routing_and_callcenter_conf(db: PgPool) {
     assert_eq!(status, StatusCode::OK, "{q}");
     let cc_name = format!("q-{}", id(&q).replace('-', ""));
 
-    let a = internal_call(&router, &f.ext21, "80").await;
+    let a = internal_call(&router, &f.ext21, "800").await;
     assert!(has(&a, "callcenter", &cc_name), "{a:?}");
     assert!(has(&a, "answer", ""));
     // Unanswered: overflow to extension 21 (no devices: rejected → hangup).
@@ -932,7 +932,7 @@ async fn queue_routing_and_callcenter_conf(db: PgPool) {
     assert_eq!(a20.attribute("status"), Some("Available"));
     assert_eq!(
         a20.attribute("contact"),
-        Some("[leg_timeout=20]user/20-1@talkops.local,[leg_timeout=20]user/20-2@talkops.local")
+        Some("[leg_timeout=20]user/200-1@talkops.local,[leg_timeout=20]user/200-2@talkops.local")
     );
     // 21 has no devices and is on break.
     assert!(
@@ -953,7 +953,7 @@ async fn queue_routing_and_callcenter_conf(db: PgPool) {
         .put(&format!("/api/v1/queues/{}", id(&q)), input)
         .await;
     assert_eq!(status, StatusCode::OK);
-    let a = internal_call(&router, &f.ext21, "80").await;
+    let a = internal_call(&router, &f.ext21, "800").await;
     assert!(!a.iter().any(|(app, _)| app == "callcenter"), "{a:?}");
 }
 
@@ -991,7 +991,7 @@ async fn queue_hours_greeting_music_and_voicemail(db: PgPool) {
         .admin
         .post(
             "/api/v1/queues",
-            json!({"number": "81", "name": "Sales", "members": [id(&f.ext20)],
+            json!({"number": "810", "name": "Sales", "members": [id(&f.ext20)],
                    "greeting_clip_id": greeting, "moh_clip_id": music, "max_callers": 3,
                    "time_condition_id": id(&hours),
                    "closed_type": "extension", "closed_id": id(&f.ext20),
@@ -1004,7 +1004,7 @@ async fn queue_hours_greeting_music_and_voicemail(db: PgPool) {
     assert!(q.get("tenant_id").is_none());
 
     // Closed: straight to the after-hours destination.
-    let a = internal_call(&router, &f.ext21, "81").await;
+    let a = internal_call(&router, &f.ext21, "810").await;
     assert!(has(&a, "set", "talkops_queue_closed=true"), "{a:?}");
     assert!(has(&a, "bridge", &ring20(&f)), "{a:?}");
     assert!(!a.iter().any(|(app, _)| app == "callcenter"));
@@ -1018,7 +1018,7 @@ async fn queue_hours_greeting_music_and_voicemail(db: PgPool) {
         )
         .await;
     assert_eq!(status, StatusCode::OK);
-    let a = internal_call(&router, &f.ext21, "81").await;
+    let a = internal_call(&router, &f.ext21, "810").await;
     let play = a
         .iter()
         .position(|(app, d)| app == "playback" && d.ends_with(&format!("{greeting}.wav")));
@@ -1081,7 +1081,7 @@ async fn call_recording(db: PgPool) {
     let id = |e: &Value| e["id"].as_str().unwrap().to_owned();
 
     // Nothing is recorded by default.
-    let a = internal_call(&router, &f.ext21, "20").await;
+    let a = internal_call(&router, &f.ext21, "200").await;
     assert!(
         !a.iter().any(|(_, d)| d.contains("record_session")),
         "{a:?}"
@@ -1093,7 +1093,7 @@ async fn call_recording(db: PgPool) {
     s["recording_retention_days"] = json!(30);
     let (status, s) = f.admin.put("/api/v1/settings", s).await;
     assert_eq!(status, StatusCode::OK, "{s}");
-    let a = internal_call(&router, &f.ext21, "20").await;
+    let a = internal_call(&router, &f.ext21, "200").await;
     let rec = a
         .iter()
         .position(|(app, d)| app == "set" && d.starts_with("execute_on_answer=record_session "))
@@ -1132,7 +1132,7 @@ async fn call_recording(db: PgPool) {
         .put(&format!("/api/v1/extensions/{}", id(&e20)), e20.clone())
         .await;
     assert_eq!(status, StatusCode::OK);
-    let a = internal_call(&router, &f.ext21, "20").await;
+    let a = internal_call(&router, &f.ext21, "200").await;
     assert!(
         !a.iter().any(|(_, d)| d.contains("record_session")),
         "{a:?}"
@@ -1146,7 +1146,7 @@ async fn call_recording(db: PgPool) {
         <uuid>call-rec</uuid><talkops_direction>internal</talkops_direction>
         <talkops_tenant_id>{TENANT}</talkops_tenant_id><talkops_extension_id>{}</talkops_extension_id>
         <talkops_dest_extension_id>{}</talkops_dest_extension_id>
-        <talkops_caller_number>21</talkops_caller_number><talkops_destination>20</talkops_destination>
+        <talkops_caller_number>210</talkops_caller_number><talkops_destination>200</talkops_destination>
         <talkops_recording>{}</talkops_recording>
         <start_epoch>1791150000</start_epoch><answer_epoch>1791150003</answer_epoch><end_epoch>1791150033</end_epoch>
         <duration>33</duration><billsec>30</billsec><hangup_cause>NORMAL_CLEARING</hangup_cause>
@@ -1295,7 +1295,7 @@ async fn hold_music_selection(db: PgPool) {
             .map(str::to_owned)
     };
     // Default: all built-in pieces shuffled.
-    let a = internal_call(&router, &f.ext21, "20").await;
+    let a = internal_call(&router, &f.ext21, "200").await;
     assert_eq!(hold(&a).as_deref(), Some("local_stream://default"));
 
     // The list of built-in pieces; a chosen piece once FreeSWITCH copied it.
@@ -1310,7 +1310,7 @@ async fn hold_music_selection(db: PgPool) {
     s["hold_music"] = json!(track);
     let (status, _) = f.admin.put("/api/v1/settings", s.clone()).await;
     assert_eq!(status, StatusCode::OK);
-    let a = internal_call(&router, &f.ext21, "20").await;
+    let a = internal_call(&router, &f.ext21, "200").await;
     let path = sounds.join(format!("music/{track}.wav"));
     assert_eq!(hold(&a).as_deref(), path.to_str());
 
@@ -1329,7 +1329,7 @@ async fn hold_music_selection(db: PgPool) {
         f.admin.put("/api/v1/settings", s.clone()).await.0,
         StatusCode::OK
     );
-    let a = internal_call(&router, &f.ext21, "20").await;
+    let a = internal_call(&router, &f.ext21, "200").await;
     let clip_path = sounds.join(talkops_core::audio::clip_file(tenant, clip));
     assert_eq!(hold(&a).as_deref(), clip_path.to_str());
     let mut bad = s.clone();
@@ -1354,8 +1354,8 @@ async fn conference_legs_offer_real_codecs(db: PgPool) {
         &[
             ("section", "dialplan"),
             ("Caller-Context", "internal"),
-            ("Caller-Destination-Number", "20"),
-            ("Caller-Caller-ID-Number", "21"),
+            ("Caller-Destination-Number", "200"),
+            ("Caller-Caller-ID-Number", "210"),
             ("variable_talkops_tenant_id", TENANT),
             ("variable_talkops_extension_id", ext_id),
             ("variable_talkops_conference", "talkops-abc"),
@@ -1374,7 +1374,7 @@ async fn conference_legs_offer_real_codecs(db: PgPool) {
     );
     assert!(has(&a, "bridge", &ring20(&f)));
     // Normal calls do not export the list to the other leg.
-    let a = internal_call(&router, &f.ext21, "20").await;
+    let a = internal_call(&router, &f.ext21, "200").await;
     assert!(
         !a.iter()
             .any(|(_, d)| d.starts_with("nolocal:absolute_codec_string"))
@@ -1541,7 +1541,7 @@ async fn video_only_where_enabled(db: PgPool) {
 
     // Default: internal calls are audio-only, trunk calls too.
     assert_eq!(
-        codecs(&internal_call(&router, &f.ext21, "20").await),
+        codecs(&internal_call(&router, &f.ext21, "200").await),
         std::slice::from_ref(&audio)
     );
     assert_eq!(
@@ -1567,7 +1567,7 @@ async fn video_only_where_enabled(db: PgPool) {
     }
     let ext21 = enable(&f.ext21);
     // Both sides allow video: the browser's offer passes unchanged.
-    assert!(codecs(&internal_call(&router, &ext21, "20").await).is_empty());
+    assert!(codecs(&internal_call(&router, &ext21, "200").await).is_empty());
     // Not a single extension (voicemail, groups, ...): audio-only.
     assert_eq!(
         codecs(&internal_call(&router, &ext21, "*97").await).len(),
@@ -1604,7 +1604,10 @@ async fn video_only_where_enabled(db: PgPool) {
         codecs(&internal_call(&router, &e20, "030123456").await),
         ["set absolute_codec_string=G722,PCMA,PCMU"]
     );
-    assert_eq!(codecs(&internal_call(&router, &ext21, "20").await), [audio]);
+    assert_eq!(
+        codecs(&internal_call(&router, &ext21, "200").await),
+        [audio]
+    );
 }
 
 /// Dials `user` with the request URI host `host`, as a phone or the
@@ -1622,7 +1625,7 @@ async fn uri_call(
             ("section", "dialplan"),
             ("Caller-Context", "internal"),
             ("Caller-Destination-Number", user),
-            ("Caller-Caller-ID-Number", "20"),
+            ("Caller-Caller-ID-Number", "200"),
             ("variable_sip_req_host", host),
             ("variable_talkops_tenant_id", TENANT),
             ("variable_talkops_extension_id", ext["id"].as_str().unwrap()),
@@ -1646,7 +1649,7 @@ async fn sip_addresses(db: PgPool) {
     );
     assert!(has(&a, "set", "talkops_direction=outbound"));
     assert!(has(&a, "set", "talkops_destination=test.echo@sip5060.net"));
-    assert!(has(&a, "set", "effective_caller_id_number=21"));
+    assert!(has(&a, "set", "effective_caller_id_number=210"));
     // `*31` in front: this one call without the own number.
     let a = uri_call(&router, &f.ext21, "*31test.echo", "sip5060.net").await;
     assert!(
@@ -1665,7 +1668,7 @@ async fn sip_addresses(db: PgPool) {
     );
 
     // Numbers stay numbers, whatever host the phone puts into the URI.
-    let a = uri_call(&router, &f.ext21, "20", "pbx.example.com").await;
+    let a = uri_call(&router, &f.ext21, "200", "pbx.example.com").await;
     assert!(has(&a, "bridge", &ring20(&f)), "{a:?}");
     // Own domain, IPs and unsafe characters are no SIP addresses.
     for (user, host) in [

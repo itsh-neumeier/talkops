@@ -80,36 +80,44 @@ pub async fn resolve<'e>(
         .await?)
 }
 
-/// Fails if `number` is used by anything but `except`.
+/// Smallest number for new internal numbers: `*1`–`*99` are system codes
+/// and `*<number>` reaches internal numbers from `*100`.
+pub const MIN_INTERNAL_NUMBER: u32 = 100;
+
+/// Fails if `number` is used by anything but `except`, or if a number below
+/// [`MIN_INTERNAL_NUMBER`] is newly assigned (existing ones may be kept).
 pub async fn ensure_free<'e>(
     db: impl PgExecutor<'e>,
     tenant: TenantId,
     number: &str,
     except: Option<Uuid>,
 ) -> CoreResult<()> {
-    let sql = format!(
-        "SELECT kind FROM ({}) used WHERE id IS DISTINCT FROM $3 LIMIT 1",
-        union_sql()
-    );
-    let taken: Option<NumberDestination> = sqlx::query_scalar(&sql)
+    let sql = format!("SELECT kind, id FROM ({}) used", union_sql());
+    let used: Vec<(NumberDestination, Uuid)> = sqlx::query_as(&sql)
         .bind(tenant)
         .bind(number)
-        .bind(except)
-        .fetch_optional(db)
+        .fetch_all(db)
         .await?;
-    match taken {
-        Some(kind) => Err(CoreError::Conflict(format!(
+    if let Some((kind, _)) = used.iter().find(|(_, id)| Some(*id) != except) {
+        return Err(CoreError::Conflict(format!(
             "number {number} is already used ({})",
             serde_json::to_value(kind)
                 .ok()
                 .and_then(|v| v.as_str().map(str::to_owned))
                 .unwrap_or_default()
-        ))),
-        None => Ok(()),
+        )));
     }
+    let kept = used.iter().any(|(_, id)| Some(*id) == except);
+    if !kept && number.parse::<u32>().is_ok_and(|n| n < MIN_INTERNAL_NUMBER) {
+        return Err(CoreError::Validation(format!(
+            "internal numbers start at {MIN_INTERNAL_NUMBER} (1-99 are reserved for system codes)"
+        )));
+    }
+    Ok(())
 }
 
-/// Rules for internal numbers: 2–8 digits (e.g. any of 100–9999), no
+/// Rules for internal numbers: 2–8 digits (new numbers from 100, see
+/// [`ensure_free`]; 2-digit numbers of older installations stay valid), no
 /// leading 0 (trunk prefix), not the start or an extension of an emergency
 /// number (110, 112, 1120 …: phones may dial those as soon as they are
 /// typed), not the authority number 115.

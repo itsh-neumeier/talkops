@@ -34,7 +34,7 @@ async fn voicemail_api(db: PgPool) {
     let (_, ext) = admin
         .post(
             "/api/v1/extensions",
-            json!({"number": "30", "display_name": "Anna", "user_id": anna["id"]}),
+            json!({"number": "300", "display_name": "Anna", "user_id": anna["id"]}),
         )
         .await;
     let ext_id = ext["id"].as_str().unwrap();

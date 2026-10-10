@@ -145,7 +145,7 @@ async fn door_station(db: PgPool) {
     let (_, ext20) = admin
         .post(
             "/api/v1/extensions",
-            json!({"number": "20", "display_name": "Office"}),
+            json!({"number": "200", "display_name": "Office"}),
         )
         .await;
     admin
@@ -157,7 +157,7 @@ async fn door_station(db: PgPool) {
     let (_, ext21) = admin
         .post(
             "/api/v1/extensions",
-            json!({"number": "21", "display_name": "Lab"}),
+            json!({"number": "210", "display_name": "Lab"}),
         )
         .await;
     let (_, door_ext) = admin
@@ -217,7 +217,7 @@ async fn door_station(db: PgPool) {
     assert!(has(&a, "set", &format!("talkops_door_id={sid}")), "{a:?}");
     assert!(
         a.iter()
-            .any(|(app, d)| app == "bridge" && d.contains("user/20-1@")),
+            .any(|(app, d)| app == "bridge" && d.contains("user/200-1@")),
         "{a:?}"
     );
     let a = call(&router, &door_ext, "9902#0").await;

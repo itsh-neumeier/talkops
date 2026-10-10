@@ -121,7 +121,7 @@ async fn setup(pool: &PgPool) -> (VmContext, Uuid, std::path::PathBuf) {
         pool,
         T,
         &ExtensionInput {
-            number: "20".into(),
+            number: "200".into(),
             display_name: "Office".into(),
             user_id: None,
             outbound_number_id: None,
@@ -306,7 +306,7 @@ async fn login_with_pin_and_record_greeting(pool: PgPool) {
 
     // Wrong PIN, then the right one; 5 = record greeting; * = exit.
     let mut c = call("vm_login", None);
-    c.digits.extend(["20", "0000", "20", "1234", "5", "*"]);
+    c.digits.extend(["200", "0000", "200", "1234", "5", "*"]);
     c.record_secs.push_back(2);
     run(&mut c, &ctx, "vm_login").await.unwrap();
     let vbox = voicemail::get_box(&pool, T, ext).await.unwrap();
@@ -326,7 +326,7 @@ async fn login_with_pin_and_record_greeting(pool: PgPool) {
 
     // Three failed logins end the call.
     let mut c = call("vm_login", None);
-    c.digits.extend(["20", "1", "99", "1234", ""]);
+    c.digits.extend(["200", "1", "99", "1234", ""]);
     run(&mut c, &ctx, "vm_login").await.unwrap();
     assert_eq!(
         c.executed
@@ -443,12 +443,12 @@ mod attendants {
         // Direct dial of an existing number; unknown numbers time out.
         let id = menu(&pool, ext, true, true).await;
         let mut c = call("ivr", None);
-        c.digits.push_back("20");
+        c.digits.push_back("200");
         assert_eq!(
             run_attendant(&mut c, &ctx, T, id, None).await.unwrap(),
             Outcome::Transferred
         );
-        assert_eq!(transfers(&c), ["dial:20 XML talkops"]);
+        assert_eq!(transfers(&c), ["dial:200 XML talkops"]);
         let mut c = call("ivr", None);
         c.digits.push_back("99");
         run_attendant(&mut c, &ctx, T, id, None).await.unwrap();
@@ -463,7 +463,7 @@ mod attendants {
             &pool,
             T,
             &ExtensionInput {
-                number: "21".into(),
+                number: "210".into(),
                 display_name: "Shop".into(),
                 user_id: None,
                 outbound_number_id: None,

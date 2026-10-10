@@ -37,7 +37,7 @@ async fn bans_block_directory_lookups(db: PgPool) {
     let (_, ext) = admin
         .post(
             "/api/v1/extensions",
-            json!({"number": "30", "display_name": "Guard"}),
+            json!({"number": "300", "display_name": "Guard"}),
         )
         .await;
     let (status, dev) = admin
@@ -74,7 +74,7 @@ async fn bans_block_directory_lookups(db: PgPool) {
     assert!(lookup(&router, user, "203.0.113.9").await);
     let t = TenantId::DEFAULT;
     let attacker = "203.0.113.9".parse().unwrap();
-    sip_guard::ban(&db, t, attacker, 5, "30-1", 60)
+    sip_guard::ban(&db, t, attacker, 5, "300-1", 60)
         .await
         .unwrap();
     // Trusted networks are never banned, even with a stored ban.
@@ -90,7 +90,7 @@ async fn bans_block_directory_lookups(db: PgPool) {
     assert_eq!(bans.len(), 2);
     assert!(
         bans.iter()
-            .any(|b| b["ip"] == "203.0.113.9" && b["last_user"] == "30-1")
+            .any(|b| b["ip"] == "203.0.113.9" && b["last_user"] == "300-1")
     );
 
     let (status, _) = admin

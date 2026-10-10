@@ -64,13 +64,13 @@ async fn phones_and_provisioning(db: PgPool) {
     let (_, ext20) = admin
         .post(
             "/api/v1/extensions",
-            json!({"number": "20", "display_name": "Office"}),
+            json!({"number": "200", "display_name": "Office"}),
         )
         .await;
     let (_, _ext21) = admin
         .post(
             "/api/v1/extensions",
-            json!({"number": "21", "display_name": "Lab"}),
+            json!({"number": "210", "display_name": "Lab"}),
         )
         .await;
     let ext_id = ext20["id"].as_str().unwrap();
@@ -78,7 +78,7 @@ async fn phones_and_provisioning(db: PgPool) {
     // Validation: unknown model, key outside the model, BLF without number.
     for (model, keys) in [
         ("t99", json!([])),
-        ("t54w", json!([{"key": 99, "type": "blf", "value": "21"}])),
+        ("t54w", json!([{"key": 99, "type": "blf", "value": "210"}])),
         ("t54w", json!([{"key": 3, "type": "blf", "value": "${x}"}])),
     ] {
         let (status, _) = admin
@@ -93,7 +93,7 @@ async fn phones_and_provisioning(db: PgPool) {
         .post(
             "/api/v1/phones",
             json!({"mac": "80:5E:C0:AA:BB:CC", "model": "t54w", "name": "Desk",
-                   "line_keys": [{"key": 3, "type": "blf", "value": "21", "label": "Lab"}]}),
+                   "line_keys": [{"key": 3, "type": "blf", "value": "210", "label": "Lab"}]}),
         )
         .await;
     assert_eq!(status, StatusCode::OK, "{phone}");
@@ -117,7 +117,7 @@ async fn phones_and_provisioning(db: PgPool) {
     assert_eq!(status, StatusCode::OK);
     let (_, detail) = admin.get(&format!("/api/v1/phones/{phone_id}")).await;
     assert_eq!(detail["accounts"][0]["account_index"], 1);
-    assert_eq!(detail["accounts"][0]["extension_number"], "20");
+    assert_eq!(detail["accounts"][0]["extension_number"], "200");
 
     // Provisioning credentials.
     let (status, info) = admin.get("/api/v1/provisioning").await;
@@ -159,17 +159,17 @@ async fn phones_and_provisioning(db: PgPool) {
     )
     .await;
     assert_eq!(status, StatusCode::OK);
-    assert!(cfg.contains("account.1.user_name = 20-1"), "{cfg}");
+    assert!(cfg.contains("account.1.user_name = 200-1"), "{cfg}");
     assert!(cfg.contains(&format!(
         "account.1.password = {}",
         cred["sip_password"].as_str().unwrap()
     )));
     assert!(cfg.contains("linekey.3.type = 16"), "{cfg}");
-    assert!(cfg.contains("linekey.3.pickup_value = **21"), "{cfg}");
-    // Dial now: emergency numbers, fixed feature codes, internal 20/21.
+    assert!(cfg.contains("linekey.3.pickup_value = **210"), "{cfg}");
+    // Dial now: emergency numbers, fixed feature codes, internal 200/210.
     assert!(cfg.contains("dialplan.dialnow.rule.1 = 11[0,2]"), "{cfg}");
     assert!(cfg.contains("= *9[7,8]"), "{cfg}");
-    assert!(cfg.contains("= 2[0,1]\n"), "{cfg}");
+    assert!(cfg.contains("= 200\n") && cfg.contains("= 210\n"), "{cfg}");
     assert!(!cfg.contains("firmware.url"));
     let (_, detail) = admin.get(&format!("/api/v1/phones/{phone_id}")).await;
     assert_eq!(detail["last_firmware"], "96.86.0.100");
@@ -193,7 +193,7 @@ async fn phones_and_provisioning(db: PgPool) {
     )
     .await;
     assert_eq!(status, StatusCode::OK);
-    assert!(xml.contains("<Name>Office</Name>") && xml.contains(">20</Telephone>"));
+    assert!(xml.contains("<Name>Office</Name>") && xml.contains(">200</Telephone>"));
     let (status, contact) = admin
         .post(
             "/api/v1/contacts",
@@ -334,13 +334,13 @@ async fn users_set_their_own_call_settings(db: PgPool) {
     let (_, ext) = admin
         .post(
             "/api/v1/extensions",
-            json!({"number": "30", "display_name": "Anna", "user_id": user["id"]}),
+            json!({"number": "300", "display_name": "Anna", "user_id": user["id"]}),
         )
         .await;
     let (_, other) = admin
         .post(
             "/api/v1/extensions",
-            json!({"number": "31", "display_name": "Ben"}),
+            json!({"number": "310", "display_name": "Ben"}),
         )
         .await;
     let anna = login(&router, "anna", "anna-password-1").await.unwrap();
@@ -364,7 +364,7 @@ async fn users_set_their_own_call_settings(db: PgPool) {
     let (status, _) = anna
         .put(
             &format!("/api/v1/extensions/{id}/call-settings"),
-            json!({"dnd": false, "forward_all": "30"}),
+            json!({"dnd": false, "forward_all": "300"}),
         )
         .await;
     assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
@@ -522,7 +522,7 @@ async fn ringtones_wallpapers_labels_and_phonebook_sections(db: PgPool) {
             "/api/v1/phones",
             json!({"mac": "249ad8000001", "model": "ax86r", "name": "WLAN",
                    "ringtone_id": ring_id, "wallpaper_id": wall_id,
-                   "line_keys": [{"key": 16, "type": "blf", "value": "21"}]}),
+                   "line_keys": [{"key": 16, "type": "blf", "value": "210"}]}),
         )
         .await;
     assert_eq!(status, StatusCode::OK, "{ax}");
@@ -543,19 +543,19 @@ async fn ringtones_wallpapers_labels_and_phonebook_sections(db: PgPool) {
     let (_, ext) = admin
         .post(
             "/api/v1/extensions",
-            json!({"number": "40", "display_name": "Küche"}),
+            json!({"number": "400", "display_name": "Küche"}),
         )
         .await;
     let (status, dev) = admin
         .post(
             &format!("/api/v1/extensions/{}/devices", ext["id"].as_str().unwrap()),
             json!({"name": "Handset", "kind": "wifi", "phone_id": phone_id,
-                   "phone_label": "Küche 40"}),
+                   "phone_label": "Küche 400"}),
         )
         .await;
     assert_eq!(status, StatusCode::OK, "{dev}");
     let (_, detail) = admin.get(&format!("/api/v1/phones/{phone_id}")).await;
-    assert_eq!(detail["accounts"][0]["phone_label"], "Küche 40");
+    assert_eq!(detail["accounts"][0]["phone_label"], "Küche 400");
     let device_id = detail["accounts"][0]["device_id"].as_str().unwrap();
     let (status, _) = admin
         .put(
@@ -567,7 +567,7 @@ async fn ringtones_wallpapers_labels_and_phonebook_sections(db: PgPool) {
     let (status, _) = admin
         .put(
             &format!("/api/v1/phones/{phone_id}/accounts/{device_id}"),
-            json!({"phone_label": " Küche 40 ", "phone_display_name": "Familie M."}),
+            json!({"phone_label": " Küche 400 ", "phone_display_name": "Familie M."}),
         )
         .await;
     assert_eq!(status, StatusCode::NO_CONTENT);
@@ -580,7 +580,7 @@ async fn ringtones_wallpapers_labels_and_phonebook_sections(db: PgPool) {
     .await;
     let base = format!("http://{user}:{pass}@localhost/provisioning");
     for line in [
-        "account.1.label = Küche 40".to_owned(),
+        "account.1.label = Küche 400".to_owned(),
         "account.1.display_name = Familie M.".to_owned(),
         format!("ringtone.url = {base}/media/{ring_id}/{ring_file}"),
         format!("phone_setting.ring_type = {ring_file}"),

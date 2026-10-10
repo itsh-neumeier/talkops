@@ -26,6 +26,10 @@ All notable changes to TalkOps. The format follows
 
 ### Changed
 
+- **Internal numbers start at 100.** `*1`–`*99` are reserved for system
+  codes and `*<number>` reaches internal numbers from `*100`. New extensions,
+  groups, time conditions, menus and queues need a number from 100 (the web
+  UI says so at every number field); existing 2-digit numbers are kept.
 - Phone numbers in contacts may be written as `+49 (0)89 …` or with dots.
 
 ## [1.7.1] – 2026-10-10

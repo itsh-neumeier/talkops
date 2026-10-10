@@ -148,7 +148,7 @@ async fn setup_login_csrf_and_roles(db: PgPool) {
     let (status, _) = bob
         .post(
             "/api/v1/extensions",
-            json!({"number": "30", "display_name": "x"}),
+            json!({"number": "300", "display_name": "x"}),
         )
         .await;
     assert_eq!(status, StatusCode::FORBIDDEN);
@@ -197,7 +197,7 @@ async fn extensions_devices_and_self_service(db: PgPool) {
     let (status, ext) = admin
         .post(
             "/api/v1/extensions",
-            json!({"number": "20", "display_name": "Bob", "user_id": bob["id"]}),
+            json!({"number": "200", "display_name": "Bob", "user_id": bob["id"]}),
         )
         .await;
     assert_eq!(status, StatusCode::OK);
@@ -211,10 +211,22 @@ async fn extensions_devices_and_self_service(db: PgPool) {
     let (status, _) = admin
         .post(
             "/api/v1/extensions",
-            json!({"number": "20", "display_name": "dup"}),
+            json!({"number": "200", "display_name": "dup"}),
         )
         .await;
     assert_eq!(status, StatusCode::CONFLICT);
+    // Internal numbers start at 100: *1-*99 are system codes.
+    let (status, err) = admin
+        .post(
+            "/api/v1/extensions",
+            json!({"number": "20", "display_name": "short"}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(
+        err["message"].as_str().unwrap().contains("start at 100"),
+        "{err}"
+    );
 
     let ext_id = ext["id"].as_str().unwrap();
     let (status, creds) = admin
@@ -224,14 +236,14 @@ async fn extensions_devices_and_self_service(db: PgPool) {
         )
         .await;
     assert_eq!(status, StatusCode::OK);
-    assert_eq!(creds["sip_username"], "20-1");
+    assert_eq!(creds["sip_username"], "200-1");
     assert_eq!(creds["sip_password"].as_str().unwrap().len(), 20);
 
     // Bob sees his phone and may read his credentials; not someone else's.
     let bob_client = login(&router, "bob", "bob-password-1").await.unwrap();
     let (status, phones) = bob_client.get("/api/v1/me/phones").await;
     assert_eq!(status, StatusCode::OK);
-    assert_eq!(phones[0]["devices"][0]["sip_username"], "20-1");
+    assert_eq!(phones[0]["devices"][0]["sip_username"], "200-1");
     assert!(phones[0]["devices"][0].get("sip_password_enc").is_none());
     let device_id = creds["device_id"].as_str().unwrap();
     let (status, again) = bob_client
@@ -243,7 +255,7 @@ async fn extensions_devices_and_self_service(db: PgPool) {
     let (_, other) = admin
         .post(
             "/api/v1/extensions",
-            json!({"number": "21", "display_name": "Other"}),
+            json!({"number": "210", "display_name": "Other"}),
         )
         .await;
     let (status, _) = bob_client
@@ -280,7 +292,7 @@ async fn trunk_lines_and_numbers(db: PgPool) {
     let (_, ext) = admin
         .post(
             "/api/v1/extensions",
-            json!({"number": "20", "display_name": "Office"}),
+            json!({"number": "200", "display_name": "Office"}),
         )
         .await;
 

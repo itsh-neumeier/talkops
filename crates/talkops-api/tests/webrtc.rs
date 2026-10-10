@@ -15,7 +15,7 @@ async fn account(state: talkops_api::AppState) -> (StatusCode, serde_json::Value
     let (status, ext) = admin
         .post(
             "/api/v1/extensions",
-            json!({"number": "20", "display_name": "Office", "user_id": me["user"]["id"]}),
+            json!({"number": "200", "display_name": "Office", "user_id": me["user"]["id"]}),
         )
         .await;
     assert_eq!(status, StatusCode::OK, "{ext}");

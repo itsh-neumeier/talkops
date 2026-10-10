@@ -2,7 +2,7 @@
 # End-to-end test against a running TalkOps + FreeSWITCH stack.
 #
 # Creates an admin, two extensions with one device each, registers device
-# 21-1 with SIPp, calls it from 20-1 and checks the call record. Also checks
+# 210-1 with SIPp, calls it from 200-1 and checks the call record. Also checks
 # that a wrong SIP password is rejected, that DND rejects calls as busy and
 # that a provisioned Yealink phone gets its configuration and that an
 # unreachable extension's voicemail answers and stores the message, that a
@@ -54,8 +54,8 @@ device() { # number -> "username password"
     id=$(echo "$ext" | jq -r .id)
     api POST "/api/v1/extensions/$id/devices" '{"name":"SIPp","kind":"softphone"}' | jq -r '"\(.sip_username) \(.sip_password)"'
 }
-read -r CALLER CALLER_PW <<<"$(device 20)"
-read -r CALLEE CALLEE_PW <<<"$(device 21)"
+read -r CALLER CALLER_PW <<<"$(device 200)"
+read -r CALLEE CALLEE_PW <<<"$(device 210)"
 echo "caller=$CALLER callee=$CALLEE"
 
 log "wrong password is rejected"
@@ -77,8 +77,8 @@ done
 api GET /api/v1/telephony/status | jq -e --arg u "$CALLEE" '.registrations[] | select(.user == $u)' >/dev/null \
     || fail "registration of $CALLEE not visible in /api/v1/telephony/status"
 
-log "caller calls extension 21"
-printf 'SEQUENTIAL\n21;\n' > "$WORK/dest.csv"
+log "caller calls extension 210"
+printf 'SEQUENTIAL\n210;\n' > "$WORK/dest.csv"
 sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/call.xml" -inf "$WORK/dest.csv" -s "$CALLER" -au "$CALLER" -ap "$CALLER_PW" \
     -m 1 -p 5093 -min_rtp_port 16100 -max_rtp_port 16150 -i "$SIP_HOST" -timeout 30 -timeout_error -trace_err -error_file "$WORK/caller.log" >/dev/null \
     || { cat "$WORK/caller.log" 2>/dev/null; fail "call failed"; }
@@ -86,14 +86,14 @@ wait "$CALLEE_PID" || { cat "$WORK/callee.log" 2>/dev/null; fail "callee scenari
 
 log "call record"
 for _ in $(seq 1 15); do
-    api GET /api/v1/calls | jq -e '.[] | select(.direction == "internal" and .destination == "21" and .billsec >= 1 and .billsec <= 10)' >/dev/null 2>&1 && break
+    api GET /api/v1/calls | jq -e '.[] | select(.direction == "internal" and .destination == "210" and .billsec >= 1 and .billsec <= 10)' >/dev/null 2>&1 && break
     sleep 1
 done
-api GET /api/v1/calls | jq -e '.[] | select(.direction == "internal" and .destination == "21" and .billsec >= 1 and .billsec <= 10)' \
+api GET /api/v1/calls | jq -e '.[] | select(.direction == "internal" and .destination == "210" and .billsec >= 1 and .billsec <= 10)' \
     || fail "no CDR for the call"
 
 log "do not disturb rejects calls with 486"
-EXT21=$(api GET /api/v1/extensions | jq -r '.[] | select(.number == "21") | .id')
+EXT21=$(api GET /api/v1/extensions | jq -r '.[] | select(.number == "210") | .id')
 api PUT "/api/v1/extensions/$EXT21/call-settings" '{"dnd":true}' >/dev/null || fail "enable DND"
 sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/call_busy.xml" -inf "$WORK/dest.csv" -s "$CALLER" -au "$CALLER" -ap "$CALLER_PW" \
     -m 1 -p 5095 -min_rtp_port 16200 -max_rtp_port 16250 -i "$SIP_HOST" -timeout 30 -timeout_error -trace_err -error_file "$WORK/busy.log" >/dev/null \
@@ -101,7 +101,7 @@ sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/call_busy.xml" -inf "$WORK/dest.csv" -s "$C
 api PUT "/api/v1/extensions/$EXT21/call-settings" '{"dnd":false}' >/dev/null
 
 log "Yealink provisioning"
-PHONE=$(api POST /api/v1/phones '{"mac":"80:5e:c0:00:e2:e2","model":"t54w","name":"E2E","line_keys":[{"key":3,"type":"blf","value":"21","label":"E2E 21"}]}' | jq -r .id) \
+PHONE=$(api POST /api/v1/phones '{"mac":"80:5e:c0:00:e2:e2","model":"t54w","name":"E2E","line_keys":[{"key":3,"type":"blf","value":"210","label":"E2E 210"}]}' | jq -r .id) \
     || fail "create phone"
 api POST "/api/v1/extensions/$EXT21/devices" "{\"name\":\"Yealink\",\"kind\":\"desk\",\"phone_id\":\"$PHONE\"}" >/dev/null || fail "place device on phone"
 PROV=$(api GET /api/v1/provisioning)
@@ -111,17 +111,17 @@ curl -sf -u "$PUSER:$PPASS" "$BASE/provisioning/y000000000068.cfg" | grep -q '^a
     || fail "common configuration"
 CFG=$(curl -sf -u "$PUSER:$PPASS" -A "Yealink SIP-T54W 96.86.0.100 80:5e:c0:00:e2:e2" "$BASE/provisioning/805ec000e2e2.cfg") \
     || fail "phone configuration"
-echo "$CFG" | grep -q '^account.1.user_name = 21-2$' || fail "account missing in phone configuration"
+echo "$CFG" | grep -q '^account.1.user_name = 210-2$' || fail "account missing in phone configuration"
 echo "$CFG" | grep -q '^linekey.3.type = 16$' || fail "BLF key missing in phone configuration"
 [ "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/provisioning/805ec000e2e2.cfg")" = 401 ] \
     || fail "provisioning without credentials must be rejected"
-curl -sf -u "$PUSER:$PPASS" "$BASE/provisioning/phonebook/internal.xml" | grep -q '<Name>E2E 21</Name>' \
+curl -sf -u "$PUSER:$PPASS" "$BASE/provisioning/phonebook/internal.xml" | grep -q '<Name>E2E 210</Name>' \
     || fail "internal phonebook"
 
 log "voicemail answers and stores a message"
-EXT22=$(api POST /api/v1/extensions '{"number":"22","display_name":"E2E 22"}' | jq -r .id) || fail "create extension 22"
+EXT22=$(api POST /api/v1/extensions '{"number":"220","display_name":"E2E 220"}' | jq -r .id) || fail "create extension 220"
 api PUT "/api/v1/extensions/$EXT22/voicemail" '{"enabled":true,"pin":"2468"}' >/dev/null || fail "enable voicemail"
-printf 'SEQUENTIAL\n22;\n' > "$WORK/vm.csv"
+printf 'SEQUENTIAL\n220;\n' > "$WORK/vm.csv"
 (cd "$DIR" && sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/call_voicemail.xml" -inf "$WORK/vm.csv" -s "$CALLER" -au "$CALLER" -ap "$CALLER_PW" \
     -m 1 -p 5096 -min_rtp_port 16300 -max_rtp_port 16350 -i "$SIP_HOST" -timeout 60 -timeout_error -trace_err -error_file "$WORK/vm.log" >/dev/null) \
     || { cat "$WORK/vm.log" 2>/dev/null; fail "voicemail call failed"; }
@@ -148,26 +148,26 @@ wait_vm_count() { # expected
 }
 
 log "ring group without reachable members falls back to voicemail"
-EXT21=$(api GET /api/v1/extensions | jq -r '.[] | select(.number == "21") | .id')
-api POST /api/v1/ring-groups "{\"number\":\"50\",\"name\":\"E2E group\",\"members\":[\"$EXT21\"],\"ring_timeout_secs\":5,\"fallback_type\":\"voicemail\",\"fallback_id\":\"$EXT22\"}" >/dev/null \
+EXT21=$(api GET /api/v1/extensions | jq -r '.[] | select(.number == "210") | .id')
+api POST /api/v1/ring-groups "{\"number\":\"500\",\"name\":\"E2E group\",\"members\":[\"$EXT21\"],\"ring_timeout_secs\":5,\"fallback_type\":\"voicemail\",\"fallback_id\":\"$EXT22\"}" >/dev/null \
     || fail "create ring group"
-printf 'SEQUENTIAL\n50;\n' > "$WORK/group.csv"
+printf 'SEQUENTIAL\n500;\n' > "$WORK/group.csv"
 (cd "$DIR" && sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/call_voicemail.xml" -inf "$WORK/group.csv" -s "$CALLER" -au "$CALLER" -ap "$CALLER_PW" \
     -m 1 -p 5097 -min_rtp_port 16400 -max_rtp_port 16450 -i "$SIP_HOST" -timeout 60 -timeout_error -trace_err -error_file "$WORK/group.log" >/dev/null) \
     || { cat "$WORK/group.log" 2>/dev/null; fail "ring group call failed"; }
 wait_vm_count 2 || fail "ring group fallback did not reach voicemail"
 
 log "Smart Attendant routes key 1 to its voicemail step"
-api POST /api/v1/attendants "{\"number\":\"70\",\"name\":\"E2E attendant\",\"flow\":{\"type\":\"menu\",\"id\":\"start\",\"clip_id\":null,\"timeout_secs\":4,\"options\":[{\"digit\":\"1\",\"next\":{\"type\":\"voicemail\",\"id\":\"vm\",\"recipients\":[\"$EXT22\"],\"clip_id\":null}}]}}" >/dev/null \
+api POST /api/v1/attendants "{\"number\":\"700\",\"name\":\"E2E attendant\",\"flow\":{\"type\":\"menu\",\"id\":\"start\",\"clip_id\":null,\"timeout_secs\":4,\"options\":[{\"digit\":\"1\",\"next\":{\"type\":\"voicemail\",\"id\":\"vm\",\"recipients\":[\"$EXT22\"],\"clip_id\":null}}]}}" >/dev/null \
     || fail "create Smart Attendant"
-printf 'SEQUENTIAL\n70;\n' > "$WORK/ivr.csv"
+printf 'SEQUENTIAL\n700;\n' > "$WORK/ivr.csv"
 (cd "$DIR" && sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/call_ivr.xml" -inf "$WORK/ivr.csv" -s "$CALLER" -au "$CALLER" -ap "$CALLER_PW" \
     -m 1 -p 5098 -min_rtp_port 16500 -max_rtp_port 16550 -i "$SIP_HOST" -timeout 60 -timeout_error -trace_err -error_file "$WORK/ivr.log" >/dev/null) \
     || { cat "$WORK/ivr.log" 2>/dev/null; fail "IVR call failed"; }
 wait_vm_count 3 || fail "attendant choice did not reach voicemail"
 
 log "queue offers the call to an agent"
-api POST /api/v1/queues "{\"number\":\"80\",\"name\":\"E2E queue\",\"strategy\":\"ring-all\",\"members\":[\"$EXT21\"]}" >/dev/null \
+api POST /api/v1/queues "{\"number\":\"800\",\"name\":\"E2E queue\",\"strategy\":\"ring-all\",\"members\":[\"$EXT21\"]}" >/dev/null \
     || fail "create queue"
 sipp -sn uas -p 5094 -i "$SIP_HOST" -m 1 -min_rtp_port 16600 -max_rtp_port 16650 -timeout 60 -timeout_error \
     -trace_err -error_file "$WORK/agent.log" >"$WORK/agent.out" 2>&1 &
@@ -177,7 +177,7 @@ sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/register.xml" -set contact_port 5094 -s "$C
     || { cat "$WORK/register2.log" 2>/dev/null; fail "agent registration failed"; }
 # The queue sync adds the agent within seconds of the change.
 sleep 3
-printf 'SEQUENTIAL\n80;\n' > "$WORK/queue.csv"
+printf 'SEQUENTIAL\n800;\n' > "$WORK/queue.csv"
 (cd "$DIR" && sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/call_hold.xml" -inf "$WORK/queue.csv" -s "$CALLER" -au "$CALLER" -ap "$CALLER_PW" \
     -m 1 -p 5099 -min_rtp_port 16700 -max_rtp_port 16750 -i "$SIP_HOST" -timeout 60 -timeout_error -trace_err -error_file "$WORK/queue.log" >/dev/null) \
     || { cat "$WORK/queue.log" 2>/dev/null; fail "queue call failed"; }
@@ -198,7 +198,7 @@ sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/register.xml" -set contact_port 5094 -s "$C
 wait "$REC_PID" || { cat "$WORK/rec-callee.log" 2>/dev/null; fail "callee of the recorded call failed"; }
 REC=""
 for _ in $(seq 1 15); do
-    REC=$(api GET /api/v1/calls | jq -r '[.[] | select(.destination == "21" and .recording_id != null)][0].recording_id // empty')
+    REC=$(api GET /api/v1/calls | jq -r '[.[] | select(.destination == "210" and .recording_id != null)][0].recording_id // empty')
     [ -n "$REC" ] && break
     sleep 1
 done
@@ -230,15 +230,15 @@ if [ "${WEBRTC_E2E:-0}" = 1 ]; then
     log "browser softphone (WebRTC) calls an extension"
     WEBU=$(api POST /api/v1/users '{"username":"e2e-web","display_name":"E2E Web","role":"user","password":"e2e-web-password"}' | jq -r .id) \
         || fail "create web user"
-    api POST /api/v1/extensions "{\"number\":\"23\",\"display_name\":\"E2E 23\",\"user_id\":\"$WEBU\"}" >/dev/null \
-        || fail "create extension 23"
+    api POST /api/v1/extensions "{\"number\":\"230\",\"display_name\":\"E2E 230\",\"user_id\":\"$WEBU\"}" >/dev/null \
+        || fail "create extension 230"
     sipp -sn uas -p 5094 -i "$SIP_HOST" -m 1 -min_rtp_port 17200 -max_rtp_port 17250 -timeout 60 -timeout_error \
         -trace_err -error_file "$WORK/web-callee.log" >"$WORK/web-callee.out" 2>&1 &
     WEB_PID=$!
     sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/register.xml" -set contact_port 5094 -s "$CALLEE" -au "$CALLEE" -ap "$CALLEE_PW" \
         -m 1 -p 5092 -i "$SIP_HOST" -timeout 20 -timeout_error -trace_err -error_file "$WORK/register5.log" >/dev/null \
         || { cat "$WORK/register5.log" 2>/dev/null; fail "registration for the softphone call failed"; }
-    node "$DIR/../e2e/webrtc.mjs" "$BASE" e2e-web e2e-web-password 21 || fail "softphone call"
+    node "$DIR/../e2e/webrtc.mjs" "$BASE" e2e-web e2e-web-password 210 || fail "softphone call"
     wait "$WEB_PID" || { cat "$WORK/web-callee.log" 2>/dev/null; fail "callee of the softphone call failed"; }
 fi
 

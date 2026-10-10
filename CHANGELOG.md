@@ -6,6 +6,8 @@ All notable changes to TalkOps. The format follows
 
 ## [Unreleased]
 
+## [1.7.5] – 2026-10-10
+
 ### Changed
 
 - **Phones and extensions:** extensions are assigned on the phone's page
@@ -18,8 +20,13 @@ All notable changes to TalkOps. The format follows
 - **Resync without restart:** *Resync* now only reloads the phone's
   configuration (SIP NOTIFY `check-sync;reboot=false`,
   `sip.notify_reboot_enable = 0`); the new *Restart* button restarts the
-  phone as well. Phones still configured by 1.7.4 or older restart one last
+  phone as well. Phones still configured by 1.7.3 or older restart one last
   time on the first resync.
+- **Several extensions per number:** a number routed to an extension can
+  ring further extensions at the same time – ticked in the extension's
+  dialog (*Incoming numbers that ring here*) or on the trunk / *Phone
+  numbers* page (*Ring more extensions …*). The extension chosen as the
+  destination stays the main one: unanswered calls go to its voicemail.
 
 ## [1.7.4] – 2026-10-10
 

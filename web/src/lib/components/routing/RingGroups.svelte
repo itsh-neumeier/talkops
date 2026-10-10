@@ -1,4 +1,5 @@
 <script lang="ts">
+	import InternalNumberInput from '#lib/components/InternalNumberInput.svelte';
 	import { api, type RingGroup } from '#lib/api.ts';
 	import DestinationSelect from '#lib/components/DestinationSelect.svelte';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
@@ -22,11 +23,13 @@
 		members: [] as string[]
 	});
 	let form = $state(blank());
+	let keepNumber = $state<string | null>(null);
 	let open = $state(false);
 	let error = $state('');
 
 	function edit(g: RingGroup | null) {
 		error = '';
+		keepNumber = g?.number ?? null;
 		form = g ? { ...g, number: g.number ?? '', members: [...g.members] } : blank();
 		open = true;
 	}
@@ -113,11 +116,11 @@
 		<ErrorBox {error} />
 		<div class="grid grid-cols-3 gap-3">
 			<div>
-				<label for="g-num">{t('routing.number')}</label><input
+				<label for="g-num">{t('routing.number')}</label><InternalNumberInput
 					id="g-num"
-					class="input font-mono"
 					bind:value={form.number}
-					placeholder="50"
+					keep={keepNumber}
+					placeholder="500"
 				/>
 			</div>
 			<div class="col-span-2">

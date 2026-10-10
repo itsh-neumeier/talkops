@@ -1,4 +1,5 @@
 <script lang="ts">
+	import InternalNumberInput from '#lib/components/InternalNumberInput.svelte';
 	import { onMount } from 'svelte';
 	import { api, type HolidayCalendar, type TimeCondition } from '#lib/api.ts';
 	import DestinationSelect from '#lib/components/DestinationSelect.svelte';
@@ -28,6 +29,7 @@
 		closed_id: null as string | null
 	});
 	let form = $state(blank());
+	let keepNumber = $state<string | null>(null);
 	let open = $state(false);
 	let error = $state('');
 	let regions = $state<[string, string][]>([]);
@@ -38,6 +40,7 @@
 
 	function edit(c: TimeCondition | null) {
 		error = '';
+		keepNumber = c?.number ?? null;
 		form = c
 			? {
 					...c,
@@ -163,11 +166,11 @@
 		<ErrorBox {error} />
 		<div class="grid grid-cols-3 gap-3">
 			<div>
-				<label for="tc-num">{t('routing.number')}</label><input
+				<label for="tc-num">{t('routing.number')}</label><InternalNumberInput
 					id="tc-num"
-					class="input font-mono"
 					bind:value={form.number}
-					placeholder="60"
+					keep={keepNumber}
+					placeholder="600"
 				/>
 			</div>
 			<div class="col-span-2">

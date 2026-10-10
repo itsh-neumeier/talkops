@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { api, type Extension, type PhoneNumber, type User } from '#lib/api.ts';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
+	import InternalNumberInput from '#lib/components/InternalNumberInput.svelte';
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
 
@@ -60,12 +61,11 @@
 	<div class="grid grid-cols-3 gap-3">
 		<div>
 			<label for="e-number">{t('ext.number')}</label>
-			<input
+			<InternalNumberInput
 				id="e-number"
-				class="input font-mono"
-				inputmode="numeric"
-				pattern="[1-9][0-9]{'{1,7}'}"
 				bind:value={form.number}
+				keep={extension?.number}
+				placeholder="100"
 				required
 			/>
 		</div>

@@ -522,6 +522,7 @@ const de: Record<keyof typeof en, string> = {
 	'block.testAllowed': 'Würde normal klingeln.',
 	'routing.queues': 'Warteschlangen',
 	'routing.none': 'Noch nichts eingerichtet.',
+	'numbering.hint': 'Ab 100 – *1 bis *99 sind Systemcodes.',
 	'routing.number': 'Nummer',
 	'routing.fallback': 'Wenn niemand annimmt',
 	'routing.hangup': 'Auflegen',

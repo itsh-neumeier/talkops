@@ -139,7 +139,7 @@ Nummern gehen nach einer Sekunde raus:
 - alle internen Nummern (Nebenstellen, Gruppen, Menüs, Warteschlangen).
 
 Ausgenommen ist jede Nummer, mit der eine andere wählbare Nummer beginnt –
-gibt es z. B. die 30 und die 300, wartet das Telefon bei der 30 weiter.
+gibt es z. B. die 300 und die 3000, wartet das Telefon bei der 300 weiter.
 `*1`–`*99` sind für Systemcodes reserviert und haben Vorrang; `*<Nummer>`
 für interne Nummern beginnt bei `*100`. Interne Nummern, deren Anfang ein
 Systemcode ist (z. B. 510 → `*51`), wählst du am Yealink deshalb ohne Stern.

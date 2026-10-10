@@ -528,6 +528,7 @@ export default {
 	'block.testAllowed': 'Would ring normally.',
 	'routing.queues': 'Queues',
 	'routing.none': 'Nothing configured yet.',
+	'numbering.hint': 'From 100 – *1 to *99 are system codes.',
 	'routing.number': 'Number',
 	'routing.fallback': 'If nobody answers',
 	'routing.hangup': 'Hang up',

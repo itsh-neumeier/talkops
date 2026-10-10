@@ -135,8 +135,8 @@ go out after one second:
 - the fixed codes `*51`–`*59`, `*73`, `*78`, `*79`, `*97`, `*98`,
 - all internal numbers (extensions, groups, menus, queues).
 
-A number is left out if another dialable number starts with it – with 30 and
-300, the phone keeps waiting after 30. `*1`–`*99` are reserved for system
+A number is left out if another dialable number starts with it – with 300 and
+3000, the phone keeps waiting after 300. `*1`–`*99` are reserved for system
 codes and take precedence; `*<number>` for internal numbers starts at `*100`.
 Internal numbers that begin with a system code (e.g. 510 → `*51`) are
 therefore dialed without the star on a Yealink. Internal numbers starting with `11`

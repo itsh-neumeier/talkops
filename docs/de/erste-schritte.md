@@ -14,10 +14,13 @@ Schritte abhakt, sobald sie erledigt sind.
 4. **Standardrufnummer.** *Einstellungen → Standardrufnummer* setzen – ohne sie
    sind keine Gespräche nach außen und keine Notrufe möglich.
 5. **Benutzer und Nebenstellen.** *Einstellungen → Benutzer → Neuer Benutzer*, dann
-   *Einstellungen → Nebenstellen → Neue Nebenstelle* (2–8 Ziffern, z. B. frei
-   100–9999; nicht mit 0 beginnend, nicht 115 und keine Nummer, die mit einer
-   Notrufnummer anfängt oder in ihr steckt, z. B. 110, 112, 1120) und den
-   Benutzer zuordnen.
+   *Einstellungen → Nebenstellen → Neue Nebenstelle* (ab 100, 3–8 Ziffern, z. B.
+   frei 100–9999; nicht mit 0 beginnend, nicht 115 und keine Nummer, die mit
+   einer Notrufnummer anfängt oder in ihr steckt, z. B. 110, 112, 1120) und den
+   Benutzer zuordnen. `*1`–`*99` sind für Systemcodes reserviert, deshalb
+   beginnen interne Nummern bei 100 – das gilt auch für Gruppen,
+   Zeitsteuerungen, Menüs und Warteschlangen. Zweistellige Nummern aus älteren
+   Installationen bleiben erhalten, neue lassen sich nicht mehr anlegen.
 6. **Geräte.** In der Nebenstelle *Gerät hinzufügen*. TalkOps erzeugt
    SIP-Benutzername und -Passwort. Im Telefon eintragen:
    - SIP-Server/Registrar: IP-Adresse des TalkOps-Hosts, Port 5060 (UDP)
@@ -36,8 +39,9 @@ Zugangsdaten und unter *Anrufliste* ihre Gespräche.
 
 | Eingabe | Wird gewählt als |
 |---|---|
-| `21`, `610` | Nebenstelle 21 bzw. 610 |
-| `*610` | ebenfalls Nebenstelle 610 (Stern + interne Nummer, 3–4 Stellen) |
+| `210`, `610` | Nebenstelle 210 bzw. 610 |
+| `*610` | ebenfalls Nebenstelle 610 (Stern + interne Nummer, ab `*100`, 3–4 Stellen) |
+| `*1` … `*99` | Systemcodes, siehe [Yealink-Telefone](yealink.md#4-kurzwahlen-am-telefon) |
 | `110`, `112` | Notruf – immer über die Standardrufnummer, nie mit unterdrückter Rufnummer |
 | `115`, `11833` | Sonderrufnummer, unverändert |
 | `030 1234567` | national |

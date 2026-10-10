@@ -1,4 +1,5 @@
 <script lang="ts">
+	import InternalNumberInput from '#lib/components/InternalNumberInput.svelte';
 	// Smart Attendant editor: the call flow as a tree on the left, the
 	// settings of the selected step on the right.
 	import { beforeNavigate, goto } from '$app/navigation';
@@ -19,6 +20,7 @@
 	const id = $derived(page.params.id ?? 'new');
 	let editor = $state<FlowEditor | null>(null);
 	let form = $state({ number: '', name: '', language: null as Attendant['language'] });
+	let keepNumber = $state<string | null>(null);
 	let error = $state('');
 	let saving = $state(false);
 	let saved = $state(false);
@@ -36,6 +38,7 @@
 			} else {
 				const a = await api.get<Attendant>(`/attendants/${id}`);
 				form = { number: a.number ?? '', name: a.name, language: a.language };
+				keepNumber = a.number;
 				editor = new FlowEditor(a.flow);
 				snapshot = current();
 			}
@@ -103,7 +106,12 @@
 		<div class="card grid gap-3 sm:grid-cols-[8rem_1fr_12rem]">
 			<div>
 				<label for="att-number">{t('routing.number')}</label>
-				<input id="att-number" class="input font-mono" bind:value={form.number} placeholder="70" />
+				<InternalNumberInput
+					id="att-number"
+					bind:value={form.number}
+					keep={keepNumber}
+					placeholder="700"
+				/>
 			</div>
 			<div>
 				<label for="att-name">{t('common.name')}</label>

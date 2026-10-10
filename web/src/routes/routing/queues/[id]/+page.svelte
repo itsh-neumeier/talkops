@@ -1,4 +1,5 @@
 <script lang="ts">
+	import InternalNumberInput from '#lib/components/InternalNumberInput.svelte';
 	// Call queue settings like UniFi Talk: general, schedule, call handling.
 	import { beforeNavigate, goto } from '$app/navigation';
 	import { page } from '$app/state';
@@ -31,6 +32,7 @@
 	const id = $derived(page.params.id ?? 'new');
 	type Form = Omit<Queue, 'id' | 'number'> & { number: string };
 	let form = $state<Form | null>(null);
+	let keepNumber = $state<string | null>(null);
 	let tab = $state('general');
 	let error = $state('');
 	let saved = $state(false);
@@ -82,6 +84,7 @@
 			} else {
 				const q = await api.get<Queue>(`/queues/${id}`);
 				form = { ...q, number: q.number ?? '' };
+				keepNumber = q.number;
 				unanswered = q.voicemail_recipients.length ? 'voicemail' : 'destination';
 				greetingMode = q.greeting_clip_id ? 'generate' : 'none';
 				mohMode = q.moh_clip_id ? 'upload' : 'default';
@@ -176,7 +179,12 @@
 			<div class="grid gap-3 sm:grid-cols-[8rem_1fr]">
 				<div>
 					<label for="q-num">{t('routing.number')}</label>
-					<input id="q-num" class="input font-mono" bind:value={form.number} placeholder="80" />
+					<InternalNumberInput
+						id="q-num"
+						bind:value={form.number}
+						keep={keepNumber}
+						placeholder="800"
+					/>
 				</div>
 				<div>
 					<label for="q-name">{t('common.name')}</label>

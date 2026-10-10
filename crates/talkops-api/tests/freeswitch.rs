@@ -375,6 +375,15 @@ async fn inbound_routing(db: PgPool) {
         );
         assert!(has(&a, "set", "effective_caller_id_name=Müller x"), "{a:?}");
         assert!(has(&a, "set", "talkops_direction=inbound"));
+        // Phones get a codec choice, not just the trunk codec (AX86R: 488).
+        assert!(
+            has(
+                &a,
+                "export",
+                "nolocal:absolute_codec_string=G722,PCMA,PCMU,OPUS"
+            ),
+            "{a:?}"
+        );
     }
     // Per-number registration: RURI carries the username; the account identifies the number.
     let a = inbound(

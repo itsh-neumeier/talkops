@@ -511,6 +511,11 @@ async fn plan_sip_address(
 
 /// Audio codecs for internal calls without video (browser and phones).
 const AUDIO_CODECS: &str = "OPUS,G722,PCMA,PCMU";
+/// Offered to phones on calls from a trunk. Without it FreeSWITCH offers
+/// only the trunk's codec (e.g. just G722), and a phone that does not take
+/// that one answers `488 Not Acceptable Here` (seen with a Yealink AX86R).
+/// The trunk's own codecs come first so most calls need no transcoding.
+const TRUNK_TO_PHONE_CODECS: &str = "G722,PCMA,PCMU,OPUS";
 /// Video codecs added where video is allowed.
 const VIDEO_CODECS: &str = "H264,VP8";
 
@@ -1023,6 +1028,11 @@ async fn plan_public(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Actio
         ),
         set("talkops_direction", "inbound"),
         set("talkops_trunk_id", trunk_id.to_string()),
+        // Only for the legs to phones; the trunk leg keeps its codec.
+        (
+            "export",
+            format!("nolocal:absolute_codec_string={TRUNK_TO_PHONE_CODECS}"),
+        ),
         set(
             "talkops_caller_number",
             caller_e164.clone().unwrap_or_else(|| "anonymous".into()),

@@ -34,6 +34,11 @@ All notable changes to TalkOps. The format follows
 
 ### Fixed
 
+- **Calls from a trunk reach every phone.** FreeSWITCH offered phones only the
+  trunk's codec (e.g. just G722); a phone without it – seen with a Yealink
+  AX86R – answered `488 Not Acceptable Here` and the call went straight to
+  voicemail (the browser softphone still rang). Phones are now offered
+  G722, PCMA, PCMU and Opus; the trunk leg keeps its codec.
 - Softphone: no more "Invalid session state Establishing" when a call is
   answered twice (answer button and Enter, double click) or put on hold
   before it is set up.

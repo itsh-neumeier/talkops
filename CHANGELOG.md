@@ -4,15 +4,38 @@ All notable changes to TalkOps. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
-## [1.6.0] – 2026-10-09
+## [1.7.1] – 2026-10-10
 
 ### Added
 
-- **SIP addresses:** extensions dial `name@domain` (softphone or phone);
-  through a trunk account of the same domain, otherwise directly over the
-  internet (*Settings → Telephony*, on by default). Trunk accounts without a
-  phone number (e.g. sip2sip/SIP Thor) get their own destination for
-  inbound calls.
+- **Wi-Fi handset** as device type (Yealink AX83H/AX86R) next to desk phone
+  and DECT handset.
+- **Label and display name per account on provisioned phones:** what the
+  line key and idle screen show and which caller name the phone sends – on
+  the phone's page (*Accounts on this phone*) or in the device dialog.
+- **Ringtones and wallpapers** for Yealink phones (*Settings → Phones*):
+  upload any audio file or picture – the browser converts it (WAV 8 kHz /
+  JPEG up to 1280 × 800) – and choose it per phone. Only offered on models
+  with documented support; ringtones larger than a model takes (100 KB on
+  T42U/T43U/T53W) cannot be chosen there.
+- **Phone book sections:** contacts are global (every phone) or belong to a
+  section such as *Family*; each phone shows up to three assigned sections
+  as extra phone books.
+- **Internal numbers 100–9999 freely:** 11x numbers are allowed now; only
+  115 and numbers that start or are part of an emergency number (110, 112,
+  1120 …) stay blocked. **`*<number>`** (e.g. `*610`) calls an internal number
+  just like `610`; feature codes keep working.
+
+### Fixed
+
+- The detail page of an extension (and other pages that look up data while
+  typing) failed with "500 Internal Error" since 1.7.0.
+- The version reported by 1.7.0 images was still 1.6.0.
+
+## [1.7.0] – 2026-10-10
+
+### Added
+
 - **Voicemail control editable** (*Settings → Voicemail*): every menu key,
   every voicemail prompt per language and the voice; the menu prompts name
   the chosen keys.
@@ -25,18 +48,24 @@ All notable changes to TalkOps. The format follows
   moved to *Settings → Setup*, My phones next to My account. The sidebar
   keeps Dashboard, Softphone, Calls, Voicemail, Door, Phone book, Search and
   Settings.
-- **Internal numbers 100–9999 freely:** 11x numbers are allowed now; only
-  115 and numbers that start or are part of an emergency number (110, 112,
-  1120 …) stay blocked. **`*<number>`** (e.g. `*610`) calls an internal number
-  just like `610`; feature codes keep working.
 - **Skeleton loading:** lists, detail pages, dashboard and settings show
   placeholders while their data loads instead of an empty page.
-- **Test calls** under *Settings → System*: echo, key test, time and ring
-  test by sip5060.net, to check audio and NAT without a provider.
 
 ### Fixed
 
 - Softphone: the idle area ("Ready for calls") follows the light/dark theme.
+
+## [1.6.0] – 2026-10-09
+
+### Added
+
+- **SIP addresses:** extensions dial `name@domain` (softphone or phone);
+  through a trunk account of the same domain, otherwise directly over the
+  internet (*Settings → Telephony*, on by default). Trunk accounts without a
+  phone number (e.g. sip2sip/SIP Thor) get their own destination for
+  inbound calls.
+- **Test calls** under *Settings → System*: echo, key test, time and ring
+  test by sip5060.net, to check audio and NAT without a provider.
 
 ## [1.5.0] – 2026-10-08
 

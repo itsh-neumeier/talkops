@@ -1,4 +1,6 @@
 <script lang="ts">
+	import SkeletonRows from '#lib/components/SkeletonRows.svelte';
+	import { net } from '#lib/net.svelte.ts';
 	import { onMount } from 'svelte';
 	import { api, type Extension, type PhoneNumber, type User } from '#lib/api.ts';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
@@ -63,6 +65,8 @@
 						<td>{userName(ext.user_id)}</td>
 						<td class="font-mono">{numberOf(ext.outbound_number_id) ?? t('ext.defaultNumber')}</td>
 					</tr>
+				{:else}
+					{#if !net.settled}<SkeletonRows cols={4} />{/if}
 				{/each}
 			</tbody>
 		</table>

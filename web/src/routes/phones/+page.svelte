@@ -1,4 +1,6 @@
 <script lang="ts">
+	import SkeletonRows from '#lib/components/SkeletonRows.svelte';
+	import { net } from '#lib/net.svelte.ts';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import {
@@ -119,7 +121,7 @@
 	<ErrorBox {error} />
 
 	<div class="card overflow-x-auto">
-		{#if phones.length === 0}
+		{#if phones.length === 0 && net.settled}
 			<p class="text-sm text-slate-500">{t('phones.none')}</p>
 		{:else}
 			<table class="table">
@@ -139,6 +141,8 @@
 							<td class="text-sm">{seen(p)}{p.last_ip ? ` · ${p.last_ip}` : ''}</td>
 							<td class="font-mono text-xs">{p.last_firmware ?? '—'}</td>
 						</tr>
+					{:else}
+						{#if !net.settled}<SkeletonRows cols={5} />{/if}
 					{/each}
 				</tbody>
 			</table>

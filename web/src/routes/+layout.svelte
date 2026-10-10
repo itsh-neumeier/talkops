@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { settingsPages } from '#lib/components/SettingsNav.svelte';
 	import '../app.css';
-	import { goto } from '$app/navigation';
+	import { afterNavigate, goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import { api } from '#lib/api.ts';
@@ -15,6 +15,8 @@
 	} from '#lib/i18n/index.svelte.ts';
 	import { hasRole, loadSession, logout, session } from '#lib/session.svelte.ts';
 	import { theme, toggleTheme } from '#lib/theme.svelte.ts';
+	import Skeleton from '#lib/components/Skeleton.svelte';
+	import { pageChanged } from '#lib/net.svelte.ts';
 
 	let { children } = $props();
 	let menuOpen = $state(false);
@@ -35,6 +37,9 @@
 		{ href: '/routing', key: 'nav.routing', role: 'operator' },
 		{ href: '/settings', key: 'nav.settings', role: 'user' }
 	];
+
+	// Skeletons until the new page has its data.
+	afterNavigate(pageChanged);
 
 	onMount(async () => {
 		document.documentElement.lang = i18n.locale;
@@ -129,7 +134,10 @@
 			{#if session.loaded && (session.user || publicPaths.includes(page.url.pathname))}
 				{@render children()}
 			{:else}
-				<p class="text-slate-500">{t('common.loading')}</p>
+				<div class="space-y-4" aria-label={t('common.loading')}>
+					<div class="h-7 w-48 animate-pulse rounded bg-slate-200 dark:bg-slate-700"></div>
+					<div class="card"><Skeleton lines={6} /></div>
+				</div>
 			{/if}
 		</main>
 	</div>

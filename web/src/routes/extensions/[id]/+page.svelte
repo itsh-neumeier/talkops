@@ -1,4 +1,6 @@
 <script lang="ts">
+	import Skeleton from '#lib/components/Skeleton.svelte';
+	import { net } from '#lib/net.svelte.ts';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
@@ -97,5 +99,7 @@
 				oncancel={() => (editOpen = false)}
 			/>
 		</Modal>
+	{:else if !net.settled}
+		<div class="card"><Skeleton lines={6} /></div>
 	{/if}
 </div>

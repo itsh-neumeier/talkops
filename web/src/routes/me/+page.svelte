@@ -1,4 +1,6 @@
 <script lang="ts">
+	import Skeleton from '#lib/components/Skeleton.svelte';
+	import { net } from '#lib/net.svelte.ts';
 	import { onMount } from 'svelte';
 	import { api, type ExtensionWithDevices } from '#lib/api.ts';
 	import CallSettings from '#lib/components/CallSettings.svelte';
@@ -32,5 +34,7 @@
 			<CallSettings extension={ext} />
 			<DeviceList extensionId={ext.id} devices={ext.devices} onchange={load} />
 		</section>
+	{:else}
+		{#if !net.settled}<section class="card"><Skeleton lines={4} /></section>{/if}
 	{/each}
 </div>

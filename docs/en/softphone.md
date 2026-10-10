@@ -70,6 +70,13 @@ coturn relays only to `TALKOPS_TURN_PEER_IP`, never into the rest of the
 network. The relay ports 49160–49200 are only used internally between coturn
 and FreeSWITCH and need no forwarding.
 
+## Hide your number once
+
+The checkbox *Hide my number once* below the keypad applies to the next call
+only: TalkOps dials `*31` in front (also before SIP addresses), then the box
+is cleared and your number is shown again. To hide it permanently, use the
+extension's setting.
+
 ## During a call
 
 - **Display**: incoming calls show the caller's name and number; during a

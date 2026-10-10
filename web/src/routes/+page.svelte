@@ -1,4 +1,6 @@
 <script lang="ts">
+	import Skeleton from '#lib/components/Skeleton.svelte';
+	import { net } from '#lib/net.svelte.ts';
 	import { onMount } from 'svelte';
 	import {
 		api,
@@ -220,6 +222,11 @@
 					</ul>
 				{/if}
 			</section>
+		</div>
+	{:else if hasRole('operator') && !net.settled}
+		<div class="grid gap-4 lg:grid-cols-3">
+			<div class="card lg:col-span-2"><Skeleton lines={8} /></div>
+			<div class="card"><Skeleton lines={5} /></div>
 		</div>
 	{:else if status}
 		<section class="card">

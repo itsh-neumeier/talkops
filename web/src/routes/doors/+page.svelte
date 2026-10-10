@@ -1,4 +1,6 @@
 <script lang="ts">
+	import Skeleton from '#lib/components/Skeleton.svelte';
+	import { net } from '#lib/net.svelte.ts';
 	import { onDestroy, onMount } from 'svelte';
 	import { api, type DoorEvent, type DoorStation } from '#lib/api.ts';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
@@ -189,6 +191,8 @@
 					</div>
 				{/if}
 			</div>
+		{:else}
+			{#if !net.settled}<section class="card"><Skeleton lines={4} /></section>{/if}
 		{/each}
 	</div>
 

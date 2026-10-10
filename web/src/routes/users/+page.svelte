@@ -1,4 +1,6 @@
 <script lang="ts">
+	import SkeletonRows from '#lib/components/SkeletonRows.svelte';
+	import { net } from '#lib/net.svelte.ts';
 	import { onMount } from 'svelte';
 	import { api, type Role, type User } from '#lib/api.ts';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
@@ -152,6 +154,8 @@
 							{/if}
 						</td>
 					</tr>
+				{:else}
+					{#if !net.settled}<SkeletonRows cols={5} />{/if}
 				{/each}
 			</tbody>
 		</table>

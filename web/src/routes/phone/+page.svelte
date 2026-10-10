@@ -352,7 +352,11 @@
 	{#if noExtension}<p class="text-sm text-slate-500">{t('phone.noExtension')}</p>{/if}
 
 	<div class="grid gap-4 md:grid-cols-[1fr_16rem]">
-		<div class="card relative aspect-video overflow-hidden bg-slate-900 p-0">
+		<div
+			class="card relative aspect-video overflow-hidden p-0 {busy
+				? 'bg-slate-900'
+				: 'bg-slate-100 dark:bg-slate-900'}"
+		>
 			<!-- svelte-ignore a11y_media_has_caption -->
 			<video bind:this={remoteVideo} class="h-full w-full object-contain" autoplay playsinline
 			></video>
@@ -412,7 +416,9 @@
 					{#if held}<span class="ml-2 text-amber-300">{t('phone.onHold')}</span>{/if}
 				</div>
 			{:else if !busy}
-				<div class="absolute inset-0 flex items-center justify-center text-sm text-slate-400">
+				<div
+					class="absolute inset-0 flex items-center justify-center text-sm text-slate-500 dark:text-slate-400"
+				>
 					{t('phone.idle')}
 				</div>
 			{/if}

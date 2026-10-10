@@ -19,8 +19,16 @@ All notable changes to TalkOps. The format follows
 - **Caller announcement before each message:** name from the phone book or
   extension list (else the provider's name), the number digit by digit in
   groups, and date and time – each switchable.
+- **Softphone: hide the own number once** – a checkbox for the next call
+  only (dials `*31` in front, also before SIP addresses), then visible again.
+- **Skeleton loading:** lists, detail pages, dashboard and settings show
+  placeholders while their data loads instead of an empty page.
 - **Test calls** under *Settings → System*: echo, key test, time and ring
   test by sip5060.net, to check audio and NAT without a provider.
+
+### Fixed
+
+- Softphone: the idle area ("Ready for calls") follows the light/dark theme.
 
 ## [1.5.0] – 2026-10-08
 

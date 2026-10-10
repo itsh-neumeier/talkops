@@ -1,4 +1,6 @@
 <script lang="ts">
+	import SkeletonRows from '#lib/components/SkeletonRows.svelte';
+	import { net } from '#lib/net.svelte.ts';
 	import { onMount } from 'svelte';
 	import { api, type Contact } from '#lib/api.ts';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
@@ -79,7 +81,7 @@
 	<ErrorBox {error} />
 	<input class="input max-w-sm" placeholder={t('common.search')} bind:value={search} />
 	<div class="card overflow-x-auto">
-		{#if contacts.length === 0}
+		{#if contacts.length === 0 && net.settled}
 			<p class="text-sm text-slate-500">{t('contacts.none')}</p>
 		{:else}
 			<table class="table">
@@ -109,6 +111,8 @@
 								{/if}
 							</td>
 						</tr>
+					{:else}
+						{#if !net.settled}<SkeletonRows cols={5} />{/if}
 					{/each}
 				</tbody>
 			</table>

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import SkeletonRows from '#lib/components/SkeletonRows.svelte';
+	import { net } from '#lib/net.svelte.ts';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { api, type Preset, type Trunk, type TrunkDetail } from '#lib/api.ts';
@@ -92,6 +94,8 @@
 								>{/if}
 						</td>
 					</tr>
+				{:else}
+					{#if !net.settled}<SkeletonRows cols={4} />{/if}
 				{/each}
 			</tbody>
 		</table>

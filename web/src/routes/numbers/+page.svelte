@@ -1,4 +1,6 @@
 <script lang="ts">
+	import SkeletonRows from '#lib/components/SkeletonRows.svelte';
+	import { net } from '#lib/net.svelte.ts';
 	import { onMount } from 'svelte';
 	import { api, type PhoneNumber, type Trunk } from '#lib/api.ts';
 	import { loadTargets } from '#lib/destinations.svelte.ts';
@@ -46,6 +48,8 @@
 						<td><a class="hover:underline" href="/trunks/{n.trunk_id}">{trunk?.name ?? '—'}</a></td>
 						<td><NumberDestination number={n} editable={hasRole('admin')} onchange={load} /></td>
 					</tr>
+				{:else}
+					{#if !net.settled}<SkeletonRows cols={4} />{/if}
 				{/each}
 			</tbody>
 		</table>

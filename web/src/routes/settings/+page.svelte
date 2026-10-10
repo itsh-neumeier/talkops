@@ -1,4 +1,6 @@
 <script lang="ts">
+	import Skeleton from '#lib/components/Skeleton.svelte';
+	import { net } from '#lib/net.svelte.ts';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { api, type PhoneNumber, type Settings, type SmtpSettings } from '#lib/api.ts';
@@ -251,6 +253,8 @@
 							<button class="btn btn-primary">{t('common.save')}</button>
 						</div>
 					</form>
+				{:else if hasRole('admin') && !settings && !net.settled}
+					<div class="card"><Skeleton lines={6} /></div>
 				{/if}
 			{:else if section === 'calls'}
 				{#if settings && hasRole('admin')}
@@ -346,6 +350,8 @@
 							<button class="btn btn-primary">{t('common.save')}</button>
 						</div>
 					</form>
+				{:else if hasRole('admin') && !settings && !net.settled}
+					<div class="card"><Skeleton lines={6} /></div>
 				{/if}
 				{#if settings && hasRole('admin')}
 					<form class="card space-y-3" onsubmit={saveMusic}>
@@ -399,6 +405,8 @@
 							<button class="btn btn-primary">{t('common.save')}</button>
 						</div>
 					</form>
+				{:else if hasRole('admin') && !settings && !net.settled}
+					<div class="card"><Skeleton lines={6} /></div>
 				{/if}
 			{:else if section === 'voicemail'}
 				{#if hasRole('admin')}<VoicemailControl />{/if}

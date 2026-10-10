@@ -1,3 +1,4 @@
+import { requestFinished, requestStarted } from './net.svelte.ts';
 // Typed client for the TalkOps REST API (same origin, cookie session).
 
 export class ApiError extends Error {
@@ -23,6 +24,16 @@ export function setUnauthorizedHandler(fn: () => void) {
 }
 
 export async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+	if (method !== 'GET') return send<T>(method, path, body);
+	requestStarted();
+	try {
+		return await send<T>(method, path, body);
+	} finally {
+		requestFinished();
+	}
+}
+
+async function send<T>(method: string, path: string, body?: unknown): Promise<T> {
 	const headers: Record<string, string> = { 'X-Requested-With': 'TalkOps' };
 	if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
 	if (body !== undefined) headers['Content-Type'] = 'application/json';

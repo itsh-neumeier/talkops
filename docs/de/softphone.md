@@ -73,6 +73,13 @@ coturn leitet nur zu `TALKOPS_TURN_PEER_IP` weiter, nie in den Rest des
 Netzes. Die Relay-Ports 49160–49200 werden nur intern zwischen coturn und
 FreeSWITCH genutzt und müssen nicht freigegeben werden.
 
+## Rufnummer einmalig unterdrücken
+
+Der Haken *Rufnummer einmalig unterdrücken* unter den Wähltasten gilt nur für
+den nächsten Anruf: TalkOps wählt dann mit `*31` davor (auch vor
+SIP-Adressen), danach ist der Haken wieder aus und die Nummer sichtbar.
+Dauerhaft unterdrücken lässt sie sich an der Nebenstelle.
+
 ## Im Gespräch
 
 - **Anzeige**: Bei eingehenden Anrufen zeigt das Softphone Name und Nummer

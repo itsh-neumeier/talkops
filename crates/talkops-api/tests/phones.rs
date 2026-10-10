@@ -166,6 +166,10 @@ async fn phones_and_provisioning(db: PgPool) {
     )));
     assert!(cfg.contains("linekey.3.type = 16"), "{cfg}");
     assert!(cfg.contains("linekey.3.pickup_value = **21"), "{cfg}");
+    // Dial now: emergency numbers, fixed feature codes, internal 20/21.
+    assert!(cfg.contains("dialplan.dialnow.rule.1 = 11[0,2]"), "{cfg}");
+    assert!(cfg.contains("= *9[7,8]"), "{cfg}");
+    assert!(cfg.contains("= 2[0,1]\n"), "{cfg}");
     assert!(!cfg.contains("firmware.url"));
     let (_, detail) = admin.get(&format!("/api/v1/phones/{phone_id}")).await;
     assert_eq!(detail["last_firmware"], "96.86.0.100");

@@ -558,6 +558,8 @@ fn pickup_group(ext: &Extension) -> String {
 }
 
 /// Feature codes dialed from a phone. Returns `None` for ordinary numbers.
+/// Keep `numbering::FIXED_FEATURE_CODES` / `FEATURE_CODE_PREFIXES` in sync
+/// (Yealink dial-now rules are computed from them).
 ///
 /// - `*78` / `*79`: do not disturb on / off
 /// - `*72<number>` / `*73`: unconditional call forwarding on / off

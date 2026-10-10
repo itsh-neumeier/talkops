@@ -19,6 +19,11 @@ All notable changes to TalkOps. The format follows
   firmware 180.87.0.15. Speed dial keys are refused for these handsets, which
   do not have them.
 
+- **Yealink dial now:** phones dial emergency numbers, fixed feature codes
+  and internal numbers after one second instead of waiting for the
+  inter-digit timeout. Numbers that start a longer dialable number are left
+  out.
+
 ### Changed
 
 - Phone numbers in contacts may be written as `+49 (0)89 …` or with dots.

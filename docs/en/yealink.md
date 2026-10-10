@@ -124,6 +124,27 @@ The phone's DND key toggles *do not disturb* of the extension on account 1.
 Both settings are also available in the web UI on the extension page and
 under *Settings → My phones*.
 
+### Dial now (dial plan)
+
+Without a dial plan a Yealink waits a few seconds after the last digit
+before it dials (or until you press `#` or *Send*). TalkOps therefore sends
+dial-now rules to the phones (`dialplan.dialnow.rule.1`–`20`); these numbers
+go out after one second:
+
+- emergency numbers (110, 112 or the ones set under *Settings → Telephony*),
+- the fixed codes `*51`–`*59`, `*73`, `*78`, `*79`, `*97`, `*98`,
+- all internal numbers (extensions, groups, menus, queues).
+
+A number is left out if another dialable number starts with it – with 30 and
+300, the phone keeps waiting after 30. Internal numbers starting with `11`
+(service numbers such as 11833) and – when an area code is set – all internal
+numbers also have no dial-now rule, because local numbers can then be dialed
+without the area code. New extensions reach the phone with the next resync
+(at the latest overnight).
+
+Sources: Yealink documentation *Dial Plan* (support.yealink.com) and *Using
+Dial Plan Feature on Yealink SIP-T3XG Phones*.
+
 ## 5. Phonebook
 
 Every phone shows **Internal** (all enabled extensions) and **Contacts** (the

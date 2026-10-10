@@ -126,6 +126,28 @@ Die DND-Taste des Telefons schaltet *Nicht stören* der Nebenstelle auf
 Konto 1. Beides lässt sich auch in der Weboberfläche bei der Nebenstelle bzw.
 unter *Einstellungen → Meine Telefone* einstellen.
 
+### Sofortwahl (Wählplan)
+
+Ohne Wählplan wartet ein Yealink nach der letzten Ziffer einige Sekunden,
+bevor es wählt (oder bis du `#` bzw. *Senden* drückst). TalkOps schickt den
+Telefonen deshalb Sofortwahl-Regeln (`dialplan.dialnow.rule.1`–`20`); diese
+Nummern gehen nach einer Sekunde raus:
+
+- Notrufnummern (110, 112 bzw. die unter *Einstellungen → Telefonie*
+  eingetragenen),
+- die festen Codes `*51`–`*59`, `*73`, `*78`, `*79`, `*97`, `*98`,
+- alle internen Nummern (Nebenstellen, Gruppen, Menüs, Warteschlangen).
+
+Ausgenommen ist jede Nummer, mit der eine andere wählbare Nummer beginnt –
+gibt es z. B. die 30 und die 300, wartet das Telefon bei der 30 weiter.
+Interne Nummern ab `11` (Servicenummern wie 11833) und – wenn eine
+Ortsvorwahl eingetragen ist – alle internen Nummern bleiben ebenfalls ohne
+Sofortwahl, weil dann Ortsnummern ohne Vorwahl gewählt werden können. Neue
+Nebenstellen kommen beim nächsten Resync aufs Telefon (spätestens nachts).
+
+Quellen: Yealink-Doku *Dial Plan* (support.yealink.com) und *Using Dial
+Plan Feature on Yealink SIP-T3XG Phones*.
+
 ## 5. Telefonbuch
 
 Jedes Telefon zeigt **Intern** (alle aktiven Nebenstellen) und **Kontakte**

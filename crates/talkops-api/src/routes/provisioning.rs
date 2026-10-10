@@ -16,7 +16,8 @@ use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 use talkops_core::phones::{self, Phone};
 use talkops_core::tenant::TenantId;
-use talkops_core::{extensions, settings};
+use talkops_core::{extensions, numbering, settings};
+use talkops_provisioning::dial_now::{self, DialNowInput};
 use talkops_provisioning::phonebook::{self, Entry};
 use talkops_provisioning::yealink::{
     self, Account, LineKey, Locale, MediaFile, PhoneSetup, Provisioning, RemotePhonebook,
@@ -169,6 +170,15 @@ pub async fn render_phone_config(
             });
         }
     }
+    let plan = settings::get(&state.db, tenant).await?.dial_plan();
+    let internal = numbering::all_numbers(&state.db, tenant).await?;
+    let dial_now = dial_now::rules(&DialNowInput {
+        emergency: &plan.emergency_numbers,
+        fixed_codes: numbering::FIXED_FEATURE_CODES,
+        code_prefixes: numbering::FEATURE_CODE_PREFIXES,
+        internal: &internal,
+        local_dialing: !plan.area_code.is_empty(),
+    });
     let setup = PhoneSetup {
         name: phone.name.clone(),
         mac: phone.mac.clone(),
@@ -182,6 +192,7 @@ pub async fn render_phone_config(
         ringtone,
         wallpaper,
         phonebooks,
+        dial_now,
     };
     yealink::render_phone(&setup).map_err(|e| ApiError::Internal(e.to_string()))
 }

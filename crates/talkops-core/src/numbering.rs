@@ -17,6 +17,30 @@ const NUMBERED: &[(&str, &str)] = &[
     ("queues", "queue"),
 ];
 
+/// Feature codes of a fixed length, as handled by the FreeSWITCH dialplan
+/// (`talkops-api` `fsxml::dialplan::feature_code`): park slots, call
+/// forwarding off, DND on/off, voicemail.
+pub const FIXED_FEATURE_CODES: &[&str] = &[
+    "*51", "*52", "*53", "*54", "*55", "*56", "*57", "*58", "*59", "*73", "*78", "*79", "*97",
+    "*98",
+];
+
+/// Feature codes followed by more digits: pickup `**<ext>`, time condition
+/// `*30<n>`, hide caller ID `*31…`/`#31#…`, forwarding `*72<n>`, door
+/// opener `*85[<n>]`/`*86[<n>]`.
+pub const FEATURE_CODE_PREFIXES: &[&str] = &["**", "*30", "*31", "*72", "*85", "*86", "#31#"];
+
+/// All internal numbers of a tenant.
+pub async fn all_numbers<'e>(db: impl PgExecutor<'e>, tenant: TenantId) -> CoreResult<Vec<String>> {
+    let sql = NUMBERED
+        .iter()
+        .map(|(table, _)| format!("SELECT number FROM {table} WHERE tenant_id = $1"))
+        .collect::<Vec<_>>()
+        .join(" UNION ")
+        + " ORDER BY 1";
+    Ok(sqlx::query_scalar(&sql).bind(tenant).fetch_all(db).await?)
+}
+
 /// Table holding the targets of a destination kind.
 fn table(kind: NumberDestination) -> Option<&'static str> {
     match kind {

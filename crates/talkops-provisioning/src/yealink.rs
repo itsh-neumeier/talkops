@@ -218,6 +218,8 @@ pub struct PhoneSetup<'a> {
     pub wallpaper: Option<MediaFile>,
     /// Phone book sections shown on this phone (slots 3–5).
     pub phonebooks: Vec<RemotePhonebook>,
+    /// Dial-now rules (see [`crate::dial_now`]).
+    pub dial_now: Vec<String>,
 }
 
 #[derive(Serialize)]
@@ -317,6 +319,9 @@ pub fn render_phone(setup: &PhoneSetup<'_>) -> Result<String, RenderError> {
         wallpaper => media(&setup.wallpaper, setup.model.wallpaper),
         phonebooks,
         unused_phonebooks,
+        dial_now => (1..=crate::dial_now::MAX_RULES)
+            .map(|i| context! { index => i, rule => setup.dial_now.get(i - 1).map(|r| cfg_value(r)).unwrap_or_default() })
+            .collect::<Vec<_>>(),
         phone => context! { name => cfg_value(&setup.name), mac => setup.mac.clone() },
         model => setup.model,
         accounts => accounts,
@@ -437,6 +442,7 @@ mod tests {
                 name: "Familie\n".into(),
                 url: "http://u:p@pbx/provisioning/phonebook/section/3.xml".into(),
             }],
+            dial_now: vec!["11[0,2]".into(), "*9[7,8]".into()],
         };
         let cfg = render_phone(&setup).unwrap();
         let m = parse(&cfg);
@@ -466,6 +472,11 @@ mod tests {
             "http://u:p@pbx/provisioning/media/2/talkops-2.jpg"
         );
         assert_eq!(m["phone_setting.backgrounds"], "talkops-2.jpg");
+        assert_eq!(m["dialplan.dialnow.rule.1"], "11[0,2]");
+        assert_eq!(m["dialplan.dialnow.rule.2"], "*9[7,8]");
+        assert_eq!(m["dialplan.dialnow.rule.3"], "", "unused rules are cleared");
+        assert_eq!(m["dialplan.dialnow.rule.20"], "");
+        assert!(!m.contains_key("dialplan.dialnow.rule.21"));
         assert_eq!(m["remote_phonebook.data.3.name"], "Familie");
         assert_eq!(
             m["remote_phonebook.data.3.url"],
@@ -510,6 +521,7 @@ mod tests {
                 }),
                 wallpaper: None,
                 phonebooks: vec![],
+                dial_now: vec![],
             };
             let m = parse(&render_phone(&setup).unwrap());
             assert_eq!(m["account.1.user_name"], "30-1", "{id}");
@@ -554,6 +566,7 @@ mod tests {
             ringtone: None,
             wallpaper: None,
             phonebooks: vec![],
+            dial_now: vec![],
         };
         let m = parse(&render_phone(&setup).unwrap());
         assert_eq!(m["handset.2.incoming_lines"], "2");

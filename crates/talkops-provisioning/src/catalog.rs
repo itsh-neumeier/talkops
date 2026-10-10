@@ -39,6 +39,14 @@ pub struct PhoneModel {
     pub vendor: String,
 }
 
+impl PhoneModel {
+    /// Line keys can be speed dials (`linekey.X.type = 13`); the AX Wi-Fi
+    /// handsets only know line, BLF, DTMF and XML browser keys.
+    pub fn speed_dial_keys(&self) -> bool {
+        self.family != PhoneFamily::Wifi
+    }
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct VendorFile {
@@ -151,7 +159,7 @@ mod tests {
             .unwrap();
         assert_eq!(
             (ax.id.as_str(), ax.family, ax.accounts, ax.line_keys),
-            ("ax83h", PhoneFamily::Wifi, 4, 0)
+            ("ax83h", PhoneFamily::Wifi, 4, 16)
         );
         assert_eq!(
             c.from_user_agent("Yealink AX86R 180.86.0.5").unwrap().id,
@@ -160,7 +168,8 @@ mod tests {
         assert!(c.from_user_agent("Snom D785").is_none());
         assert_eq!((t54w.ringtone_max_kb, t54w.wallpaper), (8192, true));
         assert_eq!(c.get("t53w").unwrap().ringtone_max_kb, 100);
-        assert_eq!((ax.ringtone_max_kb, ax.wallpaper), (0, false));
+        assert_eq!((ax.ringtone_max_kb, ax.wallpaper), (8192, true));
+        assert!(!ax.speed_dial_keys() && t54w.speed_dial_keys());
         assert_eq!(
             firmware_from_user_agent("Yealink SIP-T54W 96.86.0.70 80:5e"),
             Some("96.86.0.70".into())

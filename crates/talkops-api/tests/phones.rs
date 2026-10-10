@@ -503,6 +503,27 @@ async fn ringtones_wallpapers_labels_and_phonebook_sections(db: PgPool) {
         let (status, err) = admin.post("/api/v1/phones", phone).await;
         assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{model}: {err}");
     }
+    // AX Wi-Fi handsets: 16 line keys and custom media, but no speed dials.
+    let speed_dial = json!([{"key": 2, "type": "speed_dial", "value": "0301234"}]);
+    let (status, err) = admin
+        .post(
+            "/api/v1/phones",
+            json!({"mac": "249ad8000001", "model": "ax86r", "name": "WLAN",
+                   "line_keys": speed_dial}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{err}");
+    let (status, ax) = admin
+        .post(
+            "/api/v1/phones",
+            json!({"mac": "249ad8000001", "model": "ax86r", "name": "WLAN",
+                   "ringtone_id": ring_id, "wallpaper_id": wall_id,
+                   "line_keys": [{"key": 16, "type": "blf", "value": "21"}]}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{ax}");
+    let ax_path = format!("/api/v1/phones/{}", ax["id"].as_str().unwrap());
+    admin.call("DELETE", &ax_path, None).await;
     let (status, phone) = admin
         .post(
             "/api/v1/phones",

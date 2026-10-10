@@ -516,12 +516,17 @@ mod tests {
             assert_eq!(m["account.1.sip_server.1.address"], "192.168.1.10");
             assert_eq!(m["account.4.enable"], "0");
             assert!(!m.contains_key("account.5.enable"), "{id} has 4 accounts");
-            assert!(!m.keys().any(|k| k.starts_with("linekey.")), "no line keys");
             assert!(!m.contains_key("handset.1.name"), "not a DECT base");
-            assert!(
-                !m.contains_key("ringtone.url"),
-                "{id}: no documented custom ringtone"
-            );
+            // 16 line keys; the BLF pickup code goes into `extension`.
+            assert_eq!(m["dsskey.enable"], "1");
+            assert_eq!(m["linekey.1.type"], "16");
+            assert_eq!(m["linekey.1.value"], "21");
+            assert_eq!(m["linekey.1.extension"], "**21", "{id}");
+            assert!(!m.contains_key("linekey.1.pickup_value"));
+            assert_eq!(m["linekey.16.type"], "0");
+            assert!(!m.contains_key("linekey.17.type"));
+            assert_eq!(m["ringtone.url"], "http://pbx/r.wav", "{id}");
+            assert_eq!(m["phone_setting.ring_type"], "r.wav");
         }
     }
 

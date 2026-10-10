@@ -7,8 +7,12 @@ and firmware.
 
 **AX83H/AX86R:** the handsets have no LAN port; hand out the provisioning URL
 via DHCP option 66 on the Wi-Fi network or enter it on the phone under
-*Settings → Auto Provision*. Up to 4 SIP accounts, no line keys. Firmware
-180.86 or later.
+*Settings → Auto Provision*. Up to 4 SIP accounts, 16 line keys (line and
+BLF, keys 1–4 on the idle screen; the handsets have no speed dial keys),
+custom ringtone and wallpaper. Line keys need **firmware 180.87.0.15** or
+later; AX83H and AX86R use the same firmware file (`AX86(AX83,AX86)-….rom`) –
+upload it under *Firmware* for both models. Set up the Wi-Fi itself (SSID,
+password) on the handset; TalkOps does not distribute it.
 
 > **Status:** All parameters come from the official *Yealink Auto
 > Provisioning Guide*. Tests with real devices are still pending – feedback
@@ -96,11 +100,13 @@ Select them on the phone's page under *Ringtone, wallpaper and phone book*,
 save, **Resync**. The phone downloads the file (`ringtone.url` /
 `wallpaper_upload.url`) and selects it (`phone_setting.ring_type` /
 `phone_setting.backgrounds`). *Keep the phone's own setting* leaves both
-untouched. Models without documented support (T31G, T33G, conference phones,
-DECT, AX handsets) do not show the selection.
+untouched. Models without documented support (T31G, T33G, T58W, VP59,
+conference phones, DECT) do not show the selection.
 
-Source: Yealink *SIP-T5 Series Administrator's Guide*, sections *Ring Tones*
-and *Wallpaper Customization*.
+Sources: Yealink *SIP-T5 Series Administrator's Guide*, sections *Ring
+Tones* and *Wallpaper Customization*; for AX83H/AX86R the Yealink
+documentation *Ring Tones*, *Wallpaper Settings* and *Line Key*
+(support.yealink.com).
 
 ## 4. Feature codes
 

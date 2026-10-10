@@ -408,6 +408,8 @@ export interface PhoneModel {
 	family: 'desk' | 'dect' | 'conference' | 'wifi';
 	accounts: number;
 	line_keys: number;
+	/** Line keys can be speed dials (not on Wi-Fi handsets). */
+	speed_dial_keys: boolean;
 	video: boolean;
 	/** Largest custom ringtone in KiB; 0 = not supported. */
 	ringtone_max_kb: number;

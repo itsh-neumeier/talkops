@@ -7,8 +7,13 @@ Admin-Passwort und Firmware.
 
 **AX83H/AX86R:** Die Mobilteile haben kein LAN; die Provisioning-URL daher
 entweder per DHCP-Option 66 im WLAN-Netz verteilen oder am Telefon unter
-*Einstellungen → Auto Provision* eintragen. Bis zu 4 SIP-Konten, keine
-Funktionstasten. Ab Firmware 180.86.
+*Einstellungen → Auto Provision* eintragen. Bis zu 4 SIP-Konten,
+16 Funktionstasten (Leitung und BLF, Tasten 1–4 im Ruhebildschirm; Kurzwahl
+kennen die Mobilteile nicht), eigener Klingelton und Hintergrund.
+Funktionstasten brauchen **Firmware 180.87.0.15** oder neuer; AX83H und AX86R
+nutzen dieselbe Firmware-Datei (`AX86(AX83,AX86)-….rom`) – unter
+*Firmware* für beide Modelle hochladen. Das WLAN selbst (SSID, Kennwort)
+richtest du am Mobilteil ein, TalkOps verteilt es nicht.
 
 > **Status:** Die Parameter stammen aus dem offiziellen *Yealink Auto
 > Provisioning Guide*. Tests mit echten Geräten stehen noch aus –
@@ -98,11 +103,12 @@ auswählen, speichern, **Resync**. Das Telefon lädt die Datei herunter
 (`ringtone.url`/`wallpaper_upload.url`) und stellt sie ein
 (`phone_setting.ring_type`/`phone_setting.backgrounds`). *Einstellung des
 Telefons behalten* lässt beides unangetastet. Modelle ohne dokumentierte
-Unterstützung (T31G, T33G, Konferenztelefone, DECT, AX-Mobilteile) zeigen die
+Unterstützung (T31G, T33G, T58W, VP59, Konferenztelefone, DECT) zeigen die
 Auswahl nicht.
 
-Quelle: Yealink *SIP-T5 Series Administrator's Guide*, Abschnitte *Ring Tones*
-und *Wallpaper Customization*.
+Quellen: Yealink *SIP-T5 Series Administrator's Guide*, Abschnitte *Ring
+Tones* und *Wallpaper Customization*; für AX83H/AX86R die Yealink-Doku
+*Ring Tones*, *Wallpaper Settings* und *Line Key* (support.yealink.com).
 
 ## 4. Kurzwahlen am Telefon
 

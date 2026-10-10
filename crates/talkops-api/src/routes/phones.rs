@@ -87,6 +87,8 @@ pub struct PhoneModelInfo {
     pub ringtone_max_kb: u32,
     /// Custom wallpaper supported.
     pub wallpaper: bool,
+    /// Line keys can be speed dials.
+    pub speed_dial_keys: bool,
 }
 
 impl From<&PhoneModel> for PhoneModelInfo {
@@ -104,6 +106,7 @@ impl From<&PhoneModel> for PhoneModelInfo {
             video: m.video,
             ringtone_max_kb: m.ringtone_max_kb,
             wallpaper: m.wallpaper,
+            speed_dial_keys: m.speed_dial_keys(),
         }
     }
 }
@@ -143,6 +146,12 @@ fn validate_phone(state: &AppState, input: &PhoneInput) -> ApiResult<()> {
             return Err(ApiError::BadRequest(format!(
                 "key {} does not exist on {}",
                 k.key, model.name
+            )));
+        }
+        if k.kind == KeyType::SpeedDial && !model.speed_dial_keys() {
+            return Err(ApiError::BadRequest(format!(
+                "{} has no speed dial keys (key {})",
+                model.name, k.key
             )));
         }
         if !seen.insert(k.key) {

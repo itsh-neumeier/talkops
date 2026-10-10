@@ -42,7 +42,11 @@
 	let configOpen = $state(false);
 
 	const model = $derived(models.find((m) => m.id === form.model));
-	const keyTypes: KeyType[] = ['line', 'blf', 'speed_dial', 'none'];
+	const keyTypes = $derived<KeyType[]>(
+		model?.speed_dial_keys === false
+			? ['line', 'blf', 'none']
+			: ['line', 'blf', 'speed_dial', 'none']
+	);
 	const MAX_SECTIONS = 3;
 	const ringtones = $derived(media.filter((m) => m.kind === 'ringtone'));
 	const wallpapers = $derived(media.filter((m) => m.kind === 'wallpaper'));

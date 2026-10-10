@@ -9,9 +9,12 @@
 # Sources: Yealink IP Phones Auto Provisioning Guide V1.3 (2021),
 # Yealink SIP-T2/T4 Auto Provisioning Guide V80, product datasheets.
 # AX83H/AX86R: Yealink AX83H/AX86R datasheets (Wi-Fi handsets, 4 SIP
-# accounts), AX83H documentation "Trigger the Phone to Perform Auto
-# Provisioning" (common file y000000000108.cfg); firmware 180.86.x uses the
-# same V86 parameters as the T5x series.
+# accounts) and the AX documentation on support.yealink.com: "Trigger the
+# Phone to Perform Auto Provisioning" (common file y000000000108.cfg for
+# both), "Line Key" (16 keys from firmware 180.87.0.15; types 0/11/15/16/39
+# only, no speed dial; BLF pickup code in linekey.X.extension), "Ring Tones"
+# (WAV up to 8 MB, 8 kHz mono 16 bit), "Wallpaper Settings" (JPG/PNG up to
+# 5 MB, 2 megapixels). Both models share one firmware image.
 #
 # ringtone_max_kb: largest custom ringtone (ringtone.url, WAV 8 kHz mono
 #                  16 bit); wallpaper: custom wallpaper (wallpaper_upload.url,
@@ -38,5 +41,5 @@ models:
   - { id: w60b, name: W60B, family: dect, accounts: 8, line_keys: 0 }
   - { id: w70b, name: W70B, family: dect, accounts: 10, line_keys: 0 }
   - { id: w80b, name: W80B, family: dect, accounts: 100, line_keys: 0 }
-  - { id: ax83h, name: AX83H, family: wifi, accounts: 4, line_keys: 0 }
-  - { id: ax86r, name: AX86R, family: wifi, accounts: 4, line_keys: 0 }
+  - { id: ax83h, name: AX83H, family: wifi, accounts: 4, line_keys: 16, ringtone_max_kb: 8192, wallpaper: true }
+  - { id: ax86r, name: AX86R, family: wifi, accounts: 4, line_keys: 16, ringtone_max_kb: 8192, wallpaper: true }

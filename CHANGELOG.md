@@ -14,6 +14,11 @@ All notable changes to TalkOps. The format follows
   TalkOps sample file (download in the dialog) as well as Outlook and Google
   Contacts exports, UTF-8 or Windows encoding.
 
+- **AX83H/AX86R:** 16 line keys (line and BLF with pickup, keys 1–4 on the
+  idle screen), custom ringtone and wallpaper – as documented by Yealink for
+  firmware 180.87.0.15. Speed dial keys are refused for these handsets, which
+  do not have them.
+
 ### Changed
 
 - Phone numbers in contacts may be written as `+49 (0)89 …` or with dots.

@@ -358,7 +358,13 @@ const de: Record<keyof typeof en, string> = {
 	'phones.resync': 'Resync',
 	'phones.showConfig': 'Konfiguration anzeigen',
 	'phones.savedResync': 'Gespeichert. Mit „Resync“ wird es auf das Telefon übertragen.',
-	'phones.resyncSent': 'Resync gesendet – das Telefon startet neu und lädt seine Konfiguration.',
+	'phones.resyncSent':
+		'Resync gesendet – das Telefon lädt seine Konfiguration ohne Neustart. (Telefone mit älterer TalkOps-Konfiguration starten dabei ein letztes Mal neu.)',
+	'phones.resyncHint': 'Konfiguration neu laden, ohne Neustart',
+	'phones.reboot': 'Neustarten',
+	'phones.rebootConfirm':
+		'Telefon jetzt neu starten? Während eines Gesprächs startet ein Yealink nicht neu.',
+	'phones.rebootSent': 'Neustart gesendet – das Telefon startet neu und lädt seine Konfiguration.',
 	'phones.resyncOffline':
 		'Das Telefon ist nicht registriert; es lädt die Konfiguration beim nächsten Start.',
 	'keytype.line': 'Leitung',

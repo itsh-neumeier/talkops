@@ -365,7 +365,13 @@ export default {
 	'phones.resync': 'Resync',
 	'phones.showConfig': 'Show configuration',
 	'phones.savedResync': 'Saved. Press “Resync” to apply it to the phone.',
-	'phones.resyncSent': 'Resync sent – the phone restarts and loads its configuration.',
+	'phones.resyncSent':
+		'Resync sent – the phone reloads its configuration without restarting. (Phones with an older TalkOps configuration restart one last time.)',
+	'phones.resyncHint': 'Reload the configuration without restarting',
+	'phones.reboot': 'Restart',
+	'phones.rebootConfirm':
+		'Restart the phone now? A Yealink does not restart during a call.',
+	'phones.rebootSent': 'Restart sent – the phone restarts and loads its configuration.',
 	'phones.resyncOffline':
 		'The phone is not registered; it will load the configuration on its next start.',
 	'keytype.line': 'Line',

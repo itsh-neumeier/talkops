@@ -378,20 +378,29 @@ pub struct ResyncResult {
     pub notified: usize,
 }
 
-/// Asks the phone to fetch its configuration again (SIP NOTIFY check-sync;
-/// Yealink phones reboot to apply it). Admin.
-#[utoipa::path(post, path = "/api/v1/phones/{id}/resync", tag = "phones", params(("id" = Uuid, Path)), responses((status = 200, body = ResyncResult)))]
+#[derive(Deserialize, ToSchema, Default)]
+pub struct ResyncRequest {
+    /// Restart the phone as well (otherwise it only reloads its configuration).
+    #[serde(default)]
+    pub reboot: bool,
+}
+
+/// Asks the phone to fetch its configuration again (SIP NOTIFY check-sync),
+/// optionally restarting it. Admin.
+#[utoipa::path(post, path = "/api/v1/phones/{id}/resync", tag = "phones", params(("id" = Uuid, Path)), request_body = Option<ResyncRequest>, responses((status = 200, body = ResyncResult)))]
 pub async fn resync_phone(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(id): Path<Uuid>,
+    body: Option<Json<ResyncRequest>>,
 ) -> ApiResult<Json<ResyncResult>> {
+    let reboot = body.map(|Json(b)| b.reboot).unwrap_or_default();
     auth.require(Role::Admin)?;
     let phone = phones::get(&state.db, auth.tenant, id).await?;
     let mut notified = 0;
     // One NOTIFY per phone is enough; try the accounts until one is reachable.
     for user in phones::device_usernames(&state.db, phone.id).await? {
-        if state.telephony.check_sync(&user).await {
+        if state.telephony.check_sync(&user, reboot).await {
             notified += 1;
             break;
         }
@@ -399,7 +408,7 @@ pub async fn resync_phone(
     audit::record(
         &state.db,
         &auth.actor(),
-        "resync",
+        if reboot { "reboot" } else { "resync" },
         "phone",
         Some(id.to_string()),
         json!({"mac": phone.mac}),

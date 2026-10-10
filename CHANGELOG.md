@@ -6,6 +6,14 @@ All notable changes to TalkOps. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- **Resync without restart:** *Resync* now only reloads the phone's
+  configuration (SIP NOTIFY `check-sync;reboot=false`,
+  `sip.notify_reboot_enable = 0`); the new *Restart* button restarts the
+  phone as well. Phones still configured by 1.7.4 or older restart one last
+  time on the first resync.
+
 ## [1.7.4] – 2026-10-10
 
 The tags 1.7.2 and 1.7.3 were set without raising the version in the code,

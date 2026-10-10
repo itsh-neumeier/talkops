@@ -163,20 +163,39 @@ impl Telephony {
         }
     }
 
-    /// Asks a device to re-provision (SIP NOTIFY `check-sync`). Yealink phones
-    /// reboot and fetch their configuration (`sip.notify_reboot_enable = 1`).
-    pub async fn check_sync(&self, sip_user: &str) -> bool {
+    /// Asks a device to re-provision (SIP NOTIFY `check-sync`). Yealink
+    /// phones fetch their configuration; with `reboot` they restart, too
+    /// (`check-sync;reboot=true`, honoured with `sip.notify_reboot_enable = 0`).
+    /// Returns false if the device is not registered.
+    pub async fn check_sync(&self, sip_user: &str, reboot: bool) -> bool {
         let Some(client) = self.esl.get().await else {
             return false;
         };
-        let cmd = format!(
-            "sofia profile internal check_sync {sip_user}@{}",
-            crate::fsxml::SIP_DOMAIN
-        );
-        match client.api(&cmd).await {
-            Ok(_) => true,
+        let contact = format!("sofia_contact */{sip_user}@{}", crate::fsxml::SIP_DOMAIN);
+        match client.api(&contact).await {
+            Ok(out) if !out.trim_start().starts_with("error/") => {}
+            Ok(_) => return false,
             Err(err) => {
-                tracing::warn!(user = sip_user, error = %err, "check_sync failed");
+                tracing::warn!(user = sip_user, error = %err, "sofia_contact failed");
+                return false;
+            }
+        }
+        let event = if reboot {
+            "check-sync;reboot=true"
+        } else {
+            "check-sync;reboot=false"
+        };
+        let headers = [
+            ("profile", "internal"),
+            ("event-string", event),
+            ("user", sip_user),
+            ("host", crate::fsxml::SIP_DOMAIN),
+            ("content-type", "application/simple-message-summary"),
+        ];
+        match client.sendevent("NOTIFY", &headers).await {
+            Ok(()) => true,
+            Err(err) => {
+                tracing::warn!(user = sip_user, error = %err, "check-sync NOTIFY failed");
                 false
             }
         }

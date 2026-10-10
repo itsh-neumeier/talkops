@@ -67,7 +67,13 @@ On the phone's page you can assign keys:
   Pressing a flashing BLF key picks up the call.
 - **Speed dial** – dials a number.
 
-After saving press **Resync**: the phone reboots and applies the changes.
+After saving press **Resync**: the phone reloads its configuration and
+applies the changes **without restarting**. **Restart** restarts it as well
+(a Yealink does not restart during a call). Phones that still have a
+configuration from TalkOps 1.7.4 or older restart one last time on the first
+resync. Technically: SIP NOTIFY `check-sync;reboot=false` or `reboot=true`
+with `sip.notify_reboot_enable = 0` (Yealink documentation *Phone Reboot* and
+*Trigger the Phone to Perform Auto Provisioning*).
 Phones that are not registered fetch the configuration on their next start or
 at night between 2 and 4 am.
 

@@ -69,8 +69,14 @@ Auf der Seite des Telefons lassen sich die Tasten belegen:
   telefoniert. Ein Druck auf eine blinkende BLF-Taste übernimmt den Anruf.
 - **Kurzwahl** – wählt eine Nummer.
 
-Nach dem Speichern **Resync** drücken: Das Telefon startet neu und übernimmt
-die Änderungen. Nicht registrierte Telefone holen die Konfiguration beim
+Nach dem Speichern **Resync** drücken: Das Telefon lädt seine Konfiguration
+neu und übernimmt die Änderungen, **ohne neu zu starten**. **Neustarten**
+startet es zusätzlich neu (während eines Gesprächs startet ein Yealink nicht
+neu). Telefone, die noch eine Konfiguration von TalkOps 1.7.4 oder älter
+haben, starten beim ersten Resync ein letztes Mal neu. Technisch: SIP NOTIFY
+`check-sync;reboot=false` bzw. `reboot=true` mit
+`sip.notify_reboot_enable = 0` (Yealink-Doku *Phone Reboot* und *Trigger the
+Phone to Perform Auto Provisioning*). Nicht registrierte Telefone holen die Konfiguration beim
 nächsten Start bzw. nachts zwischen 2 und 4 Uhr.
 
 ### Label und Anzeigename

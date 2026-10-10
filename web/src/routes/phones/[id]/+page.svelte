@@ -152,12 +152,19 @@
 		}
 	}
 
-	async function resync() {
+	/** Reload the configuration; with `reboot` the phone restarts as well. */
+	async function resync(reboot: boolean) {
+		if (reboot && !confirm(t('phones.rebootConfirm'))) return;
 		error = '';
 		message = '';
 		try {
-			const r = await api.post<{ notified: number }>(`/phones/${id}/resync`);
-			message = r.notified > 0 ? t('phones.resyncSent') : t('phones.resyncOffline');
+			const r = await api.post<{ notified: number }>(`/phones/${id}/resync`, { reboot });
+			message =
+				r.notified === 0
+					? t('phones.resyncOffline')
+					: reboot
+						? t('phones.rebootSent')
+						: t('phones.resyncSent');
 		} catch (err) {
 			error = errorMessage(err);
 		}
@@ -192,7 +199,10 @@
 			<h1>{phone.name} <span class="text-base font-normal text-slate-500">{model?.name}</span></h1>
 			{#if hasRole('admin')}
 				<div class="space-x-1">
-					<button class="btn" onclick={resync}>{t('phones.resync')}</button>
+					<button class="btn" title={t('phones.resyncHint')} onclick={() => resync(false)}
+						>{t('phones.resync')}</button
+					>
+					<button class="btn" onclick={() => resync(true)}>{t('phones.reboot')}</button>
 					<button class="btn" onclick={showConfig}>{t('phones.showConfig')}</button>
 					<button class="btn btn-danger" onclick={remove}>{t('common.delete')}</button>
 				</div>

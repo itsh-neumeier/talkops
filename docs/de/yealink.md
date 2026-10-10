@@ -140,6 +140,9 @@ Nummern gehen nach einer Sekunde raus:
 
 Ausgenommen ist jede Nummer, mit der eine andere wählbare Nummer beginnt –
 gibt es z. B. die 30 und die 300, wartet das Telefon bei der 30 weiter.
+`*1`–`*99` sind für Systemcodes reserviert und haben Vorrang; `*<Nummer>`
+für interne Nummern beginnt bei `*100`. Interne Nummern, deren Anfang ein
+Systemcode ist (z. B. 510 → `*51`), wählst du am Yealink deshalb ohne Stern.
 Interne Nummern ab `11` (Servicenummern wie 11833) und – wenn eine
 Ortsvorwahl eingetragen ist – alle internen Nummern bleiben ebenfalls ohne
 Sofortwahl, weil dann Ortsnummern ohne Vorwahl gewählt werden können. Neue

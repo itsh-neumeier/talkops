@@ -136,7 +136,10 @@ go out after one second:
 - all internal numbers (extensions, groups, menus, queues).
 
 A number is left out if another dialable number starts with it – with 30 and
-300, the phone keeps waiting after 30. Internal numbers starting with `11`
+300, the phone keeps waiting after 30. `*1`–`*99` are reserved for system
+codes and take precedence; `*<number>` for internal numbers starts at `*100`.
+Internal numbers that begin with a system code (e.g. 510 → `*51`) are
+therefore dialed without the star on a Yealink. Internal numbers starting with `11`
 (service numbers such as 11833) and – when an area code is set – all internal
 numbers also have no dial-now rule, because local numbers can then be dialed
 without the area code. New extensions reach the phone with the next resync

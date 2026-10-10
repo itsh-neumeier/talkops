@@ -8,7 +8,8 @@
 //! Phones" (special characters: "Digit 0-9 *").
 //!
 //! A number only gets a rule if nothing else that can be dialed starts with
-//! it – otherwise the phone would cut off the longer number.
+//! it – otherwise the phone would cut off the longer number. System codes
+//! (`*1`–`*99`) always get their rule; `*<internal>` starts at `*100`.
 
 use std::collections::BTreeMap;
 
@@ -33,16 +34,10 @@ pub struct DialNowInput<'a> {
 
 /// Computes the rules, most important first, at most [`MAX_RULES`].
 pub fn rules(input: &DialNowInput<'_>) -> Vec<String> {
-    // Everything that can be dialed: `*<internal>` reaches 3–4 digit
-    // internal numbers as well.
+    // Everything that can be dialed. `*1`–`*99` are reserved for system
+    // codes, which win over `*<internal>` (from `*100`): with extension 510,
+    // `*51` still parks at once and 510 is dialed without the star.
     let mut dialable: Vec<String> = input.internal.to_vec();
-    dialable.extend(
-        input
-            .internal
-            .iter()
-            .filter(|n| (3..=4).contains(&n.len()))
-            .map(|n| format!("*{n}")),
-    );
     dialable.extend(input.fixed_codes.iter().map(|c| (*c).to_owned()));
     dialable.extend(input.emergency.iter().cloned());
     let safe = |n: &str| {
@@ -135,8 +130,8 @@ mod tests {
             rules(&input),
             [
                 "11[0,2]",
-                // `*51` is the start of `*510` (= internal 510).
-                "*5[2,9]",
+                // System codes win over `*510` (= internal 510).
+                "*5[1,2,9]",
                 "*7[3,8,9]",
                 "*9[7,8]",
                 "2[0,1,2]",

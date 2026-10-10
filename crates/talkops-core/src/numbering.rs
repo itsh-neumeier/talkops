@@ -34,7 +34,10 @@ pub const FEATURE_CODE_PREFIXES: &[&str] = &["**", "*30", "*31", "*72", "*85", "
 pub async fn all_numbers<'e>(db: impl PgExecutor<'e>, tenant: TenantId) -> CoreResult<Vec<String>> {
     let sql = NUMBERED
         .iter()
-        .map(|(table, _)| format!("SELECT number FROM {table} WHERE tenant_id = $1"))
+        // Groups, menus, time conditions and queues may have no number.
+        .map(|(table, _)| {
+            format!("SELECT number FROM {table} WHERE tenant_id = $1 AND number IS NOT NULL")
+        })
         .collect::<Vec<_>>()
         .join(" UNION ")
         + " ORDER BY 1";

@@ -118,6 +118,16 @@ async fn phones_and_provisioning(db: PgPool) {
     let (_, detail) = admin.get(&format!("/api/v1/phones/{phone_id}")).await;
     assert_eq!(detail["accounts"][0]["account_index"], 1);
     assert_eq!(detail["accounts"][0]["extension_number"], "200");
+    // The list shows the extensions on each phone.
+    let (_, list) = admin.get("/api/v1/phones").await;
+    let listed = list
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|p| p["id"] == json!(phone_id))
+        .unwrap();
+    assert_eq!(listed["extensions"][0]["number"], "200", "{listed}");
+    assert_eq!(listed["mac"], detail["mac"]);
 
     // Provisioning credentials.
     let (status, info) = admin.get("/api/v1/provisioning").await;

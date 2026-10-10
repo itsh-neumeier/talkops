@@ -21,11 +21,14 @@ richtest du am Mobilteil ein, TalkOps verteilt es nicht.
 
 ## 1. Telefon anlegen
 
-1. **Telefone → Telefon hinzufügen**: Name, MAC-Adresse (Aufkleber auf der
-   Rückseite) und Modell eintragen.
-2. **Einstellungen → Nebenstellen → Nebenstelle → Gerät hinzufügen**: unter *Telefon* das eben
-   angelegte Telefon wählen. Das *Konto* (1, 2, …) wird automatisch vergeben;
-   bei DECT-Basen entspricht es dem Mobilteil.
+1. **Einstellungen → Telefone (Provisionierung) → Telefon hinzufügen**: Name,
+   MAC-Adresse (Aufkleber auf der Rückseite) und Modell eintragen; unter
+   *Nebenstelle zuweisen* gleich die Nebenstelle wählen (oder später).
+2. Weitere Nebenstellen auf der Seite des Telefons unter *Konten auf diesem
+   Telefon → Nebenstelle zuweisen*, ✕ entfernt eine Zuweisung. Alternativ
+   von der Nebenstelle aus: *Gerät hinzufügen* und unter *Telefon* das Telefon
+   wählen. Das *Konto* (1, 2, …) wird automatisch vergeben; bei DECT-Basen
+   entspricht es dem Mobilteil.
 
 Ein Telefon kann mehrere Nebenstellen tragen (z. B. Konto 1 = eigene
 Nebenstelle, Konto 2 = Zentrale).

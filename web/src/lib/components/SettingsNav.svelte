@@ -18,6 +18,7 @@
 		| 'nav.trunks'
 		| 'nav.numbers'
 		| 'nav.phones'
+		| 'nav.doorStations'
 		| 'nav.audit';
 	/**
 	 * Pages that live under Settings instead of the main menu: personal ones
@@ -37,6 +38,7 @@
 		{ href: '/trunks', key: 'nav.trunks', icon: '🔌', role: 'operator', group: 'setup' },
 		{ href: '/numbers', key: 'nav.numbers', icon: '#', role: 'operator', group: 'setup' },
 		{ href: '/phones', key: 'nav.phones', icon: '📟', role: 'operator', group: 'setup' },
+		{ href: '/door-stations', key: 'nav.doorStations', icon: '🚪', role: 'admin', group: 'setup' },
 		{ href: '/audit', key: 'nav.audit', icon: '📜', role: 'admin', group: 'setup' }
 	];
 </script>

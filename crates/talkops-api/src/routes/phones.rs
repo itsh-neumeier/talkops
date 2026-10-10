@@ -226,13 +226,44 @@ async fn validate_media(state: &AppState, auth: &AuthUser, input: &PhoneInput) -
 }
 
 /// Lists provisioned phones (operator or admin).
-#[utoipa::path(get, path = "/api/v1/phones", tag = "phones", responses((status = 200, body = [Phone])))]
+#[utoipa::path(get, path = "/api/v1/phones", tag = "phones", responses((status = 200, body = [PhoneListItem])))]
 pub async fn list_phones(
     State(state): State<AppState>,
     auth: AuthUser,
-) -> ApiResult<Json<Vec<Phone>>> {
+) -> ApiResult<Json<Vec<PhoneListItem>>> {
     auth.require(Role::Operator)?;
-    Ok(Json(phones::list(&state.db, auth.tenant).await?))
+    let assigned = phones::assigned_extensions(&state.db, auth.tenant).await?;
+    let list = phones::list(&state.db, auth.tenant)
+        .await?
+        .into_iter()
+        .map(|phone| {
+            let extensions = assigned
+                .iter()
+                .filter(|(id, _, _)| *id == phone.id)
+                .map(|(_, number, name)| AssignedExtension {
+                    number: number.clone(),
+                    display_name: name.clone(),
+                })
+                .collect();
+            PhoneListItem { phone, extensions }
+        })
+        .collect();
+    Ok(Json(list))
+}
+
+/// An extension placed on a phone.
+#[derive(Serialize, ToSchema)]
+pub struct AssignedExtension {
+    pub number: String,
+    pub display_name: String,
+}
+
+/// A phone in the list, with the extensions on it.
+#[derive(Serialize, ToSchema)]
+pub struct PhoneListItem {
+    #[serde(flatten)]
+    pub phone: Phone,
+    pub extensions: Vec<AssignedExtension>,
 }
 
 /// Adds a phone by MAC address (admin).

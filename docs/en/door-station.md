@@ -40,7 +40,7 @@ The station then shows up on the **Dashboard** under *Registered devices* as `80
 
 ## 3. Door station in TalkOps
 
-**Door → New door station** (admin):
+**Settings → Door stations → New door station** (admin; the **Door** menu item for opening appears once a door station exists):
 
 | Field | Meaning |
 |---|---|

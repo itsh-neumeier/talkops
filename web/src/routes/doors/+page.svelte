@@ -4,8 +4,6 @@
 	import { onDestroy, onMount } from 'svelte';
 	import { api, type DoorEvent, type DoorStation } from '#lib/api.ts';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
-	import Modal from '#lib/components/Modal.svelte';
-	import DoorStationForm from '#lib/components/doors/DoorStationForm.svelte';
 	import { formatDateTime, t, type MessageKey } from '#lib/i18n/index.svelte.ts';
 	import { hasRole } from '#lib/session.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
@@ -15,10 +13,6 @@
 	let error = $state('');
 	let info = $state('');
 	let live = $state<Record<string, number>>({});
-	let editing = $state<DoorStation | null>(null);
-	let formOpen = $state(false);
-	let token = $state<{ station: DoorStation; token: string } | null>(null);
-	let tokenOpen = $state(false);
 	let timer: ReturnType<typeof setInterval> | undefined;
 	let tick = 0;
 
@@ -62,53 +56,6 @@
 		}
 	}
 
-	async function test(s: DoorStation) {
-		error = '';
-		info = '';
-		try {
-			const r = await api.post<{ model: string }>(`/door-stations/${s.id}/test`, {});
-			info = t('door.testOk', { model: r.model });
-		} catch (err) {
-			error = errorMessage(err);
-		}
-	}
-
-	async function newToken(s: DoorStation) {
-		if (s.has_api_token && !confirm(t('door.tokenReplace'))) return;
-		try {
-			const r = await api.post<{ token: string }>(`/door-stations/${s.id}/token`, {});
-			token = { station: s, token: r.token };
-			tokenOpen = true;
-			await load();
-		} catch (err) {
-			error = errorMessage(err);
-		}
-	}
-
-	async function revokeToken(s: DoorStation) {
-		try {
-			await api.del(`/door-stations/${s.id}/token`);
-			await load();
-		} catch (err) {
-			error = errorMessage(err);
-		}
-	}
-
-	async function remove(s: DoorStation) {
-		if (!confirm(t('common.confirmDelete', { name: s.name }))) return;
-		try {
-			await api.del(`/door-stations/${s.id}`);
-			await load();
-		} catch (err) {
-			error = errorMessage(err);
-		}
-	}
-
-	function edit(s: DoorStation | null) {
-		editing = s;
-		formOpen = true;
-	}
-
 	function detail(e: DoorEvent): string {
 		const d = e.detail as Record<string, unknown>;
 		const by = d.by as Record<string, unknown> | undefined;
@@ -122,15 +69,13 @@
 		if (typeof d.model === 'string' && d.model) parts.push(d.model);
 		return parts.join(' · ');
 	}
-
-	const hookUrl = (s: DoorStation) => `${location.origin}/hooks/door/${s.id}/open`;
 </script>
 
 <div class="space-y-4">
 	<div class="flex flex-wrap items-center justify-between gap-2">
 		<h1>{t('nav.doors')}</h1>
 		{#if hasRole('admin')}
-			<button class="btn btn-primary" onclick={() => edit(null)}>{t('door.new')}</button>
+			<a class="btn" href="/door-stations">{t('door.setup')}</a>
 		{/if}
 	</div>
 	<ErrorBox {error} />
@@ -175,21 +120,6 @@
 						>{live[s.id] ? t('door.liveStop') : t('door.live')}</button
 					>
 				</div>
-				{#if hasRole('admin')}
-					<div class="flex flex-wrap gap-1 border-t border-slate-100 pt-3 dark:border-slate-800">
-						<button class="btn btn-sm" onclick={() => edit(s)}>{t('common.edit')}</button>
-						<button class="btn btn-sm" onclick={() => test(s)}>{t('door.test')}</button>
-						<button class="btn btn-sm" onclick={() => newToken(s)}>{t('door.token')}</button>
-						{#if s.has_api_token}
-							<button class="btn btn-sm" onclick={() => revokeToken(s)}
-								>{t('door.tokenRevoke')}</button
-							>
-						{/if}
-						<button class="btn btn-sm btn-danger" onclick={() => remove(s)}
-							>{t('common.delete')}</button
-						>
-					</div>
-				{/if}
 			</div>
 		{:else}
 			{#if !net.settled}<section class="card"><Skeleton lines={4} /></section>{/if}
@@ -234,41 +164,3 @@
 		{/if}
 	</div>
 </div>
-
-<Modal title={editing ? t('common.edit') : t('door.new')} bind:open={formOpen}>
-	{#key editing}
-		<DoorStationForm
-			station={editing}
-			onsaved={() => {
-				formOpen = false;
-				load();
-			}}
-			oncancel={() => (formOpen = false)}
-		/>
-	{/key}
-</Modal>
-
-<Modal title={t('door.token')} bind:open={tokenOpen}>
-	{#if token}
-		<div class="space-y-3 text-sm">
-			<p>{t('door.tokenHint')}</p>
-			<div>
-				<span class="font-medium">URL</span>
-				<code class="block rounded bg-slate-100 p-2 break-all dark:bg-slate-800"
-					>POST {hookUrl(token.station)}</code
-				>
-			</div>
-			<div>
-				<span class="font-medium">Authorization</span>
-				<code class="block rounded bg-slate-100 p-2 break-all dark:bg-slate-800"
-					>Bearer {token.token}</code
-				>
-			</div>
-			<div class="flex justify-end">
-				<button class="btn btn-primary" onclick={() => (tokenOpen = false)}
-					>{t('common.close')}</button
-				>
-			</div>
-		</div>
-	{/if}
-</Modal>

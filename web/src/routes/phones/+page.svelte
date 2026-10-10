@@ -6,8 +6,10 @@
 	import {
 		api,
 		upload,
+		type Extension,
 		type Firmware,
 		type Phone,
+		type PhoneListItem,
 		type PhoneModel,
 		type ProvisioningInfo
 	} from '#lib/api.ts';
@@ -18,8 +20,28 @@
 	import { formatDateTime, t } from '#lib/i18n/index.svelte.ts';
 	import { hasRole } from '#lib/session.svelte.ts';
 	import { copy, errorMessage } from '#lib/util.ts';
+	import { assignExtension } from '#lib/phoneAssign.ts';
 
-	let phones = $state<Phone[]>([]);
+	let phones = $state<PhoneListItem[]>([]);
+	let extensions = $state<Extension[]>([]);
+	/** Optional extension to put on the new phone right away. */
+	let addExtension = $state('');
+	/** Column filters of the list (case-insensitive substrings; model exact). */
+	let filter = $state({ name: '', ext: '', model: '', mac: '', seen: '', firmware: '' });
+	const has = (value: string, q: string) => value.toLowerCase().includes(q.trim().toLowerCase());
+	const filtered = $derived(
+		phones.filter(
+			(p) =>
+				has(p.name, filter.name) &&
+				has(p.extensions.map((e) => `${e.number} ${e.display_name}`).join(' '), filter.ext) &&
+				(!filter.model || p.model === filter.model) &&
+				has(p.mac.replace(/:/g, ''), filter.mac.replace(/[:\-]/g, '')) &&
+				has(`${seen(p)} ${p.last_ip ?? ''}`, filter.seen) &&
+				has(p.last_firmware ?? '', filter.firmware)
+		)
+	);
+	const filtering = $derived(Object.values(filter).some((v) => v.trim() !== ''));
+	const usedModels = $derived([...new Set(phones.map((p) => p.model))]);
 	let models = $state<PhoneModel[]>([]);
 	let firmware = $state<Firmware[]>([]);
 	let info = $state<ProvisioningInfo | null>(null);
@@ -35,9 +57,10 @@
 	async function load() {
 		try {
 			[phones, models] = await Promise.all([
-				api.get<Phone[]>('/phones'),
+				api.get<PhoneListItem[]>('/phones'),
 				api.get<PhoneModel[]>('/phone-models')
 			]);
+			extensions = await api.get<Extension[]>('/extensions').catch(() => []);
 			if (hasRole('admin')) firmware = await api.get<Firmware[]>('/firmware');
 		} catch (err) {
 			error = errorMessage(err);
@@ -50,6 +73,13 @@
 		error = '';
 		try {
 			const phone = await api.post<Phone>('/phones', { ...form, line_keys: [] });
+			if (addExtension) {
+				const family = models.find((m) => m.id === phone.model)?.family;
+				await assignExtension(phone, family, addExtension).catch((err) => {
+					error = errorMessage(err);
+				});
+				addExtension = '';
+			}
 			addOpen = false;
 			goto(`/phones/${phone.id}`);
 		} catch (err) {
@@ -129,22 +159,84 @@
 			<table class="table">
 				<thead>
 					<tr
-						><th>{t('common.name')}</th><th>{t('phones.model')}</th><th>{t('phones.mac')}</th><th
-							>{t('phones.lastSeen')}</th
-						><th>{t('phones.firmware')}</th></tr
+						><th>{t('common.name')}</th><th>{t('phones.extensions')}</th><th>{t('phones.model')}</th
+						><th>{t('phones.mac')}</th><th>{t('phones.lastSeen')}</th><th>{t('phones.firmware')}</th
+						></tr
 					>
+					<tr class="filters">
+						<th
+							><input
+								class="input input-sm"
+								aria-label="{t('common.filter')}: {t('common.name')}"
+								placeholder={t('common.filter')}
+								bind:value={filter.name}
+							/></th
+						>
+						<th
+							><input
+								class="input input-sm"
+								aria-label="{t('common.filter')}: {t('phones.extensions')}"
+								placeholder={t('common.filter')}
+								bind:value={filter.ext}
+							/></th
+						>
+						<th
+							><select
+								class="input input-sm"
+								aria-label="{t('common.filter')}: {t('phones.model')}"
+								bind:value={filter.model}
+							>
+								<option value="">{t('common.all')}</option>
+								{#each usedModels as m (m)}<option value={m}>{modelName(m)}</option>{/each}
+							</select></th
+						>
+						<th
+							><input
+								class="input input-sm font-mono"
+								aria-label="{t('common.filter')}: {t('phones.mac')}"
+								placeholder={t('common.filter')}
+								bind:value={filter.mac}
+							/></th
+						>
+						<th
+							><input
+								class="input input-sm"
+								aria-label="{t('common.filter')}: {t('phones.lastSeen')}"
+								placeholder={t('common.filter')}
+								bind:value={filter.seen}
+							/></th
+						>
+						<th
+							><input
+								class="input input-sm font-mono"
+								aria-label="{t('common.filter')}: {t('phones.firmware')}"
+								placeholder={t('common.filter')}
+								bind:value={filter.firmware}
+							/></th
+						>
+					</tr>
 				</thead>
 				<tbody>
-					{#each phones as p (p.id)}
+					{#each filtered as p (p.id)}
 						<tr>
 							<td><a class="font-medium hover:underline" href="/phones/{p.id}">{p.name}</a></td>
+							<td class="text-sm">
+								{#each p.extensions as e, i (i)}<span class="whitespace-nowrap"
+										><span class="font-mono">{e.number}</span> {e.display_name}</span
+									>{#if i < p.extensions.length - 1}<br />{/if}{:else}<a
+										class="text-slate-500 hover:underline"
+										href="/phones/{p.id}">{t('phones.noneAssigned')}</a
+									>{/each}
+							</td>
 							<td>{modelName(p.model)}</td>
 							<td class="font-mono text-xs">{p.mac}</td>
 							<td class="text-sm">{seen(p)}{p.last_ip ? ` · ${p.last_ip}` : ''}</td>
 							<td class="font-mono text-xs">{p.last_firmware ?? '—'}</td>
 						</tr>
 					{:else}
-						{#if !net.settled}<SkeletonRows cols={5} />{/if}
+						{#if !net.settled}<SkeletonRows cols={6} />{:else if filtering}<tr
+								><td colspan="6" class="text-sm text-slate-500">{t('common.noMatches')}</td></tr
+							>{/if}
 					{/each}
 				</tbody>
 			</table>
@@ -277,6 +369,15 @@
 			<select id="p-model" class="input" bind:value={form.model}>
 				{#each models as m (m.id)}<option value={m.id}>{m.vendor} {m.name}</option>{/each}
 			</select>
+		</div>
+		<div>
+			<label for="p-ext">{t('phones.assignExtension')}</label>
+			<select id="p-ext" class="input" bind:value={addExtension}>
+				<option value="">{t('phones.assignLater')}</option>
+				{#each extensions as e (e.id)}<option value={e.id}>{e.number} {e.display_name}</option
+					>{/each}
+			</select>
+			<p class="hint">{t('phones.assignHint')}</p>
 		</div>
 		<div class="flex justify-end gap-2">
 			<button type="button" class="btn" onclick={() => (addOpen = false)}

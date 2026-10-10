@@ -309,7 +309,7 @@ const de: Record<keyof typeof en, string> = {
 	'audit.action': 'Aktion',
 	'audit.entity': 'Objekt',
 	'me.none': 'Dir ist noch keine Nebenstelle zugeordnet.',
-	'nav.phones': 'Telefone',
+	'nav.phones': 'Telefone (Provisionierung)',
 	'nav.phonebook': 'Telefonbuch',
 	'phones.new': 'Telefon hinzufügen',
 	'phones.none':
@@ -323,6 +323,23 @@ const de: Record<keyof typeof en, string> = {
 	'phones.firmware': 'Firmware',
 	'phones.account': 'Konto',
 	'phones.accounts': 'Konten auf diesem Telefon',
+	'common.filter': 'Filter',
+	'common.all': 'Alle',
+	'common.noMatches': 'Keine Treffer für den Filter.',
+	'phones.extensions': 'Nebenstellen',
+	'phones.noneAssigned': 'keine – zuweisen',
+	'phones.assignExtension': 'Nebenstelle zuweisen',
+	'phones.assign': 'Zuweisen',
+	'phones.assignLater': 'Später zuweisen',
+	'phones.assignHint':
+		'Legt für die Nebenstelle ein Konto auf diesem Telefon an (nächster freier Kontoplatz). Danach Resync, damit das Telefon es übernimmt.',
+	'phones.assigned': 'Nebenstelle zugewiesen – Resync, damit das Telefon das Konto übernimmt.',
+	'phones.unassign': 'Zuweisung entfernen',
+	'phones.unassignConfirm':
+		'Nebenstelle {number} von diesem Telefon entfernen? Das Gerät (SIP-Konto) der Nebenstelle wird gelöscht.',
+	'phones.unassigned': 'Zuweisung entfernt – Resync, damit das Telefon das Konto abmeldet.',
+	'phones.allAccountsUsed': 'Alle {n} Konten dieses Telefons sind belegt.',
+	'phones.noAccountsYet': 'Diesem Telefon ist noch keine Nebenstelle zugewiesen.',
 	'phones.noAccounts':
 		'Noch keine Konten. Öffne eine Nebenstelle und füge ein Gerät auf diesem Telefon hinzu.',
 	'phones.nextFree': 'nächstes freies',
@@ -705,6 +722,11 @@ const de: Record<keyof typeof en, string> = {
 	'rec.transcriptHint': 'Automatisches Transkript, kann Fehler enthalten.',
 	'rec.speaker.caller': 'Anrufer',
 	'rec.speaker.called': 'Angerufener',
+	'nav.doorStations': 'Türsprechstellen',
+	'door.setup': 'Türsprechstellen einrichten',
+	'door.setupHint':
+		'Hier legst du Türsprechstellen an und richtest sie ein. Öffnen, Livebild und Ereignisse findest du unter „Tür“.',
+	'door.toDoorPage': 'Zur Tür',
 	'nav.doors': 'Tür',
 	'door.new': 'Neue Türsprechstelle',
 	'door.none':

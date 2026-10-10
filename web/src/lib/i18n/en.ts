@@ -317,7 +317,7 @@ export default {
 	'audit.entity': 'Object',
 
 	'me.none': 'No extension is assigned to you yet.',
-	'nav.phones': 'Phones',
+	'nav.phones': 'Phones (provisioning)',
 	'nav.phonebook': 'Phonebook',
 	'phones.new': 'Add phone',
 	'phones.none':
@@ -331,6 +331,23 @@ export default {
 	'phones.firmware': 'Firmware',
 	'phones.account': 'Account',
 	'phones.accounts': 'Accounts on this phone',
+	'common.filter': 'Filter',
+	'common.all': 'All',
+	'common.noMatches': 'Nothing matches the filter.',
+	'phones.extensions': 'Extensions',
+	'phones.noneAssigned': 'none – assign',
+	'phones.assignExtension': 'Assign extension',
+	'phones.assign': 'Assign',
+	'phones.assignLater': 'Assign later',
+	'phones.assignHint':
+		'Adds an account for the extension on this phone (next free account slot). Then resync so the phone picks it up.',
+	'phones.assigned': 'Extension assigned – resync so the phone picks up the account.',
+	'phones.unassign': 'Remove assignment',
+	'phones.unassignConfirm':
+		"Remove extension {number} from this phone? The extension's device (SIP account) is deleted.",
+	'phones.unassigned': 'Assignment removed – resync so the phone drops the account.',
+	'phones.allAccountsUsed': 'All {n} accounts of this phone are in use.',
+	'phones.noAccountsYet': 'No extension is assigned to this phone yet.',
 	'phones.noAccounts': 'No accounts yet. Open an extension and add a device on this phone.',
 	'phones.nextFree': 'next free',
 	'phones.deviceHint':
@@ -369,8 +386,7 @@ export default {
 		'Resync sent – the phone reloads its configuration without restarting. (Phones with an older TalkOps configuration restart one last time.)',
 	'phones.resyncHint': 'Reload the configuration without restarting',
 	'phones.reboot': 'Restart',
-	'phones.rebootConfirm':
-		'Restart the phone now? A Yealink does not restart during a call.',
+	'phones.rebootConfirm': 'Restart the phone now? A Yealink does not restart during a call.',
 	'phones.rebootSent': 'Restart sent – the phone restarts and loads its configuration.',
 	'phones.resyncOffline':
 		'The phone is not registered; it will load the configuration on its next start.',
@@ -709,6 +725,11 @@ export default {
 	'rec.transcriptHint': 'Automatic transcript, may contain errors.',
 	'rec.speaker.caller': 'Caller',
 	'rec.speaker.called': 'Called party',
+	'nav.doorStations': 'Door stations',
+	'door.setup': 'Set up door stations',
+	'door.setupHint':
+		'Add and set up door stations here. Opening, live view and events are under “Door”.',
+	'door.toDoorPage': 'Go to Door',
 	'nav.doors': 'Door',
 	'door.new': 'New door station',
 	'door.none':

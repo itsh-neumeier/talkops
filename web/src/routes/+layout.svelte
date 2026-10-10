@@ -34,6 +34,10 @@
 		{ href: '/settings', key: 'nav.settings', role: 'user' }
 	];
 
+	/** "Door" only appears in the menu once a door station exists. */
+	let hasDoors = $state(false);
+	const shown = (href: string) => href !== '/doors' || hasDoors;
+
 	// Skeletons until the new page has its data.
 	afterNavigate(pageChanged);
 
@@ -45,6 +49,16 @@
 			const { needs_setup } = await api.get<{ needs_setup: boolean }>('/setup');
 			goto(needs_setup ? '/setup' : '/login');
 		}
+	});
+
+	// Re-checked on every page change, so a new door station shows up at once.
+	$effect(() => {
+		void page.url.pathname;
+		if (!session.user) return;
+		api
+			.get<unknown[]>('/door-stations')
+			.then((list) => (hasDoors = list.length > 0))
+			.catch(() => {});
 	});
 
 	function active(href: string) {
@@ -115,7 +129,7 @@
 					? 'block'
 					: 'hidden'} fixed inset-x-0 top-[57px] z-20 border-b border-slate-200 bg-white p-2 md:sticky md:top-[57px] md:block md:h-[calc(100vh-57px)] md:w-56 md:shrink-0 md:border-r md:border-b-0 md:bg-transparent dark:border-slate-800 dark:bg-slate-900 md:dark:bg-transparent"
 			>
-				{#each nav.filter((n) => hasRole(n.role)) as item (item.href)}
+				{#each nav.filter((n) => hasRole(n.role) && shown(n.href)) as item (item.href)}
 					<a
 						href={item.href}
 						onclick={() => (menuOpen = false)}

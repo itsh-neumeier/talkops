@@ -346,6 +346,23 @@ pub async fn accounts(pool: &PgPool, phone: Uuid) -> CoreResult<Vec<PhoneAccount
     .await?)
 }
 
+/// Extensions placed on the tenant's phones: (phone id, number, name), in
+/// account order (for the phone list).
+pub async fn assigned_extensions<'e>(
+    db: impl PgExecutor<'e>,
+    tenant: TenantId,
+) -> CoreResult<Vec<(Uuid, String, String)>> {
+    Ok(sqlx::query_as(
+        "SELECT d.phone_id, e.number, e.display_name
+         FROM devices d JOIN extensions e ON e.id = d.extension_id
+         WHERE e.tenant_id = $1 AND d.phone_id IS NOT NULL
+         ORDER BY d.phone_id, d.account_index",
+    )
+    .bind(tenant)
+    .fetch_all(db)
+    .await?)
+}
+
 /// SIP usernames of all devices on the phone (resync via check-sync).
 pub async fn device_usernames(pool: &PgPool, phone: Uuid) -> CoreResult<Vec<String>> {
     Ok(sqlx::query_scalar(

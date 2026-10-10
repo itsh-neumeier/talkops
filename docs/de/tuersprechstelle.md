@@ -42,7 +42,7 @@ Die Station erscheint danach in der **Übersicht** unter *Registrierte Geräte* 
 
 ## 3. Türsprechstelle in TalkOps
 
-**Tür → Neue Türsprechstelle** (Admin):
+**Einstellungen → Türsprechstellen → Neue Türsprechstelle** (Admin; der Menüpunkt **Tür** zum Öffnen erscheint, sobald es eine Türsprechstelle gibt):
 
 | Feld | Bedeutung |
 |---|---|

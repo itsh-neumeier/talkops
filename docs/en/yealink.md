@@ -20,11 +20,13 @@ password) on the handset; TalkOps does not distribute it.
 
 ## 1. Add the phone
 
-1. **Phones → Add phone**: enter a name, the MAC address (label on the back)
-   and the model.
-2. **Settings → Extensions → extension → Add device**: choose the phone under *Phone*.
-   The *account* (1, 2, …) is assigned automatically; on DECT bases it is the
-   handset number.
+1. **Settings → Phones (provisioning) → Add phone**: enter a name, the MAC
+   address (label on the back) and the model; pick the extension under
+   *Assign extension* right away (or later).
+2. More extensions on the phone's page under *Accounts on this phone →
+   Assign extension*; ✕ removes an assignment. Or from the extension: *Add
+   device* and choose the phone under *Phone*. The *account* (1, 2, …) is
+   assigned automatically; on DECT bases it is the handset number.
 
 One phone can carry several extensions (e.g. account 1 = own extension,
 account 2 = reception).

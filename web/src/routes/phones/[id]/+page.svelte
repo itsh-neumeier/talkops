@@ -1,5 +1,6 @@
 <script lang="ts">
 	import PhoneSettingsEditor from '#lib/components/PhoneSettingsEditor.svelte';
+	import { assignExtension } from '#lib/phoneAssign.ts';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
@@ -153,6 +154,39 @@
 	}
 
 	/** Reload the configuration; with `reboot` the phone restarts as well. */
+	/** Extension chosen to put on this phone. */
+	let assignId = $state('');
+	const assignable = $derived(
+		extensions.filter((e) => !phone?.accounts.some((a) => a.extension_id === e.id))
+	);
+	const slotsFree = $derived(!!model && !!phone && phone.accounts.length < model.accounts);
+
+	async function assign() {
+		if (!phone || !assignId) return;
+		error = '';
+		message = '';
+		try {
+			await assignExtension(phone, model?.family, assignId);
+			assignId = '';
+			message = t('phones.assigned');
+			await load();
+		} catch (err) {
+			error = errorMessage(err);
+		}
+	}
+
+	async function unassign(deviceId: string, number: string) {
+		if (!confirm(t('phones.unassignConfirm', { number }))) return;
+		error = '';
+		try {
+			await api.del(`/devices/${deviceId}`);
+			message = t('phones.unassigned');
+			await load();
+		} catch (err) {
+			error = errorMessage(err);
+		}
+	}
+
 	async function resync(reboot: boolean) {
 		if (reboot && !confirm(t('phones.rebootConfirm'))) return;
 		error = '';
@@ -238,7 +272,7 @@
 		<section class="card space-y-2">
 			<h2>{t('phones.accounts')}</h2>
 			{#if phone.accounts.length === 0}
-				<p class="text-sm text-slate-500">{t('phones.noAccounts')}</p>
+				<p class="text-sm text-slate-500">{t('phones.noAccountsYet')}</p>
 			{:else}
 				<p class="hint">{t('phones.accountTextsHint')}</p>
 				<ul class="divide-y divide-slate-100 dark:divide-slate-800">
@@ -250,6 +284,13 @@
 									>{a.extension_number}</a
 								>
 								{a.display_name}
+								{#if hasRole('admin')}
+									<button
+										class="btn btn-sm ml-1"
+										title={t('phones.unassign')}
+										onclick={() => unassign(a.device_id, a.extension_number)}>✕</button
+									>
+								{/if}
 							</div>
 							{#if texts[a.device_id]}
 								<div>
@@ -278,6 +319,29 @@
 						</li>
 					{/each}
 				</ul>
+			{/if}
+			{#if hasRole('admin')}
+				{#if slotsFree}
+					<div
+						class="flex flex-wrap items-end gap-2 border-t border-slate-100 pt-3 dark:border-slate-800"
+					>
+						<div class="min-w-48 flex-1">
+							<label for="ph-assign">{t('phones.assignExtension')}</label>
+							<select id="ph-assign" class="input" bind:value={assignId}>
+								<option value="">—</option>
+								{#each assignable as e (e.id)}
+									<option value={e.id}>{e.number} {e.display_name}</option>
+								{/each}
+							</select>
+						</div>
+						<button class="btn btn-primary" disabled={!assignId} onclick={assign}
+							>{t('phones.assign')}</button
+						>
+					</div>
+					<p class="hint">{t('phones.assignHint')}</p>
+				{:else if model}
+					<p class="hint">{t('phones.allAccountsUsed', { n: model.accounts })}</p>
+				{/if}
 			{/if}
 		</section>
 

@@ -8,6 +8,13 @@ All notable changes to TalkOps. The format follows
 
 ### Changed
 
+- **Phones and extensions:** extensions are assigned on the phone's page
+  (*Assign extension*, ✕ to remove) and optionally right when adding a
+  phone; the phone list shows the extensions on each phone and has a
+  filter per column. The menu item is now *Phones (provisioning)*.
+- **Door stations under Settings:** setting them up moved to *Settings →
+  Door stations*; *Door* (open, live view, events) only appears in the menu
+  once a door station exists.
 - **Resync without restart:** *Resync* now only reloads the phone's
   configuration (SIP NOTIFY `check-sync;reboot=false`,
   `sip.notify_reboot_enable = 0`); the new *Restart* button restarts the

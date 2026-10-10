@@ -389,6 +389,11 @@ export interface Phone {
 	settings: Record<string, string>;
 }
 
+/** A phone in the list, with the extensions placed on it. */
+export interface PhoneListItem extends Phone {
+	extensions: { number: string; display_name: string }[];
+}
+
 /** A comfort setting from the phone catalog (key tone, display …). */
 export interface PhoneSettingInfo {
 	key: string;

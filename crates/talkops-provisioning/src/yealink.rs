@@ -220,6 +220,9 @@ pub struct PhoneSetup<'a> {
     pub phonebooks: Vec<RemotePhonebook>,
     /// Dial-now rules (see [`crate::dial_now`]).
     pub dial_now: Vec<String>,
+    /// Comfort settings as (parameter, value), see
+    /// [`crate::PhoneCatalog::effective_settings`].
+    pub settings: Vec<(String, String)>,
 }
 
 #[derive(Serialize)]
@@ -319,6 +322,11 @@ pub fn render_phone(setup: &PhoneSetup<'_>) -> Result<String, RenderError> {
         wallpaper => media(&setup.wallpaper, setup.model.wallpaper),
         phonebooks,
         unused_phonebooks,
+        settings => setup
+            .settings
+            .iter()
+            .map(|(param, value)| context! { param => cfg_value(param), value => cfg_value(value) })
+            .collect::<Vec<_>>(),
         dial_now => (1..=crate::dial_now::MAX_RULES)
             .map(|i| context! { index => i, rule => setup.dial_now.get(i - 1).map(|r| cfg_value(r)).unwrap_or_default() })
             .collect::<Vec<_>>(),
@@ -443,6 +451,7 @@ mod tests {
                 url: "http://u:p@pbx/provisioning/phonebook/section/3.xml".into(),
             }],
             dial_now: vec!["11[0,2]".into(), "*9[7,8]".into()],
+            settings: vec![],
         };
         let cfg = render_phone(&setup).unwrap();
         let m = parse(&cfg);
@@ -472,6 +481,10 @@ mod tests {
             "http://u:p@pbx/provisioning/media/2/talkops-2.jpg"
         );
         assert_eq!(m["phone_setting.backgrounds"], "talkops-2.jpg");
+        assert!(
+            !m.contains_key("features.send_key_tone"),
+            "unset: phone keeps its value"
+        );
         assert_eq!(m["dialplan.dialnow.rule.1"], "11[0,2]");
         assert_eq!(m["dialplan.dialnow.rule.2"], "*9[7,8]");
         assert_eq!(m["dialplan.dialnow.rule.3"], "", "unused rules are cleared");
@@ -522,6 +535,7 @@ mod tests {
                 wallpaper: None,
                 phonebooks: vec![],
                 dial_now: vec![],
+                settings: vec![("features.send_key_tone".into(), "0".into())],
             };
             let m = parse(&render_phone(&setup).unwrap());
             assert_eq!(m["account.1.user_name"], "30-1", "{id}");
@@ -539,6 +553,7 @@ mod tests {
             assert!(!m.contains_key("linekey.17.type"));
             assert_eq!(m["ringtone.url"], "http://pbx/r.wav", "{id}");
             assert_eq!(m["phone_setting.ring_type"], "r.wav");
+            assert_eq!(m["features.send_key_tone"], "0", "{id}: comfort setting");
         }
     }
 
@@ -567,6 +582,7 @@ mod tests {
             wallpaper: None,
             phonebooks: vec![],
             dial_now: vec![],
+            settings: vec![],
         };
         let m = parse(&render_phone(&setup).unwrap());
         assert_eq!(m["handset.2.incoming_lines"], "2");

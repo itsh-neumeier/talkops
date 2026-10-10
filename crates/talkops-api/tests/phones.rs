@@ -741,3 +741,100 @@ async fn phonebook_csv_import(db: PgPool) {
         .await;
     assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
 }
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn comfort_settings(db: PgPool) {
+    let router = router(db);
+    let admin = setup_admin(&router).await;
+
+    // Catalog with the AX handset settings; nothing set yet.
+    let (status, view) = admin.get("/api/v1/phone-settings").await;
+    assert_eq!(status, StatusCode::OK, "{view}");
+    let key_tone = view["catalog"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|s| s["key"] == "key_tone")
+        .cloned()
+        .unwrap();
+    assert_eq!(key_tone["param"], "features.send_key_tone");
+    assert_eq!(key_tone["families"], json!(["wifi"]));
+    assert_eq!(view["values"], json!({}));
+
+    // Unknown keys and values outside the catalog are refused.
+    for values in [
+        json!({"nope": "1"}),
+        json!({"backlight_time": "45"}),
+        json!({"key_tone": 0}),
+    ] {
+        let (status, err) = admin
+            .put("/api/v1/phone-settings", json!({"values": values}))
+            .await;
+        assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{values}: {err}");
+    }
+    let (status, view) = admin
+        .put(
+            "/api/v1/phone-settings",
+            json!({"values": {"key_tone": "0", "backlight_time": "60"}}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{view}");
+    assert_eq!(view["values"]["key_tone"], "0");
+
+    // A handset overrides one value; a desk phone does not take them.
+    let (status, err) = admin
+        .post(
+            "/api/v1/phones",
+            json!({"mac": "249ad8000099", "model": "ax83h", "name": "WLAN",
+                   "settings": {"vibrate": "maybe"}}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{err}");
+    let (status, ax) = admin
+        .post(
+            "/api/v1/phones",
+            json!({"mac": "249ad8000099", "model": "ax83h", "name": "WLAN",
+                   "settings": {"backlight_time": "15", "off_cradle_answer": "0"}}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{ax}");
+    assert_eq!(ax["settings"]["backlight_time"], "15");
+    let (status, desk) = admin
+        .post(
+            "/api/v1/phones",
+            json!({"mac": "805ec0000099", "model": "t54w", "name": "Desk"}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{desk}");
+
+    let (_, info) = admin.get("/api/v1/provisioning").await;
+    let creds = (
+        info["username"].as_str().unwrap(),
+        info["password"].as_str().unwrap(),
+    );
+    // A group without a number must not break the dial-now rules.
+    let (_, member) = admin
+        .post(
+            "/api/v1/extensions",
+            json!({"number": "700", "display_name": "Member"}),
+        )
+        .await;
+    let (status, group) = admin
+        .post(
+            "/api/v1/ring-groups",
+            json!({"name": "No number", "members": [member["id"]]}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{group}");
+    let (status, cfg) = prov_get(&router, "/provisioning/249ad8000099.cfg", Some(creds)).await;
+    assert_eq!(status, StatusCode::OK, "{cfg}");
+    assert!(cfg.contains("features.send_key_tone = 0\n"), "{cfg}");
+    assert!(cfg.contains("phone_setting.backlight_time = 15\n"), "{cfg}");
+    assert!(
+        cfg.contains("phone_setting.off_cradle_auto_answer.enable = 0\n"),
+        "{cfg}"
+    );
+    assert!(!cfg.contains("features.charging_tone"), "unset: {cfg}");
+    let (_, cfg) = prov_get(&router, "/provisioning/805ec0000099.cfg", Some(creds)).await;
+    assert!(!cfg.contains("features.send_key_tone"), "{cfg}");
+}

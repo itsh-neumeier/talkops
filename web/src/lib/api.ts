@@ -385,6 +385,26 @@ export interface Phone {
 	wallpaper_id: string | null;
 	/** Phone book sections shown on the phone (at most 3). */
 	phonebook_sections: string[];
+	/** Comfort settings of this phone; unset keys use the values for all phones. */
+	settings: Record<string, string>;
+}
+
+/** A comfort setting from the phone catalog (key tone, display …). */
+export interface PhoneSettingInfo {
+	key: string;
+	group: string;
+	kind: 'bool' | 'choice';
+	values: string[];
+	/** The phone's factory value, if documented. */
+	default: string | null;
+	families: string[];
+	param: string;
+}
+
+export interface PhoneSettingsView {
+	catalog: PhoneSettingInfo[];
+	/** Values for all phones. */
+	values: Record<string, string>;
 }
 
 export interface PhoneAccount {

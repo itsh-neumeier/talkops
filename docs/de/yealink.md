@@ -151,6 +151,31 @@ Nebenstellen kommen beim nächsten Resync aufs Telefon (spätestens nachts).
 Quellen: Yealink-Doku *Dial Plan* (support.yealink.com) und *Using Dial
 Plan Feature on Yealink SIP-T3XG Phones*.
 
+### Komfort-Einstellungen
+
+Unter **Telefone → Komfort-Einstellungen** legst du für alle passenden
+Telefone fest, was TalkOps einstellt; auf der Seite eines Telefons lässt
+sich jeder Wert abweichend setzen. *Einstellung des Telefons behalten*
+(Standard) schreibt nichts – das Telefon behält, was am Gerät eingestellt
+ist; dahinter steht der Werkswert, sofern Yealink ihn dokumentiert.
+Änderungen kommen mit dem nächsten **Resync** aufs Telefon.
+
+Derzeit für die WLAN-Mobilteile AX83H/AX86R:
+
+| Bereich | Einstellung | Parameter |
+|---|---|---|
+| Töne | Tastenton, Ton beim Einlegen, Vibration | `features.send_key_tone`, `features.charging_tone.enable`, `phone_setting.vibrate.enable` |
+| Ladeschale | Abnehmen nimmt an, Einlegen beendet | `phone_setting.off_cradle_auto_answer.enable`, `phone_setting.end_call_on_hook.enable` |
+| Anrufe | Anklopfen, Anklopfton | `call_waiting.enable`, `call_waiting.tone` |
+| Display | Beleuchtungsdauer, Helligkeit, 12/24 h | `phone_setting.backlight_time`, `phone_setting.active_backlight_level`, `local_time.time_format` |
+| Hinweise | Entgangene Anrufe, neue Voicemail | `features.missed_call_popup.enable`, `features.voice_mail_popup.enable` |
+| Audio | Rauschfilter, Akustik-Schild | `features.noise_filtering_rev.enable`, `features.acoustic_shield.mode` |
+
+Die Liste steht in `presets/phones/yealink.yaml` (`settings:`) und lässt sich
+dort erweitern. Quellen: Yealink-Doku zum AX86R (Firmware 180.87) auf
+support.yealink.com; die Vibration steht nur in Yealinks
+Provisioning-Vorlage AX8X 180.87.0.5.
+
 ## 5. Telefonbuch
 
 Jedes Telefon zeigt **Intern** (alle aktiven Nebenstellen) und **Kontakte**

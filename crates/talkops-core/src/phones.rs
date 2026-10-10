@@ -28,6 +28,10 @@ pub struct Phone {
     pub wallpaper_id: Option<Uuid>,
     /// Phone book sections shown on the phone besides the global contacts.
     pub phonebook_sections: Vec<Uuid>,
+    /// Comfort settings of this phone (`{"key_tone": "0"}`); unset keys use
+    /// the tenant-wide value, see [`phone_defaults`].
+    #[schema(value_type = Object)]
+    pub settings: serde_json::Value,
 }
 
 #[derive(Debug, Clone, Deserialize, utoipa::ToSchema)]
@@ -44,6 +48,9 @@ pub struct PhoneInput {
     pub wallpaper_id: Option<Uuid>,
     #[serde(default)]
     pub phonebook_sections: Vec<Uuid>,
+    #[serde(default = "empty_object")]
+    #[schema(value_type = Object)]
+    pub settings: serde_json::Value,
 }
 
 /// Phone book sections a phone can show (remote phone books 3–5; 1 and 2 are
@@ -54,8 +61,53 @@ fn empty_array() -> serde_json::Value {
     serde_json::json!([])
 }
 
+fn empty_object() -> serde_json::Value {
+    serde_json::json!({})
+}
+
+/// Comfort settings must be an object of strings (checked against the
+/// phone catalog by the API).
+pub fn check_settings_shape(settings: &serde_json::Value) -> CoreResult<()> {
+    match settings.as_object() {
+        Some(map) if map.values().all(|v| v.is_string()) && map.len() <= 100 => Ok(()),
+        _ => Err(CoreError::Validation(
+            "settings must be an object of strings".into(),
+        )),
+    }
+}
+
+/// Tenant-wide comfort settings for all phones.
+pub async fn phone_defaults<'e>(
+    db: impl PgExecutor<'e>,
+    tenant: TenantId,
+) -> CoreResult<serde_json::Value> {
+    let value: Option<serde_json::Value> =
+        sqlx::query_scalar("SELECT phone_settings FROM tenant_settings WHERE tenant_id = $1")
+            .bind(tenant)
+            .fetch_optional(db)
+            .await?;
+    Ok(value.unwrap_or_else(empty_object))
+}
+
+pub async fn set_phone_defaults<'e>(
+    db: impl PgExecutor<'e>,
+    tenant: TenantId,
+    settings: &serde_json::Value,
+) -> CoreResult<()> {
+    check_settings_shape(settings)?;
+    sqlx::query(
+        "INSERT INTO tenant_settings (tenant_id, phone_settings) VALUES ($1, $2)
+         ON CONFLICT (tenant_id) DO UPDATE SET phone_settings = EXCLUDED.phone_settings",
+    )
+    .bind(tenant)
+    .bind(settings)
+    .execute(db)
+    .await?;
+    Ok(())
+}
+
 const PHONE_COLUMNS: &str = "id, mac, model, name, line_keys, last_seen_at, last_ip, last_firmware, \
-     ringtone_id, wallpaper_id, phonebook_sections";
+     ringtone_id, wallpaper_id, phonebook_sections, settings";
 
 fn normalize_mac(mac: &str) -> CoreResult<String> {
     let hex: String = mac
@@ -82,6 +134,7 @@ fn validate(input: &PhoneInput) -> CoreResult<String> {
     if !input.line_keys.is_array() {
         return Err(CoreError::Validation("line_keys must be an array".into()));
     }
+    check_settings_shape(&input.settings)?;
     normalize_mac(&input.mac)
 }
 
@@ -163,8 +216,8 @@ pub async fn create(pool: &PgPool, tenant: TenantId, input: &PhoneInput) -> Core
     let sections = check_references(pool, tenant, input).await?;
     let sql = format!(
         "INSERT INTO phones (tenant_id, mac, model, name, line_keys, ringtone_id, wallpaper_id,
-                             phonebook_sections)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                             phonebook_sections, settings)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
          RETURNING {PHONE_COLUMNS}"
     );
     Ok(sqlx::query_as(&sql)
@@ -176,6 +229,7 @@ pub async fn create(pool: &PgPool, tenant: TenantId, input: &PhoneInput) -> Core
         .bind(input.ringtone_id)
         .bind(input.wallpaper_id)
         .bind(&sections)
+        .bind(&input.settings)
         .fetch_one(pool)
         .await?)
 }
@@ -190,7 +244,7 @@ pub async fn update(
     let sections = check_references(pool, tenant, input).await?;
     let sql = format!(
         "UPDATE phones SET mac = $3, model = $4, name = $5, line_keys = $6, ringtone_id = $7,
-             wallpaper_id = $8, phonebook_sections = $9, updated_at = now()
+             wallpaper_id = $8, phonebook_sections = $9, settings = $10, updated_at = now()
          WHERE tenant_id = $1 AND id = $2 RETURNING {PHONE_COLUMNS}"
     );
     Ok(sqlx::query_as(&sql)
@@ -203,6 +257,7 @@ pub async fn update(
         .bind(input.ringtone_id)
         .bind(input.wallpaper_id)
         .bind(&sections)
+        .bind(&input.settings)
         .fetch_one(pool)
         .await?)
 }

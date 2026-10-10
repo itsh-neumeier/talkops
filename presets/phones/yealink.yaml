@@ -43,3 +43,29 @@ models:
   - { id: w80b, name: W80B, family: dect, accounts: 100, line_keys: 0 }
   - { id: ax83h, name: AX83H, family: wifi, accounts: 4, line_keys: 16, ringtone_max_kb: 8192, wallpaper: true }
   - { id: ax86r, name: AX86R, family: wifi, accounts: 4, line_keys: 16, ringtone_max_kb: 8192, wallpaper: true }
+
+# Comfort settings an admin can set in TalkOps (globally or per phone). A
+# setting is only written to the phone when it is set; otherwise the phone
+# keeps its own value. kind: bool (0/1) or choice (values). default: the
+# phone's factory value (shown as a hint). families: phones that take it.
+#
+# Sources (AX83H/AX86R, firmware 180.87.x, support.yealink.com): "Alert
+# Tone", "Charging Tone", "Auto Answer by Pick up From the Charger Cradle",
+# "Call Waiting", "Display", "Time and Date", "Notification", "Smart Noise
+# Filtering", "Acoustic Shield"; phone_setting.vibrate.enable only appears in
+# Yealink's AX8X auto-provisioning template 180.87.0.5.
+settings:
+  - { key: key_tone, group: tones, param: features.send_key_tone, kind: bool, default: "1", families: [wifi] }
+  - { key: charging_tone, group: tones, param: features.charging_tone.enable, kind: bool, default: "0", families: [wifi] }
+  - { key: vibrate, group: tones, param: phone_setting.vibrate.enable, kind: bool, families: [wifi] }
+  - { key: off_cradle_answer, group: cradle, param: phone_setting.off_cradle_auto_answer.enable, kind: bool, default: "1", families: [wifi] }
+  - { key: cradle_hangup, group: cradle, param: phone_setting.end_call_on_hook.enable, kind: bool, default: "1", families: [wifi] }
+  - { key: call_waiting, group: calls, param: call_waiting.enable, kind: bool, default: "1", families: [wifi] }
+  - { key: call_waiting_tone, group: calls, param: call_waiting.tone, kind: bool, default: "1", families: [wifi] }
+  - { key: backlight_time, group: display, param: phone_setting.backlight_time, kind: choice, values: ["15", "30", "60", "120", "300", "600", "0"], default: "30", families: [wifi] }
+  - { key: backlight_level, group: display, param: phone_setting.active_backlight_level, kind: choice, values: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"], default: "8", families: [wifi] }
+  - { key: time_format, group: display, param: local_time.time_format, kind: choice, values: ["1", "0"], default: "1", families: [wifi] }
+  - { key: missed_call_popup, group: notifications, param: features.missed_call_popup.enable, kind: bool, families: [wifi] }
+  - { key: voicemail_popup, group: notifications, param: features.voice_mail_popup.enable, kind: bool, default: "1", families: [wifi] }
+  - { key: noise_filter, group: audio, param: features.noise_filtering_rev.enable, kind: bool, default: "0", families: [wifi] }
+  - { key: acoustic_shield, group: audio, param: features.acoustic_shield.mode, kind: choice, values: ["0", "1", "2"], families: [wifi] }

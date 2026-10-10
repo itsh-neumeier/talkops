@@ -47,6 +47,49 @@ impl PhoneModel {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SettingKind {
+    /// `0` (off) or `1` (on).
+    Bool,
+    /// One of `values`.
+    Choice,
+}
+
+/// A comfort setting an admin can set for phones (key tone, display …).
+/// It is only written to a phone when set in TalkOps.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PhoneSetting {
+    /// Stable name used in the database and the UI texts.
+    pub key: String,
+    /// UI section (`tones`, `display` …).
+    pub group: String,
+    /// Configuration parameter on the phone.
+    pub param: String,
+    pub kind: SettingKind,
+    /// Allowed values of a `choice`, in display order.
+    #[serde(default)]
+    pub values: Vec<String>,
+    /// The phone's factory value, if documented.
+    #[serde(default)]
+    pub default: Option<String>,
+    /// Phone families that take the parameter.
+    pub families: Vec<PhoneFamily>,
+}
+
+impl PhoneSetting {
+    pub fn allows(&self, value: &str) -> bool {
+        match self.kind {
+            SettingKind::Bool => value == "0" || value == "1",
+            SettingKind::Choice => self.values.iter().any(|v| v == value),
+        }
+    }
+}
+
+/// Values of comfort settings by key (`{"key_tone": "0"}`).
+pub type SettingValues = BTreeMap<String, String>;
+
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct VendorFile {
@@ -54,6 +97,8 @@ struct VendorFile {
     #[allow(dead_code)]
     status: String,
     models: Vec<PhoneModel>,
+    #[serde(default)]
+    settings: Vec<PhoneSetting>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -66,6 +111,7 @@ pub struct CatalogError {
 #[derive(Debug, Clone, Default)]
 pub struct PhoneCatalog {
     models: BTreeMap<String, PhoneModel>,
+    settings: Vec<PhoneSetting>,
 }
 
 impl PhoneCatalog {
@@ -75,6 +121,7 @@ impl PhoneCatalog {
             message,
         };
         let mut models = BTreeMap::new();
+        let mut settings: Vec<PhoneSetting> = Vec::new();
         let mut entries: Vec<_> = std::fs::read_dir(dir)
             .map_err(|e| err(dir, e.to_string()))?
             .filter_map(Result::ok)
@@ -98,8 +145,29 @@ impl PhoneCatalog {
                     return Err(err(&path, "duplicate model id".into()));
                 }
             }
+            for setting in file.settings {
+                let problem = if settings.iter().any(|s| s.key == setting.key) {
+                    Some("duplicate key")
+                } else if setting.kind == SettingKind::Choice && setting.values.is_empty() {
+                    Some("a choice needs values")
+                } else if setting.families.is_empty() {
+                    Some("no phone families")
+                } else if setting
+                    .default
+                    .as_deref()
+                    .is_some_and(|d| !setting.allows(d))
+                {
+                    Some("default is not an allowed value")
+                } else {
+                    None
+                };
+                if let Some(problem) = problem {
+                    return Err(err(&path, format!("setting {}: {problem}", setting.key)));
+                }
+                settings.push(setting);
+            }
         }
-        Ok(Self { models })
+        Ok(Self { models, settings })
     }
 
     pub fn get(&self, id: &str) -> Option<&PhoneModel> {
@@ -108,6 +176,44 @@ impl PhoneCatalog {
 
     pub fn all(&self) -> impl Iterator<Item = &PhoneModel> {
         self.models.values()
+    }
+
+    /// Comfort settings in display order.
+    pub fn settings(&self) -> &[PhoneSetting] {
+        &self.settings
+    }
+
+    /// Checks keys and values against the catalog.
+    pub fn check_settings(&self, values: &SettingValues) -> Result<(), String> {
+        for (key, value) in values {
+            let setting = self
+                .settings
+                .iter()
+                .find(|s| &s.key == key)
+                .ok_or_else(|| format!("unknown phone setting `{key}`"))?;
+            if !setting.allows(value) {
+                return Err(format!("invalid value `{value}` for phone setting `{key}`"));
+            }
+        }
+        Ok(())
+    }
+
+    /// Parameters to write for a phone: its own value, else the global one;
+    /// settings its family does not take and unset ones are left out.
+    pub fn effective_settings(
+        &self,
+        model: &PhoneModel,
+        global: &SettingValues,
+        phone: &SettingValues,
+    ) -> Vec<(String, String)> {
+        self.settings
+            .iter()
+            .filter(|s| s.families.contains(&model.family))
+            .filter_map(|s| {
+                let value = phone.get(&s.key).or_else(|| global.get(&s.key))?;
+                s.allows(value).then(|| (s.param.clone(), value.clone()))
+            })
+            .collect()
     }
 
     /// Guesses the model from a Yealink User-Agent such as
@@ -166,6 +272,25 @@ mod tests {
             "ax86r"
         );
         assert!(c.from_user_agent("Snom D785").is_none());
+
+        // Comfort settings: phone value wins over the global one, unknown
+        // or invalid values and other families are left out.
+        assert!(c.settings().iter().any(|s| s.key == "key_tone"));
+        let global = SettingValues::from([
+            ("key_tone".to_owned(), "0".to_owned()),
+            ("backlight_time".to_owned(), "60".to_owned()),
+        ]);
+        let phone = SettingValues::from([("backlight_time".to_owned(), "15".to_owned())]);
+        let ax_settings = c.effective_settings(ax, &global, &phone);
+        assert!(ax_settings.contains(&("features.send_key_tone".into(), "0".into())));
+        assert!(ax_settings.contains(&("phone_setting.backlight_time".into(), "15".into())));
+        assert_eq!(ax_settings.len(), 2);
+        assert!(c.effective_settings(t54w, &global, &phone).is_empty());
+        assert!(c.check_settings(&global).is_ok());
+        let bad = SettingValues::from([("backlight_time".to_owned(), "45".to_owned())]);
+        assert!(c.check_settings(&bad).is_err());
+        let unknown = SettingValues::from([("nope".to_owned(), "1".to_owned())]);
+        assert!(c.check_settings(&unknown).is_err());
         assert_eq!((t54w.ringtone_max_kb, t54w.wallpaper), (8192, true));
         assert_eq!(c.get("t53w").unwrap().ringtone_max_kb, 100);
         assert_eq!((ax.ringtone_max_kb, ax.wallpaper), (8192, true));

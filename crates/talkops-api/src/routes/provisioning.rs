@@ -17,6 +17,7 @@ use base64::engine::general_purpose::STANDARD;
 use talkops_core::phones::{self, Phone};
 use talkops_core::tenant::TenantId;
 use talkops_core::{extensions, numbering, settings};
+use talkops_provisioning::SettingValues;
 use talkops_provisioning::dial_now::{self, DialNowInput};
 use talkops_provisioning::phonebook::{self, Entry};
 use talkops_provisioning::yealink::{
@@ -193,8 +194,25 @@ pub async fn render_phone_config(
         wallpaper,
         phonebooks,
         dial_now,
+        settings: state.phone_catalog.effective_settings(
+            model,
+            &setting_values(&phones::phone_defaults(&state.db, tenant).await?),
+            &setting_values(&phone.settings),
+        ),
     };
     yealink::render_phone(&setup).map_err(|e| ApiError::Internal(e.to_string()))
+}
+
+/// Comfort setting values from the database (non-strings are ignored).
+pub fn setting_values(value: &serde_json::Value) -> SettingValues {
+    value
+        .as_object()
+        .map(|map| {
+            map.iter()
+                .filter_map(|(k, v)| Some((k.clone(), v.as_str()?.to_owned())))
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 /// `GET /provisioning/{*path}`

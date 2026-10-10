@@ -6,7 +6,9 @@ pub mod dial_now;
 pub mod phonebook;
 pub mod yealink;
 
-pub use catalog::{PhoneCatalog, PhoneFamily, PhoneModel};
+pub use catalog::{
+    PhoneCatalog, PhoneFamily, PhoneModel, PhoneSetting, SettingKind, SettingValues,
+};
 
 /// Removes characters that would break a `key = value` line of a Yealink
 /// configuration file (line breaks) and trims surrounding whitespace.

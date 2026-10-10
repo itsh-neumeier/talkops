@@ -503,6 +503,7 @@ async fn phones_accounts_firmware_contacts(pool: PgPool) {
             ringtone_id: None,
             wallpaper_id: None,
             phonebook_sections: vec![],
+            settings: serde_json::json!({}),
         },
     )
     .await
@@ -520,6 +521,7 @@ async fn phones_accounts_firmware_contacts(pool: PgPool) {
                 ringtone_id: None,
                 wallpaper_id: None,
                 phonebook_sections: vec![],
+                settings: serde_json::json!({}),
             }
         )
         .await
@@ -537,6 +539,7 @@ async fn phones_accounts_firmware_contacts(pool: PgPool) {
                 ringtone_id: None,
                 wallpaper_id: None,
                 phonebook_sections: vec![],
+                settings: serde_json::json!({}),
             }
         )
         .await
@@ -765,6 +768,7 @@ async fn phone_media_and_phonebook_sections(pool: PgPool) {
         ringtone_id: ringtone,
         wallpaper_id: wallpaper,
         phonebook_sections: sections,
+        settings: serde_json::json!({}),
     };
     let ring = phones::create_media(
         &pool,

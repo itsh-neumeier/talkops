@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PhoneSettingsEditor from '#lib/components/PhoneSettingsEditor.svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
@@ -11,6 +12,7 @@
 		type PhoneDetail,
 		type PhoneMedia,
 		type PhoneModel,
+		type PhoneSettingsView,
 		type PhonebookSection
 	} from '#lib/api.ts';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
@@ -31,8 +33,11 @@
 		model: '',
 		ringtone_id: '',
 		wallpaper_id: '',
-		phonebook_sections: [] as string[]
+		phonebook_sections: [] as string[],
+		settings: {} as Record<string, string>
 	});
+	/** Comfort settings catalog and the values for all phones. */
+	let comfort = $state<PhoneSettingsView | null>(null);
 	/** Label and display name per account (device id), as edited. */
 	let texts = $state<Record<string, { phone_label: string; phone_display_name: string }>>({});
 	let keys = $state<LineKey[]>([]);
@@ -42,6 +47,9 @@
 	let configOpen = $state(false);
 
 	const model = $derived(models.find((m) => m.id === form.model));
+	const comfortShown = $derived(
+		!!model && !!comfort?.catalog.some((s) => s.families.includes(model.family))
+	);
 	const keyTypes = $derived<KeyType[]>(
 		model?.speed_dial_keys === false
 			? ['line', 'blf', 'none']
@@ -69,13 +77,15 @@
 				api.get<PhoneMedia[]>('/phone-media').catch(() => []),
 				api.get<PhonebookSection[]>('/phonebook-sections')
 			]);
+			comfort = await api.get<PhoneSettingsView>('/phone-settings').catch(() => null);
 			form = {
 				name: phone.name,
 				mac: phone.mac,
 				model: phone.model,
 				ringtone_id: phone.ringtone_id ?? '',
 				wallpaper_id: phone.wallpaper_id ?? '',
-				phonebook_sections: [...phone.phonebook_sections]
+				phonebook_sections: [...phone.phonebook_sections],
+				settings: { ...(phone.settings ?? {}) }
 			};
 			texts = Object.fromEntries(
 				phone.accounts.map((a) => [
@@ -317,6 +327,19 @@
 				<p class="hint">{t('phones.phonebookSectionsHint')}</p>
 			</fieldset>
 		</section>
+
+		{#if comfortShown && comfort && model}
+			<section class="card space-y-3">
+				<h2>{t('phoneset.title')}</h2>
+				<p class="hint">{t('phoneset.phoneHint')}</p>
+				<PhoneSettingsEditor
+					catalog={comfort.catalog}
+					bind:values={form.settings}
+					family={model.family}
+					inherited={comfort.values}
+				/>
+			</section>
+		{/if}
 
 		{#if model && model.line_keys > 0}
 			<section class="card space-y-3">

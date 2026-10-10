@@ -8,6 +8,14 @@ All notable changes to TalkOps. The format follows
 
 ### Added
 
+- **Comfort settings for phones** under *Phones → Comfort settings* and on
+  each phone's page: key tone, charging tone, vibration, answer by lifting
+  from / hang up in the charger, call waiting, display backlight and
+  brightness, 12/24 h clock, missed-call and voicemail notices, noise filter
+  and acoustic shield – for the AX83H/AX86R so far. Unset values leave the
+  phone's own setting alone; a phone's value wins over the one for all
+  phones. The catalog (`settings:` in `presets/phones/yealink.yaml`) lists
+  each Yealink parameter with its allowed values.
 - **Phone book import (CSV)** under *Phone book → Import*: preview before
   importing, row errors with line numbers, sections created from a
   `Section`/`Bereich` column, optional update of existing contacts. Reads the
@@ -34,6 +42,8 @@ All notable changes to TalkOps. The format follows
 
 ### Fixed
 
+- Phone configuration failed (HTTP 500) as soon as a ring group, time
+  condition, menu or queue had no number (dial-now rules).
 - **Calls from a trunk reach every phone.** FreeSWITCH offered phones only the
   trunk's codec (e.g. just G722); a phone without it – seen with a Yealink
   AX86R – answered `488 Not Acceptable Here` and the call went straight to

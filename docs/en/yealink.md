@@ -148,6 +148,30 @@ without the area code. New extensions reach the phone with the next resync
 Sources: Yealink documentation *Dial Plan* (support.yealink.com) and *Using
 Dial Plan Feature on Yealink SIP-T3XG Phones*.
 
+### Comfort settings
+
+Under **Phones → Comfort settings** you set what TalkOps configures on all
+matching phones; each value can be set differently on a phone's page.
+*Keep the phone's setting* (the default) writes nothing – the phone keeps
+what is set on the device; the factory value is shown where Yealink
+documents it. Changes reach the phone with the next **Resync**.
+
+Currently for the AX83H/AX86R Wi-Fi handsets:
+
+| Area | Setting | Parameter |
+|---|---|---|
+| Tones | key tone, charging tone, vibration | `features.send_key_tone`, `features.charging_tone.enable`, `phone_setting.vibrate.enable` |
+| Charging cradle | lifting answers, placing ends the call | `phone_setting.off_cradle_auto_answer.enable`, `phone_setting.end_call_on_hook.enable` |
+| Calls | call waiting, call waiting tone | `call_waiting.enable`, `call_waiting.tone` |
+| Display | backlight time, brightness, 12/24 h | `phone_setting.backlight_time`, `phone_setting.active_backlight_level`, `local_time.time_format` |
+| Notifications | missed calls, new voicemail | `features.missed_call_popup.enable`, `features.voice_mail_popup.enable` |
+| Audio | noise filter, acoustic shield | `features.noise_filtering_rev.enable`, `features.acoustic_shield.mode` |
+
+The list lives in `presets/phones/yealink.yaml` (`settings:`) and can be
+extended there. Sources: Yealink AX86R documentation (firmware 180.87) on
+support.yealink.com; vibration only appears in Yealink's AX8X provisioning
+template 180.87.0.5.
+
 ## 5. Phonebook
 
 Every phone shows **Internal** (all enabled extensions) and **Contacts** (the

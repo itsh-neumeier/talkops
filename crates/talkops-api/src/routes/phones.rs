@@ -16,9 +16,10 @@ use talkops_core::phones::{
     self, Contact, ContactInput, Firmware, MediaKind, Phone, PhoneInput, PhoneMedia,
     PhonebookSection, SectionInput,
 };
+use talkops_core::tenant::TenantId;
 use talkops_core::users::Role;
-use talkops_provisioning::PhoneModel;
 use talkops_provisioning::yealink::{KeyType, LineKey};
+use talkops_provisioning::{PhoneModel, PhoneSetting};
 use tokio::io::AsyncWriteExt;
 use utoipa::ToSchema;
 use utoipa_axum::router::OpenApiRouter;
@@ -29,7 +30,7 @@ use crate::AppState;
 use crate::auth::AuthUser;
 use crate::error::{ApiError, ApiResult};
 use crate::routes::provisioning::{
-    base_url, firmware_path, media_path, media_type, render_phone_config,
+    base_url, firmware_path, media_path, media_type, render_phone_config, setting_values,
 };
 
 /// Largest firmware image accepted (Yealink images are 20–150 MB).
@@ -58,6 +59,7 @@ pub fn router() -> OpenApiRouter<AppState> {
         .routes(routes!(update_phone_account))
         .routes(routes!(phone_config))
         .routes(routes!(phone_models))
+        .routes(routes!(get_phone_settings, update_phone_settings))
         .routes(routes!(update_firmware, delete_firmware))
         .routes(routes!(list_contacts, create_contact))
         .routes(routes!(update_contact, delete_contact))
@@ -132,12 +134,14 @@ pub struct PhoneDetail {
     pub accounts: Vec<PhoneAccountInfo>,
 }
 
-/// Checks the model and the key layout against the catalog.
+/// Checks the model, the key layout and the comfort settings against the
+/// catalog.
 fn validate_phone(state: &AppState, input: &PhoneInput) -> ApiResult<()> {
     let model = state
         .phone_catalog
         .get(&input.model)
         .ok_or_else(|| ApiError::BadRequest(format!("unknown phone model `{}`", input.model)))?;
+    check_setting_values(state, &input.settings)?;
     let keys: Vec<LineKey> = serde_json::from_value(input.line_keys.clone())
         .map_err(|e| ApiError::BadRequest(format!("invalid line_keys: {e}")))?;
     let mut seen = HashSet::new();
@@ -426,6 +430,121 @@ pub async fn phone_config(
     )
     .await?;
     Ok(([(header::CONTENT_TYPE, "text/plain; charset=utf-8")], body).into_response())
+}
+
+/// Checks comfort settings (an object of strings) against the catalog.
+fn check_setting_values(state: &AppState, value: &serde_json::Value) -> ApiResult<()> {
+    phones::check_settings_shape(value)?;
+    state
+        .phone_catalog
+        .check_settings(&setting_values(value))
+        .map_err(ApiError::BadRequest)
+}
+
+/// A comfort setting from the catalog.
+#[derive(Serialize, ToSchema)]
+pub struct PhoneSettingInfo {
+    pub key: String,
+    /// UI section: `tones`, `cradle`, `calls`, `display`, `notifications`, `audio`.
+    pub group: String,
+    /// `bool` (values `0`/`1`) or `choice`.
+    pub kind: String,
+    /// Allowed values, in display order.
+    pub values: Vec<String>,
+    /// The phone's factory value, if documented.
+    pub default: Option<String>,
+    /// Phone families that take it (`desk`, `dect`, `conference`, `wifi`).
+    pub families: Vec<String>,
+    /// Configuration parameter written to the phone.
+    pub param: String,
+}
+
+impl From<&PhoneSetting> for PhoneSettingInfo {
+    fn from(s: &PhoneSetting) -> Self {
+        let name = |v: serde_json::Result<serde_json::Value>| {
+            v.ok()
+                .and_then(|v| v.as_str().map(str::to_owned))
+                .unwrap_or_default()
+        };
+        let values = if s.values.is_empty() {
+            vec!["1".to_owned(), "0".to_owned()]
+        } else {
+            s.values.clone()
+        };
+        Self {
+            key: s.key.clone(),
+            group: s.group.clone(),
+            kind: name(serde_json::to_value(s.kind)),
+            values,
+            default: s.default.clone(),
+            families: s
+                .families
+                .iter()
+                .map(|f| name(serde_json::to_value(f)))
+                .collect(),
+            param: s.param.clone(),
+        }
+    }
+}
+
+/// The comfort settings catalog and the values for all phones.
+#[derive(Serialize, ToSchema)]
+pub struct PhoneSettingsView {
+    pub catalog: Vec<PhoneSettingInfo>,
+    /// Values for all phones (`{"key_tone": "0"}`); a phone's own value wins.
+    #[schema(value_type = Object)]
+    pub values: serde_json::Value,
+}
+
+#[derive(Deserialize, ToSchema)]
+pub struct PhoneSettingsInput {
+    #[schema(value_type = Object)]
+    pub values: serde_json::Value,
+}
+
+async fn phone_settings_view(state: &AppState, tenant: TenantId) -> ApiResult<PhoneSettingsView> {
+    Ok(PhoneSettingsView {
+        catalog: state
+            .phone_catalog
+            .settings()
+            .iter()
+            .map(Into::into)
+            .collect(),
+        values: phones::phone_defaults(&state.db, tenant).await?,
+    })
+}
+
+/// Comfort settings (key tone, display …) for all phones, with the catalog.
+#[utoipa::path(get, path = "/api/v1/phone-settings", tag = "phones", responses((status = 200, body = PhoneSettingsView)))]
+pub async fn get_phone_settings(
+    State(state): State<AppState>,
+    auth: AuthUser,
+) -> ApiResult<Json<PhoneSettingsView>> {
+    auth.require(Role::Admin)?;
+    Ok(Json(phone_settings_view(&state, auth.tenant).await?))
+}
+
+/// Sets the comfort settings for all phones (admin). Phones pick them up
+/// with the next resync.
+#[utoipa::path(put, path = "/api/v1/phone-settings", tag = "phones", request_body = PhoneSettingsInput, responses((status = 200, body = PhoneSettingsView)))]
+pub async fn update_phone_settings(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Json(input): Json<PhoneSettingsInput>,
+) -> ApiResult<Json<PhoneSettingsView>> {
+    auth.require(Role::Admin)?;
+    check_setting_values(&state, &input.values)?;
+    phones::set_phone_defaults(&state.db, auth.tenant, &input.values).await?;
+    audit::record(
+        &state.db,
+        &auth.actor(),
+        "update",
+        "phone_settings",
+        None,
+        json!({"values": input.values}),
+    )
+    .await?;
+    Ok(Json(phone_settings_view(&state, auth.tenant).await?))
 }
 
 /// Lists supported phone models.

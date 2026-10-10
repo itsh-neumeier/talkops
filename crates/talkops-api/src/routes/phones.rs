@@ -11,7 +11,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sha2::{Digest, Sha256};
 use talkops_core::audit;
-use talkops_core::phones::{self, Contact, ContactInput, Firmware, Phone, PhoneInput};
+use talkops_core::phones::{
+    self, Contact, ContactInput, Firmware, MediaKind, Phone, PhoneInput, PhoneMedia,
+    PhonebookSection, SectionInput,
+};
 use talkops_core::users::Role;
 use talkops_provisioning::PhoneModel;
 use talkops_provisioning::yealink::{KeyType, LineKey};
@@ -24,27 +27,42 @@ use uuid::Uuid;
 use crate::AppState;
 use crate::auth::AuthUser;
 use crate::error::{ApiError, ApiResult};
-use crate::routes::provisioning::{base_url, firmware_path, render_phone_config};
+use crate::routes::provisioning::{
+    base_url, firmware_path, media_path, media_type, render_phone_config,
+};
 
 /// Largest firmware image accepted (Yealink images are 20–150 MB).
 const FIRMWARE_LIMIT: usize = 512 * 1024 * 1024;
+/// Largest custom ringtone any supported phone takes (T5x/T4U: 8 MB).
+const RINGTONE_LIMIT: usize = 8 * 1024 * 1024;
+/// Largest wallpaper Yealink phones take.
+const WALLPAPER_LIMIT: usize = 5 * 1024 * 1024;
 
 pub fn router() -> OpenApiRouter<AppState> {
     let upload = OpenApiRouter::new()
         .routes(routes!(list_firmware, upload_firmware))
         .layer(DefaultBodyLimit::max(FIRMWARE_LIMIT));
+    let media_upload = OpenApiRouter::new()
+        .routes(routes!(list_media, upload_media))
+        .layer(DefaultBodyLimit::max(RINGTONE_LIMIT + 64 * 1024));
     OpenApiRouter::new()
         .routes(routes!(list_phones, create_phone))
         .routes(routes!(get_phone, update_phone, delete_phone))
         .routes(routes!(resync_phone))
+        .routes(routes!(update_phone_account))
         .routes(routes!(phone_config))
         .routes(routes!(phone_models))
         .routes(routes!(update_firmware, delete_firmware))
         .routes(routes!(list_contacts, create_contact))
         .routes(routes!(update_contact, delete_contact))
+        .routes(routes!(delete_media))
+        .routes(routes!(media_file))
+        .routes(routes!(list_sections, create_section))
+        .routes(routes!(update_section, delete_section))
         .routes(routes!(provisioning_info))
         .routes(routes!(regenerate_provisioning))
         .merge(upload)
+        .merge(media_upload)
 }
 
 /// A phone model from the catalog (`presets/phones`).
@@ -53,11 +71,15 @@ pub struct PhoneModelInfo {
     pub id: String,
     pub name: String,
     pub vendor: String,
-    /// `desk`, `dect` or `conference`.
+    /// `desk`, `dect`, `conference` or `wifi`.
     pub family: String,
     pub accounts: u16,
     pub line_keys: u16,
     pub video: bool,
+    /// Largest custom ringtone in KiB; 0 = not supported.
+    pub ringtone_max_kb: u32,
+    /// Custom wallpaper supported.
+    pub wallpaper: bool,
 }
 
 impl From<&PhoneModel> for PhoneModelInfo {
@@ -73,6 +95,8 @@ impl From<&PhoneModel> for PhoneModelInfo {
             accounts: m.accounts,
             line_keys: m.line_keys,
             video: m.video,
+            ringtone_max_kb: m.ringtone_max_kb,
+            wallpaper: m.wallpaper,
         }
     }
 }
@@ -85,6 +109,10 @@ pub struct PhoneAccountInfo {
     pub extension_id: Uuid,
     pub extension_number: String,
     pub display_name: String,
+    /// Label shown on the phone (empty = extension number).
+    pub phone_label: String,
+    /// Caller name sent by the phone (empty = `display_name`).
+    pub phone_display_name: String,
 }
 
 #[derive(Serialize, ToSchema)]
@@ -148,6 +176,35 @@ fn validate_phone(state: &AppState, input: &PhoneInput) -> ApiResult<()> {
     Ok(())
 }
 
+/// Checks the ringtone and wallpaper against what the model supports.
+async fn validate_media(state: &AppState, auth: &AuthUser, input: &PhoneInput) -> ApiResult<()> {
+    let Some(model) = state.phone_catalog.get(&input.model) else {
+        return Ok(());
+    };
+    if let Some(id) = input.ringtone_id {
+        if model.ringtone_max_kb == 0 {
+            return Err(ApiError::BadRequest(format!(
+                "{} does not support custom ringtones",
+                model.name
+            )));
+        }
+        let m = phones::get_media(&state.db, auth.tenant, id).await?;
+        if m.size_bytes > i64::from(model.ringtone_max_kb) * 1024 {
+            return Err(ApiError::BadRequest(format!(
+                "ringtone too large for {} (at most {} KB)",
+                model.name, model.ringtone_max_kb
+            )));
+        }
+    }
+    if input.wallpaper_id.is_some() && !model.wallpaper {
+        return Err(ApiError::BadRequest(format!(
+            "{} does not support custom wallpapers",
+            model.name
+        )));
+    }
+    Ok(())
+}
+
 /// Lists provisioned phones (operator or admin).
 #[utoipa::path(get, path = "/api/v1/phones", tag = "phones", responses((status = 200, body = [Phone])))]
 pub async fn list_phones(
@@ -167,6 +224,7 @@ pub async fn create_phone(
 ) -> ApiResult<Json<Phone>> {
     auth.require(Role::Admin)?;
     validate_phone(&state, &input)?;
+    validate_media(&state, &auth, &input).await?;
     let phone = phones::create(&state.db, auth.tenant, &input).await?;
     audit::record(
         &state.db,
@@ -198,6 +256,8 @@ pub async fn get_phone(
             extension_id: a.extension_id,
             extension_number: a.extension_number,
             display_name: a.display_name,
+            phone_label: a.phone_label,
+            phone_display_name: a.phone_display_name,
         })
         .collect();
     Ok(Json(PhoneDetail { phone, accounts }))
@@ -213,6 +273,7 @@ pub async fn update_phone(
 ) -> ApiResult<Json<Phone>> {
     auth.require(Role::Admin)?;
     validate_phone(&state, &input)?;
+    validate_media(&state, &auth, &input).await?;
     let phone = phones::update(&state.db, auth.tenant, id, &input).await?;
     audit::record(
         &state.db,
@@ -243,6 +304,49 @@ pub async fn delete_phone(
         "phone",
         Some(id.to_string()),
         json!({"mac": phone.mac}),
+    )
+    .await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// Label and display name of one account on a phone.
+#[derive(Deserialize, ToSchema)]
+pub struct AccountTexts {
+    /// Shown on the phone (line key, idle screen); empty = extension number.
+    #[serde(default)]
+    pub phone_label: String,
+    /// Caller name the phone sends; empty = the extension's display name.
+    #[serde(default)]
+    pub phone_display_name: String,
+}
+
+/// Sets label and display name of an account on the phone (admin). Resync
+/// the phone to apply it.
+#[utoipa::path(put, path = "/api/v1/phones/{id}/accounts/{device_id}", tag = "phones", params(("id" = Uuid, Path), ("device_id" = Uuid, Path)), request_body = AccountTexts, responses((status = 204)))]
+pub async fn update_phone_account(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path((id, device_id)): Path<(Uuid, Uuid)>,
+    Json(input): Json<AccountTexts>,
+) -> ApiResult<StatusCode> {
+    auth.require(Role::Admin)?;
+    let device = talkops_core::extensions::set_phone_texts(
+        &state.db,
+        auth.tenant,
+        id,
+        device_id,
+        &input.phone_label,
+        &input.phone_display_name,
+    )
+    .await?;
+    audit::record(
+        &state.db,
+        &auth.actor(),
+        "update",
+        "device",
+        Some(device_id.to_string()),
+        json!({"phone_id": id, "phone_label": device.phone_label,
+               "phone_display_name": device.phone_display_name}),
     )
     .await?;
     Ok(StatusCode::NO_CONTENT)
@@ -502,6 +606,248 @@ pub async fn delete_firmware(
         "firmware",
         Some(id.to_string()),
         json!({"model": fw.model, "filename": fw.filename}),
+    )
+    .await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+// --- ringtones and wallpapers ------------------------------------------------------
+
+/// Lists uploaded ringtones and wallpapers (operator or admin).
+#[utoipa::path(get, path = "/api/v1/phone-media", tag = "phones", responses((status = 200, body = [PhoneMedia])))]
+pub async fn list_media(
+    State(state): State<AppState>,
+    auth: AuthUser,
+) -> ApiResult<Json<Vec<PhoneMedia>>> {
+    auth.require(Role::Operator)?;
+    Ok(Json(phones::list_media(&state.db, auth.tenant).await?))
+}
+
+/// Checks an uploaded file; returns the file extension the phone gets.
+fn check_media(kind: MediaKind, data: &[u8]) -> ApiResult<&'static str> {
+    let bad = |m: &str| Err(ApiError::BadRequest(m.to_owned()));
+    match kind {
+        MediaKind::Ringtone => {
+            let Ok(reader) = hound::WavReader::new(std::io::Cursor::new(data)) else {
+                return bad("ringtone: not a WAV file");
+            };
+            let spec = reader.spec();
+            if spec.sample_rate != 8000
+                || spec.channels != 1
+                || spec.bits_per_sample != 16
+                || spec.sample_format != hound::SampleFormat::Int
+            {
+                return bad("ringtone: WAV must be 8 kHz, mono, 16 bit");
+            }
+            if reader.duration() == 0 {
+                return bad("ringtone: the file is empty");
+            }
+            if data.len() > RINGTONE_LIMIT {
+                return bad("ringtone: at most 8 MB");
+            }
+            Ok("wav")
+        }
+        MediaKind::Wallpaper => {
+            if data.len() > WALLPAPER_LIMIT {
+                return bad("wallpaper: at most 5 MB");
+            }
+            if data.starts_with(&[0xFF, 0xD8, 0xFF]) {
+                Ok("jpg")
+            } else if data.starts_with(b"\x89PNG\r\n\x1a\n") {
+                Ok("png")
+            } else {
+                bad("wallpaper: JPEG or PNG required")
+            }
+        }
+    }
+}
+
+/// Uploads a ringtone or wallpaper (admin). Multipart fields: `kind`
+/// (`ringtone` or `wallpaper`), `name` and `file` (ringtone: WAV 8 kHz mono
+/// 16 bit – the web UI converts other formats; wallpaper: JPEG or PNG).
+#[utoipa::path(post, path = "/api/v1/phone-media", tag = "phones", request_body(content_type = "multipart/form-data", content = String), responses((status = 200, body = PhoneMedia)))]
+pub async fn upload_media(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    mut multipart: Multipart,
+) -> ApiResult<Json<PhoneMedia>> {
+    auth.require(Role::Admin)?;
+    let text_err =
+        |e: axum::extract::multipart::MultipartError| ApiError::BadRequest(e.to_string());
+    let (mut kind, mut name, mut data) = (None, String::new(), None);
+    while let Some(field) = multipart.next_field().await.map_err(text_err)? {
+        match field.name() {
+            Some("kind") => {
+                kind = match field.text().await.map_err(text_err)?.as_str() {
+                    "ringtone" => Some(MediaKind::Ringtone),
+                    "wallpaper" => Some(MediaKind::Wallpaper),
+                    _ => return Err(ApiError::BadRequest("kind: ringtone or wallpaper".into())),
+                }
+            }
+            Some("name") => name = field.text().await.map_err(text_err)?,
+            Some("file") => data = Some(field.bytes().await.map_err(text_err)?),
+            _ => {}
+        }
+    }
+    let kind = kind.ok_or_else(|| ApiError::BadRequest("field `kind` is required".into()))?;
+    let data = data.ok_or_else(|| ApiError::BadRequest("field `file` is required".into()))?;
+    let ext = check_media(kind, &data)?;
+    let id = Uuid::new_v4();
+    // Phones keep custom files by name: a unique name per upload.
+    let filename = format!("talkops-{}.{ext}", &id.simple().to_string()[..12]);
+    let path = media_path(&state, id, &filename);
+    let dir = path
+        .parent()
+        .map(std::path::Path::to_path_buf)
+        .unwrap_or_default();
+    tokio::fs::create_dir_all(&dir)
+        .await
+        .map_err(|e| ApiError::Internal(format!("create {}: {e}", dir.display())))?;
+    tokio::fs::write(&path, &data)
+        .await
+        .map_err(|e| ApiError::Internal(format!("write {}: {e}", path.display())))?;
+    let media = match phones::create_media(
+        &state.db,
+        auth.tenant,
+        id,
+        kind,
+        &name,
+        &filename,
+        data.len() as i64,
+    )
+    .await
+    {
+        Ok(m) => m,
+        Err(err) => {
+            let _ = tokio::fs::remove_dir_all(&dir).await;
+            return Err(err.into());
+        }
+    };
+    audit::record(
+        &state.db,
+        &auth.actor(),
+        "create",
+        "phone_media",
+        Some(media.id.to_string()),
+        json!({"kind": kind.as_str(), "name": media.name, "size_bytes": media.size_bytes}),
+    )
+    .await?;
+    Ok(Json(media))
+}
+
+/// The uploaded file, for preview in the web UI (operator or admin).
+#[utoipa::path(get, path = "/api/v1/phone-media/{id}/file", tag = "phones", params(("id" = Uuid, Path)), responses((status = 200, content_type = "application/octet-stream", body = Vec<u8>)))]
+pub async fn media_file(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<Uuid>,
+) -> ApiResult<Response> {
+    auth.require(Role::Operator)?;
+    let m = phones::get_media(&state.db, auth.tenant, id).await?;
+    let data = tokio::fs::read(media_path(&state, m.id, &m.filename))
+        .await
+        .map_err(|_| ApiError::NotFound)?;
+    Ok(([(header::CONTENT_TYPE, media_type(&m.filename))], data).into_response())
+}
+
+/// Deletes a ringtone or wallpaper (admin). Phones using it keep their
+/// current one until they are reset.
+#[utoipa::path(delete, path = "/api/v1/phone-media/{id}", tag = "phones", params(("id" = Uuid, Path)), responses((status = 204)))]
+pub async fn delete_media(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<Uuid>,
+) -> ApiResult<StatusCode> {
+    auth.require(Role::Admin)?;
+    let m = phones::get_media(&state.db, auth.tenant, id).await?;
+    phones::delete_media(&state.db, auth.tenant, id).await?;
+    let dir = state.provisioning_dir.join("media").join(id.to_string());
+    if let Err(err) = tokio::fs::remove_dir_all(&dir).await {
+        tracing::warn!(path = %dir.display(), error = %err, "could not remove phone media");
+    }
+    audit::record(
+        &state.db,
+        &auth.actor(),
+        "delete",
+        "phone_media",
+        Some(id.to_string()),
+        json!({"kind": m.kind.as_str(), "name": m.name}),
+    )
+    .await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+// --- phone book sections ----------------------------------------------------------
+
+/// Lists the phone book sections (every logged-in user).
+#[utoipa::path(get, path = "/api/v1/phonebook-sections", tag = "phones", responses((status = 200, body = [PhonebookSection])))]
+pub async fn list_sections(
+    State(state): State<AppState>,
+    auth: AuthUser,
+) -> ApiResult<Json<Vec<PhonebookSection>>> {
+    Ok(Json(phones::list_sections(&state.db, auth.tenant).await?))
+}
+
+/// Adds a phone book section (operator or admin).
+#[utoipa::path(post, path = "/api/v1/phonebook-sections", tag = "phones", request_body = SectionInput, responses((status = 200, body = PhonebookSection)))]
+pub async fn create_section(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Json(input): Json<SectionInput>,
+) -> ApiResult<Json<PhonebookSection>> {
+    auth.require(Role::Operator)?;
+    let section = phones::create_section(&state.db, auth.tenant, &input).await?;
+    audit::record(
+        &state.db,
+        &auth.actor(),
+        "create",
+        "phonebook_section",
+        Some(section.id.to_string()),
+        json!({"name": section.name}),
+    )
+    .await?;
+    Ok(Json(section))
+}
+
+/// Renames a phone book section (operator or admin).
+#[utoipa::path(put, path = "/api/v1/phonebook-sections/{id}", tag = "phones", params(("id" = Uuid, Path)), request_body = SectionInput, responses((status = 200, body = PhonebookSection)))]
+pub async fn update_section(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<Uuid>,
+    Json(input): Json<SectionInput>,
+) -> ApiResult<Json<PhonebookSection>> {
+    auth.require(Role::Operator)?;
+    let section = phones::update_section(&state.db, auth.tenant, id, &input).await?;
+    audit::record(
+        &state.db,
+        &auth.actor(),
+        "update",
+        "phonebook_section",
+        Some(id.to_string()),
+        json!({"name": section.name}),
+    )
+    .await?;
+    Ok(Json(section))
+}
+
+/// Deletes a phone book section with its contacts (operator or admin).
+#[utoipa::path(delete, path = "/api/v1/phonebook-sections/{id}", tag = "phones", params(("id" = Uuid, Path)), responses((status = 204)))]
+pub async fn delete_section(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<Uuid>,
+) -> ApiResult<StatusCode> {
+    auth.require(Role::Operator)?;
+    let section = phones::get_section(&state.db, auth.tenant, id).await?;
+    phones::delete_section(&state.db, auth.tenant, id).await?;
+    audit::record(
+        &state.db,
+        &auth.actor(),
+        "delete",
+        "phonebook_section",
+        Some(id.to_string()),
+        json!({"name": section.name}),
     )
     .await?;
     Ok(StatusCode::NO_CONTENT)

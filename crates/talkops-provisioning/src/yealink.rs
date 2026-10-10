@@ -181,6 +181,25 @@ fn first_account() -> u16 {
     1
 }
 
+/// A file the phone downloads (custom ringtone or wallpaper).
+#[derive(Debug, Clone, Serialize)]
+pub struct MediaFile {
+    /// Download URL including provisioning credentials.
+    pub url: String,
+    /// File name the phone stores and selects it by.
+    pub filename: String,
+}
+
+/// An additional remote phone book (a phone book section).
+#[derive(Debug, Clone, Serialize)]
+pub struct RemotePhonebook {
+    pub name: String,
+    pub url: String,
+}
+
+/// Remote phone book slots for sections; 1 and 2 are set in the common file.
+pub const SECTION_SLOTS: std::ops::RangeInclusive<u16> = 3..=5;
+
 #[derive(Debug, Clone)]
 pub struct PhoneSetup<'a> {
     pub name: String,
@@ -193,6 +212,12 @@ pub struct PhoneSetup<'a> {
     pub sip_port: u16,
     pub firmware_url: Option<String>,
     pub voicemail_code: String,
+    /// Custom ringtone (only used on models with `ringtone_max_kb > 0`).
+    pub ringtone: Option<MediaFile>,
+    /// Custom wallpaper (only used on models with `wallpaper`).
+    pub wallpaper: Option<MediaFile>,
+    /// Phone book sections shown on this phone (slots 3–5).
+    pub phonebooks: Vec<RemotePhonebook>,
 }
 
 #[derive(Serialize)]
@@ -273,7 +298,25 @@ pub fn render_phone(setup: &PhoneSetup<'_>) -> Result<String, RenderError> {
             }
         })
         .collect();
+    let media = |m: &Option<MediaFile>, supported: bool| {
+        m.as_ref().filter(|_| supported).map(|m| MediaFile {
+            url: cfg_value(&m.url),
+            filename: cfg_value(&m.filename),
+        })
+    };
+    let slots: Vec<u16> = SECTION_SLOTS.collect();
+    let phonebooks: Vec<_> = setup
+        .phonebooks
+        .iter()
+        .zip(&slots)
+        .map(|(pb, index)| context! { index, name => cfg_value(&pb.name), url => cfg_value(&pb.url) })
+        .collect();
+    let unused_phonebooks: Vec<u16> = slots[phonebooks.len()..].to_vec();
     Ok(env().get_template("mac.cfg")?.render(context! {
+        ringtone => media(&setup.ringtone, setup.model.ringtone_max_kb > 0),
+        wallpaper => media(&setup.wallpaper, setup.model.wallpaper),
+        phonebooks,
+        unused_phonebooks,
         phone => context! { name => cfg_value(&setup.name), mac => setup.mac.clone() },
         model => setup.model,
         accounts => accounts,
@@ -382,6 +425,18 @@ mod tests {
             sip_port: 5060,
             firmware_url: Some("http://u:p@pbx/provisioning/firmware/x/T54W.rom".into()),
             voicemail_code: "*97".into(),
+            ringtone: Some(MediaFile {
+                url: "http://u:p@pbx/provisioning/media/1/talkops-1.wav".into(),
+                filename: "talkops-1.wav".into(),
+            }),
+            wallpaper: Some(MediaFile {
+                url: "http://u:p@pbx/provisioning/media/2/talkops-2.jpg".into(),
+                filename: "talkops-2.jpg".into(),
+            }),
+            phonebooks: vec![RemotePhonebook {
+                name: "Familie\n".into(),
+                url: "http://u:p@pbx/provisioning/phonebook/section/3.xml".into(),
+            }],
         };
         let cfg = render_phone(&setup).unwrap();
         let m = parse(&cfg);
@@ -401,6 +456,26 @@ mod tests {
             "http://u:p@pbx/provisioning/firmware/x/T54W.rom"
         );
         assert!(!m.contains_key("handset.1.name"));
+        assert_eq!(
+            m["ringtone.url"],
+            "http://u:p@pbx/provisioning/media/1/talkops-1.wav"
+        );
+        assert_eq!(m["phone_setting.ring_type"], "talkops-1.wav");
+        assert_eq!(
+            m["wallpaper_upload.url"],
+            "http://u:p@pbx/provisioning/media/2/talkops-2.jpg"
+        );
+        assert_eq!(m["phone_setting.backgrounds"], "talkops-2.jpg");
+        assert_eq!(m["remote_phonebook.data.3.name"], "Familie");
+        assert_eq!(
+            m["remote_phonebook.data.3.url"],
+            "http://u:p@pbx/provisioning/phonebook/section/3.xml"
+        );
+        assert_eq!(
+            m["remote_phonebook.data.4.url"], "",
+            "unused slots are cleared"
+        );
+        assert_eq!(m["remote_phonebook.data.5.name"], "");
     }
 
     #[test]
@@ -429,6 +504,12 @@ mod tests {
                 sip_port: 5060,
                 firmware_url: None,
                 voicemail_code: "*97".into(),
+                ringtone: Some(MediaFile {
+                    url: "http://pbx/r.wav".into(),
+                    filename: "r.wav".into(),
+                }),
+                wallpaper: None,
+                phonebooks: vec![],
             };
             let m = parse(&render_phone(&setup).unwrap());
             assert_eq!(m["account.1.user_name"], "30-1", "{id}");
@@ -437,6 +518,10 @@ mod tests {
             assert!(!m.contains_key("account.5.enable"), "{id} has 4 accounts");
             assert!(!m.keys().any(|k| k.starts_with("linekey.")), "no line keys");
             assert!(!m.contains_key("handset.1.name"), "not a DECT base");
+            assert!(
+                !m.contains_key("ringtone.url"),
+                "{id}: no documented custom ringtone"
+            );
         }
     }
 
@@ -461,6 +546,9 @@ mod tests {
             sip_port: 5060,
             firmware_url: None,
             voicemail_code: "*97".into(),
+            ringtone: None,
+            wallpaper: None,
+            phonebooks: vec![],
         };
         let m = parse(&render_phone(&setup).unwrap());
         assert_eq!(m["handset.2.incoming_lines"], "2");

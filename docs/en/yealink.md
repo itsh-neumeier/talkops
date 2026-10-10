@@ -67,6 +67,41 @@ After saving press **Resync**: the phone reboots and applies the changes.
 Phones that are not registered fetch the configuration on their next start or
 at night between 2 and 4 am.
 
+### Label and display name
+
+Under *Accounts on this phone* every account has two fields (also in the
+extension's device dialog once a phone is selected):
+
+- **Label on the phone** – shown on the line key and the idle screen (empty =
+  extension number), at most 32 characters.
+- **Display name** – the caller name the phone sends (empty = name of the
+  extension), at most 64 characters.
+
+Besides *Desk phone* and *DECT handset*, the device type **Wi-Fi handset**
+(AX83H/AX86R) is available.
+
+### Ringtone and wallpaper
+
+Upload them under **Settings → Phones → Ringtones and wallpapers**:
+
+- **Ringtone:** any audio file the browser plays (MP3, WAV, …). It is
+  converted to the Yealink format (WAV, 8 kHz, mono, 16 bit) and cut to 6, 15
+  or 30 seconds. T42U, T43U and T53W take ringtones up to 100 KB (about 6
+  seconds), T46U/T48U/T54W/T57W up to 8 MB.
+- **Wallpaper:** any picture (JPEG, PNG, …); it is scaled to at most
+  1280 × 800 and stored as JPEG (Yealink: at most 5 MB). Supported by T43U,
+  T46U, T48U, T53W, T54W and T57W.
+
+Select them on the phone's page under *Ringtone, wallpaper and phone book*,
+save, **Resync**. The phone downloads the file (`ringtone.url` /
+`wallpaper_upload.url`) and selects it (`phone_setting.ring_type` /
+`phone_setting.backgrounds`). *Keep the phone's own setting* leaves both
+untouched. Models without documented support (T31G, T33G, conference phones,
+DECT, AX handsets) do not show the selection.
+
+Source: Yealink *SIP-T5 Series Administrator's Guide*, sections *Ring Tones*
+and *Wallpaper Customization*.
+
 ## 4. Feature codes
 
 | Code | Function |
@@ -85,9 +120,19 @@ under *Settings → My phones*.
 
 ## 5. Phonebook
 
-Phones show two phonebooks: **Internal** (all enabled extensions) and
-**Contacts** (the shared phonebook under *Phonebook* in the web UI). Numbers
-are shown in national format and can be dialed directly.
+Every phone shows **Internal** (all enabled extensions) and **Contacts** (the
+global phone book: all contacts without a section). Numbers are shown in
+national format and can be dialed directly.
+
+**Sections** are additional phone books that appear only on selected phones –
+e.g. *Family* only in the living room, *Suppliers* only in the office:
+
+1. *Phone book → Sections*: add a section.
+2. In the contact choose the section instead of *Global*.
+3. On the phone's page tick up to three sections under *Phone book sections
+   on this phone*, save, **Resync**.
+
+A deleted section disappears with its contacts from the phones as well.
 
 ## 6. Firmware
 

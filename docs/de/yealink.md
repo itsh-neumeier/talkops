@@ -68,6 +68,42 @@ Nach dem Speichern **Resync** drücken: Das Telefon startet neu und übernimmt
 die Änderungen. Nicht registrierte Telefone holen die Konfiguration beim
 nächsten Start bzw. nachts zwischen 2 und 4 Uhr.
 
+### Label und Anzeigename
+
+Unter *Konten auf diesem Telefon* hat jedes Konto zwei Felder (auch im
+Geräte-Dialog der Nebenstelle, sobald ein Telefon gewählt ist):
+
+- **Label am Telefon** – steht an der Leitungstaste und im Ruhebildschirm
+  (leer = Nebenstellennummer), höchstens 32 Zeichen.
+- **Anzeigename** – der Name, den das Telefon als Anrufer sendet (leer =
+  Name der Nebenstelle), höchstens 64 Zeichen.
+
+Als Gerätetyp gibt es neben *Tischtelefon* und *DECT-Mobilteil* auch
+**WLAN-Mobilteil** (AX83H/AX86R).
+
+### Klingelton und Hintergrundbild
+
+Unter **Einstellungen → Telefone → Klingeltöne und Hintergründe** hochladen:
+
+- **Klingelton:** jede Audiodatei, die der Browser abspielt (MP3, WAV, …). Sie
+  wird in das Yealink-Format umgewandelt (WAV, 8 kHz, mono, 16 Bit) und auf
+  6, 15 oder 30 Sekunden gekürzt. T42U, T43U und T53W nehmen Klingeltöne nur
+  bis 100 KB (gut 6 Sekunden), T46U/T48U/T54W/T57W bis 8 MB.
+- **Hintergrundbild:** jedes Bild (JPEG, PNG, …); es wird auf höchstens
+  1280 × 800 verkleinert und als JPEG gespeichert (Yealink: höchstens 5 MB).
+  Unterstützt von T43U, T46U, T48U, T53W, T54W und T57W.
+
+Auf der Seite des Telefons unter *Klingelton, Hintergrund und Telefonbuch*
+auswählen, speichern, **Resync**. Das Telefon lädt die Datei herunter
+(`ringtone.url`/`wallpaper_upload.url`) und stellt sie ein
+(`phone_setting.ring_type`/`phone_setting.backgrounds`). *Einstellung des
+Telefons behalten* lässt beides unangetastet. Modelle ohne dokumentierte
+Unterstützung (T31G, T33G, Konferenztelefone, DECT, AX-Mobilteile) zeigen die
+Auswahl nicht.
+
+Quelle: Yealink *SIP-T5 Series Administrator's Guide*, Abschnitte *Ring Tones*
+und *Wallpaper Customization*.
+
 ## 4. Kurzwahlen am Telefon
 
 | Code | Funktion |
@@ -86,10 +122,21 @@ unter *Einstellungen → Meine Telefone* einstellen.
 
 ## 5. Telefonbuch
 
-Die Telefone zeigen zwei Telefonbücher: **Intern** (alle aktiven
-Nebenstellen) und **Kontakte** (gemeinsames Telefonbuch unter
-*Telefonbuch* in der Weboberfläche). Nummern werden national angezeigt und
-können direkt gewählt werden.
+Jedes Telefon zeigt **Intern** (alle aktiven Nebenstellen) und **Kontakte**
+(das globale Telefonbuch: alle Kontakte ohne Bereich). Nummern werden national
+angezeigt und können direkt gewählt werden.
+
+**Bereiche** sind zusätzliche Telefonbücher, die nur auf ausgewählten
+Telefonen erscheinen – z. B. *Familie* nur im Wohnzimmer, *Lieferanten* nur
+im Büro:
+
+1. *Telefonbuch → Bereiche*: Bereich anlegen.
+2. Beim Kontakt unter *Bereich* den Bereich statt *Global* wählen.
+3. Auf der Seite des Telefons unter *Telefonbuch-Bereiche* bis zu drei
+   Bereiche ankreuzen, speichern, **Resync**.
+
+Ein gelöschter Bereich verschwindet mit seinen Kontakten auch von den
+Telefonen.
 
 ## 6. Firmware
 

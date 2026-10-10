@@ -27,7 +27,7 @@
 		onchange: () => void;
 	} = $props();
 
-	const kinds: DeviceKind[] = ['desk', 'dect', 'softphone', 'mobile', 'door', 'other'];
+	const kinds: DeviceKind[] = ['desk', 'dect', 'wifi', 'softphone', 'mobile', 'door', 'other'];
 	let error = $state('');
 	let addOpen = $state(false);
 	let credOpen = $state(false);
@@ -39,6 +39,8 @@
 		kind: 'desk' as DeviceKind,
 		phone_id: '',
 		account_index: '' as number | '',
+		phone_label: '',
+		phone_display_name: '',
 		enabled: true
 	});
 	let form = $state(empty());
@@ -69,6 +71,8 @@
 			kind: d.kind,
 			phone_id: d.phone_id ?? '',
 			account_index: d.account_index ?? '',
+			phone_label: d.phone_label,
+			phone_display_name: d.phone_display_name,
 			enabled: d.enabled
 		};
 		addOpen = true;
@@ -205,6 +209,19 @@
 			</div>
 		</div>
 		<p class="hint">{t('phones.deviceHint')}</p>
+		{#if form.phone_id}
+			<div class="grid grid-cols-2 gap-3">
+				<div>
+					<label for="d-label">{t('phones.accountLabel')} ({t('common.optional')})</label>
+					<input id="d-label" class="input" maxlength="32" bind:value={form.phone_label} />
+				</div>
+				<div>
+					<label for="d-dname">{t('phones.accountDisplayName')} ({t('common.optional')})</label>
+					<input id="d-dname" class="input" maxlength="64" bind:value={form.phone_display_name} />
+				</div>
+			</div>
+			<p class="hint">{t('phones.accountTextsHint')}</p>
+		{/if}
 		<label class="flex items-center gap-2"
 			><input type="checkbox" bind:checked={form.enabled} /> {t('common.enabled')}</label
 		>

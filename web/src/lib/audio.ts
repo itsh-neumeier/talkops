@@ -36,13 +36,18 @@ export const musicUrl = (id: string) => `/api/v1/audio/music/${id}`;
 
 const RATE = 16000;
 
-/** Decodes audio data and resamples it to 16 kHz mono. */
-export async function decode(data: ArrayBuffer): Promise<AudioBuffer> {
+/** Decodes audio data and resamples it to mono (16 kHz by default), at most
+ * `maxSeconds` long. */
+export async function decode(
+	data: ArrayBuffer,
+	rate = RATE,
+	maxSeconds = Infinity
+): Promise<AudioBuffer> {
 	const ctx = new AudioContext();
 	try {
 		const decoded = await ctx.decodeAudioData(data);
-		const length = Math.max(1, Math.ceil(decoded.duration * RATE));
-		const offline = new OfflineAudioContext(1, length, RATE);
+		const length = Math.max(1, Math.ceil(Math.min(decoded.duration, maxSeconds) * rate));
+		const offline = new OfflineAudioContext(1, length, rate);
 		const src = offline.createBufferSource();
 		src.buffer = decoded;
 		src.connect(offline.destination);

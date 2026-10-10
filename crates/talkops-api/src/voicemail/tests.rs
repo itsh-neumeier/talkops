@@ -575,6 +575,7 @@ async fn custom_keys_texts_and_caller_announcement(pool: PgPool) {
             phone_work: "030 123456".into(),
             phone_mobile: String::new(),
             phone_other: String::new(),
+            section_id: None,
         },
     )
     .await

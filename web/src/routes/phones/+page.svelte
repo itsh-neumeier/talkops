@@ -13,6 +13,7 @@
 	} from '#lib/api.ts';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
 	import Modal from '#lib/components/Modal.svelte';
+	import PhoneMediaManager from '#lib/components/PhoneMediaManager.svelte';
 	import { formatDateTime, t } from '#lib/i18n/index.svelte.ts';
 	import { hasRole } from '#lib/session.svelte.ts';
 	import { copy, errorMessage } from '#lib/util.ts';
@@ -247,6 +248,8 @@
 				</div>
 			{/if}
 		</section>
+
+		<PhoneMediaManager />
 	{/if}
 </div>
 

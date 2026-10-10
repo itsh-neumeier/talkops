@@ -27,6 +27,13 @@ pub struct PhoneModel {
     pub line_keys: u16,
     #[serde(default)]
     pub video: bool,
+    /// Largest custom ringtone the phone accepts in KiB; 0 = no custom
+    /// ringtones managed by TalkOps.
+    #[serde(default)]
+    pub ringtone_max_kb: u32,
+    /// The phone takes a custom wallpaper (`wallpaper_upload.url`).
+    #[serde(default)]
+    pub wallpaper: bool,
     /// Filled from the file header.
     #[serde(default)]
     pub vendor: String,
@@ -151,6 +158,9 @@ mod tests {
             "ax86r"
         );
         assert!(c.from_user_agent("Snom D785").is_none());
+        assert_eq!((t54w.ringtone_max_kb, t54w.wallpaper), (8192, true));
+        assert_eq!(c.get("t53w").unwrap().ringtone_max_kb, 100);
+        assert_eq!((ax.ringtone_max_kb, ax.wallpaper), (0, false));
         assert_eq!(
             firmware_from_user_agent("Yealink SIP-T54W 96.86.0.70 80:5e"),
             Some("96.86.0.70".into())

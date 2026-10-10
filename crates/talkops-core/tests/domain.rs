@@ -8,7 +8,7 @@ use sqlx::PgPool;
 use talkops_core::crypto::SecretBox;
 use talkops_core::error::CoreError;
 use talkops_core::extensions::{self, DeviceInput, DeviceKind, ExtensionInput};
-use talkops_core::phones::{self, ContactInput, PhoneInput};
+use talkops_core::phones::{self, ContactInput, MediaKind, PhoneInput, SectionInput};
 use talkops_core::presets::PresetCatalog;
 use talkops_core::tenant::TenantId;
 use talkops_core::trunks::{self, AccountInput, NumberDestination, NumberInput, TrunkInput};
@@ -138,6 +138,8 @@ async fn extensions_and_devices(pool: PgPool) {
         sip_username: None,
         phone_id: None,
         account_index: None,
+        phone_label: String::new(),
+        phone_display_name: String::new(),
         enabled: true,
     };
     let (dev, password) = extensions::create_device(&pool, T, &sb, &e, &input)
@@ -469,6 +471,9 @@ async fn phones_accounts_firmware_contacts(pool: PgPool) {
             model: "t54w".into(),
             name: "Desk".into(),
             line_keys: json!([]),
+            ringtone_id: None,
+            wallpaper_id: None,
+            phonebook_sections: vec![],
         },
     )
     .await
@@ -482,7 +487,10 @@ async fn phones_accounts_firmware_contacts(pool: PgPool) {
                 mac: "805ec0aabbcc".into(),
                 model: "t54w".into(),
                 name: "Dup".into(),
-                line_keys: json!([])
+                line_keys: json!([]),
+                ringtone_id: None,
+                wallpaper_id: None,
+                phonebook_sections: vec![],
             }
         )
         .await
@@ -496,7 +504,10 @@ async fn phones_accounts_firmware_contacts(pool: PgPool) {
                 mac: "xyz".into(),
                 model: "t54w".into(),
                 name: "Bad".into(),
-                line_keys: json!([])
+                line_keys: json!([]),
+                ringtone_id: None,
+                wallpaper_id: None,
+                phonebook_sections: vec![],
             }
         )
         .await
@@ -515,12 +526,19 @@ async fn phones_accounts_firmware_contacts(pool: PgPool) {
         sip_username: None,
         phone_id: Some(phone.id),
         account_index: None,
+        phone_label: String::new(),
+        phone_display_name: String::new(),
         enabled: true,
     };
     let (d1, _) = extensions::create_device(&pool, T, &sb, &e20, &on_phone("A"))
         .await
         .unwrap();
-    let (d2, _) = extensions::create_device(&pool, T, &sb, &e21, &on_phone("B"))
+    let labelled = DeviceInput {
+        phone_label: " Labor ".into(),
+        phone_display_name: "Labor Anna".into(),
+        ..on_phone("B")
+    };
+    let (d2, _) = extensions::create_device(&pool, T, &sb, &e21, &labelled)
         .await
         .unwrap();
     assert_eq!(
@@ -546,6 +564,24 @@ async fn phones_accounts_firmware_contacts(pool: PgPool) {
             .map(|a| a.extension_number.as_str())
             .collect::<Vec<_>>(),
         ["20", "21"]
+    );
+    assert_eq!(
+        (
+            accounts[1].phone_label.as_str(),
+            accounts[1].phone_display_name.as_str()
+        ),
+        ("Labor", "Labor Anna"),
+        "label and display name are trimmed and stored"
+    );
+    let too_long = DeviceInput {
+        phone_label: "x".repeat(33),
+        ..on_phone("D")
+    };
+    assert!(
+        extensions::create_device(&pool, T, &sb, &e21, &too_long)
+            .await
+            .is_err(),
+        "label longer than 32 characters"
     );
     let (tenant, found) = phones::find_by_mac(&pool, "805ec0aabbcc")
         .await
@@ -636,6 +672,7 @@ async fn phones_accounts_firmware_contacts(pool: PgPool) {
             phone_work: "089 / 12 34-5".into(),
             phone_mobile: String::new(),
             phone_other: String::new(),
+            section_id: None,
         },
     )
     .await
@@ -650,7 +687,8 @@ async fn phones_accounts_firmware_contacts(pool: PgPool) {
                 company: String::new(),
                 phone_work: String::new(),
                 phone_mobile: String::new(),
-                phone_other: String::new()
+                phone_other: String::new(),
+                section_id: None,
             }
         )
         .await
@@ -665,7 +703,8 @@ async fn phones_accounts_firmware_contacts(pool: PgPool) {
                 company: String::new(),
                 phone_work: "abc".into(),
                 phone_mobile: String::new(),
-                phone_other: String::new()
+                phone_other: String::new(),
+                section_id: None,
             }
         )
         .await
@@ -685,6 +724,193 @@ async fn phones_accounts_firmware_contacts(pool: PgPool) {
             .await
             .is_err()
     );
+}
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn phone_media_and_phonebook_sections(pool: PgPool) {
+    let input = |sections: Vec<Uuid>, ringtone: Option<Uuid>, wallpaper: Option<Uuid>| PhoneInput {
+        mac: "805ec0000001".into(),
+        model: "t54w".into(),
+        name: "Küche".into(),
+        line_keys: json!([]),
+        ringtone_id: ringtone,
+        wallpaper_id: wallpaper,
+        phonebook_sections: sections,
+    };
+    let ring = phones::create_media(
+        &pool,
+        T,
+        Uuid::new_v4(),
+        MediaKind::Ringtone,
+        " Gong ",
+        "talkops-a.wav",
+        1200,
+    )
+    .await
+    .unwrap();
+    assert_eq!(ring.name, "Gong");
+    let wall = phones::create_media(
+        &pool,
+        T,
+        Uuid::new_v4(),
+        MediaKind::Wallpaper,
+        "Foto",
+        "talkops-b.jpg",
+        9000,
+    )
+    .await
+    .unwrap();
+    assert!(
+        phones::create_media(
+            &pool,
+            T,
+            Uuid::new_v4(),
+            MediaKind::Wallpaper,
+            " ",
+            "x.jpg",
+            1
+        )
+        .await
+        .is_err(),
+        "name required"
+    );
+    assert_eq!(phones::list_media(&pool, T).await.unwrap().len(), 2);
+
+    let family = phones::create_section(
+        &pool,
+        T,
+        &SectionInput {
+            name: "Familie".into(),
+        },
+    )
+    .await
+    .unwrap();
+    let office = phones::create_section(
+        &pool,
+        T,
+        &SectionInput {
+            name: "Büro".into(),
+        },
+    )
+    .await
+    .unwrap();
+    assert!(
+        phones::create_section(
+            &pool,
+            T,
+            &SectionInput {
+                name: "Familie".into()
+            }
+        )
+        .await
+        .is_err(),
+        "names are unique"
+    );
+
+    // Swapped kinds, unknown sections and too many sections are rejected.
+    assert!(
+        phones::create(&pool, T, &input(vec![], Some(wall.id), None))
+            .await
+            .is_err()
+    );
+    assert!(
+        phones::create(&pool, T, &input(vec![Uuid::new_v4()], None, None))
+            .await
+            .is_err()
+    );
+    let extra: Vec<Uuid> = create_sections(&pool, 3).await;
+    let mut four = vec![family.id];
+    four.extend(extra);
+    assert!(
+        phones::create(&pool, T, &input(four, None, None))
+            .await
+            .is_err()
+    );
+
+    let phone = phones::create(
+        &pool,
+        T,
+        &input(
+            vec![family.id, office.id, family.id],
+            Some(ring.id),
+            Some(wall.id),
+        ),
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        phone.phonebook_sections,
+        [family.id, office.id],
+        "duplicates dropped"
+    );
+    assert_eq!(
+        (phone.ringtone_id, phone.wallpaper_id),
+        (Some(ring.id), Some(wall.id))
+    );
+
+    let contact = |name: &str, section: Option<Uuid>| ContactInput {
+        name: name.into(),
+        company: String::new(),
+        phone_work: "0301234".into(),
+        phone_mobile: String::new(),
+        phone_other: String::new(),
+        section_id: section,
+    };
+    phones::create_contact(&pool, T, &contact("Pizza", None))
+        .await
+        .unwrap();
+    phones::create_contact(&pool, T, &contact("Oma", Some(family.id)))
+        .await
+        .unwrap();
+    assert!(
+        phones::create_contact(&pool, T, &contact("X", Some(Uuid::new_v4())))
+            .await
+            .is_err()
+    );
+    let names = |c: Vec<phones::Contact>| c.into_iter().map(|c| c.name).collect::<Vec<_>>();
+    assert_eq!(
+        names(phones::list_contacts_in(&pool, T, None).await.unwrap()),
+        ["Pizza"]
+    );
+    assert_eq!(
+        names(
+            phones::list_contacts_in(&pool, T, Some(family.id))
+                .await
+                .unwrap()
+        ),
+        ["Oma"]
+    );
+    assert_eq!(phones::list_contacts(&pool, T).await.unwrap().len(), 2);
+
+    // Deleting a section removes its contacts and its place on phones;
+    // deleting media clears it from phones.
+    phones::delete_section(&pool, T, family.id).await.unwrap();
+    phones::delete_media(&pool, T, ring.id).await.unwrap();
+    let phone = phones::get(&pool, T, phone.id).await.unwrap();
+    assert_eq!(phone.phonebook_sections, [office.id]);
+    assert_eq!(phone.ringtone_id, None);
+    assert_eq!(
+        names(phones::list_contacts(&pool, T).await.unwrap()),
+        ["Pizza"]
+    );
+}
+
+/// Creates `n` phone book sections named `S1` … `Sn`.
+async fn create_sections(pool: &PgPool, n: usize) -> Vec<Uuid> {
+    let mut ids = Vec::new();
+    for i in 1..=n {
+        let s = phones::create_section(
+            pool,
+            T,
+            &SectionInput {
+                name: format!("S{i}"),
+            },
+        )
+        .await
+        .unwrap();
+        ids.push(s.id);
+    }
+    ids
 }
 
 fn vm_input() -> VoicemailBoxInput {

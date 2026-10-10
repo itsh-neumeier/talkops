@@ -18,7 +18,9 @@ use talkops_core::phones::{self, Phone};
 use talkops_core::tenant::TenantId;
 use talkops_core::{extensions, settings};
 use talkops_provisioning::phonebook::{self, Entry};
-use talkops_provisioning::yealink::{self, Account, LineKey, Locale, PhoneSetup, Provisioning};
+use talkops_provisioning::yealink::{
+    self, Account, LineKey, Locale, MediaFile, PhoneSetup, Provisioning, RemotePhonebook,
+};
 use talkops_provisioning::{catalog::firmware_from_user_agent, normalize_mac};
 use uuid::Uuid;
 
@@ -97,6 +99,23 @@ fn not_found() -> Response {
     StatusCode::NOT_FOUND.into_response()
 }
 
+/// Download URL and file name of an uploaded ringtone or wallpaper.
+async fn media_file(
+    state: &AppState,
+    tenant: TenantId,
+    auth_base: &str,
+    id: Option<Uuid>,
+) -> ApiResult<Option<MediaFile>> {
+    let Some(id) = id else {
+        return Ok(None);
+    };
+    let m = phones::get_media(&state.db, tenant, id).await?;
+    Ok(Some(MediaFile {
+        url: format!("{auth_base}/media/{}/{}", m.id, m.filename),
+        filename: m.filename,
+    }))
+}
+
 /// Renders the per-phone configuration file.
 pub async fn render_phone_config(
     state: &AppState,
@@ -117,8 +136,8 @@ pub async fn render_phone_config(
             .map_err(|e| ApiError::Internal(e.to_string()))?;
         accounts.push(Account {
             index: a.account_index.max(1) as u16,
-            label: a.extension_number.clone(),
-            display_name: a.display_name,
+            label: a.label().to_owned(),
+            display_name: a.caller_name().to_owned(),
             username: a.sip_username,
             password,
         });
@@ -134,6 +153,22 @@ pub async fn render_phone_config(
                 fw.filename
             )
         });
+    let auth_base = prov.authenticated_base();
+    let ringtone = media_file(state, tenant, &auth_base, phone.ringtone_id).await?;
+    let wallpaper = media_file(state, tenant, &auth_base, phone.wallpaper_id).await?;
+    let mut phonebooks = Vec::new();
+    for id in phone
+        .phonebook_sections
+        .iter()
+        .take(phones::MAX_PHONE_SECTIONS)
+    {
+        if let Ok(section) = phones::get_section(&state.db, tenant, *id).await {
+            phonebooks.push(RemotePhonebook {
+                name: section.name,
+                url: format!("{auth_base}/phonebook/section/{id}.xml"),
+            });
+        }
+    }
     let setup = PhoneSetup {
         name: phone.name.clone(),
         mac: phone.mac.clone(),
@@ -144,6 +179,9 @@ pub async fn render_phone_config(
         sip_port: state.profile.internal_port,
         firmware_url,
         voicemail_code: VOICEMAIL_CODE.to_owned(),
+        ringtone,
+        wallpaper,
+        phonebooks,
     };
     yealink::render_phone(&setup).map_err(|e| ApiError::Internal(e.to_string()))
 }
@@ -199,7 +237,18 @@ pub async fn serve(
     let result = match path.as_str() {
         p if is_common_cfg(p) => common_cfg(&state, &prov, &admin_password).await,
         "phonebook/internal.xml" => internal_phonebook(&state, query.get("search")).await,
-        "phonebook/contacts.xml" => contacts_phonebook(&state, query.get("search")).await,
+        "phonebook/contacts.xml" => contacts_phonebook(&state, None, query.get("search")).await,
+        p if p.starts_with("phonebook/section/") => {
+            match p
+                .strip_prefix("phonebook/section/")
+                .and_then(|r| r.strip_suffix(".xml"))
+                .and_then(|id| id.parse::<Uuid>().ok())
+            {
+                Some(id) => contacts_phonebook(&state, Some(id), query.get("search")).await,
+                None => return not_found(),
+            }
+        }
+        p if p.starts_with("media/") => return media(&state, p).await,
         "events" => events(&state, &query).await,
         p if p.starts_with("firmware/") => return firmware(&state, p).await,
         p => match p.strip_suffix(".cfg").and_then(normalize_mac) {
@@ -272,7 +321,20 @@ async fn internal_phonebook(state: &AppState, search: Option<&String>) -> ApiRes
     ))
 }
 
-async fn contacts_phonebook(state: &AppState, search: Option<&String>) -> ApiResult<Response> {
+/// The global contacts (`section` = `None`) or one phone book section.
+async fn contacts_phonebook(
+    state: &AppState,
+    section: Option<Uuid>,
+    search: Option<&String>,
+) -> ApiResult<Response> {
+    let title = match section {
+        Some(id) => {
+            phones::get_section(&state.db, TenantId::DEFAULT, id)
+                .await?
+                .name
+        }
+        None => "TalkOps".to_owned(),
+    };
     let s = settings::get(&state.db, TenantId::DEFAULT).await?;
     let plan = s.dial_plan();
     let (work, mobile, other) = if s.default_language == "de" {
@@ -287,7 +349,7 @@ async fn contacts_phonebook(state: &AppState, search: Option<&String>) -> ApiRes
             n.to_owned()
         }
     };
-    let entries = phones::list_contacts(&state.db, TenantId::DEFAULT)
+    let entries = phones::list_contacts_in(&state.db, TenantId::DEFAULT, section)
         .await?
         .into_iter()
         .map(|c| {
@@ -311,7 +373,7 @@ async fn contacts_phonebook(state: &AppState, search: Option<&String>) -> ApiRes
     let entries = phonebook::search(entries, search.map(String::as_str));
     Ok(text(
         "text/xml; charset=utf-8",
-        phonebook::render("TalkOps", &entries),
+        phonebook::render(&title, &entries),
     ))
 }
 
@@ -376,6 +438,50 @@ async fn firmware(state: &AppState, path: &str) -> Response {
         Body::from_stream(stream),
     )
         .into_response()
+}
+
+/// `media/<id>/<filename>`: an uploaded ringtone or wallpaper.
+async fn media(state: &AppState, path: &str) -> Response {
+    let mut parts = path.splitn(3, '/').skip(1);
+    let (Some(id), Some(name)) = (
+        parts.next().and_then(|id| id.parse::<Uuid>().ok()),
+        parts.next(),
+    ) else {
+        return not_found();
+    };
+    let Ok(m) = phones::get_media(&state.db, TenantId::DEFAULT, id).await else {
+        return not_found();
+    };
+    if m.filename != name {
+        return not_found();
+    }
+    let Ok(data) = tokio::fs::read(media_path(state, m.id, &m.filename)).await else {
+        tracing::warn!(id = %m.id, "phone media file missing");
+        return not_found();
+    };
+    (
+        [(header::CONTENT_TYPE, media_type(&m.filename))],
+        Body::from(data),
+    )
+        .into_response()
+}
+
+/// Content type of a ringtone or wallpaper file.
+pub fn media_type(filename: &str) -> &'static str {
+    match filename.rsplit('.').next() {
+        Some("wav") => "audio/wav",
+        Some("png") => "image/png",
+        _ => "image/jpeg",
+    }
+}
+
+/// Location of an uploaded ringtone or wallpaper on disk.
+pub fn media_path(state: &AppState, id: Uuid, filename: &str) -> std::path::PathBuf {
+    state
+        .provisioning_dir
+        .join("media")
+        .join(id.to_string())
+        .join(filename)
 }
 
 /// Location of an uploaded firmware image on disk.

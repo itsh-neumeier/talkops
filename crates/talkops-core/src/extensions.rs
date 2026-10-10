@@ -302,6 +302,8 @@ pub enum DeviceKind {
     Other,
     /// The WebRTC softphone in the web interface.
     Browser,
+    /// Wi-Fi handset (e.g. Yealink AX83H/AX86R).
+    Wifi,
 }
 
 #[derive(Debug, Clone, FromRow, Serialize, utoipa::ToSchema)]
@@ -317,6 +319,11 @@ pub struct Device {
     pub phone_id: Option<Uuid>,
     /// Account slot on the phone (DECT: handset number).
     pub account_index: Option<i16>,
+    /// Label the provisioned phone shows for the account (line key, idle
+    /// screen); empty = extension number.
+    pub phone_label: String,
+    /// Caller name the phone sends; empty = the extension's display name.
+    pub phone_display_name: String,
     pub enabled: bool,
 }
 
@@ -333,11 +340,60 @@ pub struct DeviceInput {
     pub phone_id: Option<Uuid>,
     #[serde(default)]
     pub account_index: Option<i16>,
+    #[serde(default)]
+    pub phone_label: String,
+    #[serde(default)]
+    pub phone_display_name: String,
     #[serde(default = "yes")]
     pub enabled: bool,
 }
 
-const DEV_COLUMNS: &str = "id, extension_id, name, kind, sip_username, sip_password_enc, phone_id, account_index, enabled";
+impl DeviceInput {
+    /// Trimmed phone label and display name, checked against the column limits.
+    fn phone_texts(&self) -> CoreResult<(&str, &str)> {
+        phone_texts(&self.phone_label, &self.phone_display_name)
+    }
+}
+
+fn phone_texts<'a>(label: &'a str, display: &'a str) -> CoreResult<(&'a str, &'a str)> {
+    let (label, display) = (label.trim(), display.trim());
+    if label.chars().count() > 32 {
+        return Err(CoreError::Validation("label: at most 32 characters".into()));
+    }
+    if display.chars().count() > 64 {
+        return Err(CoreError::Validation(
+            "display name: at most 64 characters".into(),
+        ));
+    }
+    Ok((label, display))
+}
+
+/// Sets the label and display name a provisioned phone shows for one of its
+/// accounts (empty = extension number / display name).
+pub async fn set_phone_texts(
+    pool: &sqlx::PgPool,
+    tenant: TenantId,
+    phone_id: Uuid,
+    device_id: Uuid,
+    label: &str,
+    display: &str,
+) -> CoreResult<Device> {
+    let (label, display) = phone_texts(label, display)?;
+    let sql = format!(
+        "UPDATE devices SET phone_label = $4, phone_display_name = $5, updated_at = now()
+         WHERE tenant_id = $1 AND phone_id = $2 AND id = $3 RETURNING {DEV_COLUMNS}"
+    );
+    Ok(sqlx::query_as(&sql)
+        .bind(tenant)
+        .bind(phone_id)
+        .bind(device_id)
+        .bind(label)
+        .bind(display)
+        .fetch_one(pool)
+        .await?)
+}
+
+const DEV_COLUMNS: &str = "id, extension_id, name, kind, sip_username, sip_password_enc, phone_id, account_index, phone_label, phone_display_name, enabled";
 
 /// Resolves the account slot for a device on a phone: the requested one, or
 /// the lowest free slot. Checks that the phone exists.
@@ -459,6 +515,7 @@ pub async fn create_device(
     extension: &Extension,
     input: &DeviceInput,
 ) -> CoreResult<(Device, String)> {
+    let (label, display) = input.phone_texts()?;
     let slot = phone_slot(pool, tenant, input.phone_id, input.account_index, None).await?;
     let username = match input
         .sip_username
@@ -479,8 +536,8 @@ pub async fn create_device(
     let password = crypto::random_password(20)?;
     let sql = format!(
         "INSERT INTO devices (tenant_id, extension_id, name, kind, sip_username, sip_password_enc,
-                              phone_id, account_index, enabled)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING {DEV_COLUMNS}"
+                              phone_id, account_index, enabled, phone_label, phone_display_name)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING {DEV_COLUMNS}"
     );
     let device = sqlx::query_as(&sql)
         .bind(tenant)
@@ -492,6 +549,8 @@ pub async fn create_device(
         .bind(input.phone_id)
         .bind(slot)
         .bind(input.enabled)
+        .bind(label)
+        .bind(display)
         .fetch_one(pool)
         .await?;
     Ok((device, password))
@@ -503,10 +562,11 @@ pub async fn update_device(
     id: Uuid,
     input: &DeviceInput,
 ) -> CoreResult<Device> {
+    let (label, display) = input.phone_texts()?;
     let slot = phone_slot(pool, tenant, input.phone_id, input.account_index, Some(id)).await?;
     let sql = format!(
         "UPDATE devices SET name = $3, kind = $4, phone_id = $5, account_index = $6, enabled = $7,
-             updated_at = now()
+             phone_label = $8, phone_display_name = $9, updated_at = now()
          WHERE tenant_id = $1 AND id = $2 RETURNING {DEV_COLUMNS}"
     );
     Ok(sqlx::query_as(&sql)
@@ -517,6 +577,8 @@ pub async fn update_device(
         .bind(input.phone_id)
         .bind(slot)
         .bind(input.enabled)
+        .bind(label)
+        .bind(display)
         .fetch_one(pool)
         .await?)
 }

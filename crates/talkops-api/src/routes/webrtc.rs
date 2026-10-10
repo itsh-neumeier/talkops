@@ -86,6 +86,8 @@ pub async fn webrtc_account(
                 sip_username: None,
                 phone_id: None,
                 account_index: None,
+                phone_label: String::new(),
+                phone_display_name: String::new(),
                 enabled: true,
             };
             let (d, pw) =

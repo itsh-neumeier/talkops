@@ -107,7 +107,8 @@ export interface Extension {
 	video_enabled: boolean;
 }
 
-export type DeviceKind = 'desk' | 'dect' | 'softphone' | 'mobile' | 'door' | 'other' | 'browser';
+export type DeviceKind =
+	'desk' | 'dect' | 'wifi' | 'softphone' | 'mobile' | 'door' | 'other' | 'browser';
 
 export interface Device {
 	id: string;
@@ -117,6 +118,10 @@ export interface Device {
 	sip_username: string;
 	phone_id: string | null;
 	account_index: number | null;
+	/** Label on the provisioned phone; empty = extension number. */
+	phone_label: string;
+	/** Caller name sent by the provisioned phone; empty = display name. */
+	phone_display_name: string;
 	enabled: boolean;
 }
 
@@ -376,6 +381,10 @@ export interface Phone {
 	last_seen_at: string | null;
 	last_ip: string | null;
 	last_firmware: string | null;
+	ringtone_id: string | null;
+	wallpaper_id: string | null;
+	/** Phone book sections shown on the phone (at most 3). */
+	phonebook_sections: string[];
 }
 
 export interface PhoneAccount {
@@ -384,6 +393,8 @@ export interface PhoneAccount {
 	extension_id: string;
 	extension_number: string;
 	display_name: string;
+	phone_label: string;
+	phone_display_name: string;
 }
 
 export interface PhoneDetail extends Phone {
@@ -398,6 +409,26 @@ export interface PhoneModel {
 	accounts: number;
 	line_keys: number;
 	video: boolean;
+	/** Largest custom ringtone in KiB; 0 = not supported. */
+	ringtone_max_kb: number;
+	wallpaper: boolean;
+}
+
+export type MediaKind = 'ringtone' | 'wallpaper';
+
+/** An uploaded ringtone or wallpaper for provisioned phones. */
+export interface PhoneMedia {
+	id: string;
+	kind: MediaKind;
+	name: string;
+	filename: string;
+	size_bytes: number;
+	uploaded_at: string;
+}
+
+export interface PhonebookSection {
+	id: string;
+	name: string;
 }
 
 export interface Firmware {
@@ -417,6 +448,8 @@ export interface Contact {
 	phone_work: string;
 	phone_mobile: string;
 	phone_other: string;
+	/** Phone book section; null = global (every phone). */
+	section_id: string | null;
 }
 
 export interface ProvisioningInfo {

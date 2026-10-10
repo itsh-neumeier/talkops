@@ -380,6 +380,43 @@ const de: Record<keyof typeof en, string> = {
 	'contacts.mobile': 'Mobil',
 	'contacts.other': 'Sonstige',
 	'contacts.numberHint': 'Nationales (089 123456) oder internationales Format (+49 89 123456).',
+	'kinds.wifi': 'WLAN-Mobilteil',
+	'phones.accountLabel': 'Label am Telefon',
+	'phones.accountDisplayName': 'Anzeigename',
+	'phones.accountTextsHint':
+		'Label: steht an der Leitungstaste und im Ruhebildschirm (leer = Nebenstellennummer). Anzeigename: der Name, den das Telefon als Anrufer sendet (leer = Name der Nebenstelle). Wird beim nächsten Resync übernommen.',
+	'phones.personalize': 'Klingelton, Hintergrund und Telefonbuch',
+	'phones.phoneDefault': 'Einstellung des Telefons behalten',
+	'phones.tooLarge': 'zu groß für dieses Modell',
+	'phones.notSupported': 'Von diesem Modell nicht unterstützt.',
+	'phones.personalizeHint':
+		'Klingeltöne und Hintergründe lädst du unter Einstellungen → Telefone hoch. Das Telefon lädt sie beim nächsten Resync.',
+	'phones.phonebookSections': 'Telefonbuch-Bereiche auf diesem Telefon',
+	'phones.noSections': 'Noch keine Bereiche – lege sie im Telefonbuch an.',
+	'phones.phonebookSectionsHint':
+		'Jedes Telefon zeigt das interne und das globale Telefonbuch; bis zu 3 Bereiche kommen dazu.',
+	'media.title': 'Klingeltöne und Hintergründe',
+	'media.hint':
+		'Dateien für provisionierte Yealink-Telefone. Zuweisen auf der Seite des jeweiligen Telefons.',
+	'media.kind': 'Art',
+	'media.ringtone': 'Klingelton',
+	'media.wallpaper': 'Hintergrundbild',
+	'media.length': 'Länge',
+	'media.lengthShort': '6 s (alle Modelle)',
+	'media.file': 'Datei',
+	'media.ringtoneHint':
+		'Jede Audiodatei (MP3, WAV, …) wird ins Format der Telefone umgewandelt (WAV 8 kHz). T42U, T43U und T53W nehmen Klingeltöne bis 100 KB (etwa 6 Sekunden), T46U/T48U/T5x bis 8 MB.',
+	'media.wallpaperHint':
+		'Jedes Bild (JPEG, PNG, …) wird auf höchstens 1280 × 800 verkleinert und als JPEG gespeichert.',
+	'media.unreadable': 'Die Datei konnte nicht gelesen werden. Wähle eine Audio- bzw. Bilddatei.',
+	'contacts.sections': 'Bereiche',
+	'contacts.section': 'Bereich',
+	'contacts.allSections': 'Alle Bereiche',
+	'contacts.global': 'Global (alle Telefone)',
+	'contacts.deleteSectionConfirm': 'Bereich „{name}“ mit allen Kontakten löschen?',
+	'contacts.sectionsHint':
+		'Globale Kontakte erscheinen auf jedem Telefon. Kontakte in einem Bereich erscheinen nur auf den Telefonen, denen der Bereich zugewiesen ist (Telefon-Seite → Telefonbuch-Bereiche).',
+	'contacts.sectionPlaceholder': 'z. B. Familie',
 	'settings.timezone': 'Zeitzone',
 	'settings.timezoneHint': 'Für die Uhrzeit auf provisionierten Telefonen.',
 	'nav.voicemail': 'Voicemail',

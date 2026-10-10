@@ -375,3 +375,261 @@ async fn users_set_their_own_call_settings(db: PgPool) {
         .await;
     assert_eq!(status, StatusCode::FORBIDDEN);
 }
+
+/// Multipart body with text fields and one file.
+fn multipart_fields(fields: &[(&str, &str)], filename: &str, data: &[u8]) -> (String, Vec<u8>) {
+    let boundary = "talkopsboundary";
+    let mut body = Vec::new();
+    for (name, value) in fields {
+        body.extend_from_slice(
+            format!(
+                "--{boundary}\r\nContent-Disposition: form-data; name=\"{name}\"\r\n\r\n{value}\r\n"
+            )
+            .as_bytes(),
+        );
+    }
+    body.extend_from_slice(
+        format!(
+            "--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"{filename}\"\r\n\
+             Content-Type: application/octet-stream\r\n\r\n"
+        )
+        .as_bytes(),
+    );
+    body.extend_from_slice(data);
+    body.extend_from_slice(format!("\r\n--{boundary}--\r\n").as_bytes());
+    (format!("multipart/form-data; boundary={boundary}"), body)
+}
+
+/// A WAV file with `samples` silent samples.
+fn wav(rate: u32, channels: u16, samples: u32) -> Vec<u8> {
+    let mut out = std::io::Cursor::new(Vec::new());
+    let spec = hound::WavSpec {
+        channels,
+        sample_rate: rate,
+        bits_per_sample: 16,
+        sample_format: hound::SampleFormat::Int,
+    };
+    let mut w = hound::WavWriter::new(&mut out, spec).unwrap();
+    for _ in 0..samples * u32::from(channels) {
+        w.write_sample(0i16).unwrap();
+    }
+    w.finalize().unwrap();
+    out.into_inner()
+}
+
+async fn upload_media(
+    router: &axum::Router,
+    admin: &Client,
+    kind: &str,
+    name: &str,
+    data: &[u8],
+) -> (StatusCode, Value) {
+    let (ct, body) = multipart_fields(&[("kind", kind), ("name", name)], "upload", data);
+    let res = raw(
+        router,
+        Request::post("/api/v1/phone-media")
+            .header(header::COOKIE, &admin.cookie)
+            .header("x-requested-with", "TalkOps")
+            .header("x-csrf-token", &admin.csrf)
+            .header(header::CONTENT_TYPE, ct)
+            .body(Body::from(body))
+            .unwrap(),
+    )
+    .await;
+    let status = res.status();
+    (status, body_json(res).await)
+}
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn ringtones_wallpapers_labels_and_phonebook_sections(db: PgPool) {
+    let router = router(db);
+    let admin = setup_admin(&router).await;
+    let (_, info) = admin.get("/api/v1/provisioning").await;
+    let user = info["username"].as_str().unwrap().to_owned();
+    let pass = info["password"].as_str().unwrap().to_owned();
+
+    // Uploads are checked: ringtones 8 kHz mono WAV, wallpapers JPEG/PNG.
+    let (status, _) = upload_media(&router, &admin, "ringtone", "Stereo", &wav(8000, 2, 800)).await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    let (status, _) = upload_media(&router, &admin, "ringtone", "16k", &wav(16000, 1, 800)).await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    let (status, _) = upload_media(&router, &admin, "wallpaper", "Gif", b"GIF89a....").await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    let big = wav(8000, 1, 80_000); // 160 KB: too large for a T53W
+    let (status, ring) = upload_media(&router, &admin, "ringtone", "Gong", &big).await;
+    assert_eq!(status, StatusCode::OK, "{ring}");
+    let ring_id = ring["id"].as_str().unwrap();
+    let ring_file = ring["filename"].as_str().unwrap().to_owned();
+    assert!(ring_file.starts_with("talkops-") && ring_file.ends_with(".wav"));
+    let jpeg = [0xFF, 0xD8, 0xFF, 0xE0, 1, 2, 3, 4];
+    let (status, wall) = upload_media(&router, &admin, "wallpaper", "Foto", &jpeg).await;
+    assert_eq!(status, StatusCode::OK, "{wall}");
+    let wall_id = wall["id"].as_str().unwrap();
+    let wall_file = wall["filename"].as_str().unwrap().to_owned();
+    assert!(wall_file.ends_with(".jpg"));
+    let (_, list) = admin.get("/api/v1/phone-media").await;
+    assert_eq!(list.as_array().unwrap().len(), 2);
+
+    // Sections; a contact in a section is not in the global phone book.
+    let (status, family) = admin
+        .post("/api/v1/phonebook-sections", json!({"name": "Familie"}))
+        .await;
+    assert_eq!(status, StatusCode::OK, "{family}");
+    let family_id = family["id"].as_str().unwrap();
+    admin
+        .post(
+            "/api/v1/contacts",
+            json!({"name": "Oma", "phone_work": "0301234", "section_id": family_id}),
+        )
+        .await;
+    admin
+        .post(
+            "/api/v1/contacts",
+            json!({"name": "Pizza", "phone_work": "0305678"}),
+        )
+        .await;
+
+    // Models without custom ringtones/wallpapers, or a too large ringtone.
+    for (model, body) in [
+        ("w70b", json!({"ringtone_id": ring_id})),
+        ("t42u", json!({"wallpaper_id": wall_id})),
+        ("t53w", json!({"ringtone_id": ring_id})),
+    ] {
+        let mut phone = json!({"mac": "805ec0000002", "model": model, "name": "X"});
+        phone
+            .as_object_mut()
+            .unwrap()
+            .extend(body.as_object().unwrap().clone());
+        let (status, err) = admin.post("/api/v1/phones", phone).await;
+        assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{model}: {err}");
+    }
+    let (status, phone) = admin
+        .post(
+            "/api/v1/phones",
+            json!({"mac": "805ec0000001", "model": "t54w", "name": "Küche",
+                   "ringtone_id": ring_id, "wallpaper_id": wall_id,
+                   "phonebook_sections": [family_id]}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{phone}");
+    let phone_id = phone["id"].as_str().unwrap();
+
+    // A Wi-Fi handset account with its own label and display name.
+    let (_, ext) = admin
+        .post(
+            "/api/v1/extensions",
+            json!({"number": "40", "display_name": "Küche"}),
+        )
+        .await;
+    let (status, dev) = admin
+        .post(
+            &format!("/api/v1/extensions/{}/devices", ext["id"].as_str().unwrap()),
+            json!({"name": "Handset", "kind": "wifi", "phone_id": phone_id,
+                   "phone_label": "Küche 40"}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{dev}");
+    let (_, detail) = admin.get(&format!("/api/v1/phones/{phone_id}")).await;
+    assert_eq!(detail["accounts"][0]["phone_label"], "Küche 40");
+    let device_id = detail["accounts"][0]["device_id"].as_str().unwrap();
+    let (status, _) = admin
+        .put(
+            &format!("/api/v1/phones/{phone_id}/accounts/{device_id}"),
+            json!({"phone_label": "x".repeat(33)}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    let (status, _) = admin
+        .put(
+            &format!("/api/v1/phones/{phone_id}/accounts/{device_id}"),
+            json!({"phone_label": " Küche 40 ", "phone_display_name": "Familie M."}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::NO_CONTENT);
+
+    let (_, cfg) = prov_get(
+        &router,
+        "/provisioning/805ec0000001.cfg",
+        Some((&user, &pass)),
+    )
+    .await;
+    let base = format!("http://{user}:{pass}@localhost/provisioning");
+    for line in [
+        "account.1.label = Küche 40".to_owned(),
+        "account.1.display_name = Familie M.".to_owned(),
+        format!("ringtone.url = {base}/media/{ring_id}/{ring_file}"),
+        format!("phone_setting.ring_type = {ring_file}"),
+        format!("wallpaper_upload.url = {base}/media/{wall_id}/{wall_file}"),
+        format!("phone_setting.backgrounds = {wall_file}"),
+        "remote_phonebook.data.3.name = Familie".to_owned(),
+        format!("remote_phonebook.data.3.url = {base}/phonebook/section/{family_id}.xml"),
+    ] {
+        assert!(cfg.contains(&line), "missing `{line}` in\n{cfg}");
+    }
+
+    // The phone downloads the files and the section phone book.
+    let res = raw(
+        &router,
+        Request::get(format!("/provisioning/media/{wall_id}/{wall_file}"))
+            .header(
+                header::AUTHORIZATION,
+                format!("Basic {}", STANDARD.encode(format!("{user}:{pass}"))),
+            )
+            .body(Body::empty())
+            .unwrap(),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.headers()[header::CONTENT_TYPE], "image/jpeg");
+    let data = axum::body::to_bytes(res.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    assert_eq!(&data[..], &jpeg[..]);
+    let (status, _) = prov_get(
+        &router,
+        &format!("/provisioning/media/{wall_id}/other.jpg"),
+        Some((&user, &pass)),
+    )
+    .await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+    let (_, xml) = prov_get(
+        &router,
+        &format!("/provisioning/phonebook/section/{family_id}.xml"),
+        Some((&user, &pass)),
+    )
+    .await;
+    assert!(
+        xml.contains("<Title>Familie</Title>") && xml.contains("<Name>Oma</Name>"),
+        "{xml}"
+    );
+    assert!(!xml.contains("Pizza"));
+    let (_, xml) = prov_get(
+        &router,
+        "/provisioning/phonebook/contacts.xml",
+        Some((&user, &pass)),
+    )
+    .await;
+    assert!(xml.contains("Pizza") && !xml.contains("Oma"), "{xml}");
+
+    // Deleting media and the section clears them from the phone.
+    let (status, _) = admin
+        .call("DELETE", &format!("/api/v1/phone-media/{ring_id}"), None)
+        .await;
+    assert_eq!(status, StatusCode::NO_CONTENT);
+    let (status, _) = admin
+        .call(
+            "DELETE",
+            &format!("/api/v1/phonebook-sections/{family_id}"),
+            None,
+        )
+        .await;
+    assert_eq!(status, StatusCode::NO_CONTENT);
+    let (_, cfg) = prov_get(
+        &router,
+        "/provisioning/805ec0000001.cfg",
+        Some((&user, &pass)),
+    )
+    .await;
+    assert!(!cfg.contains("ringtone.url"));
+    assert!(cfg.contains("remote_phonebook.data.3.url = \n"), "{cfg}");
+}

@@ -12,18 +12,25 @@
 # accounts), AX83H documentation "Trigger the Phone to Perform Auto
 # Provisioning" (common file y000000000108.cfg); firmware 180.86.x uses the
 # same V86 parameters as the T5x series.
+#
+# ringtone_max_kb: largest custom ringtone (ringtone.url, WAV 8 kHz mono
+#                  16 bit); wallpaper: custom wallpaper (wallpaper_upload.url,
+#                  JPG/PNG up to 5 MB). Source: Yealink SIP-T5 Series
+#                  Administrator's Guide (covers T5x and T4U), sections
+#                  "Custom Ringtone Limit" and "Custom Wallpaper Picture Limit".
+#                  Models not listed there keep their own settings.
 vendor: yealink
 status: untested
 models:
   - { id: t31g, name: SIP-T31G, family: desk, accounts: 2, line_keys: 2 }
   - { id: t33g, name: SIP-T33G, family: desk, accounts: 4, line_keys: 4 }
-  - { id: t42u, name: SIP-T42U, family: desk, accounts: 12, line_keys: 15 }
-  - { id: t43u, name: SIP-T43U, family: desk, accounts: 12, line_keys: 21 }
-  - { id: t46u, name: SIP-T46U, family: desk, accounts: 16, line_keys: 40 }
-  - { id: t48u, name: SIP-T48U, family: desk, accounts: 16, line_keys: 29 }
-  - { id: t53w, name: SIP-T53W, family: desk, accounts: 12, line_keys: 21 }
-  - { id: t54w, name: SIP-T54W, family: desk, accounts: 16, line_keys: 27 }
-  - { id: t57w, name: SIP-T57W, family: desk, accounts: 16, line_keys: 29 }
+  - { id: t42u, name: SIP-T42U, family: desk, accounts: 12, line_keys: 15, ringtone_max_kb: 100 }
+  - { id: t43u, name: SIP-T43U, family: desk, accounts: 12, line_keys: 21, ringtone_max_kb: 100, wallpaper: true }
+  - { id: t46u, name: SIP-T46U, family: desk, accounts: 16, line_keys: 40, ringtone_max_kb: 8192, wallpaper: true }
+  - { id: t48u, name: SIP-T48U, family: desk, accounts: 16, line_keys: 29, ringtone_max_kb: 8192, wallpaper: true }
+  - { id: t53w, name: SIP-T53W, family: desk, accounts: 12, line_keys: 21, ringtone_max_kb: 100, wallpaper: true }
+  - { id: t54w, name: SIP-T54W, family: desk, accounts: 16, line_keys: 27, ringtone_max_kb: 8192, wallpaper: true }
+  - { id: t57w, name: SIP-T57W, family: desk, accounts: 16, line_keys: 29, ringtone_max_kb: 8192, wallpaper: true }
   - { id: t58w, name: SIP-T58W, family: desk, accounts: 16, line_keys: 27, video: true }
   - { id: vp59, name: VP59, family: desk, accounts: 16, line_keys: 29, video: true }
   - { id: cp920, name: CP920, family: conference, accounts: 1, line_keys: 0 }

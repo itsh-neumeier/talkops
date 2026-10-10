@@ -9,7 +9,9 @@
 		type KeyType,
 		type LineKey,
 		type PhoneDetail,
-		type PhoneModel
+		type PhoneMedia,
+		type PhoneModel,
+		type PhonebookSection
 	} from '#lib/api.ts';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
 	import Modal from '#lib/components/Modal.svelte';
@@ -21,7 +23,18 @@
 	let phone = $state<PhoneDetail | null>(null);
 	let models = $state<PhoneModel[]>([]);
 	let extensions = $state<Extension[]>([]);
-	let form = $state({ name: '', mac: '', model: '' });
+	let media = $state<PhoneMedia[]>([]);
+	let sections = $state<PhonebookSection[]>([]);
+	let form = $state({
+		name: '',
+		mac: '',
+		model: '',
+		ringtone_id: '',
+		wallpaper_id: '',
+		phonebook_sections: [] as string[]
+	});
+	/** Label and display name per account (device id), as edited. */
+	let texts = $state<Record<string, { phone_label: string; phone_display_name: string }>>({});
 	let keys = $state<LineKey[]>([]);
 	let error = $state('');
 	let message = $state('');
@@ -30,15 +43,42 @@
 
 	const model = $derived(models.find((m) => m.id === form.model));
 	const keyTypes: KeyType[] = ['line', 'blf', 'speed_dial', 'none'];
+	const MAX_SECTIONS = 3;
+	const ringtones = $derived(media.filter((m) => m.kind === 'ringtone'));
+	const wallpapers = $derived(media.filter((m) => m.kind === 'wallpaper'));
+
+	function toggleSection(sid: string, on: boolean) {
+		form.phonebook_sections = on
+			? [...form.phonebook_sections, sid]
+			: form.phonebook_sections.filter((s) => s !== sid);
+	}
+
+	/** Ringtones larger than the model accepts are not offered. */
+	const fits = (m: PhoneMedia) => !model || m.size_bytes <= model.ringtone_max_kb * 1024;
 
 	async function load() {
 		try {
-			[phone, models, extensions] = await Promise.all([
+			[phone, models, extensions, media, sections] = await Promise.all([
 				api.get<PhoneDetail>(`/phones/${id}`),
 				api.get<PhoneModel[]>('/phone-models'),
-				api.get<Extension[]>('/extensions')
+				api.get<Extension[]>('/extensions'),
+				api.get<PhoneMedia[]>('/phone-media').catch(() => []),
+				api.get<PhonebookSection[]>('/phonebook-sections')
 			]);
-			form = { name: phone.name, mac: phone.mac, model: phone.model };
+			form = {
+				name: phone.name,
+				mac: phone.mac,
+				model: phone.model,
+				ringtone_id: phone.ringtone_id ?? '',
+				wallpaper_id: phone.wallpaper_id ?? '',
+				phonebook_sections: [...phone.phonebook_sections]
+			};
+			texts = Object.fromEntries(
+				phone.accounts.map((a) => [
+					a.device_id,
+					{ phone_label: a.phone_label, phone_display_name: a.phone_display_name }
+				])
+			);
 			keys = phone.line_keys.map((k) => ({ ...k }));
 		} catch (err) {
 			error = errorMessage(err);
@@ -76,7 +116,21 @@
 		error = '';
 		message = '';
 		try {
-			await api.put(`/phones/${id}`, { ...form, line_keys: keys });
+			await api.put(`/phones/${id}`, {
+				...form,
+				ringtone_id: model?.ringtone_max_kb ? form.ringtone_id || null : null,
+				wallpaper_id: model?.wallpaper ? form.wallpaper_id || null : null,
+				line_keys: keys
+			});
+			for (const a of phone?.accounts ?? []) {
+				const edited = texts[a.device_id];
+				if (
+					edited &&
+					(edited.phone_label !== a.phone_label ||
+						edited.phone_display_name !== a.phone_display_name)
+				)
+					await api.put(`/phones/${id}/accounts/${a.device_id}`, edited);
+			}
 			message = t('phones.savedResync');
 			await load();
 		} catch (err) {
@@ -162,18 +216,102 @@
 			{#if phone.accounts.length === 0}
 				<p class="text-sm text-slate-500">{t('phones.noAccounts')}</p>
 			{:else}
+				<p class="hint">{t('phones.accountTextsHint')}</p>
 				<ul class="divide-y divide-slate-100 dark:divide-slate-800">
 					{#each phone.accounts as a (a.device_id)}
-						<li class="py-2">
-							<span class="text-slate-500">{t('phones.account')} {a.account_index}:</span>
-							<a class="font-mono hover:underline" href="/extensions/{a.extension_id}"
-								>{a.extension_number}</a
-							>
-							{a.display_name}
+						<li class="grid gap-2 py-2 sm:grid-cols-3 sm:items-end">
+							<div>
+								<span class="text-slate-500">{t('phones.account')} {a.account_index}:</span>
+								<a class="font-mono hover:underline" href="/extensions/{a.extension_id}"
+									>{a.extension_number}</a
+								>
+								{a.display_name}
+							</div>
+							{#if texts[a.device_id]}
+								<div>
+									<label for="lbl-{a.device_id}">{t('phones.accountLabel')}</label>
+									<input
+										id="lbl-{a.device_id}"
+										class="input"
+										maxlength="32"
+										placeholder={a.extension_number}
+										disabled={!hasRole('admin')}
+										bind:value={texts[a.device_id].phone_label}
+									/>
+								</div>
+								<div>
+									<label for="dn-{a.device_id}">{t('phones.accountDisplayName')}</label>
+									<input
+										id="dn-{a.device_id}"
+										class="input"
+										maxlength="64"
+										placeholder={a.display_name}
+										disabled={!hasRole('admin')}
+										bind:value={texts[a.device_id].phone_display_name}
+									/>
+								</div>
+							{/if}
 						</li>
 					{/each}
 				</ul>
 			{/if}
+		</section>
+
+		<section class="card space-y-3">
+			<h2>{t('phones.personalize')}</h2>
+			<div class="grid gap-3 sm:grid-cols-2">
+				<div>
+					<label for="ph-ring">{t('media.ringtone')}</label>
+					{#if model?.ringtone_max_kb}
+						<select id="ph-ring" class="input" bind:value={form.ringtone_id}>
+							<option value="">{t('phones.phoneDefault')}</option>
+							{#each ringtones as m (m.id)}
+								<option value={m.id} disabled={!fits(m)}
+									>{m.name}{fits(m) ? '' : ` (${t('phones.tooLarge')})`}</option
+								>
+							{/each}
+						</select>
+					{:else}
+						<p class="text-sm text-slate-500">{t('phones.notSupported')}</p>
+					{/if}
+				</div>
+				<div>
+					<label for="ph-wall">{t('media.wallpaper')}</label>
+					{#if model?.wallpaper}
+						<select id="ph-wall" class="input" bind:value={form.wallpaper_id}>
+							<option value="">{t('phones.phoneDefault')}</option>
+							{#each wallpapers as m (m.id)}<option value={m.id}>{m.name}</option>{/each}
+						</select>
+					{:else}
+						<p class="text-sm text-slate-500">{t('phones.notSupported')}</p>
+					{/if}
+				</div>
+			</div>
+			<p class="hint">{t('phones.personalizeHint')}</p>
+			<fieldset>
+				<legend class="mb-1 text-sm text-slate-600 dark:text-slate-300">
+					{t('phones.phonebookSections')}
+				</legend>
+				{#if sections.length === 0}
+					<p class="text-sm text-slate-500">{t('phones.noSections')}</p>
+				{:else}
+					<div class="flex flex-wrap gap-x-4 gap-y-1">
+						{#each sections as sec (sec.id)}
+							{@const on = form.phonebook_sections.includes(sec.id)}
+							<label class="flex items-center gap-2 font-normal">
+								<input
+									type="checkbox"
+									checked={on}
+									disabled={!on && form.phonebook_sections.length >= MAX_SECTIONS}
+									onchange={(e) => toggleSection(sec.id, e.currentTarget.checked)}
+								/>
+								{sec.name}
+							</label>
+						{/each}
+					</div>
+				{/if}
+				<p class="hint">{t('phones.phonebookSectionsHint')}</p>
+			</fieldset>
 		</section>
 
 		{#if model && model.line_keys > 0}

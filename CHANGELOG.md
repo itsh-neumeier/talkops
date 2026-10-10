@@ -32,6 +32,12 @@ All notable changes to TalkOps. The format follows
   UI says so at every number field); existing 2-digit numbers are kept.
 - Phone numbers in contacts may be written as `+49 (0)89 …` or with dots.
 
+### Fixed
+
+- Softphone: no more "Invalid session state Establishing" when a call is
+  answered twice (answer button and Enter, double click) or put on hold
+  before it is set up.
+
 ## [1.7.1] – 2026-10-10
 
 ### Added

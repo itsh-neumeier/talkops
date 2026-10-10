@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
-	import { Web, type Session } from 'sip.js';
+	import { SessionState, Web, type Session } from 'sip.js';
 	import { ApiError, api } from '#lib/api.ts';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
 	import { t } from '#lib/i18n/index.svelte.ts';
@@ -57,6 +57,11 @@
 		const number = raw.replace(/^(\d+)-\d+$/, '$1');
 		const name = id.displayName && id.displayName !== raw ? id.displayName : '';
 		peer = { name, number };
+	}
+
+	/** State of the current call in sip.js (`undefined` without a call). */
+	function sessionState(): SessionState | undefined {
+		return (user as unknown as { session?: Session } | null)?.session?.state;
 	}
 
 	function sipDebug(): boolean {
@@ -217,7 +222,14 @@
 		}
 	}
 
+	/**
+	 * Accepts a ringing call once: a second accept (button and Enter at the
+	 * same time, a double click) would fail with "Invalid session state".
+	 */
+	let answering = false;
 	async function answer(withVideo: boolean) {
+		if (answering || status !== 'ringing' || sessionState() !== SessionState.Initial) return;
+		answering = true;
 		video = withVideo;
 		try {
 			await user?.answer({
@@ -225,6 +237,8 @@
 			});
 		} catch (err) {
 			error = errorMessage(err);
+		} finally {
+			answering = false;
 		}
 	}
 
@@ -250,6 +264,8 @@
 		const target = e.target as HTMLElement | null;
 		const inNumber = target?.id === 'phone-number';
 		if (!inNumber && target?.closest('input, textarea, select, [contenteditable]')) return;
+		// Enter on a focused button already clicks it.
+		if (e.key === 'Enter' && target?.closest('button')) return;
 		const key = e.key === 'Multiply' ? '*' : e.key;
 		if (/^[0-9*#]$/.test(key) || (key === '+' && status !== 'incall')) {
 			if (inNumber && status !== 'incall') return; // the field types it itself
@@ -303,6 +319,8 @@
 	}
 
 	async function toggleHold() {
+		// Hold is a re-INVITE: only possible once the call is fully set up.
+		if (sessionState() !== SessionState.Established) return;
 		try {
 			if (held) await user?.unhold();
 			else await user?.hold();

@@ -6,6 +6,11 @@ All notable changes to TalkOps. The format follows
 
 ## [Unreleased]
 
+## [1.7.4] – 2026-10-10
+
+The tags 1.7.2 and 1.7.3 were set without raising the version in the code,
+so those images showed 1.7.1; their changes are listed here as well.
+
 ### Added
 
 - **Comfort settings for phones** under *Phones → Comfort settings* and on

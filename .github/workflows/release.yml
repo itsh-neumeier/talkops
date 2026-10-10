@@ -16,7 +16,27 @@ env:
   NAMESPACE: ghcr.io/itsh-neumeier
 
 jobs:
+  version:
+    name: Tag matches the version in the code
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      # The web UI shows the version from Cargo.toml; a tag without raising
+      # it would ship images that show the previous version.
+      - name: Compare tag, Cargo.toml and web/package.json
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          cargo=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
+          web=$(jq -r .version web/package.json)
+          echo "tag=$tag Cargo.toml=$cargo web/package.json=$web"
+          if [ "$tag" != "$cargo" ] || [ "$tag" != "$web" ]; then
+            echo "::error::Tag v$tag does not match Cargo.toml ($cargo) / web/package.json ($web). Raise the version first."
+            exit 1
+          fi
+
   build:
+    needs: version
     name: ${{ matrix.image }} (${{ matrix.arch }})
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 150

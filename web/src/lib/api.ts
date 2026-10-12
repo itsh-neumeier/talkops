@@ -46,7 +46,8 @@ async function send<T>(method: string, path: string, body?: unknown): Promise<T>
 	if (res.status === 204) return undefined as T;
 	const data = await res.json().catch(() => ({}));
 	if (!res.ok) {
-		if (res.status === 401 && !path.startsWith('/auth/login')) onUnauthorized();
+		if (res.status === 401 && !path.startsWith('/auth/login') && path !== '/auth/me')
+			onUnauthorized();
 		throw new ApiError(res.status, data.error ?? 'error', data.message ?? res.statusText);
 	}
 	return data as T;
@@ -113,6 +114,7 @@ export type DeviceKind =
 export interface Device {
 	id: string;
 	extension_id: string;
+	browser_user_id: string | null;
 	name: string;
 	kind: DeviceKind;
 	sip_username: string;
@@ -305,6 +307,26 @@ export interface ActiveCall {
 	callee_name: string;
 	state: 'ringing' | 'talking' | 'held' | 'parked' | 'system';
 	started_at: string | null;
+	direction: Call['direction'] | null;
+	caller: CallParty;
+	called: CallParty;
+	answered_at: string | null;
+	transcript_available: boolean;
+}
+
+export interface CallParty {
+	name: string;
+	number: string;
+	extension_id: string | null;
+	ambiguous: boolean;
+}
+
+export interface LiveTranscript {
+	id: string;
+	started_at: string;
+	processed_secs: number;
+	segments: TranscriptSegment[];
+	status: 'queued' | 'running' | 'done' | 'failed';
 }
 
 export type TranscriptStatus = 'none' | 'pending' | 'done' | 'failed';

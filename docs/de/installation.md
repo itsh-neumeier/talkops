@@ -1,5 +1,10 @@
 # Installation
 
+Für die Wiederherstellung auf einem neuen Host zuerst die gesicherte Konfiguration
+exportieren, bevor neue Zugangsdaten erzeugt werden. Siehe
+[Datensicherung und Wiederherstellung](datensicherung.md). Die Ersteinrichtung
+bietet ebenfalls einen Wiederherstellungsassistenten.
+
 ## Voraussetzungen
 
 - Linux-Host (x86_64 oder arm64), z. B. Debian/Ubuntu, Proxmox-VM, NAS mit Docker

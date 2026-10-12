@@ -25,10 +25,20 @@ pub const FIXED_FEATURE_CODES: &[&str] = &[
     "*98",
 ];
 
-/// Feature codes followed by more digits: pickup `**<ext>`, time condition
+/// Feature codes followed by more digits: pickup `*8*<ext>`, time condition
 /// `*30<n>`, hide caller ID `*31…`/`#31#…`, forwarding `*72<n>`, door
 /// opener `*85[<n>]`/`*86[<n>]`.
-pub const FEATURE_CODE_PREFIXES: &[&str] = &["**", "*30", "*31", "*72", "*85", "*86", "#31#"];
+pub const FEATURE_CODE_PREFIXES: &[&str] = &["*8*", "*30", "*31", "*72", "*85", "*86", "#31#"];
+
+/// Reads an explicit internal call number (`**101`), including legacy numbers.
+/// This checks syntax only. Resolve the target in the caller's tenant before use.
+pub fn explicit_internal_number(dialed: &str) -> Option<&str> {
+    let number = dialed.strip_prefix("**")?;
+    ((2..=8).contains(&number.len())
+        && !number.starts_with('0')
+        && number.bytes().all(|b| b.is_ascii_digit()))
+    .then_some(number)
+}
 
 /// All internal numbers of a tenant.
 pub async fn all_numbers<'e>(db: impl PgExecutor<'e>, tenant: TenantId) -> CoreResult<Vec<String>> {
@@ -174,6 +184,27 @@ pub async fn check_destination<'e>(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn explicit_internal_call_syntax() {
+        for number in ["21", "101", "510", "12345", "12345678"] {
+            let dialed = format!("**{number}");
+            assert_eq!(explicit_internal_number(&dialed), Some(number));
+        }
+        for dialed in [
+            "101",
+            "*101",
+            "**",
+            "**1",
+            "**0101",
+            "***101",
+            "**+101",
+            "**123456789",
+            "**abc",
+        ] {
+            assert_eq!(explicit_internal_number(dialed), None, "{dialed}");
+        }
+    }
 
     #[test]
     fn internal_number_rules() {

@@ -76,7 +76,7 @@ mod tests {
             },
             Entry {
                 name: "Lab".into(),
-                numbers: vec![("Ext".into(), "21".into())],
+                numbers: vec![("Ext".into(), "**21".into())],
             },
             Entry {
                 name: "Empty".into(),
@@ -86,9 +86,11 @@ mod tests {
         let xml = render("Intern", &entries);
         assert!(xml.contains("<Name>Müller &amp; Söhne</Name>"));
         assert!(xml.contains("<Telephone label=\"Mobile\">0171999</Telephone>"));
+        assert!(xml.contains("<Telephone label=\"Ext\">**21</Telephone>"));
         assert!(!xml.contains("Empty"));
         assert_eq!(search(entries.clone(), Some("müll")).len(), 1);
         assert_eq!(search(entries.clone(), Some("21")).len(), 1);
+        assert_eq!(search(entries.clone(), Some("**21")).len(), 1);
         assert_eq!(search(entries.clone(), Some("#SEARCH")).len(), 3);
         assert_eq!(search(entries, None).len(), 3);
     }

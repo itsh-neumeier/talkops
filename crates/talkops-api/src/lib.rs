@@ -1,5 +1,6 @@
 //! TalkOps control plane HTTP server.
 
+pub mod active_calls;
 pub mod attendant;
 pub mod auth;
 pub mod backup;
@@ -15,6 +16,7 @@ pub mod fsxml;
 pub mod ldap;
 pub mod mailer;
 pub mod phoneblock;
+pub mod recovery;
 pub mod retention;
 pub mod routes;
 pub mod sip_guard;
@@ -65,6 +67,7 @@ pub struct AppState {
     pub metrics_token: Option<Arc<str>>,
     /// Backup target; `None` disables the backup API.
     pub backup: Option<Arc<backup::BackupConfig>>,
+    pub setup_token: Option<Arc<str>>,
     /// Networks besides loopback that may call `/fs/*` (FreeSWITCH on
     /// another address, e.g. macvlan).
     pub fs_peers: Arc<Vec<(std::net::IpAddr, u8)>>,
@@ -111,6 +114,7 @@ impl AppState {
             limiter: Arc::new(LoginLimiter::default()),
             metrics_token: None,
             backup: None,
+            setup_token: None,
             fs_peers: Arc::new(Vec::new()),
             turn: None,
             diagnostics: Arc::default(),
@@ -200,6 +204,11 @@ impl AppState {
         self
     }
 
+    pub fn with_setup_token(mut self, token: Option<&str>) -> Self {
+        self.setup_token = token.filter(|s| s.len() >= 32).map(Arc::from);
+        self
+    }
+
     pub fn with_backup(mut self, cfg: backup::BackupConfig) -> Self {
         self.backup = Some(Arc::new(cfg));
         self
@@ -255,9 +264,11 @@ pub fn api_router() -> (Router<AppState>, utoipa::openapi::OpenApi) {
         .merge(routes::doors::router())
         .merge(routes::webrtc::router())
         .merge(routes::backups::router())
+        .merge(routes::recovery::router())
         .merge(routes::diagnostics::router())
         .merge(routes::blocking::router())
         .merge(routes::dashboard::router())
+        .merge(routes::live_transcripts::router())
         .merge(routes::audio::router())
         .merge(routes::security::router())
         .split_for_parts();

@@ -47,6 +47,8 @@ pub struct LiveStatus {
 #[derive(Debug, Clone, PartialEq, Serialize, utoipa::ToSchema)]
 pub struct ActiveCall {
     pub uuid: String,
+    #[serde(skip)]
+    pub bridge_uuid: String,
     pub caller_number: String,
     pub caller_name: String,
     /// Dialed number.
@@ -331,6 +333,7 @@ fn parse_calls(json: &str) -> Vec<ActiveCall> {
                 .unwrap_or_default();
             ActiveCall {
                 uuid: f("uuid"),
+                bridge_uuid: f("b_uuid"),
                 caller_number,
                 caller_name,
                 destination: f("dest").trim_start_matches("park+").to_owned(),

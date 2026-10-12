@@ -14,6 +14,7 @@
 		type TrunkDetail
 	} from '#lib/api.ts';
 	import CallChart from '#lib/components/CallChart.svelte';
+	import ActiveCalls from '#lib/components/ActiveCalls.svelte';
 	import GettingStarted from '#lib/components/GettingStarted.svelte';
 	import { formatDateTime, formatDuration, t, type MessageKey } from '#lib/i18n/index.svelte.ts';
 	import { hasRole } from '#lib/session.svelte.ts';
@@ -92,8 +93,6 @@
 			(tr) => tr.enabled && tr.accounts.length > 0 && registered(tr) === tr.accounts.length
 		).length
 	);
-	const since = (iso: string | null) =>
-		iso ? formatDuration(Math.max(0, Math.round((now - Date.parse(iso)) / 1000))) : '';
 	const missed = (c: Call) => c.direction === 'inbound' && !c.answered_at;
 
 	const DIRECTION_ICON: Record<Call['direction'], string> = {
@@ -242,38 +241,7 @@
 
 	<div class="grid gap-4 {hasRole('operator') ? 'lg:grid-cols-2' : ''}">
 		{#if hasRole('operator')}
-			<section class="card space-y-2">
-				<h2>{t('dash.active')}</h2>
-				{#if active.length === 0}
-					<p class="text-sm text-slate-500">{t('dash.noActive')}</p>
-				{:else}
-					<ul class="divide-y divide-slate-100 dark:divide-slate-800">
-						{#each active as c (c.uuid)}
-							<li class="flex items-center justify-between gap-3 py-2 text-sm">
-								<span class="min-w-0">
-									<span class="block truncate">
-										<span class="font-mono">{c.caller_number}</span>
-										{c.caller_name && c.caller_name !== c.caller_number ? c.caller_name : ''}
-										→ <span class="font-mono">{c.callee_number || c.destination}</span>
-										{c.callee_name}
-									</span>
-									<span class="text-xs text-slate-500"
-										>{t(`dash.state.${c.state}` as MessageKey)}</span
-									>
-								</span>
-								<span class="flex items-center gap-2">
-									{#if c.state === 'talking'}<span
-											class="h-2 w-2 animate-pulse rounded-full bg-emerald-500"
-										></span>{:else if c.state === 'ringing'}<span
-											class="h-2 w-2 animate-pulse rounded-full bg-amber-500"
-										></span>{/if}
-									<span class="font-mono text-xs tabular-nums">{since(c.started_at)}</span>
-								</span>
-							</li>
-						{/each}
-					</ul>
-				{/if}
-			</section>
+			<ActiveCalls calls={active} {now} />
 		{/if}
 		<section class="card space-y-2">
 			<div class="flex items-center justify-between">

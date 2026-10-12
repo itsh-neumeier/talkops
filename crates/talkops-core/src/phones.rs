@@ -772,6 +772,17 @@ pub struct Contact {
     pub section_id: Option<Uuid>,
 }
 
+impl Contact {
+    /// The same label used by the shared phonebook and live call overview.
+    pub fn display_name(&self) -> String {
+        if self.company.is_empty() || self.name.is_empty() {
+            format!("{}{}", self.name, self.company)
+        } else {
+            format!("{} ({})", self.name, self.company)
+        }
+    }
+}
+
 #[derive(Debug, Clone, Deserialize, utoipa::ToSchema)]
 pub struct ContactInput {
     pub name: String,
@@ -802,6 +813,11 @@ fn clean_number(n: &str) -> CoreResult<String> {
         .chars()
         .filter(|c| !matches!(c, ' ' | '\u{a0}' | '-' | '/' | '.' | '(' | ')'))
         .collect();
+    if cleaned.starts_with("**") {
+        return crate::numbering::explicit_internal_number(&cleaned)
+            .map(|_| cleaned.clone())
+            .ok_or_else(|| CoreError::Validation(format!("invalid internal phone number `{n}`")));
+    }
     let digits = cleaned.strip_prefix('+').unwrap_or(&cleaned);
     if !cleaned.is_empty() && (!digits.bytes().all(|b| b.is_ascii_digit()) || digits.len() > 20) {
         return Err(CoreError::Validation(format!("invalid phone number `{n}`")));

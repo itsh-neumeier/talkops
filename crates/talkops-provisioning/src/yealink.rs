@@ -294,7 +294,7 @@ pub fn render_phone(setup: &PhoneSetup<'_>) -> Result<String, RenderError> {
                 type_code: k.kind.code(),
                 account: k.account.clamp(1, setup.model.accounts),
                 pickup_value: if k.kind == KeyType::Blf && !value.starts_with("park+") {
-                    format!("**{value}")
+                    format!("*8*{value}")
                 } else {
                     String::new()
                 },
@@ -399,6 +399,7 @@ mod tests {
             "http://provision:p%40ss%3Aw@pbx.lan:8080/provisioning/phonebook/internal.xml"
         );
         assert_eq!(m["remote_phonebook.data.2.name"], "Kontakte");
+        assert_eq!(m["features.pickup.direct_pickup_code"], "*8*");
         assert!(m["action_url.dnd_on"].starts_with(
             "http://pbx.lan:8080/provisioning/events?key=p%40ss%3Aw&event=dnd_on&mac=$mac"
         ));
@@ -462,7 +463,7 @@ mod tests {
         assert_eq!(m["account.16.enable"], "0");
         assert_eq!(m["linekey.1.type"], "15");
         assert_eq!(m["linekey.3.type"], "16");
-        assert_eq!(m["linekey.3.pickup_value"], "**21");
+        assert_eq!(m["linekey.3.pickup_value"], "*8*21");
         assert_eq!(m["linekey.4.type"], "13");
         assert_eq!(m["linekey.27.type"], "0", "unconfigured keys are cleared");
         assert!(!m.contains_key("linekey.28.type"));
@@ -547,7 +548,7 @@ mod tests {
             assert_eq!(m["dsskey.enable"], "1");
             assert_eq!(m["linekey.1.type"], "16");
             assert_eq!(m["linekey.1.value"], "21");
-            assert_eq!(m["linekey.1.extension"], "**21", "{id}");
+            assert_eq!(m["linekey.1.extension"], "*8*21", "{id}");
             assert!(!m.contains_key("linekey.1.pickup_value"));
             assert_eq!(m["linekey.16.type"], "0");
             assert!(!m.contains_key("linekey.17.type"));

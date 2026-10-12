@@ -1,4 +1,69 @@
 export default {
+	'setup.choose': 'Create a new instance or recover an existing instance from a backup.',
+	'setup.new': 'Set up a new instance',
+	'setup.restore': 'Restore from backup',
+	'restore.title': 'Restore an existing instance',
+	'restore.intro':
+		'This assistant checks your backup and prepares deployment files. The host tool performs the offline restore.',
+	'restore.hostFirst':
+		'If this server cannot start yet, use the host steps below to export the original configuration first.',
+	'restore.limits':
+		'Browser inspection: up to 512 MiB uploaded and 8 GiB extracted. Use the host tool for larger backups.',
+	'restore.inspect': '1. Select and inspect the backup',
+	'restore.token': 'Local setup token',
+	'restore.tokenHint':
+		'Set TALKOPS_SETUP_TOKEN to a random value of at least 32 characters on the host, restart TalkOps, and enter that value here. Access closes when an account exists.',
+	'restore.archive': 'Backup archive',
+	'restore.password': 'Backup password (leave empty for an old unencrypted archive)',
+	'restore.inspectButton': 'Inspect backup',
+	'restore.review': '2. Review the recovery material',
+	'restore.date': 'Backup date',
+	'restore.schema': 'Database schema',
+	'restore.volumes': 'Included data volumes',
+	'restore.noRecordings': 'This backup excludes call recordings. They will not be recovered.',
+	'restore.complete': 'The required deployment files and credentials are included.',
+	'restore.incomplete':
+		'Recovery configuration is incomplete. Supply the missing files or values before restore.',
+	'restore.project': 'Compose project',
+	'restore.profiles': 'Profiles',
+	'restore.configDate': 'Configuration captured',
+	'restore.imported':
+		'This configuration was imported manually. Check that it matches the original stack.',
+	'restore.legacy':
+		'This old backup contains no deployment configuration. Supply the original Compose files, .env and TALKOPS_SECRET_KEY.',
+	'restore.downloadConsent':
+		'I understand that the download contains unencrypted passwords and the application key. I will store it securely.',
+	'restore.download': 'Download deployment files',
+	'restore.hostSteps': '3. Complete recovery on the Linux host',
+	'restore.getTool':
+		'Export the host tool from a TalkOps image that supports this backup format. Pin a suitable image version in production.',
+	'restore.prepareHint':
+		'Save the archive as backup.archive. Put the backup password in a private file named backup-password. Run this command to export files into a new directory. For old archives, omit --password-file.',
+	'restore.checkHost':
+		'Review the exported .env and Compose files. Preserve TALKOPS_SECRET_KEY. Check IP addresses, domain, ports, volume storage, image versions, project name and profiles. Supply missing configuration.',
+	'restore.runHint':
+		'Run from the reviewed deployment directory. Adapt the example paths, project name and all -f, --env-file and --profile options. The tool asks for confirmation, stops writers, restores data and restarts the stack.',
+	'restore.portainer':
+		'For Portainer, import the reviewed stack and environment values. Stop TalkOps, the media worker and FreeSWITCH. Keep PostgreSQL running. Run talkops restore --yes in a temporary container with the same volumes and environment; then redeploy the reviewed stack.',
+	'restore.verify':
+		'After restart, sign in with a restored account, including its MFA. Check service health, phone registration and a test call.',
+	'restore.failure':
+		'If restore fails, writers stay stopped. Check restore-state.json in the backups volume. Correct the failed phase and retry with the original archive. Database and volume replacement do not share one transaction.',
+	'restore.login': 'Check completion and go to login',
+	'restore.notFinished': 'No restored account is available yet. Finish the host restore first.',
+	'backup.configTitle': 'Recovery configuration',
+	'backup.configComplete': 'Required deployment files are included.',
+	'backup.configMissing': 'Recovery configuration is incomplete. Missing:',
+	'backup.configImported': 'Imported configuration must be updated after every stack change.',
+	'backup.encryptionMissing':
+		'No backup password is configured. Complete backups with deployment secrets require TALKOPS_BACKUP_PASSWORD or TALKOPS_BACKUP_PASSWORD_FILE.',
+	'backup.importTitle': 'Import Portainer deployment configuration',
+	'backup.importHint':
+		'Select .env and docker-compose*.yml/yaml files. Paste Portainer environment values into a local .env first. Keep the backup password in a separate file. Imported files are stored encrypted.',
+	'backup.importFiles': 'Deployment files',
+	'backup.importButton': 'Store configuration',
+	'backup.project': 'Compose project name',
+	'backup.profiles': 'Enabled profiles (comma-separated)',
 	'audio.speechSpeed': 'Speech speed',
 	'audio.speedHint': '0.5× to 2.0×. 1.0× keeps the previous speed; lower values are slower.',
 	'audio.speedTagsHint':
@@ -425,7 +490,7 @@ export default {
 	'calls.forwardAll': 'Forward all calls to',
 	'calls.forwardPlaceholder': 'extension or phone number',
 	'calls.featureCodes':
-		'On the phone: *78 / *79 DND on/off, *72<number> / *73 forwarding on/off, **<extension> pick up.',
+		'On the phone: **<extension> internal call, *78 / *79 DND on/off, *72<number> / *73 forwarding on/off, *8*<extension> pick up.',
 	'contacts.new': 'New contact',
 	'contacts.none': 'The phonebook is empty.',
 	'contacts.hint':
@@ -434,7 +499,8 @@ export default {
 	'contacts.work': 'Work',
 	'contacts.mobile': 'Mobile',
 	'contacts.other': 'Other',
-	'contacts.numberHint': 'National (089 123456) or international (+49 89 123456) format.',
+	'contacts.numberHint':
+		'Internal extension: **101. External number: national (089 123456) or international (+49 89 123456) format.',
 	'kinds.wifi': 'Wi-Fi handset',
 	'phones.accountLabel': 'Label on the phone',
 	'phones.accountDisplayName': 'Display name',
@@ -922,7 +988,7 @@ export default {
 	'phone.hold': 'Hold',
 	'phone.resume': 'Resume',
 	'phone.hint':
-		'The browser softphone rings with your other phones while this page is open. Allow microphone (and camera for video) when the browser asks.',
+		'Keep this tab open to receive calls while navigating in TalkOps. Allow microphone access (and camera access for video) when the browser asks.',
 	'kinds.browser': 'Browser',
 	'backup.title': 'Backups',
 	'backup.hint':
@@ -1121,6 +1187,27 @@ export default {
 	'dash.chart.summary': '{inbound} inbound · {outbound} outbound · {internal} internal',
 	'dash.lastBackup': 'Last backup',
 	'dash.active': 'Calls in progress',
+	'dash.call.inbound': 'Incoming call to extension:',
+	'dash.call.outbound': 'Outgoing call from extension:',
+	'dash.call.internal': 'Internal call from extension:',
+	'dash.call.unknown': 'Call from:',
+	'dash.call.from': 'from',
+	'dash.call.to': 'to',
+	'dash.call.talkTime': 'Talk time since answer',
+	'dash.call.waitTime': 'Waiting time since call start',
+	'dash.party.anonymous': 'Unknown / anonymous',
+	'dash.party.multiple': 'Multiple phonebook entries',
+	'dash.live.open': 'Live transcript',
+	'dash.live.title': 'Live transcript',
+	'dash.live.provisional':
+		'Provisional local recognition with a delay. Times refer to speech. The preview starts with the last few seconds when opened.',
+	'dash.live.waiting': 'Waiting for speech and recognition …',
+	'dash.live.updating': 'New contributions are added automatically.',
+	'dash.live.ended': 'The call or live preview has ended.',
+	'dash.live.error':
+		'Live preview is unavailable. Check recording, transcription, the media worker and available capacity.',
+	'dash.live.caller': 'Caller',
+	'dash.live.called': 'Called party',
 	'dash.noActive': 'No calls right now.',
 	'dash.state.ringing': 'Ringing',
 	'dash.state.talking': 'Talking',
@@ -1144,5 +1231,42 @@ export default {
 	'flow.menu.removeKey': 'Remove branch “{key}”',
 	'flow.menu.confirmRemove': 'Remove {n} steps?',
 	'flow.menu.confirmBranches': 'The {n} steps below will be removed. Continue?',
-	'flow.rightClickHint': 'Tip: right-click a step or key for more actions.'
+	'flow.rightClickHint': 'Tip: right-click a step or key for more actions.',
+	'phone.identity': 'Call identity',
+	'phone.selectIdentity': 'Select an extension',
+	'phone.noOutbound': 'No outbound route',
+	'phone.outbound': 'Outgoing number',
+	'phone.identityHelp':
+		'Incoming calls and call settings follow the selected extension. The softphone stays connected while you navigate in TalkOps. Closing this tab or signing out disconnects it.',
+	'phone.reconnect': 'Reconnect',
+	'phone.audioSettings': 'Audio devices and tests',
+	'phone.microphone': 'Microphone',
+	'phone.output': 'Headset / speaker',
+	'phone.systemDefault': 'System default',
+	'phone.outputUnsupported':
+		'This browser uses the system output device. Select the speaker in your operating system.',
+	'phone.deviceLost':
+		'An audio device was disconnected. The system default is selected. Check your audio before the next call.',
+	'phone.testMicrophone': 'Test microphone',
+	'phone.stopTest': 'Stop test',
+	'phone.testSound': 'Test sound',
+	'phone.microphoneLevel': 'Microphone level',
+	'phone.microphoneHelp':
+		'Allow microphone access to see device names. Microphone changes apply to the next call.',
+	'phone.ringtone': 'Audible ringtone',
+	'phone.enableSound': 'Enable ringtone / test sound',
+	'phone.enableNotifications': 'Enable call notifications',
+	'phone.disableNotifications': 'Disable call notifications',
+	'phone.refresh': 'Refresh',
+	'phone.searchContacts': 'Search contacts',
+	'phone.favorite': 'Favorite: {name}',
+	'phone.recentCalls': 'Recent calls',
+	'phone.callFilter': 'Filter calls',
+	'phone.allCalls': 'All calls',
+	'phone.missedCalls': 'Missed incoming',
+	'phone.unanswered': 'Unanswered',
+	'phone.callNumber': 'Call {number}',
+	'phone.noIdentity': 'No active extension is available for this account.',
+	'phone.identityUnavailable':
+		'This extension is no longer available. Refresh the list and select an available extension.'
 } as const;

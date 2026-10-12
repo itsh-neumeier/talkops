@@ -3,6 +3,10 @@
 - Status: Angenommen
 - Datum: 2026-10-07
 
+Archive format and restore validation details are superseded by
+[ADR 0021](0021-guided-recovery-and-encrypted-deployment-backups.md).
+The offline restore rule remains in effect.
+
 ## Kontext
 
 Phase 8 macht TalkOps betriebsfertig. Familien und kleine Betriebe haben

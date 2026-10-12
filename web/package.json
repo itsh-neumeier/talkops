@@ -1,7 +1,7 @@
 {
 	"name": "talkops-web",
 	"private": true,
-	"version": "1.7.6",
+	"version": "1.7.7",
 	"type": "module",
 	"license": "AGPL-3.0-only",
 	"scripts": {
@@ -10,7 +10,8 @@
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-		"lint": "prettier --check ."
+		"lint": "prettier --check .",
+		"test": "node --experimental-strip-types --test tests/*.test.ts"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-static": "^4.0.0",

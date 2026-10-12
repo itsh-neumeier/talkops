@@ -35,10 +35,17 @@ PR 1 is complete on the branch. Facts:
   PCMU and PCMA enabled.
 - `devices.codec_profile` stores the profile. `NULL` is automatic:
   Wi-Fi handsets use `hd`, all other devices use `standard`.
-- Calls to a device: the directory params `dial-var-absolute_codec_string`
-  and `dial-var-jitterbuffer_msec` set the device leg. `mod_dptools`
-  `user_outgoing_channel` (FreeSWITCH v1.10.12) deletes the exported variable
-  of the same name and adds the `dial-var-*` value.
+- Calls to a device through the dialplan: each endpoint of the device has
+  per-leg variables (`[^^;absolute_codec_string=…;jitterbuffer_msec=…;rtp_jitter_buffer_during_bridge=true]`)
+  and the bridge starts with `{local_var_clobber=true}`. Calls without a
+  dialplan bridge (queues, ESL) get the same values from the `{…}`
+  variables of the directory dial-string.
+- First approach failed: `dial-var-*` (and directory `{…}` variables) lose
+  in dialplan bridges. `switch_ivr_originate` sets the caller's exported
+  variables on the new channel after the channel is created. A local
+  FreeSWITCH build with SIP debug logs showed the offer
+  `OPUS,G722,PCMA,PCMU` to the handset. The SIPp UAS did not stop the
+  scenario on a failed `check_it`, so the first CI analysis was wrong.
 - Calls from a device: the directory variable `talkops_codec_profile`
   identifies the profile. `with_caller_codecs` in `fsxml/dialplan.rs` sets
   the caller leg first and changes the plan's `absolute_codec_string`
@@ -57,8 +64,9 @@ PR 1 is complete on the branch. Facts:
   `codec_profile`.
 - `crates/talkops-api/src/fsxml/codecs.rs`: profile to codec list and jitter
   buffer.
-- `crates/talkops-api/src/fsxml/directory.rs`: `dial-var-*` params and the
-  `talkops_codec_profile` variable.
+- `crates/talkops-api/src/fsxml/directory.rs`: profile variables in the
+  `{^^;…}` block of the user dial-string and the `talkops_codec_profile`
+  variable.
 - `crates/talkops-api/src/fsxml/dialplan.rs`: `with_caller_codecs`.
 - `crates/talkops-api/src/routes/extensions.rs`: audit entry contains the
   profile.
@@ -84,8 +92,9 @@ PR 1 is complete on the branch. Facts:
 
 ## Decisions
 
-- Use `dial-var-*` in the directory instead of changes to every bridge
-  string. One place covers extensions, ring groups, queues and ESL calls.
+- Per-leg variables in the dialplan bridge strings (`device_endpoint` in
+  `fsxml/dialplan.rs`) plus the directory for calls without a dialplan
+  bridge. `ring_targets` returns the device kind and profile for this.
 - Wi-Fi handsets default to `hd`. `robust` is a manual selection until PR 3.
 - The phone gets the same codec list for `hd` and `robust`. TalkOps selects
   the codec per call. A change between `hd` and `robust` needs no resync.
@@ -114,10 +123,16 @@ PR 1 is complete on the branch. Facts:
 - Passed: the build stage of `docker/freeswitch/Dockerfile` (sofia-sip,
   spandsp, libilbc, FreeSWITCH v1.10.12 with the patches) in
   `debian:trixie-slim` with pre-cloned sources. `mod_ilbc.so` links
-  `libilbc.so.0`. The module was not loaded in a running FreeSWITCH.
-- Not run: `docker build` of `docker/freeswitch` (the sandbox blocks the
-  proxy access that the build needs). CI workflow `FreeSWITCH image` runs it.
-- Not run: `tests/e2e/run.sh` (needs the full Docker stack and SIPp). CI
+  `libilbc.so.0`.
+- Passed: CI workflow `FreeSWITCH image` (build, all modules loaded, `show
+  codec` lists iLBC).
+- Passed (local stack): FreeSWITCH from that build in a container, TalkOps
+  native, SIPp 3.7.2. A G.711 caller calls a handset with `robust`: the
+  handset leg uses iLBC 20 ms with a 60 ms jitter buffer, the caller leg
+  uses PCMU. The handset calls an extension with G.722 first in its offer:
+  TalkOps answers with iLBC, the other leg uses PCMU. A sequential ring
+  group with the handset gives the same result.
+- Not run locally: the full `tests/e2e/run.sh` (needs all images). CI
   workflow `E2E` runs it.
 - STE review: full standard unavailable; review pending.
 
@@ -140,5 +155,6 @@ Wait for the review of PR 1. Then start PR 2 from the updated target branch.
 - `docs/adr/0023-device-codec-profiles.md`
 - `docs/release-workflow.md`
 - FreeSWITCH v1.10.12 `src/mod/applications/mod_dptools/mod_dptools.c`
-  (`user_outgoing_channel`, `dial-var-`), `src/switch_core_media.c`
+  (`user_outgoing_channel`), `src/switch_ivr_originate.c` (variable order,
+  `local_var_clobber`), `src/switch_core_media.c`
   (`switch_core_media_prepare_codecs`, `jitterbuffer_msec`).

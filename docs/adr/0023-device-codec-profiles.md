@@ -18,11 +18,16 @@ FreeSWITCH can transcode between two legs with different codecs.
 
 1. Use one global codec list for all devices. This option does not help a
    device in a bad network.
-2. Set a codec list per device in the dialplan for each bridge string
-   (extensions, ring groups, queues, pickups). Many code paths must change.
-3. Set a codec profile per device. The directory entry of the device
-   (`dial-var-*`) sets the codecs of every leg to the device. The dialplan
-   sets the codecs of the leg from the device.
+2. Set a codec list only in the directory entry of the device
+   (`dial-var-*` or the `{…}` variables of the dial-string). A test with
+   FreeSWITCH 1.10.12 showed that this does not work for dialplan bridges:
+   `switch_ivr_originate` sets the variables the caller exported on the new
+   channel after the channel is created, so the exported
+   `absolute_codec_string` of the dialplan replaces the value.
+3. Set a codec profile per device. The dialplan sets the codecs of the leg
+   to the device per leg in the bridge string. The directory covers calls
+   without a dialplan bridge. The dialplan sets the codecs of the leg from
+   the device.
 4. Change the codec in a call (`uuid_media_reneg`) when the quality drops.
    The re-INVITE causes a short audio gap and often fails in a bad network.
 
@@ -36,15 +41,22 @@ TalkOps uses option 3.
 - `standard` changes nothing. The dialplan codec lists apply.
 - `hd` uses `G722,PCMA,PCMU`. `robust` uses `iLBC@20i,iLBC@30i,PCMA,PCMU`.
   Both profiles add a jitter buffer (`jitterbuffer_msec=60:200`) on the leg
-  of the device.
-- Calls to the device: the directory user has the params
-  `dial-var-absolute_codec_string` and `dial-var-jitterbuffer_msec`.
-  `mod_dptools` (`user_outgoing_channel`) replaces exported variables of the
-  same name with these values. Thus every `user/` bridge uses the profile,
-  also for ring groups, queues and calls from the Event Socket.
+  of the device. `rtp_jitter_buffer_during_bridge=true` keeps the jitter
+  buffer active while the call is bridged. Without it, FreeSWITCH pauses
+  the jitter buffer in a bridge.
+- Calls to the device through the dialplan (extension, ring group): each
+  endpoint of the device has the per-leg variables
+  `[^^;absolute_codec_string=…;jitterbuffer_msec=…;rtp_jitter_buffer_during_bridge=true]`.
+  The bridge string starts with `{local_var_clobber=true}`, so the per-leg
+  variables win over the exported codec list. `^^;` keeps the commas of the
+  codec list in the variable.
+- Calls to the device without a dialplan bridge (queue agents of
+  `mod_callcenter`, calls started over the Event Socket): the `{…}`
+  variables of the directory dial-string set the same values. These calls
+  have no exported codec list.
 - Calls from the device: the directory variable `talkops_codec_profile`
-  identifies the profile. The dialplan sets `absolute_codec_string` and
-  `jitterbuffer_msec` on the caller's leg first. The plan changes its own
+  identifies the profile. The dialplan sets the same variables on the
+  caller's leg first. The plan changes its own
   codec lists to `export nolocal:absolute_codec_string=…`, so these lists
   apply only to the called legs.
 - FreeSWITCH transcodes between the leg of the device and the other leg.

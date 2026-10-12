@@ -12,7 +12,7 @@
   <send>
     <![CDATA[
       SIP/2.0 180 Ringing
-      X-Matched: [$ilbc]
+      X-Matched: [$ilbc] [$other]
       [last_Via:]
       [last_From:]
       [last_To:];tag=[pid]SIPpTag01[call_number]

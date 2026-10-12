@@ -3,6 +3,7 @@
 	import { api, type VoicemailBox } from '#lib/api.ts';
 	import AudioPicker, { type AudioMode } from '#lib/components/AudioPicker.svelte';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
+	import SpeechSpeed from '#lib/components/SpeechSpeed.svelte';
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
 
@@ -71,6 +72,7 @@
 				greeting,
 				greeting_text: box.greeting_text,
 				greeting_clip_id: clip,
+				speech_speed: box.speech_speed,
 				max_message_secs: Number(box.max_message_secs),
 				ring_timeout_secs: Number(box.ring_timeout_secs)
 			});
@@ -143,6 +145,8 @@
 			</div>
 		</div>
 		<p class="hint">{t('vm.pinHint')}</p>
+		<SpeechSpeed id="vm-speed-{extensionId}" bind:value={box.speech_speed} />
+		<p class="hint">{t('vm.speedHint')}</p>
 
 		<fieldset class="space-y-2">
 			<legend class="text-sm font-medium">{t('vm.greeting')}</legend>
@@ -151,6 +155,8 @@
 					bind:this={picker}
 					bind:mode
 					bind:clipId
+					bind:speed={box.speech_speed}
+					inheritSpeed
 					language={box.language ?? 'de'}
 					defaultText={t('vm.greetingTemplate', { name: displayName || '…' })}
 					{legacy}

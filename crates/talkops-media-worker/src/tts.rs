@@ -5,6 +5,7 @@
 //! batch. Files are rendered under a temporary name and renamed when done, so
 //! FreeSWITCH never plays a half-written file.
 
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 
@@ -47,6 +48,66 @@ impl Piper {
         if items.is_empty() {
             return Ok(());
         }
+        // Parse every item before starting Piper. Invalid markup must never
+        // become spoken text or leave a partially replaced batch.
+        let parsed = items
+            .iter()
+            .map(|(text, file)| Ok((talkops_core::speech::segments(text, 1.0)?, file)))
+            .collect::<anyhow::Result<Vec<_>>>()?;
+        let parent = items[0]
+            .1
+            .parent()
+            .context("output file without directory")?;
+        let work = parent.join(format!(".tts-{}", uuid::Uuid::new_v4()));
+        tokio::fs::create_dir_all(&work).await?;
+        let result = async {
+            let mut batches: BTreeMap<u64, Vec<(String, PathBuf)>> = BTreeMap::new();
+            let mut outputs = Vec::new();
+            for (i, (parts, file)) in parsed.into_iter().enumerate() {
+                let mut paths = Vec::new();
+                for (j, part) in parts.into_iter().enumerate() {
+                    let path = work.join(format!("{i}-{j}.wav"));
+                    batches
+                        .entry(part.speed.to_bits())
+                        .or_default()
+                        .push((part.text, path.clone()));
+                    paths.push(path);
+                }
+                outputs.push((paths, file));
+            }
+            // The pinned Piper accepts length_scale per process. Batch all
+            // segments that use the same speed to avoid repeated model loads.
+            for (bits, batch) in batches {
+                self.render_plain(model, &batch, f64::from_bits(bits))
+                    .await?;
+            }
+            for (i, (paths, file)) in outputs.into_iter().enumerate() {
+                let staged = if paths.len() == 1 {
+                    paths[0].clone()
+                } else {
+                    let joined = work.join(format!("{i}-joined.wav"));
+                    join_wav(&paths, &joined)?;
+                    joined
+                };
+                tokio::fs::create_dir_all(file.parent().context("output directory")?).await?;
+                tokio::fs::rename(&staged, file).await?;
+            }
+            Ok(())
+        }
+        .await;
+        let _ = tokio::fs::remove_dir_all(&work).await;
+        result
+    }
+
+    async fn render_plain(
+        &self,
+        model: &str,
+        items: &[(String, PathBuf)],
+        speed: f64,
+    ) -> anyhow::Result<()> {
+        if items.is_empty() {
+            return Ok(());
+        }
         let model = self.model_path(model);
         anyhow::ensure!(
             self.bin.is_file() && model.is_file(),
@@ -67,7 +128,21 @@ impl Piper {
             renames.push((tmp, file.clone()));
         }
 
-        let mut child = Command::new(&self.bin)
+        let mut command = Command::new(&self.bin);
+        if speed != 1.0 {
+            // Scale the model's own default. A factor of 1.0 retains the
+            // existing voice, including models whose default is not 1.0.
+            let config: serde_json::Value =
+                serde_json::from_slice(&tokio::fs::read(model.with_extension("onnx.json")).await?)?;
+            let default = config["inference"]["length_scale"]
+                .as_f64()
+                .filter(|v| v.is_finite() && *v > 0.0)
+                .context("voice config has no valid inference.length_scale")?;
+            command
+                .arg("--length_scale")
+                .arg((default / speed).to_string());
+        }
+        let mut child = command
             .arg("--model")
             .arg(&model)
             .arg("--json-input")
@@ -104,6 +179,26 @@ impl Piper {
     }
 }
 
+/// Concatenates PCM samples, not WAV headers. Reject incompatible segments.
+fn join_wav(paths: &[PathBuf], output: &Path) -> anyhow::Result<()> {
+    let first = hound::WavReader::open(&paths[0])?;
+    let spec = first.spec();
+    anyhow::ensure!(
+        spec.sample_format == hound::SampleFormat::Int && spec.bits_per_sample == 16,
+        "Piper segments must be 16-bit PCM"
+    );
+    let mut writer = hound::WavWriter::create(output, spec)?;
+    for path in paths {
+        let mut reader = hound::WavReader::open(path)?;
+        anyhow::ensure!(reader.spec() == spec, "incompatible Piper WAV segments");
+        for sample in reader.samples::<i16>() {
+            writer.write_sample(sample?)?;
+        }
+    }
+    writer.finalize()?;
+    Ok(())
+}
+
 /// One line of plain text: Piper reads one sentence batch per JSON line.
 fn clean(text: &str) -> String {
     text.split_whitespace().collect::<Vec<_>>().join(" ")
@@ -135,24 +230,40 @@ pub async fn ensure_prompts(piper: &Piper, sounds_dir: &Path) -> anyhow::Result<
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use std::os::unix::fs::PermissionsExt;
 
     /// Stand-in for Piper: writes a fake WAV to every `output_file` it reads.
-    fn fake_piper(dir: &Path) -> Piper {
+    pub(crate) fn fake_piper(dir: &Path) -> Piper {
         let bin = dir.join("piper");
         std::fs::write(
             &bin,
-            "#!/bin/sh\nwhile read -r line; do\n  f=$(echo \"$line\" | sed 's/.*\"output_file\":\"\\([^\"]*\\)\".*/\\1/')\n  \
-             head -c 2000 /dev/zero > \"$f\"\ndone\n",
+            r#"#!/usr/bin/env python3
+import json, pathlib, struct, sys, wave
+args = sys.argv[1:]
+scale = float(args[args.index('--length_scale') + 1]) if '--length_scale' in args else 0.9
+log = pathlib.Path(__file__).with_suffix('.log')
+for line in sys.stdin:
+    item = json.loads(line)
+    with log.open('a') as out:
+        out.write(json.dumps({'text': item['text'], 'scale': scale}) + '\n')
+    with wave.open(item['output_file'], 'wb') as out:
+        out.setparams((1, 2, 16000, 0, 'NONE', 'not compressed'))
+        out.writeframes(struct.pack('<h', ord(item['text'][0])) * round(160 * scale / 0.9))
+"#,
         )
         .unwrap();
         std::fs::set_permissions(&bin, std::fs::Permissions::from_mode(0o755)).unwrap();
         let voices = dir.join("voices");
         std::fs::create_dir_all(&voices).unwrap();
-        for lang in prompts::LANGUAGES {
-            std::fs::write(voices.join(format!("{}.onnx", prompts::voice(lang))), b"x").unwrap();
+        for voice in talkops_core::audio::VOICES {
+            std::fs::write(voices.join(format!("{}.onnx", voice.model)), b"x").unwrap();
+            std::fs::write(
+                voices.join(format!("{}.onnx.json", voice.model)),
+                br#"{"inference":{"length_scale":0.9}}"#,
+            )
+            .unwrap();
         }
         Piper {
             bin,
@@ -190,5 +301,95 @@ mod tests {
                 .is_err()
         );
         std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[tokio::test]
+    async fn renders_speed_segments_in_order_and_preserves_existing_audio_on_error() {
+        let dir = tempdir();
+        let piper = fake_piper(&dir);
+        let path = dir.join("joined.wav");
+        piper
+            .render(
+                "de",
+                &[(
+                    "<speed:1.2>A</speed><speed:0.7>B</speed><speed:1.2>C</speed>".into(),
+                    path.clone(),
+                )],
+            )
+            .await
+            .unwrap();
+        let mut reader = hound::WavReader::open(&path).unwrap();
+        let samples = reader
+            .samples::<i16>()
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
+        let mut expected = vec![65; 133];
+        expected.extend(vec![66; 229]);
+        expected.extend(vec![67; 133]);
+        assert_eq!(samples, expected);
+        let log = std::fs::read_to_string(piper.bin.with_extension("log")).unwrap();
+        let lines: Vec<serde_json::Value> = log
+            .lines()
+            .map(|l| serde_json::from_str(l).unwrap())
+            .collect();
+        assert!(
+            lines
+                .iter()
+                .any(|l| (l["scale"].as_f64().unwrap() - 0.9 / 0.7).abs() < 1e-9)
+        );
+        assert!(
+            lines
+                .iter()
+                .all(|l| !l["text"].as_str().unwrap().contains('<'))
+        );
+        let original = std::fs::read(&path).unwrap();
+        assert!(
+            piper
+                .render("de", &[("<speed:0.7>bad".into(), path.clone())])
+                .await
+                .is_err()
+        );
+        assert_eq!(std::fs::read(&path).unwrap(), original);
+        // Failure after segment synthesis must also leave the published file.
+        std::fs::write(
+            piper.voices_dir.join("de_DE-thorsten-medium.onnx.json"),
+            "{}",
+        )
+        .unwrap();
+        assert!(
+            piper
+                .render("de", &[("<speed:0.7>bad</speed>".into(), path.clone())])
+                .await
+                .is_err()
+        );
+        assert_eq!(std::fs::read(&path).unwrap(), original);
+        assert!(!std::fs::read_dir(&dir).unwrap().any(|e| {
+            e.unwrap()
+                .file_name()
+                .to_string_lossy()
+                .starts_with(".tts-")
+        }));
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn refuses_incompatible_wave_segments() {
+        let dir = tempdir();
+        let mut paths = Vec::new();
+        for rate in [8000, 16000] {
+            let path = dir.join(format!("{rate}.wav"));
+            let spec = hound::WavSpec {
+                channels: 1,
+                sample_rate: rate,
+                bits_per_sample: 16,
+                sample_format: hound::SampleFormat::Int,
+            };
+            let mut w = hound::WavWriter::create(&path, spec).unwrap();
+            w.write_sample(1i16).unwrap();
+            w.finalize().unwrap();
+            paths.push(path);
+        }
+        assert!(join_wav(&paths, &dir.join("joined.wav")).is_err());
+        std::fs::remove_dir_all(dir).unwrap();
     }
 }

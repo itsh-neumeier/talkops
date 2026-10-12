@@ -958,8 +958,55 @@ fn vm_input() -> VoicemailBoxInput {
         greeting_text: String::new(),
         max_message_secs: 120,
         ring_timeout_secs: None,
+        speech_speed: None,
         greeting_clip_id: None,
     }
+}
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn greeting_speed_changes_queue_audio_and_ignore_old_results(pool: PgPool) {
+    let e = extensions::create(&pool, T, &ext("203"), &[])
+        .await
+        .unwrap();
+    let mut input = vm_input();
+    input.greeting = "tts".into();
+    input.greeting_text = "Hallo <speed:0.7>Anna</speed>.".into();
+    let normal = voicemail::update_box(&pool, T, e.id, &input, "de")
+        .await
+        .unwrap();
+    assert_eq!(normal.speech_speed, 1.0);
+    input.speech_speed = Some(0.8);
+    voicemail::update_box(&pool, T, e.id, &input, "de")
+        .await
+        .unwrap();
+    voicemail::set_greeting_status(&pool, e.id, &input.greeting_text, true)
+        .await
+        .unwrap();
+    assert_eq!(
+        voicemail::get_box(&pool, T, e.id)
+            .await
+            .unwrap()
+            .greeting_status,
+        "pending"
+    );
+    voicemail::set_greeting_status_at_speed(&pool, e.id, &input.greeting_text, 0.8, true)
+        .await
+        .unwrap();
+    assert_eq!(
+        voicemail::get_box(&pool, T, e.id)
+            .await
+            .unwrap()
+            .greeting_status,
+        "ready"
+    );
+    let payloads: Vec<serde_json::Value> = sqlx::query_scalar(
+        "SELECT payload FROM jobs WHERE kind = 'tts.greeting' ORDER BY created_at",
+    )
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    assert_eq!(payloads.len(), 2);
+    assert_eq!(payloads[1]["speech_speed"], 0.8);
 }
 
 #[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
@@ -1049,7 +1096,10 @@ async fn voicemail_boxes_messages_and_smtp(pool: PgPool) {
         .unwrap()
         .unwrap();
     assert_eq!(job.payload["language"], "en");
-    assert_eq!(job.payload["file"], voicemail::greeting_file(T, e.id));
+    assert_eq!(
+        job.payload["file"],
+        voicemail::greeting_tts_file(T, e.id, "en", &tts.greeting_text, 1.0).unwrap()
+    );
     assert!(
         jobs::claim(&pool, "w", &[voicemail::JOB_TTS_GREETING])
             .await

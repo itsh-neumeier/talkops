@@ -26,6 +26,88 @@ fn wav(samples: u32) -> Vec<u8> {
     out.into_inner()
 }
 
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn speech_speed_is_stored_and_shared_greetings_are_copied(db: PgPool) {
+    let router = talkops_api::app(state(db.clone()), None);
+    let admin = setup_admin(&router).await;
+    let (status, clip) = admin
+        .post(
+            "/api/v1/audio/clips/tts",
+            json!({"text":"Hallo <speed:1.2>Welt</speed>", "speech_speed":0.7}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::ACCEPTED, "{clip}");
+    assert_eq!(clip["speech_speed"], 0.7);
+    let clip_id = clip["id"].as_str().unwrap();
+    let work = talkops_core::audio::render_job(&db, clip_id.parse().unwrap())
+        .await
+        .unwrap();
+    assert_eq!(work.speech_speed, 0.7);
+    assert!(work.text.contains("<speed:1.2>"));
+    let (_, ext) = admin
+        .post(
+            "/api/v1/extensions",
+            json!({"number":"301", "display_name":"Test"}),
+        )
+        .await;
+    let vm = format!(
+        "/api/v1/extensions/{}/voicemail",
+        ext["id"].as_str().unwrap()
+    );
+    let (_, default) = admin.get(&vm).await;
+    assert_eq!(default["speech_speed"], 1.0);
+    let (status, box_view) = admin
+        .put(
+            &vm,
+            json!({"enabled":true, "greeting":"clip",
+        "greeting_clip_id":clip_id, "speech_speed":0.8}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{box_view}");
+    assert_eq!(box_view["speech_speed"], 0.8);
+    let copy_id = box_view["greeting_clip_id"].as_str().unwrap();
+    assert_ne!(copy_id, clip_id);
+    let (_, original) = admin.get(&format!("/api/v1/audio/clips/{clip_id}")).await;
+    let (_, copy) = admin.get(&format!("/api/v1/audio/clips/{copy_id}")).await;
+    assert_eq!(original["speech_speed"], 0.7);
+    assert_eq!(copy["speech_speed"], 0.8);
+    assert_eq!(original["text"], copy["text"]);
+    let (status, kept) = admin
+        .put(
+            &vm,
+            json!({"enabled":true, "greeting":"clip", "greeting_clip_id":copy_id}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(
+        kept["speech_speed"], 0.8,
+        "old clients do not reset the box speed"
+    );
+    assert_eq!(kept["greeting_clip_id"], copy_id);
+    for input in [
+        json!({"enabled":true,"speech_speed":0.4}),
+        json!({"enabled":true,"speech_speed":2.1}),
+        json!({"enabled":true,"greeting":"tts","greeting_text":"<speed:0.7>x"}),
+    ] {
+        let (status, _) = admin.put(&vm, input).await;
+        assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    }
+    let queued: i64 = sqlx::query_scalar("SELECT count(*) FROM jobs WHERE kind = 'tts_prompts'")
+        .fetch_one(&db)
+        .await
+        .unwrap();
+    assert_eq!(
+        queued, 1,
+        "only the actual speed change queues system prompts"
+    );
+    assert!(
+        sqlx::query("UPDATE voicemail_boxes SET speech_speed = 0.4")
+            .execute(&db)
+            .await
+            .is_err()
+    );
+}
+
 async fn upload(
     router: &axum::Router,
     c: &Client,
@@ -83,6 +165,10 @@ async fn audio_clips(db: PgPool) {
     assert_eq!(status, StatusCode::ACCEPTED, "{clip}");
     assert_eq!(clip["status"], "pending");
     assert_eq!(clip["text"], "Willkommen bei ITSH");
+    assert_eq!(
+        clip["speech_speed"], 1.0,
+        "old requests retain normal speed"
+    );
     let tts_id = clip["id"].as_str().unwrap().to_owned();
     let jobs: i64 = sqlx::query_scalar(
         "SELECT count(*) FROM jobs WHERE kind = 'tts.clip' AND payload->>'clip_id' = $1",
@@ -101,6 +187,10 @@ async fn audio_clips(db: PgPool) {
         json!({"text": "x".repeat(1001)}),
         json!({"text": "Hallo", "language": "fr"}),
         json!({"text": "Hallo", "voice": 3}),
+        json!({"text": "Hallo", "speech_speed": 0.4}),
+        json!({"text": "Hallo", "speech_speed": 2.1}),
+        json!({"text": "<speed:0.7>Hallo"}),
+        json!({"text": "<speed:1><speed:1>Hallo</speed></speed>"}),
     ] {
         let (status, _) = admin.post("/api/v1/audio/clips/tts", bad).await;
         assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);

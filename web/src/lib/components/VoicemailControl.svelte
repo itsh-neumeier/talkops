@@ -19,6 +19,7 @@
 		keys: Keys;
 		texts: Record<string, Record<string, string>>;
 		voices: Record<string, number>;
+		speeds: Record<string, Record<string, number>>;
 		announce: { name: boolean; number: boolean; date: boolean; cnam: boolean };
 	};
 	type Prompt = { key: string; placeholders: string[]; defaults: Record<string, string> };
@@ -66,6 +67,14 @@
 	}
 
 	const changed = (p: Prompt) => config?.texts[lang]?.[p.key] !== undefined;
+
+	function setSpeed(key: string, value: string) {
+		if (!config) return;
+		const speeds = { ...(config.speeds[lang] ?? {}) };
+		if (value === '') delete speeds[key];
+		else speeds[key] = Number(value);
+		config.speeds = { ...config.speeds, [lang]: speeds };
+	}
 
 	async function save(e: SubmitEvent) {
 		e.preventDefault();
@@ -171,6 +180,22 @@
 				</div>
 			</div>
 			<p class="text-sm text-slate-600 dark:text-slate-300">{t('vmc.textsHint')}</p>
+			<p class="hint">{t('audio.speedTagsHint')}</p>
+			<p class="hint">{t('vmc.speedHint')}</p>
+			<div>
+				<label for="vmc-speed-numbers">{t('vmc.numbersSpeed')}</label>
+				<input
+					id="vmc-speed-numbers"
+					class="input"
+					type="number"
+					min="0.5"
+					max="2"
+					step="0.05"
+					placeholder={t('vmc.speedInherit')}
+					value={config.speeds[lang]?.vm_numbers ?? ''}
+					oninput={(e) => setSpeed('vm_numbers', e.currentTarget.value)}
+				/>
+			</div>
 			{#each prompts as p (p.key)}
 				<div>
 					<div class="flex items-center justify-between gap-2">
@@ -195,6 +220,18 @@
 					{#if p.placeholders.length}
 						<p class="hint font-mono">{p.placeholders.map((x) => `{${x}}`).join(' ')}</p>
 					{/if}
+					<label for="vmc-speed-{p.key}">{t('audio.speechSpeed')}</label>
+					<input
+						id="vmc-speed-{p.key}"
+						class="input"
+						type="number"
+						min="0.5"
+						max="2"
+						step="0.05"
+						placeholder={t('vmc.speedInherit')}
+						value={config.speeds[lang]?.[p.key] ?? ''}
+						oninput={(e) => setSpeed(p.key, e.currentTarget.value)}
+					/>
 				</div>
 			{/each}
 		</section>

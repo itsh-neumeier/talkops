@@ -5,11 +5,11 @@
 - Task ID: 20261012-claude-codec-profiles
 - Date: 2026-10-12
 - Tool: Claude Code
-- Status: PR 1 completed and published for review; PR 2 and PR 3 not started
+- Status: PR 1 completed (CI green, PR ready for review); PR 2 and PR 3 not started
 - Branch: `claude/eager-galileo-oj3e5d`
-- Base commit: `4503fb3` (`chore(release): release TalkOps 1.7.6 (#1)`) on the
-  remote default branch `ccr-df1c8083-0ce1he`
-- Related commits or PR: see the PR of this branch
+- Base commit: `4503fb3` (1.7.6); release 1.7.7 (`63510b3`) merged into the
+  branch as `e4437f6`
+- Related commits or PR: https://github.com/itsh-neumeier/talkops/pull/9
 
 ## Goal
 
@@ -132,6 +132,8 @@ PR 1 is complete on the branch. Facts:
   uses PCMU. The handset calls an extension with G.722 first in its offer:
   TalkOps answers with iLBC, the other leg uses PCMU. A sequential ring
   group with the handset gives the same result.
+- Passed: CI on the merge commit `e4437f6` (Rust, web, images, FreeSWITCH
+  image, E2E with the iLBC scenarios).
 - Not run locally: the full `tests/e2e/run.sh` (needs all images). CI
   workflow `E2E` runs it.
 - STE review: full standard unavailable; review pending.
@@ -148,7 +150,8 @@ PR 1 is complete on the branch. Facts:
 
 ## Next action
 
-Wait for the review of PR 1. Then start PR 2 from the updated target branch.
+Wait for the review and merge of PR 1 by the release manager. Then start
+PR 2 (call quality per device) from the updated target branch.
 
 ## References
 

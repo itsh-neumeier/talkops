@@ -5,7 +5,7 @@
 - Task ID: 20261012-claude-codec-profiles
 - Date: 2026-10-12
 - Tool: Claude Code
-- Status: In progress (PR 1 ready for review; PR 2 and PR 3 not started)
+- Status: PR 1 completed and published for review; PR 2 and PR 3 not started
 - Branch: `claude/eager-galileo-oj3e5d`
 - Base commit: `4503fb3` (`chore(release): release TalkOps 1.7.6 (#1)`) on the
   remote default branch `ccr-df1c8083-0ce1he`
@@ -111,7 +111,10 @@ PR 1 is complete on the branch. Facts:
 - Passed: `npm run lint`, `npm run check`, `npm run build` in `web/`.
 - Passed: `libilbc` v0.0.1 builds with GCC 14.2 in `debian:trixie-slim`, and
   `pkg-config --modversion ilbc` gives `0.0.1`.
-- FreeSWITCH with `mod_ilbc`: see the PR for the result of the local build.
+- Passed: the build stage of `docker/freeswitch/Dockerfile` (sofia-sip,
+  spandsp, libilbc, FreeSWITCH v1.10.12 with the patches) in
+  `debian:trixie-slim` with pre-cloned sources. `mod_ilbc.so` links
+  `libilbc.so.0`. The module was not loaded in a running FreeSWITCH.
 - Not run: `docker build` of `docker/freeswitch` (the sandbox blocks the
   proxy access that the build needs). CI workflow `FreeSWITCH image` runs it.
 - Not run: `tests/e2e/run.sh` (needs the full Docker stack and SIPp). CI

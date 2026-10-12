@@ -8,7 +8,7 @@
 - Status: Completed. Application checks passed. Release integration is separate.
 - Branch: codex/yealink-internal-phonebook
 - Base commit: 4503fb3b96167aa77320cc936597fc6147b392c3
-- Application commit: 397c06cdb8e7171d3616e6c913ab7e7a2ef464a1
+- Original application commit: 397c06cdb8e7171d3616e6c913ab7e7a2ef464a1
 - Related PR: https://github.com/itsh-neumeier/talkops/pull/5
 
 ## Goal
@@ -26,7 +26,9 @@ Yealink BLF provisioning, dial-now rules, UI hints and English/German guides.
 Added regression tests and a second SIPp call with an explicit internal number.
 No database migration or package dependency was added.
 Committed and pushed the application change. Created PR #5. All application
-CI and E2E checks passed. The PR records check results for later documentation
+CI and E2E checks passed. A final guard also prevents explicit internal calls
+from using the separate SIP-address route. All 22 local routing tests passed
+after that guard. The PR records current check results and readiness for later
 revisions. No target merge or release publication was performed.
 
 ## Changes
@@ -38,7 +40,8 @@ revisions. No target merge or release publication was performed.
 - `crates/talkops-api/src/routes/provisioning.rs`: Emit ** extension numbers.
 - `crates/talkops-api/src/fsxml/dialplan.rs`: Resolve ** calls and blind
   transfers in the caller's tenant. Reject unknown targets without a trunk
-  fallback. Move call pickup to *8*.
+  fallback. Prevent explicit internal targets from using a direct SIP peer.
+  Move call pickup to *8*.
 - `crates/talkops-provisioning/`: Update BLF pickup codes and dial-now rules.
   Explicit internal rules work with an area code and avoid feature collisions.
 - `crates/talkops-api/tests/freeswitch.rs`, `tests/phones.rs`: Test routing,
@@ -68,6 +71,8 @@ revisions. No target merge or release publication was performed.
 - Passed: Web npm ci, lint, check and build. No type errors or warnings.
 - Passed: Rust formatting, Git whitespace check and bash syntax check.
 - Passed: English/German catalog parity; 1,030 unique keys in each catalog.
+- Passed: Final local routing rerun after the SIP-address guard, 22 tests.
+  The regression includes a request URI host and an unknown ** target.
 - Passed on application commit 397c06c: Linux CI, including full workspace
   fmt, clippy without exclusions, tests, web checks, Compose, image builds
   and smoke tests. PR run 38282000282; push run 38281907317.

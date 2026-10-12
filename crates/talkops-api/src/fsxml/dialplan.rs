@@ -301,7 +301,7 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
         return Ok(actions);
     }
 
-    if let Some((user, host, hide)) = sip_address(req) {
+    if let Some((user, host, hide)) = sip_address(req).filter(|_| !explicit_internal_call) {
         actions.extend(
             plan_sip_address(
                 r,

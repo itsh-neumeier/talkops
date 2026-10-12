@@ -1874,6 +1874,26 @@ async fn explicit_internal_calls_do_not_become_external_or_pickup(db: PgPool) {
             .unwrap();
     sqlx::query("INSERT INTO extensions (tenant_id, number, display_name) VALUES ($1, '999', 'Other tenant')")
         .bind(foreign_tenant).execute(&db).await.unwrap();
+    // A request URI host must not send an explicit internal target to a SIP peer.
+    let (_, xml) = fs_post(
+        &router,
+        "/fs/xml",
+        &[
+            ("section", "dialplan"),
+            ("Caller-Context", "internal"),
+            ("Caller-Destination-Number", "**missing999"),
+            ("variable_sip_req_host", "external.example"),
+            ("variable_talkops_tenant_id", TENANT),
+            (
+                "variable_talkops_extension_id",
+                f.ext20["id"].as_str().unwrap(),
+            ),
+        ],
+    )
+    .await;
+    let a = actions(&xml);
+    assert!(has(&a, "respond", "404 Not Found"), "{a:?}");
+    assert!(!a.iter().any(|(app, _)| app == "bridge"), "{a:?}");
     for dest in [
         "**999",
         "**110",

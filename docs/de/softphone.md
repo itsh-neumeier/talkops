@@ -52,7 +52,7 @@ sie ins Wählfeld; die Telefontaste ruft direkt an. Favoriten und
 Audioeinstellungen werden je Nutzer lokal in diesem Browser gespeichert.
 
 **Letzte Anrufe** zeigt bis zu 30 Anrufe der gewählten Nebenstelle.
-Der Filter für verpasste Anrufe zeigt nicht beantwortete eingehende Anrufe.
+Der Filter **Verpasste eingehende Anrufe** zeigt nicht beantwortete eingehende Anrufe.
 Ausgehende erfolglose Anrufe erscheinen als **Nicht beantwortet**.
 Rückrufe verwenden die Nummer der Gegenstelle. **Aktualisieren** lädt die
 Kontakte und Anrufliste erneut.

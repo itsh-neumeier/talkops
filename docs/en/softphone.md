@@ -70,7 +70,7 @@ phone button starts a call directly. Favorites and audio preferences are
 stored in this browser separately for each user.
 
 **Recent calls** shows up to 30 calls for the selected extension. Filter by
-**Missed** to show unanswered incoming calls. An unanswered outgoing call is
+**Missed incoming** to show unanswered incoming calls. An unanswered outgoing call is
 marked **Unanswered**. The callback number is the other party's number,
 including internal calls. Use **Refresh** to update contacts and recent calls.
 

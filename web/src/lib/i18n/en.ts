@@ -1161,6 +1161,7 @@ export default {
 	'phone.recentCalls': 'Recent calls',
 	'phone.callFilter': 'Filter calls',
 	'phone.allCalls': 'All calls',
+	'phone.missedCalls': 'Missed incoming',
 	'phone.unanswered': 'Unanswered',
 	'phone.callNumber': 'Call {number}',
 	'phone.noIdentity': 'No active extension is available for this account.',

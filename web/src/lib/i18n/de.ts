@@ -1168,6 +1168,7 @@ const de: Record<keyof typeof en, string> = {
 	'phone.recentCalls': 'Letzte Anrufe',
 	'phone.callFilter': 'Anrufe filtern',
 	'phone.allCalls': 'Alle Anrufe',
+	'phone.missedCalls': 'Verpasste eingehende Anrufe',
 	'phone.unanswered': 'Nicht beantwortet',
 	'phone.callNumber': '{number} anrufen',
 	'phone.noIdentity': 'Für dieses Konto ist keine aktive Nebenstelle verfügbar.',

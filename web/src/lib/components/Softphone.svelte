@@ -926,14 +926,14 @@
 			</div>
 		</section>
 		<section class="card space-y-3" aria-label={t('phone.recentCalls')}>
-			<div class="flex items-center justify-between">
+			<div class="flex flex-wrap items-center justify-between gap-2">
 				<h2>{t('phone.recentCalls')}</h2>
 				<select
 					class="input mt-0 w-auto"
 					aria-label={t('phone.callFilter')}
 					bind:value={historyFilter}
 					><option value="all">{t('phone.allCalls')}</option><option value="missed"
-						>{t('calls.missed')}</option
+						>{t('phone.missedCalls')}</option
 					></select
 				>
 			</div>

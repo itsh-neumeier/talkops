@@ -5,11 +5,11 @@
 - Task ID: 20261012-codex-admin-softphone-selection
 - Date: 2026-10-12, Europe/Berlin
 - Tool: Codex
-- Status: In progress. Implementation complete; final checks pending.
+- Status: Completed implementation. PR readiness follows its current checks.
 - Branch: codex/admin-softphone-selection
 - Base commit: 2fbe3195517b509d2afd3d57247c05a98437f064
 - Source commit: ea13328c38c63f82dfb180e37bbae7572b70407a
-- PR: https://github.com/itsh-neumeier/talkops/pull/3 (draft)
+- PR: https://github.com/itsh-neumeier/talkops/pull/3
 
 ## Goal
 
@@ -87,7 +87,15 @@ Transfer and multiple active calls remain a separate proposed second scope.
   smoke tests passed. Six of seven WebRTC integration tests passed. The caller
   number test expected E.164 instead of the provider format. The real browser
   call kept live audio after navigation, but its hangup selector targeted the
-  hidden full view. Corrected both test assumptions. A new run is required.
+  hidden full view. Corrected both test assumptions in commit `5371a68`.
+- Passed remotely on `5371a68`: Full workspace formatting, Clippy and tests;
+  all seven WebRTC integration tests; web lint, check, Node tests and build;
+  Compose validation; both image builds and smoke tests; SIPp and browser E2E.
+  The live browser call kept audio after navigation and used the compact
+  hangup control. CI run `38256722301` and E2E run `38256718255` succeeded.
+- Final UI text: Clarified the incoming missed-call filter and let its heading
+  wrap on narrow screens. Local lint, type check and Node tests passed after
+  this change. The PR checks provide validation for the final revision.
 - Not run locally: Full database and FreeSWITCH tests. PostgreSQL, Linux Docker
   and SIPp are not available. Linux CI and E2E are required before PR readiness.
 - Review: Manual diff review found and fixed shared credential access through
@@ -111,8 +119,8 @@ Transfer and multiple active calls remain a separate proposed second scope.
 
 ## Next action
 
-The branch is committed and pushed. PR #3 is a draft. Wait for Linux CI and
-E2E, fix any failures, and mark the PR ready after the required checks pass.
+The release chat must review and integrate PR #3 after its final checks pass.
+No version, tag, target merge or publication was created in this task.
 
 ## References
 

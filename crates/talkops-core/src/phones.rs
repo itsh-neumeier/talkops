@@ -802,6 +802,11 @@ fn clean_number(n: &str) -> CoreResult<String> {
         .chars()
         .filter(|c| !matches!(c, ' ' | '\u{a0}' | '-' | '/' | '.' | '(' | ')'))
         .collect();
+    if cleaned.starts_with("**") {
+        return crate::numbering::explicit_internal_number(&cleaned)
+            .map(|_| cleaned.clone())
+            .ok_or_else(|| CoreError::Validation(format!("invalid internal phone number `{n}`")));
+    }
     let digits = cleaned.strip_prefix('+').unwrap_or(&cleaned);
     if !cleaned.is_empty() && (!digits.bytes().all(|b| b.is_ascii_digit()) || digits.len() > 20) {
         return Err(CoreError::Validation(format!("invalid phone number `{n}`")));

@@ -9,7 +9,7 @@
 //!
 //! A number only gets a rule if nothing else that can be dialed starts with
 //! it – otherwise the phone would cut off the longer number. System codes
-//! (`*1`–`*99`) always get their rule; `*<internal>` starts at `*100`.
+//! (`*1`–`*99`) keep their rules; `**<internal>` is an explicit internal call.
 
 use std::collections::BTreeMap;
 
@@ -23,7 +23,7 @@ pub struct DialNowInput<'a> {
     pub emergency: &'a [String],
     /// Feature codes with a fixed length (`*97`, `*51`, …).
     pub fixed_codes: &'a [&'a str],
-    /// Prefixes of feature codes followed by more digits (`*72`, `**`, …).
+    /// Prefixes of feature codes followed by more digits (`*72`, `*8*`, …).
     pub code_prefixes: &'a [&'a str],
     /// Internal numbers of extensions, groups, menus and queues.
     pub internal: &'a [String],
@@ -34,10 +34,19 @@ pub struct DialNowInput<'a> {
 
 /// Computes the rules, most important first, at most [`MAX_RULES`].
 pub fn rules(input: &DialNowInput<'_>) -> Vec<String> {
-    // Everything that can be dialed. `*1`–`*99` are reserved for system
-    // codes, which win over `*<internal>` (from `*100`): with extension 510,
-    // `*51` still parks at once and 510 is dialed without the star.
+    // Explicit internal calls cannot collide with single-star feature codes.
+    let explicit: Vec<String> = input
+        .internal
+        .iter()
+        .filter(|n| {
+            (2..=8).contains(&n.len())
+                && !n.starts_with('0')
+                && n.bytes().all(|b| b.is_ascii_digit())
+        })
+        .map(|n| format!("**{n}"))
+        .collect();
     let mut dialable: Vec<String> = input.internal.to_vec();
+    dialable.extend(explicit.iter().cloned());
     dialable.extend(input.fixed_codes.iter().map(|c| (*c).to_owned()));
     dialable.extend(input.emergency.iter().cloned());
     let safe = |n: &str| {
@@ -60,6 +69,9 @@ pub fn rules(input: &DialNowInput<'_>) -> Vec<String> {
             .filter(|n| safe(n)),
     );
     out.extend(group(input.fixed_codes.iter().copied().filter(|n| safe(n))));
+    out.extend(group(
+        explicit.iter().map(String::as_str).filter(|n| safe(n)),
+    ));
     if !input.local_dialing {
         // 11x are service numbers (115, 116116, 11833 …).
         out.extend(group(
@@ -109,7 +121,7 @@ mod tests {
     use super::*;
 
     const FIXED: &[&str] = &["*51", "*52", "*59", "*73", "*78", "*79", "*97", "*98"];
-    const PREFIXES: &[&str] = &["**", "*30", "*31", "*72", "*85", "*86", "#31#"];
+    const PREFIXES: &[&str] = &["*8*", "*30", "*31", "*72", "*85", "*86", "#31#"];
 
     fn s(v: &[&str]) -> Vec<String> {
         v.iter().map(|x| (*x).to_owned()).collect()
@@ -134,6 +146,12 @@ mod tests {
                 "*5[1,2,9]",
                 "*7[3,8,9]",
                 "*9[7,8]",
+                "**2[0,1,2]",
+                "**116",
+                "**300",
+                "**471",
+                "**510",
+                "**8001",
                 "2[0,1,2]",
                 // 30 is the start of 300; 116 is a service number.
                 "300",
@@ -155,7 +173,33 @@ mod tests {
             internal: &internal,
             local_dialing: true,
         };
-        assert_eq!(rules(&input), ["11[0,2]", "*97"]);
+        assert_eq!(rules(&input), ["11[0,2]", "*97", "**2[0,1]"]);
+    }
+
+    #[test]
+    fn explicit_calls_do_not_conflict_with_features_or_longer_targets() {
+        let internal = s(&["101", "1010", "102", "510", "310", "119", "12345678"]);
+        let input = DialNowInput {
+            internal: &internal,
+            fixed_codes: FIXED,
+            code_prefixes: PREFIXES,
+            local_dialing: true,
+            ..Default::default()
+        };
+        let rules = rules(&input);
+        assert!(rules.contains(&"**1010".into()), "{rules:?}");
+        assert!(!rules.contains(&"**101".into()), "{rules:?}");
+        for rule in [
+            "**102",
+            "**119",
+            "**310",
+            "**510",
+            "**12345678",
+            "*5[1,2,9]",
+        ] {
+            assert!(rules.contains(&rule.into()), "{rule}: {rules:?}");
+        }
+        assert!(!rules.iter().any(|rule| rule.starts_with("*8*")));
     }
 
     #[test]

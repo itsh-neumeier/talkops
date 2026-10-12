@@ -44,6 +44,8 @@ Zugangsdaten und unter *Anrufliste* ihre Gespräche.
 | Eingabe | Wird gewählt als |
 |---|---|
 | `210`, `610` | Nebenstelle 210 bzw. 610 |
+| `**101` | interne Nebenstelle 101 anrufen, ohne Landes- oder Ortsvorwahl |
+| `*8*101` | klingelnden Anruf der Nebenstelle 101 heranholen |
 | `*610` | ebenfalls Nebenstelle 610 (Stern + interne Nummer, ab `*100`, 3–4 Stellen) |
 | `*1` … `*99` | Systemcodes, siehe [Yealink-Telefone](yealink.md#4-kurzwahlen-am-telefon) |
 | `110`, `112` | Notruf – immer über die Standardrufnummer, nie mit unterdrückter Rufnummer |

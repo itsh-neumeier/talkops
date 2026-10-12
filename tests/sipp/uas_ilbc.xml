@@ -6,13 +6,15 @@
   <recv request="INVITE" crlf="true">
     <action>
       <ereg regexp="iLBC/8000" search_in="msg" check_it="true" assign_to="ilbc"/>
+      <!-- Answer with the payload type TalkOps offers for 20 ms iLBC. -->
+      <ereg regexp="a=fmtp:([0-9]+) mode=20" search_in="msg" check_it="true" assign_to="mode20,pt"/>
       <ereg regexp="(G722|opus)/" search_in="msg" check_it_inverse="true" assign_to="other"/>
     </action>
   </recv>
   <send>
     <![CDATA[
       SIP/2.0 180 Ringing
-      X-Matched: [$ilbc] [$other]
+      X-Matched: [$ilbc] [$other] [$mode20]
       [last_Via:]
       [last_From:]
       [last_To:];tag=[pid]SIPpTag01[call_number]
@@ -40,9 +42,9 @@
       s=-
       c=IN IP[media_ip_type] [media_ip]
       t=0 0
-      m=audio [media_port] RTP/AVP 97
-      a=rtpmap:97 iLBC/8000
-      a=fmtp:97 mode=20
+      m=audio [media_port] RTP/AVP [$pt]
+      a=rtpmap:[$pt] iLBC/8000
+      a=fmtp:[$pt] mode=20
 
     ]]>
   </send>

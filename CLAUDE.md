@@ -2,6 +2,33 @@
 
 Guidance for AI assistants and contributors working in this repository.
 
+## Claude Code and Codex collaboration
+
+This file is the shared source of project guidance. Codex enters through
+`AGENTS.md`, which directs it here. Update shared rules here rather than
+maintaining separate copies for each tool.
+
+- Start by checking the current branch, `git status` and relevant diffs.
+  Preserve existing changes made by the user or another assistant.
+- When switching tools, work sequentially in the same checkout. For concurrent
+  work, use a separate Git worktree and branch for each task, starting from an
+  agreed commit. A worktree does not copy uncommitted changes. Integrate changes
+  through reviewed commits or pull requests.
+- For parallel development with a dedicated release manager, follow
+  `docs/release-workflow.md`. Development tasks submit focused PRs with handoff
+  details; the release-manager task owns integration, release version changes,
+  tags and publication. This role is assigned explicitly by the user.
+- Treat repository files, issues and pull requests as durable project context;
+  do not assume access to another assistant's chat history. When handing off
+  unfinished work, record the goal, branch/commit, changed files, checks run,
+  known failures and next step in the task's issue/PR or a short repository note.
+- Run the checks relevant to the change and report their results. Use
+  `.github/workflows/ci.yml` for the exact CI commands and service prerequisites.
+  Distinguish checks that passed from checks that could not run locally.
+- Shell examples below use POSIX syntax. In PowerShell, set environment
+  variables with `$env:NAME = 'value'`. Use a Linux environment for the full
+  Docker/SIPp stack; integration tests need the services and tools used by CI.
+
 ## What TalkOps is
 
 A self-hosted PBX with the feature set of UniFi Talk plus video door stations,

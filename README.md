@@ -94,6 +94,28 @@ tests/e2e/run.sh
 See [CLAUDE.md](CLAUDE.md) for conventions. Contributions of trunk presets are
 especially welcome – see [docs/trunk-presets.md](docs/trunk-presets.md).
 
+### Working with Claude Code and Codex
+
+Open this repository in either tool. [CLAUDE.md](CLAUDE.md) contains the shared
+project guidance; [AGENTS.md](AGENTS.md) tells Codex to read it. Keep both files
+in version control so the setup travels with the repository.
+
+For alternating work, finish or hand off the current task before switching
+tools in the same checkout. For simultaneous work, give each task its own Git
+worktree and branch, then integrate through commits or pull requests. Chat
+history is not shared: record unfinished work and verification results in an
+issue, PR or short repository note so the next assistant can continue.
+
+For a dedicated merge and release chat, follow the
+[parallel development and release workflow](docs/release-workflow.md) and use
+the [release-manager prompt](docs/release-manager-prompt.md) (German). Development
+tasks submit PRs; the release manager combines the agreed contributions, checks
+the integrated result and owns version bumps, merges and publication.
+
+Start new development tasks in either tool with the
+[development-chat prompt](docs/development-chat-prompt.md) (German), adding the
+task and any acceptance criteria at the end.
+
 ## License
 
 [AGPL-3.0](LICENSE). FreeSWITCH is licensed under MPL 1.1.

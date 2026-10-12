@@ -28,3 +28,7 @@ nächste freie Nummer; überholte ADRs werden nicht gelöscht, sondern auf
 | [0019](0019-transkription-in-zwei-durchgaengen-und-ki-api.md) | Transkription in zwei Durchgängen, optional über eine KI-API | Angenommen |
 
 Vorlage: [`template.md`](template.md)
+
+| Number | Title | Status |
+| --- | --- | --- |
+| [0020](0020-softphone-identities-and-lifecycle.md) | Softphone identities and connection lifetime | Accepted |

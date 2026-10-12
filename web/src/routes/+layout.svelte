@@ -17,9 +17,15 @@
 	import { theme, toggleTheme } from '#lib/theme.svelte.ts';
 	import Skeleton from '#lib/components/Skeleton.svelte';
 	import { pageChanged } from '#lib/net.svelte.ts';
+	import Softphone from '#lib/components/Softphone.svelte';
 
 	let { children } = $props();
 	let menuOpen = $state(false);
+	let phoneOwner = $state('');
+	$effect(() => {
+		if (!session.user) phoneOwner = '';
+		else if (page.url.pathname === '/phone') phoneOwner = session.user.id;
+	});
 
 	const publicPaths = ['/login', '/setup'];
 
@@ -143,6 +149,9 @@
 		<main class="min-w-0 flex-1 p-4">
 			{#if session.loaded && (session.user || publicPaths.includes(page.url.pathname))}
 				{@render children()}
+				{#if session.user && phoneOwner === session.user.id}
+					{#key phoneOwner}<Softphone full={page.url.pathname === '/phone'} />{/key}
+				{/if}
 			{:else}
 				<div class="space-y-4" aria-label={t('common.loading')}>
 					<div class="h-7 w-48 animate-pulse rounded bg-slate-200 dark:bg-slate-700"></div>

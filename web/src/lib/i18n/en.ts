@@ -922,7 +922,7 @@ export default {
 	'phone.hold': 'Hold',
 	'phone.resume': 'Resume',
 	'phone.hint':
-		'The browser softphone rings with your other phones while this page is open. Allow microphone (and camera for video) when the browser asks.',
+		'Keep this tab open to receive calls while navigating in TalkOps. Allow microphone access (and camera access for video) when the browser asks.',
 	'kinds.browser': 'Browser',
 	'backup.title': 'Backups',
 	'backup.hint':
@@ -1144,5 +1144,42 @@ export default {
 	'flow.menu.removeKey': 'Remove branch “{key}”',
 	'flow.menu.confirmRemove': 'Remove {n} steps?',
 	'flow.menu.confirmBranches': 'The {n} steps below will be removed. Continue?',
-	'flow.rightClickHint': 'Tip: right-click a step or key for more actions.'
+	'flow.rightClickHint': 'Tip: right-click a step or key for more actions.',
+	'phone.identity': 'Call identity',
+	'phone.selectIdentity': 'Select an extension',
+	'phone.noOutbound': 'No outbound route',
+	'phone.outbound': 'Outgoing number',
+	'phone.identityHelp':
+		'Incoming calls and call settings follow the selected extension. The softphone stays connected while you navigate in TalkOps. Closing this tab or signing out disconnects it.',
+	'phone.reconnect': 'Reconnect',
+	'phone.audioSettings': 'Audio devices and tests',
+	'phone.microphone': 'Microphone',
+	'phone.output': 'Headset / speaker',
+	'phone.systemDefault': 'System default',
+	'phone.outputUnsupported':
+		'This browser uses the system output device. Select the speaker in your operating system.',
+	'phone.deviceLost':
+		'An audio device was disconnected. The system default is selected. Check your audio before the next call.',
+	'phone.testMicrophone': 'Test microphone',
+	'phone.stopTest': 'Stop test',
+	'phone.testSound': 'Test sound',
+	'phone.microphoneLevel': 'Microphone level',
+	'phone.microphoneHelp':
+		'Allow microphone access to see device names. Microphone changes apply to the next call.',
+	'phone.ringtone': 'Audible ringtone',
+	'phone.enableSound': 'Enable ringtone / test sound',
+	'phone.enableNotifications': 'Enable call notifications',
+	'phone.disableNotifications': 'Disable call notifications',
+	'phone.refresh': 'Refresh',
+	'phone.searchContacts': 'Search contacts',
+	'phone.favorite': 'Favorite: {name}',
+	'phone.recentCalls': 'Recent calls',
+	'phone.callFilter': 'Filter calls',
+	'phone.allCalls': 'All calls',
+	'phone.missedCalls': 'Missed incoming',
+	'phone.unanswered': 'Unanswered',
+	'phone.callNumber': 'Call {number}',
+	'phone.noIdentity': 'No active extension is available for this account.',
+	'phone.identityUnavailable':
+		'This extension is no longer available. Refresh the list and select an available extension.'
 } as const;

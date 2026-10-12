@@ -23,12 +23,20 @@ impl EslHandle {
         let handle = self.clone();
         tokio::spawn(async move {
             let mut delay = Duration::from_secs(1);
+            let mut connected = false;
             loop {
                 if handle.get().await.is_none() {
+                    if connected {
+                        // Calls in progress and live status are unknown until
+                        // the connection is back.
+                        tracing::warn!(%addr, "lost connection to FreeSWITCH event socket");
+                        connected = false;
+                    }
                     match EslClient::connect(&addr, &password, Duration::from_secs(5)).await {
                         Ok(client) => {
                             tracing::info!(%addr, "connected to FreeSWITCH event socket");
                             *handle.0.write().await = Some(Arc::new(client));
+                            connected = true;
                             delay = Duration::from_secs(1);
                         }
                         Err(err) => {

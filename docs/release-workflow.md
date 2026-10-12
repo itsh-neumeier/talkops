@@ -10,6 +10,12 @@ Commit the shared guidance before creating new worktrees so every checkout
 contains it. Verify the remote target branch before choosing a base; do not
 assume that it is named `main` or that a local `origin/HEAD` is current.
 
+Use the [documentation rules](documentation-style.md) for new technical text.
+Write technical documentation and task summaries in English with ASD-STE100.
+At task start, read the [shared task memory rules](ai-memory/README.md).
+Read the summaries that apply to the task and check their facts against the
+current code and PR state.
+
 ## Development tasks
 
 - Use `codex/<task>` for Codex branches and `claude/<task>` for Claude Code
@@ -21,6 +27,9 @@ assume that it is named `main` or that a local `origin/HEAD` is current.
   body so concurrent tasks do not compete over the same release metadata.
 - Identify database migration IDs in the PR. Concurrent tasks can otherwise
   create migrations with duplicate IDs even when the filenames differ.
+- Save a task summary in `docs/ai-memory/`. Use `TEMPLATE.md` in that directory.
+  Update the summary at useful checkpoints and before completion or transfer.
+  Commit it with the task changes and include its path in the PR.
 - When handing off a ready PR, use this format:
 
 ```text
@@ -32,6 +41,7 @@ Checks run and results; checks not run:
 Dependencies on other PRs:
 Migration IDs, upgrade implications and compatibility changes:
 Suggested release notes:
+Task summary path:
 Status: ready / blocked / in progress
 ```
 
@@ -44,6 +54,12 @@ commit plus the same handoff details to the release manager.
 Use `docs/release-manager-prompt.md` as the initial prompt. The role does not
 start feature work; it integrates the agreed contributions, resolves ordinary
 merge conflicts, maintains release metadata and verifies publication.
+
+Read the task summaries of all included contributions. Create a separate
+summary for each integration or release. Record source PRs and commits,
+decisions, checks, the release commit and tag, publication state and open work.
+Save useful checkpoints and failed release results. Commit the summary and
+include its path in the integration PR.
 
 For each batch, record the target branch, included PRs and source head commits,
 expected contributions still pending, dependencies, integration result and

@@ -8,6 +8,17 @@ einem Integrationsbranch `codex/release-<version-oder-batch>`. Prüfe zuerst den
 Arbeitsbaum, die Remotes, den tatsächlichen Zielbranch, offene PRs und vorhandene
 Tags/Releases. Übernimm keine uncommitteten Änderungen aus anderen Worktrees.
 
+Lies `docs/ai-memory/README.md` und die Zusammenfassungen der Beiträge, die du
+integrierst. Prüfe sie am aktuellen Code- und PR-Stand. Schreibe technische
+Dokumentation, Release Notes und Aufgaben-Zusammenfassungen in englischem
+ASD-STE100 gemäß `docs/documentation-style.md`.
+Führe pro Integration oder Release eine eigene Zusammenfassung in
+`docs/ai-memory/` nach `TEMPLATE.md`. Aktualisiere sie an wichtigen Zwischenständen
+und vor Abschluss oder Übergabe. Halte Quell-PRs und Commits, Entscheidungen,
+Prüfergebnisse, Release-Commit, Tag, Veröffentlichung, offene Punkte und den
+nächsten Schritt fest. Committe die Zusammenfassung mit den Änderungen und
+verlinke sie in der Integrations-PR. Dokumentiere auch fehlgeschlagene Releases.
+
 Claude Code und Codex entwickeln gleichzeitig in getrennten Worktrees und
 Feature-Branches. Sie übergeben fertige Beiträge per PR mit Ziel, Head-Commit,
 Testergebnissen, Abhängigkeiten, Migrations-IDs und vorgeschlagenen Release

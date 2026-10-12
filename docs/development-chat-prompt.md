@@ -5,6 +5,11 @@ in den Zielbranch, Release-Versionen, Tags und Veröffentlichung.
 Lies `AGENTS.md`, `CLAUDE.md` und `docs/release-workflow.md` und befolge die
 gemeinsamen Projektregeln. Lies weitere Dokumentation passend zur Aufgabe.
 
+Lies `docs/ai-memory/README.md` und die für deine Aufgabe relevanten
+Zusammenfassungen. Prüfe ihre Angaben am aktuellen Code- und PR-Stand.
+Schreibe neue technische Dokumentation und Aufgaben-Zusammenfassungen in
+englischem ASD-STE100 gemäß `docs/documentation-style.md`.
+
 Prüfe zuerst Remotes, Branch, Arbeitsbaum und vorhandene Änderungen. Nutze
 für diese Aufgabe einen eigenen Git-Worktree und Feature-Branch:
 `codex/<aufgabe>` für Codex oder `claude/<aufgabe>` für Claude Code. Verwende
@@ -19,6 +24,13 @@ Entscheidungen selbst und frage nur bei fehlenden Informationen, die das
 Ergebnis wesentlich verändern. Halte die Änderungen auf die Aufgabe begrenzt,
 ergänze passende Tests und Dokumentation und führe die relevanten Prüfungen aus.
 Unterscheide erfolgreiche, fehlgeschlagene und nicht ausgeführte Prüfungen.
+
+Führe eine eigene Aufgaben-Zusammenfassung in `docs/ai-memory/` nach der
+Vorlage `TEMPLATE.md`. Aktualisiere sie nach wichtigen Entscheidungen,
+an sinnvollen Zwischenständen und vor Abschluss oder Übergabe. Halte Ziel,
+Ergebnis, Entscheidungen, Dateien, Prüfungen, Abhängigkeiten, offene Punkte
+und den nächsten Schritt fest. Committe sie mit den Aufgabenänderungen und
+verlinke sie in der PR. So können andere Modelle und Chats fortsetzen.
 
 Committe die fertigen Änderungen mit Conventional Commits, pushe deinen
 Feature-Branch und erstelle eine PR gegen den verifizierten Zielbranch.

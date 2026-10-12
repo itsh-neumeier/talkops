@@ -101,6 +101,49 @@ fn call(app: &str, ext: Option<Uuid>) -> FakeCall {
     }
 }
 
+#[tokio::test]
+async fn counts_use_words_and_handle_empty_singular_and_mixed_boxes() {
+    let dir = std::env::temp_dir().join(format!("talkops-counts-{}", Uuid::new_v4()));
+    for key in talkops_core::prompts::keys() {
+        let path = talkops_core::prompts::path(&dir, &key, "de").unwrap();
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        write_wav(&path, 1);
+    }
+    for (new, saved, expected) in [
+        (0, 0, vec!["vm_no_new_messages"]),
+        (1, 0, vec!["vm_you_have", "vm_one_new_message"]),
+        (2, 0, vec!["vm_you_have", "n2", "vm_new_messages"]),
+        (0, 1, vec!["vm_you_have", "vm_one_saved_message"]),
+        (0, 4, vec!["vm_you_have", "n4", "vm_saved_messages"]),
+        (1, 3, vec!["vm_one_of", "n4", "vm_messages_is", "vm_new"]),
+        (2, 2, vec!["n2", "vm_of", "n4", "vm_messages_are", "vm_new"]),
+    ] {
+        let mut c = FakeCall::default();
+        let mut ivr = Ivr::new(&mut c, &dir, "de");
+        let mut seq = Seq::default();
+        counts_prompt(&ivr, &mut seq, new, saved);
+        ivr.play(&seq).await.unwrap();
+        let spoken: Vec<&str> = c.executed[0]
+            .1
+            .strip_prefix("file_string://")
+            .unwrap_or(&c.executed[0].1)
+            .split('!')
+            .map(|p| {
+                Path::new(p)
+                    .file_name()
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .split('-')
+                    .next()
+                    .unwrap()
+            })
+            .collect();
+        assert_eq!(spoken, expected, "new={new}, saved={saved}");
+    }
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
 async fn setup(pool: &PgPool) -> (VmContext, Uuid, std::path::PathBuf) {
     let dir = std::env::temp_dir().join(format!("talkops-vm-{}", Uuid::new_v4()));
     let ctx = VmContext {
@@ -151,6 +194,7 @@ async fn setup(pool: &PgPool) -> (VmContext, Uuid, std::path::PathBuf) {
             greeting_text: String::new(),
             max_message_secs: 60,
             ring_timeout_secs: None,
+            speech_speed: None,
             greeting_clip_id: None,
         },
         "de",
@@ -215,6 +259,7 @@ async fn deposit_stores_messages(pool: PgPool) {
                 greeting_text: String::new(),
                 max_message_secs: 60,
                 ring_timeout_secs: None,
+                speech_speed: None,
                 greeting_clip_id: clip_id,
             },
             "de",
@@ -262,6 +307,7 @@ async fn deposit_stores_messages(pool: PgPool) {
             greeting_text: vbox.greeting_text,
             max_message_secs: 60,
             ring_timeout_secs: None,
+            speech_speed: None,
             greeting_clip_id: None,
         },
         "de",
@@ -615,7 +661,10 @@ async fn custom_keys_texts_and_caller_announcement(pool: PgPool) {
         "{}",
         info.text
     );
-    assert_eq!(info.file, vmc::info_file(&msg.file));
+    assert_eq!(
+        info.file,
+        vmc::info_file_for(&msg.file, &info.voice, &info.text)
+    );
     assert_eq!(info.voice, "de_DE-thorsten-medium");
     // The worker renders it; listening plays it before the message.
     write_wav(&ctx.path(&info.file), 1);
@@ -635,7 +684,7 @@ async fn custom_keys_texts_and_caller_announcement(pool: PgPool) {
     assert!(
         c.executed
             .iter()
-            .any(|(a, d)| a == "playback" && d.contains(&format!("{}-info.wav", msg.id))),
+            .any(|(a, d)| a == "playback" && d.contains(&info.file)),
         "{:?}",
         c.executed
     );

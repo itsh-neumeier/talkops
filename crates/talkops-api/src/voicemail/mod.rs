@@ -19,7 +19,7 @@ use talkops_core::error::CoreResult;
 use talkops_core::tenant::TenantId;
 use talkops_core::voicemail::{self, NewMessage, VoicemailBox};
 use talkops_core::voicemail_config::{self as vmc, VoicemailConfig};
-use talkops_core::{extensions, jobs, phones, settings};
+use talkops_core::{extensions, jobs, settings};
 use talkops_esl::EslError;
 use talkops_esl::outbound::OutboundSession;
 use uuid::Uuid;
@@ -230,13 +230,15 @@ async fn deposit<C: Call>(
         return Ok(());
     }
     let lang = vbox.language.clone().unwrap_or(default_lang.to_owned());
-    let mut ivr = Ivr::new(call, &ctx.media.sounds, &lang).with_config(config.clone());
+    let mut ivr = Ivr::new(call, &ctx.media.sounds, &lang)
+        .with_config(config.clone())
+        .with_speed(vbox.speech_speed);
     ivr.call.execute("answer", "").await?;
     ivr.call.execute("playback", "silence_stream://500").await?;
     // `#` skips the greeting.
     ivr.set("playback_terminators", "#").await?;
     let mut greeting = Seq::default();
-    let custom = ctx.path(&voicemail::greeting_file(tenant, ext));
+    let custom = voicemail::greeting_path(&ctx.media.voicemail, tenant, &vbox, &lang)?;
     let clip = vbox
         .greeting_clip_id
         .map(|id| {
@@ -316,9 +318,7 @@ pub(crate) async fn store_message<C: Call>(
         )
         .await?;
         tracing::info!(extension = %ext, secs, "voicemail stored");
-        if let Err(err) =
-            announce_message(ctx, tenant, ext, msg_id, &caller_number, &caller_name).await
-        {
+        if let Err(err) = announce_message(ctx, tenant, msg_id).await {
             tracing::warn!(error = %err, "caller announcement not queued");
         }
         update_mwi(ctx, ext).await;
@@ -332,46 +332,10 @@ pub(crate) async fn store_message<C: Call>(
 
 /// Queues the spoken announcement of a new message ("von Anna Müller, …
 /// Empfangen am …") in the box's language and the tenant's voice.
-async fn announce_message(
-    ctx: &VmContext,
-    tenant: TenantId,
-    ext: Uuid,
-    msg_id: Uuid,
-    caller_number: &str,
-    cnam: &str,
-) -> CoreResult<()> {
-    let config = vmc::get(&ctx.db, tenant).await?;
-    let tenant_settings = settings::get(&ctx.db, tenant).await?;
-    let lang = voicemail::get_box(&ctx.db, tenant, ext)
-        .await?
-        .language
-        .unwrap_or_else(|| tenant_settings.default_language.clone());
-    let dial_plan = tenant_settings.dial_plan();
-    let mut caller = vmc::Caller {
-        cnam: (!cnam.is_empty()).then(|| cnam.to_owned()),
-        ..Default::default()
-    };
-    if caller_number.starts_with('+') {
-        caller.number = Some(dial_plan.for_display(caller_number));
-        caller.name = phones::contact_name(&ctx.db, tenant, caller_number, &dial_plan).await?;
-    } else if !caller_number.is_empty() && caller_number.chars().all(|c| c.is_ascii_digit()) {
-        // An extension.
-        caller.number = Some(caller_number.to_owned());
-        caller.name = extensions::find_by_number(&ctx.db, tenant, caller_number)
-            .await?
-            .map(|e| e.display_name);
-    }
-    let tz = tenant_settings
-        .timezone
-        .parse::<chrono_tz::Tz>()
-        .unwrap_or(chrono_tz::Europe::Berlin);
-    let Some(text) = vmc::message_info(&config, &lang, &caller, chrono::Utc::now(), tz) else {
+async fn announce_message(ctx: &VmContext, tenant: TenantId, msg_id: Uuid) -> CoreResult<()> {
+    let msg = voicemail::get_message(&ctx.db, tenant, msg_id).await?;
+    let Some(payload) = vmc::message_info_job(&ctx.db, tenant, &msg).await? else {
         return Ok(());
-    };
-    let payload = vmc::MessageInfoJob {
-        text,
-        voice: config.voice_model(&lang).to_owned(),
-        file: vmc::info_file(&voicemail::message_file(tenant, ext, msg_id)),
     };
     let mut job = jobs::NewJob::new(
         vmc::JOB_TTS_MESSAGE_INFO,
@@ -431,7 +395,9 @@ async fn mailbox<C: Call>(
     vbox: &VoicemailBox,
     lang: &str,
 ) -> FlowResult<()> {
-    let mut ivr = Ivr::new(call, &ctx.media.sounds, lang).with_config(config.clone());
+    let mut ivr = Ivr::new(call, &ctx.media.sounds, lang)
+        .with_config(config.clone())
+        .with_speed(vbox.speech_speed);
     let keys = &config.keys;
     let choices = menu_regex(&keys.main());
     let mut announce = true;
@@ -470,6 +436,25 @@ fn counts_prompt<C: Call>(ivr: &Ivr<'_, C>, seq: &mut Seq, new: u32, saved: u32)
         ivr.prompt(seq, "vm_no_new_messages");
         return;
     }
+    if new > 0 && saved > 0 {
+        if new == 1 {
+            ivr.prompt(seq, "vm_one_of");
+        } else {
+            ivr.number(seq, new);
+            ivr.prompt(seq, "vm_of");
+        }
+        ivr.number(seq, new.saturating_add(saved));
+        ivr.prompt(
+            seq,
+            if new == 1 {
+                "vm_messages_is"
+            } else {
+                "vm_messages_are"
+            },
+        );
+        ivr.prompt(seq, "vm_new");
+        return;
+    }
     ivr.prompt(seq, "vm_you_have");
     if new > 0 {
         if new == 1 {
@@ -505,13 +490,26 @@ async fn listen<C: Call>(
     let choices = menu_regex(&keys.message());
     let messages = voicemail::list_messages(&ctx.db, tenant, ext).await?;
     for (i, msg) in messages.iter().enumerate() {
+        let info_job = vmc::message_info_job(&ctx.db, tenant, msg).await?;
+        let info = info_job.as_ref().map(|p| ctx.path(&p.file));
+        if let Some(payload) = info_job.filter(|_| !info.as_ref().is_some_and(|p| p.is_file())) {
+            let mut job = jobs::NewJob::new(
+                vmc::JOB_TTS_MESSAGE_INFO,
+                serde_json::to_value(payload)
+                    .map_err(|e| talkops_core::error::CoreError::Validation(e.to_string()))?,
+            );
+            job.tenant_id = tenant;
+            jobs::enqueue(&ctx.db, job).await?;
+        }
         loop {
             let mut seq = Seq::default();
             ivr.prompt(&mut seq, "vm_message");
             ivr.number(&mut seq, i as u32 + 1);
-            let info = ctx.path(&vmc::info_file(&msg.file));
-            if info.is_file() {
-                ivr.file(&mut seq, &info);
+            ivr.prompt(&mut seq, "vm_of");
+            ivr.number(&mut seq, messages.len() as u32);
+            ivr.pause(&mut seq);
+            if let Some(info) = info.as_ref().filter(|p| p.is_file()) {
+                ivr.file(&mut seq, info);
             } else {
                 // Announcement not (yet) rendered: the number digit by digit.
                 let digits: String = msg
@@ -584,8 +582,19 @@ pub async fn delete_message(ctx: &VmContext, tenant: TenantId, id: Uuid) -> Core
     if let Err(err) = tokio::fs::remove_file(ctx.path(&msg.file)).await {
         tracing::warn!(error = %err, file = %msg.file, "could not remove voicemail file");
     }
-    // The announcement may not exist (not rendered, nothing to say).
-    let _ = tokio::fs::remove_file(ctx.path(&vmc::info_file(&msg.file))).await;
+    // Remove legacy and content-addressed announcements for this message.
+    let file = ctx.path(&msg.file);
+    if let (Some(parent), Some(stem)) = (file.parent(), file.file_stem().and_then(|s| s.to_str())) {
+        if let Ok(mut entries) = tokio::fs::read_dir(parent).await {
+            while let Ok(Some(entry)) = entries.next_entry().await {
+                let name = entry.file_name();
+                let name = name.to_string_lossy();
+                if name.starts_with(&format!("{stem}-")) && name.ends_with("-info.wav") {
+                    let _ = tokio::fs::remove_file(entry.path()).await;
+                }
+            }
+        }
+    }
     Ok(())
 }
 

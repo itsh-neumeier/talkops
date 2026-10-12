@@ -55,7 +55,7 @@ pub async fn generate_clip(
         "generate",
         "audio_clip",
         Some(clip.id.to_string()),
-        json!({"language": clip.language, "voice": clip.voice, "chars": clip.text.chars().count()}),
+        json!({"language": clip.language, "voice": clip.voice, "speech_speed": clip.speech_speed, "chars": clip.text.chars().count()}),
     )
     .await?;
     Ok((StatusCode::ACCEPTED, Json(clip)))

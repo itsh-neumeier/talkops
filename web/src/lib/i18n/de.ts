@@ -1,6 +1,22 @@
 import type en from './en';
 
 const de: Record<keyof typeof en, string> = {
+	'audio.speechSpeed': 'Sprechgeschwindigkeit',
+	'audio.speedHint':
+		'0,5× bis 2,0×. 1,0× entspricht dem bisherigen Tempo; kleinere Werte sind langsamer.',
+	'audio.speedTagsHint':
+		'Einzelne Textstellen: <speed:0.7>Mustertext</speed>. Danach gilt wieder das eingestellte Tempo. Werte von 0.5 bis 2.0; keine verschachtelten Tags.',
+	'vm.speedHint':
+		'Gilt für generierte Begrüßungen, Menüansagen und Nachrichteninformationen dieser Voicebox. Eigene Ansagetempi und Text-Tags haben Vorrang.',
+	'vmc.speedHint':
+		'Eigene Tempi gelten je Ansage und Sprache. Leere Felder übernehmen das Tempo der jeweiligen Voicebox. Text-Tags haben Vorrang.',
+	'vmc.speedInherit': 'Tempo der Voicebox',
+	'vmc.numbersSpeed': 'Tempo für Zahlen und Ziffern',
+	'vmc.prompt.vm_of': '„von“ (Nachrichtenzähler)',
+	'vmc.prompt.vm_messages_are': '„Sprachnachrichten sind“',
+	'vmc.prompt.vm_new': '„neu“',
+	'vmc.prompt.vm_one_of': '„Eine von“',
+	'vmc.prompt.vm_messages_is': '„Sprachnachrichten ist“',
 	'app.tagline': 'by ITSH Neumeier',
 	'theme.toggle': 'Dunkelmodus umschalten',
 	'locale.label': 'Sprache',

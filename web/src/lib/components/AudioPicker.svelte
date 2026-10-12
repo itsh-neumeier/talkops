@@ -21,6 +21,7 @@
 		type Voice
 	} from '#lib/audio.ts';
 	import AudioPlayer from '#lib/components/AudioPlayer.svelte';
+	import SpeechSpeed from '#lib/components/SpeechSpeed.svelte';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
 	import { t, type MessageKey } from '#lib/i18n/index.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
@@ -33,7 +34,9 @@
 		defaultText = '',
 		legacy = null,
 		hints = {},
-		optional = false
+		optional = false,
+		speed = $bindable(1),
+		inheritSpeed = false
 	}: {
 		mode: AudioMode;
 		clipId: string | null;
@@ -46,6 +49,8 @@
 		hints?: Partial<Record<AudioMode, string>>;
 		/** Without text, recording or file, [ensure] yields no clip instead of failing. */
 		optional?: boolean;
+		speed?: number;
+		inheritSpeed?: boolean;
 	} = $props();
 
 	const SOURCE_MODE: Record<Clip['source'], AudioMode> = {
@@ -89,6 +94,7 @@
 					text = c.text;
 					lang = c.language;
 					voice = c.voice;
+					if (!inheritSpeed) speed = c.speech_speed;
 				} else if (!text) {
 					text = defaultText;
 					lang = language;
@@ -128,7 +134,8 @@
 			return clip.source === 'tts' &&
 				clip.text === normalize(text) &&
 				clip.language === lang &&
-				clip.voice === voice
+				clip.voice === voice &&
+				clip.speech_speed === speed
 				? clip
 				: null;
 		if (mode === 'record') return clip.source === 'recording' ? clip : null;
@@ -156,7 +163,12 @@
 	}
 
 	async function generate(): Promise<Clip> {
-		const c = await api.post<Clip>('/audio/clips/tts', { text, language: lang, voice });
+		const c = await api.post<Clip>('/audio/clips/tts', {
+			text,
+			language: lang,
+			voice,
+			speech_speed: speed
+		});
 		useClip(c);
 		return c;
 	}
@@ -302,8 +314,10 @@
 				</div>
 			</div>
 			<label for="{ids}-text">{t('audio.text')}</label>
+			{#if !inheritSpeed}<SpeechSpeed id="{ids}-speed" bind:value={speed} />{/if}
 			<textarea id="{ids}-text" class="input" rows="3" maxlength="1000" bind:value={text}
 			></textarea>
+			<p class="hint">{t('audio.speedTagsHint')}</p>
 			<div class="flex items-center justify-between gap-2">
 				<span class="text-xs text-slate-500">{text.length} / 1000</span>
 				<button

@@ -5,12 +5,12 @@
 - Task ID: 20261012-codex-guided-backup-restore
 - Date: 2026-10-12, Europe/Berlin
 - Tool: Codex
-- Status: In progress. Large-archive review fix is under final verification.
+- Status: Completed. Final application code passed Linux CI and E2E.
 - Branch: codex/guided-backup-restore
 - Base commit: 2fbe3195517b509d2afd3d57247c05a98437f064
 - Feature commit: ef39d2d
 - Related PR: https://github.com/itsh-neumeier/talkops/pull/4
-- Initial application head checked: 90bebe0. Use the PR for final head and readiness.
+- Final application head checked: 123c00a. Use the PR for final head and readiness.
 
 ## Goal
 
@@ -73,7 +73,9 @@ were preserved. App registration failed, but the Git worktree is usable.
   entry and manifest limits during creation. Reject symlink volume roots.
   Derive legacy file sizes from staging for target-space checks.
 - Passed: Five archive regression tests, including 8,192 media files and a
-  manifest above the former 1 MiB limit. Final Linux checks will verify the fix.
+  manifest above the former 1 MiB limit.
+- Passed: Final Linux CI 38264790773 and E2E 38264790817 at 123c00a.
+  These runs include the large-archive and legacy-space fixes.
 - Earlier failures: Missing GNU compiler, full system disk and CRLF lint noise.
   Used MSVC, isolated test storage and normalized worktree text line endings.
 - Not run locally: Linux image builds, SIPp and worker Unix-only tests.
@@ -87,8 +89,8 @@ were preserved. App registration failed, but the Git worktree is usable.
   web/api.ts, language catalogs, CI and the ADR index. Preserve both behaviors.
 - Database migration IDs: None.
 - Implementation is committed and pushed. PR #4 is attached. The final transfer
-  records the initial code checks. The large-archive fix needs final checks.
-  Use the PR for current verification and readiness.
+  records successful final application checks. No feature work remains.
+  Use the PR for the final documentation commit checks and readiness.
 - The isolated PostgreSQL test service and active task preview were stopped.
 
 ## Next action

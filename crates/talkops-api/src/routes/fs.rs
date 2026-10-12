@@ -13,6 +13,7 @@ use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 
 use crate::AppState;
+use crate::cdr_spool;
 use crate::fsxml::{self, NOT_FOUND, dialplan, directory, sofia};
 use crate::util::constant_time_eq;
 
@@ -155,41 +156,6 @@ async fn callcenter_conf(state: &AppState) -> Option<String> {
 }
 
 /// Registers the recording of a finished call (and queues its transcript).
-async fn store_recording(
-    state: &AppState,
-    tenant: talkops_core::tenant::TenantId,
-    call_uuid: &str,
-    file: &str,
-) {
-    if file.split('/').any(|p| p == ".." || p.is_empty()) || !file.ends_with(".wav") {
-        tracing::warn!(file, "ignoring invalid recording path");
-        return;
-    }
-    let path = state.media.recordings.join(file);
-    let size = match tokio::fs::metadata(&path).await {
-        Ok(m) => m.len() as i64,
-        Err(_) => {
-            // Unanswered calls leave no file.
-            return;
-        }
-    };
-    let secs = crate::voicemail::ivr::wav_seconds(&path).unwrap_or(0) as i32;
-    if secs < 1 {
-        let _ = tokio::fs::remove_file(&path).await;
-        return;
-    }
-    let transcribe = talkops_core::settings::get(&state.db, tenant)
-        .await
-        .map(|s| s.transcription_enabled)
-        .unwrap_or(false);
-    if let Err(err) =
-        talkops_core::recordings::create(&state.db, tenant, call_uuid, file, secs, size, transcribe)
-            .await
-    {
-        tracing::error!(error = %err, "cannot store recording");
-    }
-}
-
 async fn sofia_conf(state: &AppState) -> Option<String> {
     let rows = match talkops_core::trunks::active_gateways(&state.db).await {
         Ok(rows) => rows,
@@ -260,26 +226,17 @@ pub async fn xml_cdr(
     let Some(doc) = params.get("cdr") else {
         return StatusCode::BAD_REQUEST.into_response();
     };
-    match fsxml::cdr::parse(doc) {
-        Ok(Some((tenant, cdr, recording))) => {
-            match talkops_core::cdr::insert(&state.db, tenant, &cdr).await {
-                Ok(_) => {
-                    if let Some(file) = recording {
-                        store_recording(&state, tenant, &cdr.call_uuid, &file).await;
-                    }
-                    StatusCode::OK.into_response()
-                }
-                Err(err) => {
-                    // A non-2xx answer makes mod_xml_cdr retry later.
-                    tracing::error!(error = %err, "cannot store CDR");
-                    StatusCode::SERVICE_UNAVAILABLE.into_response()
-                }
-            }
-        }
-        Ok(None) => StatusCode::OK.into_response(),
-        Err(err) => {
+    match cdr_spool::ingest(&state, doc).await {
+        Ok(cdr_spool::Outcome::Malformed(err)) => {
+            // FreeSWITCH keeps records it cannot deliver in the spool.
             tracing::warn!(error = %err, "malformed CDR");
-            StatusCode::OK.into_response()
+            StatusCode::BAD_REQUEST.into_response()
+        }
+        Ok(_) => StatusCode::OK.into_response(),
+        Err(err) => {
+            // A non-2xx answer makes mod_xml_cdr retry, then spool the record.
+            tracing::error!(error = %err, "cannot store CDR");
+            StatusCode::SERVICE_UNAVAILABLE.into_response()
         }
     }
 }

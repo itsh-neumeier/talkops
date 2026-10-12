@@ -25,6 +25,7 @@ check() {
         "talkops_xmlcurl_url=${TALKOPS_XMLCURL_URL:-http://127.0.0.1:8080/fs/xml}" \
         "talkops_xmlcurl_password=${TALKOPS_XMLCURL_PASSWORD}" \
         "talkops_cdr_url=${TALKOPS_CDR_URL:-http://127.0.0.1:8080/fs/cdr}" \
+        "talkops_cdr_spool_dir=${TALKOPS_CDR_SPOOL_DIR:-/var/lib/talkops/cdr-spool}" \
         "talkops_rtp_start_port=${TALKOPS_RTP_START_PORT:-16384}" \
         "talkops_rtp_end_port=${TALKOPS_RTP_END_PORT:-16999}" \
         "talkops_max_sessions=${TALKOPS_MAX_SESSIONS:-200}" \
@@ -36,6 +37,9 @@ check() {
     echo '</include>'
 } > "$out"
 chmod 600 "$out"
+
+# Call records TalkOps did not accept are spooled here; TalkOps imports them.
+mkdir -p "${TALKOPS_CDR_SPOOL_DIR:-/var/lib/talkops/cdr-spool}" 2>/dev/null || true
 
 # Built-in hold music into the shared sounds volume, so TalkOps can offer the
 # pieces for preview and select one (missing files only; never overwrite).

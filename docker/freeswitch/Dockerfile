@@ -97,7 +97,7 @@ RUN ldconfig \
     && ! ldd /usr/local/freeswitch/bin/freeswitch /usr/local/freeswitch/mod/*.so | grep "not found"
 
 # Fixed IDs shared by all TalkOps images so mounted volumes (recordings,
-# voicemail, sounds) are writable by every service.
+# voicemail, sounds, cdr-spool) are writable by every service.
 RUN groupadd --system --gid 10001 talkops \
     && useradd --system --uid 10001 --gid talkops --home-dir /usr/local/freeswitch --shell /usr/sbin/nologin talkops
 
@@ -106,6 +106,7 @@ RUN groupadd --system --gid 10001 talkops \
 COPY conf/ /usr/local/freeswitch/etc/freeswitch/
 COPY docker-entrypoint.sh fs-healthcheck.sh /usr/local/bin/
 RUN mkdir -p /var/lib/talkops/recordings /var/lib/talkops/voicemail /var/lib/talkops/sounds \
+                /var/lib/talkops/cdr-spool \
     && for d in var/lib/freeswitch/db var/lib/freeswitch/storage var/lib/freeswitch/recordings \
                 share/freeswitch/sounds/music/default \
                 var/log/freeswitch/xml_cdr var/run/freeswitch var/cache/freeswitch; do \

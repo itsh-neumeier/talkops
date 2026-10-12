@@ -640,7 +640,7 @@ fn parse_output(json: &[u8], map: Option<&VadMap>) -> anyhow::Result<Vec<Word>> 
                 // Not `[_BEG_]`, `[_TT_372]` and the like.
                 .filter(|t| !t.text.starts_with("[_"))
                 .filter_map(|t| t.offsets.as_ref());
-            let (first, last) = (times.next(), times.last());
+            let (first, last) = (times.next(), times.next_back());
             let (start, end) = match (map, first) {
                 (Some(map), Some(first)) => (
                     map.original(secs(first.from), true),

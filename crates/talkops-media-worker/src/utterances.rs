@@ -29,8 +29,13 @@ const SENTENCE_LINE_SECS: f32 = 4.0;
 const SOFT_LINE_SECS: f32 = 6.0;
 /// A short pause that ends a line after [SOFT_LINE_SECS].
 const SHORT_PAUSE_SECS: f32 = 0.25;
+/// A pause in which the other party speaks ends a line also in a sentence.
+const TURN_PAUSE_SECS: f32 = 0.5;
 /// No line is longer (words without punctuation and pauses).
 pub(crate) const MAX_LINE_SECS: f32 = 10.0;
+/// At most this many words of a new sentence at the end of a line go to
+/// the next line ("… gefunden? Da" + "war kein …").
+const CARRIED_WORDS: usize = 2;
 
 fn ends_sentence(word: &str) -> bool {
     word.trim_end_matches(['"', '\'', '»', '«', ')'])
@@ -56,32 +61,60 @@ pub(crate) fn lines(words: &[Word], other: &[Word], speaker: &str) -> Vec<Segmen
 
     let mut out = Vec::new();
     let mut line: Vec<&Word> = Vec::new();
+    // Start of the line when its first words came from the previous line.
+    let mut start = None;
     for word in words.iter().filter(|w| !w.text.trim().is_empty()) {
         if let (Some(first), Some(prev)) = (line.first(), line.last()) {
+            let first = start.unwrap_or(first.start);
             let gap = word.start - prev.end;
-            let len = prev.end - first.start;
+            let len = prev.end - first;
             let prev_text = prev.text.trim();
             let sentence = ends_sentence(prev_text);
-            let split = gap >= PAUSE_SECS
-                || other_speaks(prev.end, word.start)
+            let clause = sentence || ends_clause(prev_text);
+            let pause = gap >= PAUSE_SECS
+                || (other_speaks(prev.end, word.start) && (clause || gap >= TURN_PAUSE_SECS));
+            let split = pause
                 || (sentence && (gap >= SENTENCE_PAUSE_SECS || len >= SENTENCE_LINE_SECS))
-                || ((sentence || ends_clause(prev_text)) && other_speaks(prev.start, word.start))
-                || (len >= SOFT_LINE_SECS
-                    && (sentence || ends_clause(prev_text) || gap >= SHORT_PAUSE_SECS))
-                || word.end - first.start > MAX_LINE_SECS;
+                || (clause && other_speaks(prev.start, word.start))
+                || (len >= SOFT_LINE_SECS && (clause || gap >= SHORT_PAUSE_SECS))
+                || word.end - first > MAX_LINE_SECS;
             if split {
-                out.extend(finish(&line, speaker));
-                line.clear();
+                // A new sentence that starts just before a pause continues
+                // after it: keep its first words together with the rest.
+                let carried = if pause { carried_words(&line) } else { 0 };
+                let rest = line.split_off(line.len() - carried);
+                out.extend(finish(&line, start, speaker));
+                line = rest;
+                start = (!line.is_empty()).then_some(word.start);
             }
         }
         line.push(word);
     }
-    out.extend(finish(&line, speaker));
+    out.extend(finish(&line, start, speaker));
     out
 }
 
+/// Number of words after the last sentence end of a line, if these are
+/// few, end without punctuation and do not make up the whole line.
+fn carried_words(line: &[&Word]) -> usize {
+    let Some(last_end) = line.iter().rposition(|w| ends_sentence(w.text.trim())) else {
+        return 0;
+    };
+    let n = line.len() - 1 - last_end;
+    let open = line.last().is_some_and(|w| {
+        let t = w.text.trim();
+        !ends_sentence(t) && !ends_clause(t)
+    });
+    if open && (1..=CARRIED_WORDS).contains(&n) {
+        n
+    } else {
+        0
+    }
+}
+
 /// Joins the words of a line; drops markers such as `[Musik]` or `(lacht)`.
-fn finish(line: &[&Word], speaker: &str) -> Option<Segment> {
+/// `start` replaces the time of the first word.
+fn finish(line: &[&Word], start: Option<f32>, speaker: &str) -> Option<Segment> {
     let (first, last) = (line.first()?, line.last()?);
     let text = strip_markers(
         &line
@@ -90,9 +123,10 @@ fn finish(line: &[&Word], speaker: &str) -> Option<Segment> {
             .collect::<Vec<_>>()
             .join(" "),
     );
+    let start = start.unwrap_or(first.start);
     (!text.is_empty()).then(|| Segment {
-        start: first.start,
-        end: last.end.max(first.start),
+        start,
+        end: last.end.max(start),
         speaker: speaker.to_owned(),
         text,
     })
@@ -240,6 +274,31 @@ mod tests {
                 ("caller", "oben haben wir geklingelt")
             ]
         );
+    }
+
+    #[test]
+    fn a_sentence_start_before_a_pause_moves_to_the_next_line() {
+        let mut words = said(0.0, "habt ihr die Karten gefunden? Da war");
+        words.extend(said(5.0, "kein Zuhause."));
+        let out = lines(&words, &[], "called");
+        assert_eq!(
+            texts(&out),
+            [
+                ("called", "habt ihr die Karten gefunden?"),
+                ("called", "Da war kein Zuhause.")
+            ]
+        );
+        // The line starts where the speech continues.
+        assert_eq!(out[1].start, 5.0);
+        // An answer in a short pause does not cut a sentence; in a longer
+        // pause it does.
+        let mut caller = said(0.0, "und dann");
+        caller.extend(said(1.0, "haben wir bestellt"));
+        let called = said(0.8, "Ja.");
+        assert_eq!(lines(&caller, &called, "caller").len(), 1);
+        let mut caller = said(0.0, "und dann");
+        caller.extend(said(1.3, "haben wir bestellt"));
+        assert_eq!(lines(&caller, &called, "caller").len(), 2);
     }
 
     #[test]

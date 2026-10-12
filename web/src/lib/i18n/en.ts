@@ -490,7 +490,7 @@ export default {
 	'calls.forwardAll': 'Forward all calls to',
 	'calls.forwardPlaceholder': 'extension or phone number',
 	'calls.featureCodes':
-		'On the phone: *78 / *79 DND on/off, *72<number> / *73 forwarding on/off, **<extension> pick up.',
+		'On the phone: **<extension> internal call, *78 / *79 DND on/off, *72<number> / *73 forwarding on/off, *8*<extension> pick up.',
 	'contacts.new': 'New contact',
 	'contacts.none': 'The phonebook is empty.',
 	'contacts.hint':
@@ -499,7 +499,8 @@ export default {
 	'contacts.work': 'Work',
 	'contacts.mobile': 'Mobile',
 	'contacts.other': 'Other',
-	'contacts.numberHint': 'National (089 123456) or international (+49 89 123456) format.',
+	'contacts.numberHint':
+		'Internal extension: **101. External number: national (089 123456) or international (+49 89 123456) format.',
 	'kinds.wifi': 'Wi-Fi handset',
 	'phones.accountLabel': 'Label on the phone',
 	'phones.accountDisplayName': 'Display name',

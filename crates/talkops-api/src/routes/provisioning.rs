@@ -340,7 +340,7 @@ async fn internal_phonebook(state: &AppState, search: Option<&String>) -> ApiRes
             } else {
                 e.display_name.clone()
             },
-            numbers: vec![("Extension".to_owned(), e.number)],
+            numbers: vec![("Extension".to_owned(), format!("**{}", e.number))],
         })
         .collect();
     let entries = phonebook::search(entries, search.map(String::as_str));

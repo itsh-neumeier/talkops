@@ -46,6 +46,8 @@ their calls under *Call log*.
 | Input | Dialed as |
 |---|---|
 | `210`, `610` | extension 210 or 610 |
+| `**101` | call internal extension 101; no country code or area code is added |
+| `*8*101` | pick up a call ringing at extension 101 |
 | `*610` | also extension 610 (star + internal number, from `*100`, 3–4 digits) |
 | `*1` … `*99` | system codes, see [Yealink phones](yealink.md#4-feature-codes) |
 | `110`, `112` | emergency – always via the default number, never with hidden caller ID |

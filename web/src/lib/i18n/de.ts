@@ -488,7 +488,7 @@ const de: Record<keyof typeof en, string> = {
 	'calls.forwardAll': 'Alle Anrufe umleiten an',
 	'calls.forwardPlaceholder': 'Nebenstelle oder Rufnummer',
 	'calls.featureCodes':
-		'Am Telefon: *78 / *79 Nicht stören an/aus, *72<Nummer> / *73 Umleitung an/aus, **<Nebenstelle> Heranholen.',
+		'Am Telefon: **<Nebenstelle> intern anrufen, *78 / *79 Nicht stören an/aus, *72<Nummer> / *73 Umleitung an/aus, *8*<Nebenstelle> Heranholen.',
 	'contacts.new': 'Neuer Kontakt',
 	'contacts.none': 'Das Telefonbuch ist leer.',
 	'contacts.hint':
@@ -497,7 +497,8 @@ const de: Record<keyof typeof en, string> = {
 	'contacts.work': 'Geschäftlich',
 	'contacts.mobile': 'Mobil',
 	'contacts.other': 'Sonstige',
-	'contacts.numberHint': 'Nationales (089 123456) oder internationales Format (+49 89 123456).',
+	'contacts.numberHint':
+		'Interne Nebenstelle: **101. Externe Nummer: nationales (089 123456) oder internationales Format (+49 89 123456).',
 	'kinds.wifi': 'WLAN-Mobilteil',
 	'phones.accountLabel': 'Label am Telefon',
 	'phones.accountDisplayName': 'Anzeigename',

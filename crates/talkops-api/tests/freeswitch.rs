@@ -277,10 +277,10 @@ async fn internal_routing(db: PgPool) {
     assert!(has(&a, "bridge", &ring20(&f)), "{a:?}");
 
     // Directed pickup.
-    let a = internal_call(&router, &f.ext21, "**200").await;
+    let a = internal_call(&router, &f.ext21, "*8*200").await;
     let group = format!("ext-{}", f.ext20["id"].as_str().unwrap().replace('-', ""));
     assert!(has(&a, "pickup", &group), "{a:?}");
-    let a = internal_call(&router, &f.ext21, "**99").await;
+    let a = internal_call(&router, &f.ext21, "*8*99").await;
     assert!(has(&a, "respond", "404 Not Found"), "{a:?}");
 
     // CLIR is applied for normal calls but never for emergency calls.
@@ -801,6 +801,13 @@ async fn ivr_routing_and_transfers(db: PgPool) {
     assert!(has(&a, "bridge", &ring20(&f)), "{a:?}");
     let a = transfer("dial:200".into(), true).await;
     assert!(has(&a, "bridge", &ring20(&f)), "{a:?}");
+    let a = transfer("**200".into(), true).await;
+    assert!(has(&a, "bridge", &ring20(&f)), "{a:?}");
+    for dest in ["**999", "**", "**1", "**+200", "**123456789"] {
+        let a = transfer(dest.into(), true).await;
+        assert!(has(&a, "respond", "404 Not Found"), "{dest}: {a:?}");
+        assert!(!a.iter().any(|(app, _)| app == "bridge"), "{a:?}");
+    }
     let a = transfer("dest:bogus:x".into(), true).await;
     assert!(has(&a, "respond", "404 Not Found"));
     let a = transfer("dial:200".into(), false).await;
@@ -1786,6 +1793,163 @@ async fn sip_addresses(db: PgPool) {
         )
         .await;
     assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+}
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn explicit_internal_calls_do_not_become_external_or_pickup(db: PgPool) {
+    let router = router(db.clone());
+    let f = fixture(&router).await;
+    let (_, mut settings) = f.admin.get("/api/v1/settings").await;
+    settings["area_code"] = json!("9543");
+    let (status, _) = f.admin.put("/api/v1/settings", settings).await;
+    assert_eq!(status, StatusCode::OK);
+
+    // Without a matching target, bare 101 becomes the reported external number.
+    let a = internal_call(&router, &f.ext21, "101").await;
+    assert!(has(&a, "set", "talkops_destination=+499543101"), "{a:?}");
+    let a = internal_call(&router, &f.ext21, "**101").await;
+    assert!(has(&a, "respond", "404 Not Found"), "{a:?}");
+
+    for number in ["101", "510", "310", "12345", "12345678"] {
+        let (status, ext) = f
+            .admin
+            .post(
+                "/api/v1/extensions",
+                json!({"number": number, "display_name": number}),
+            )
+            .await;
+        assert_eq!(status, StatusCode::OK, "{ext}");
+        let (status, _) = f
+            .admin
+            .post(
+                &format!("/api/v1/extensions/{}/devices", ext["id"].as_str().unwrap()),
+                json!({"name": "Desk", "kind": "desk"}),
+            )
+            .await;
+        assert_eq!(status, StatusCode::OK);
+        let plain = internal_call(&router, &f.ext21, number).await;
+        let explicit = internal_call(&router, &f.ext21, &format!("**{number}")).await;
+        assert_eq!(plain, explicit, "{number}");
+        for hide_prefix in ["*31", "#31#"] {
+            let hidden =
+                internal_call(&router, &f.ext21, &format!("{hide_prefix}**{number}")).await;
+            assert_eq!(plain, hidden, "{hide_prefix}**{number}");
+        }
+        assert!(
+            has(&explicit, "set", "talkops_direction=internal"),
+            "{explicit:?}"
+        );
+        assert!(
+            has(&explicit, "set", &format!("talkops_destination={number}")),
+            "{explicit:?}"
+        );
+        assert!(
+            explicit
+                .iter()
+                .any(|(app, data)| app == "bridge" && data.starts_with("user/")),
+            "{explicit:?}"
+        );
+        assert!(
+            !explicit
+                .iter()
+                .any(|(app, data)| app == "pickup" || data.contains("sofia/gateway/")),
+            "{explicit:?}"
+        );
+    }
+    // Keep the full dialable range, including existing two-digit extensions.
+    sqlx::query("UPDATE extensions SET number = '21' WHERE id = $1")
+        .bind(
+            f.ext21["id"]
+                .as_str()
+                .unwrap()
+                .parse::<uuid::Uuid>()
+                .unwrap(),
+        )
+        .execute(&db)
+        .await
+        .unwrap();
+    let plain = internal_call(&router, &f.ext20, "21").await;
+    assert_eq!(plain, internal_call(&router, &f.ext20, "**21").await);
+
+    // Explicit internal destinations must not use an external fallback.
+    let foreign_tenant: uuid::Uuid =
+        sqlx::query_scalar("INSERT INTO tenants (name) VALUES ('Other') RETURNING id")
+            .fetch_one(&db)
+            .await
+            .unwrap();
+    sqlx::query("INSERT INTO extensions (tenant_id, number, display_name) VALUES ($1, '999', 'Other tenant')")
+        .bind(foreign_tenant).execute(&db).await.unwrap();
+    // A request URI host must not send an explicit internal target to a SIP peer.
+    let (_, xml) = fs_post(
+        &router,
+        "/fs/xml",
+        &[
+            ("section", "dialplan"),
+            ("Caller-Context", "internal"),
+            ("Caller-Destination-Number", "**missing999"),
+            ("variable_sip_req_host", "external.example"),
+            ("variable_talkops_tenant_id", TENANT),
+            (
+                "variable_talkops_extension_id",
+                f.ext20["id"].as_str().unwrap(),
+            ),
+        ],
+    )
+    .await;
+    let a = actions(&xml);
+    assert!(has(&a, "respond", "404 Not Found"), "{a:?}");
+    assert!(!a.iter().any(|(app, _)| app == "bridge"), "{a:?}");
+    for dest in [
+        "**999",
+        "*31**999",
+        "#31#**999",
+        "**110",
+        "**112",
+        "**115",
+        "**",
+        "**1",
+        "**0101",
+        "***101",
+        "**+101",
+        "**123456789",
+    ] {
+        let a = internal_call(&router, &f.ext20, dest).await;
+        assert!(has(&a, "respond", "404 Not Found"), "{dest}: {a:?}");
+        assert!(
+            !a.iter().any(|(app, _)| app == "bridge" || app == "pickup"),
+            "{a:?}"
+        );
+    }
+    // The shared internal number space includes ring groups.
+    let (status, group) = f
+        .admin
+        .post(
+            "/api/v1/ring-groups",
+            json!({
+                "number": "600", "name": "Reception", "members": [f.ext20["id"]]
+            }),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{group}");
+    assert_eq!(
+        internal_call(&router, &f.ext21, "600").await,
+        internal_call(&router, &f.ext21, "**600").await
+    );
+    // Disabled targets retain their normal unavailable response.
+    sqlx::query("UPDATE extensions SET enabled = false WHERE id = $1")
+        .bind(
+            f.ext20["id"]
+                .as_str()
+                .unwrap()
+                .parse::<uuid::Uuid>()
+                .unwrap(),
+        )
+        .execute(&db)
+        .await
+        .unwrap();
+    let a = internal_call(&router, &f.ext21, "**200").await;
+    assert!(has(&a, "respond", "480 Temporarily Unavailable"), "{a:?}");
+    assert!(!a.iter().any(|(app, _)| app == "bridge"), "{a:?}");
 }
 
 #[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]

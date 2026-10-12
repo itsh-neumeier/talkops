@@ -588,6 +588,21 @@ mod number_tests {
         let work = |n: &str| validate_contact(&input(n)).map(|[w, ..]| w);
         assert_eq!(work("+49 (0)89 / 123-45.6").unwrap(), "+4989123456");
         assert_eq!(work("(089) 12345").unwrap(), "08912345");
+        assert_eq!(work(" ** 101 ").unwrap(), "**101");
+        assert_eq!(work("**21").unwrap(), "**21");
+        assert_eq!(work("**12345678").unwrap(), "**12345678");
+        for invalid in [
+            "**",
+            "**1",
+            "**0101",
+            "**123456789",
+            "***101",
+            "**+101",
+            "*8*101",
+            "*78",
+        ] {
+            assert!(work(invalid).is_err(), "{invalid}");
+        }
         assert!(work("4.91711E+11").is_err());
     }
 }

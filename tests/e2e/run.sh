@@ -95,7 +95,7 @@ sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/bad_password.xml" -s "$CALLEE" -au "$CALLEE
     || { cat "$WORK/bad.log" 2>/dev/null; fail "wrong password was not rejected"; }
 
 log "callee registers (calls are answered by a SIPp UAS on port 5094)"
-sipp -sn uas -p 5094 -i "$SIP_HOST" -m 1 -min_rtp_port 16000 -max_rtp_port 16050 -timeout 90 -timeout_error \
+sipp -sn uas -p 5094 -i "$SIP_HOST" -m 2 -min_rtp_port 16000 -max_rtp_port 16050 -timeout 90 -timeout_error \
     -trace_err -error_file "$WORK/callee.log" >"$WORK/callee.out" 2>&1 &
 CALLEE_PID=$!
 sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/register.xml" -set contact_port 5094 -s "$CALLEE" -au "$CALLEE" -ap "$CALLEE_PW" \
@@ -108,11 +108,13 @@ done
 api GET /api/v1/telephony/status | jq -e --arg u "$CALLEE" '.registrations[] | select(.user == $u)' >/dev/null \
     || fail "registration of $CALLEE not visible in /api/v1/telephony/status"
 
-log "caller calls extension 210"
-printf 'SEQUENTIAL\n210;\n' > "$WORK/dest.csv"
-sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/call.xml" -inf "$WORK/dest.csv" -s "$CALLER" -au "$CALLER" -ap "$CALLER_PW" \
-    -m 1 -p 5093 -min_rtp_port 16100 -max_rtp_port 16150 -i "$SIP_HOST" -timeout 30 -timeout_error -trace_err -error_file "$WORK/caller.log" >/dev/null \
-    || { cat "$WORK/caller.log" 2>/dev/null; fail "call failed"; }
+for destination in 210 '**210'; do
+    log "caller calls extension 210 with $destination"
+    printf 'SEQUENTIAL\n%s;\n' "$destination" > "$WORK/dest.csv"
+    sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/call.xml" -inf "$WORK/dest.csv" -s "$CALLER" -au "$CALLER" -ap "$CALLER_PW" \
+        -m 1 -p 5093 -min_rtp_port 16100 -max_rtp_port 16150 -i "$SIP_HOST" -timeout 30 -timeout_error -trace_err -error_file "$WORK/caller.log" >/dev/null \
+        || { cat "$WORK/caller.log" 2>/dev/null; fail "call failed"; }
+done
 wait "$CALLEE_PID" || { cat "$WORK/callee.log" 2>/dev/null; fail "callee scenario failed"; }
 
 log "call record"
@@ -144,10 +146,13 @@ CFG=$(curl -sf -u "$PUSER:$PPASS" -A "Yealink SIP-T54W 96.86.0.100 80:5e:c0:00:e
     || fail "phone configuration"
 echo "$CFG" | grep -q '^account.1.user_name = 210-2$' || fail "account missing in phone configuration"
 echo "$CFG" | grep -q '^linekey.3.type = 16$' || fail "BLF key missing in phone configuration"
+echo "$CFG" | grep -Fq 'linekey.3.pickup_value = *8*210' || fail "BLF pickup code"
 [ "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/provisioning/805ec000e2e2.cfg")" = 401 ] \
     || fail "provisioning without credentials must be rejected"
 curl -sf -u "$PUSER:$PPASS" "$BASE/provisioning/phonebook/internal.xml" | grep -q '<Name>E2E 210</Name>' \
     || fail "internal phonebook"
+curl -sf -u "$PUSER:$PPASS" "$BASE/provisioning/phonebook/internal.xml" | grep -Fq '>**210</Telephone>' \
+    || fail "internal phonebook dialable number"
 
 log "voicemail answers and stores a message"
 EXT22=$(api POST /api/v1/extensions '{"number":"220","display_name":"E2E 220"}' | jq -r .id) || fail "create extension 220"

@@ -27,7 +27,8 @@ checkout was clean. Created a separate worktree and feature branch.
 Prepared a local interactive preview with example data outside the repository.
 The user approved the proposal and specified square brackets for all numbers.
 Implemented the overview and an on-demand local live transcript preview.
-No commit, push, or PR is complete yet.
+Application commit 1562aa4 is pushed. Draft PR 7 is open:
+https://github.com/itsh-neumeier/talkops/pull/7.
 
 The task worktree is at
 `C:/Users/timo/.codex/worktrees/active-call-overview/talkops`.
@@ -113,6 +114,9 @@ Keep round brackets in contact names, such as Family Vollmeier (Maria).
   job bounds, cleanup, growing WAV input, subprocess cancellation, and i18n.
 - CodeRabbit CLI: Unavailable. Manual review completed.
 - Pending: Linux CI/E2E.
+- Failed remote web check: The existing mobile header exceeded 320 pixels with
+  Linux fonts. Keep branding text on larger screens so mobile controls fit.
+  Repeat the full browser check on Linux. No assertion was removed.
 - STE review: Used repository writing rules. The full official standard was
   unavailable. Full language review is pending.
 

@@ -87,7 +87,7 @@
 				>
 			{/if}
 			<img src="/favicon.svg" alt="" class="h-8 w-8" />
-			<div>
+			<div class="hidden sm:block">
 				<div class="font-semibold">TalkOps</div>
 				<div class="hidden text-xs text-slate-500 sm:block dark:text-slate-400">
 					{t('app.tagline')}

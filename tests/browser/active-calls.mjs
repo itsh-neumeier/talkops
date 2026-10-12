@@ -60,7 +60,9 @@ try {
   await page.setViewportSize({ width: 320, height: 780 });
   await section.getByRole('button', { name: 'Live-Transkript', exact: true }).last().click();
   await dialog.waitFor();
-  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  const geometry = await page.evaluate(() => ({ width: innerWidth, scroll: document.documentElement.scrollWidth,
+    overflow: [...document.querySelectorAll('body *')].filter(el => el.getBoundingClientRect().right > innerWidth + 1).slice(0, 8).map(el => ({ tag: el.tagName, text: el.textContent?.slice(0, 60), right: el.getBoundingClientRect().right })) }));
+  assert.ok(geometry.scroll <= geometry.width, JSON.stringify(geometry));
   assert.match(await dialog.textContent(), /Angerufene: Familie Zweig/);
   if (process.env.SCREENSHOT_DIR) { await mkdir(process.env.SCREENSHOT_DIR, { recursive: true }); await page.screenshot({ path: `${process.env.SCREENSHOT_DIR}/active-calls-mobile.png`, fullPage: true }); }
   await dialog.getByRole('button', { name: 'Schließen', exact: true }).click();

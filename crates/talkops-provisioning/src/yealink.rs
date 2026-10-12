@@ -136,7 +136,45 @@ pub struct Account {
     pub display_name: String,
     pub username: String,
     pub password: String,
+    pub codecs: AccountCodecs,
 }
+
+/// Audio codecs of a provisioned account.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AccountCodecs {
+    /// Leave the codec settings of the phone unchanged.
+    #[default]
+    PhoneDefault,
+    /// The codecs of the TalkOps codec profiles (ADR 0023), see
+    /// [`PROFILE_CODECS`]. TalkOps selects the codec of each call.
+    Profiles,
+}
+
+/// `account.X.codec.<payload>` settings for [`AccountCodecs::Profiles`] as
+/// (payload, priority); priority 1 is the first choice, 0 disables the codec.
+///
+/// Payload names: Yealink AX83H Administrator's Manual, "Audio Codecs
+/// Configuration" (`g722`, `pcmu`, `pcma`, `g729`, `g726_*`, `ilbc`) and
+/// Yealink SIP-T2 Administrator's Manual V85, same section (`g723_53`,
+/// `g723_63` and the two iLBC rates, spelled `kpbs` there). Firmware that
+/// shows two iLBC entries uses the rate names. A phone ignores payload names
+/// it does not know.
+pub const PROFILE_CODECS: &[(&str, u8)] = &[
+    ("g722", 1),
+    ("ilbc", 2),
+    ("ilbc_15_2kpbs", 2),
+    ("ilbc_13_33kpbs", 3),
+    ("pcma", 4),
+    ("pcmu", 5),
+    ("g729", 0),
+    ("g726_16", 0),
+    ("g726_24", 0),
+    ("g726_32", 0),
+    ("g726_40", 0),
+    ("g723_53", 0),
+    ("g723_63", 0),
+];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -275,6 +313,7 @@ pub fn render_phone(setup: &PhoneSetup<'_>) -> Result<String, RenderError> {
             display_name: cfg_value(&a.display_name),
             username: cfg_value(&a.username),
             password: cfg_value(&a.password),
+            codecs: a.codecs,
         })
         .collect();
     let used: Vec<u16> = accounts.iter().map(|a| a.index).collect();
@@ -317,7 +356,12 @@ pub fn render_phone(setup: &PhoneSetup<'_>) -> Result<String, RenderError> {
         .map(|(pb, index)| context! { index, name => cfg_value(&pb.name), url => cfg_value(&pb.url) })
         .collect();
     let unused_phonebooks: Vec<u16> = slots[phonebooks.len()..].to_vec();
+    let profile_codecs: Vec<_> = PROFILE_CODECS
+        .iter()
+        .map(|(name, priority)| context! { name, priority, enable => u8::from(*priority > 0) })
+        .collect();
     Ok(env().get_template("mac.cfg")?.render(context! {
+        profile_codecs,
         ringtone => media(&setup.ringtone, setup.model.ringtone_max_kb > 0),
         wallpaper => media(&setup.wallpaper, setup.model.wallpaper),
         phonebooks,
@@ -417,6 +461,7 @@ mod tests {
                 display_name: "Büro\r\nAnna".into(),
                 username: "20-1".into(),
                 password: "secret".into(),
+                codecs: AccountCodecs::PhoneDefault,
             }],
             keys: vec![
                 LineKey {
@@ -459,6 +504,10 @@ mod tests {
         assert_eq!(m["account.1.display_name"], "BüroAnna");
         assert_eq!(m["account.1.sip_server.1.address"], "192.168.1.10");
         assert_eq!(m["account.2.enable"], "0", "unused accounts are disabled");
+        assert!(
+            !cfg.contains(".codec."),
+            "standard profile keeps the codecs of the phone"
+        );
         assert_eq!(m["account.16.enable"], "0");
         assert_eq!(m["linekey.1.type"], "15");
         assert_eq!(m["linekey.3.type"], "16");
@@ -516,6 +565,7 @@ mod tests {
                     display_name: "Lager".into(),
                     username: "30-1".into(),
                     password: "secret".into(),
+                    codecs: AccountCodecs::Profiles,
                 }],
                 keys: vec![LineKey {
                     key: 1,
@@ -541,6 +591,16 @@ mod tests {
             assert_eq!(m["account.1.user_name"], "30-1", "{id}");
             assert_eq!(m["account.1.sip_server.1.address"], "192.168.1.10");
             assert_eq!(m["account.4.enable"], "0");
+            // Codec profiles: G.722 first, then iLBC, G.711 as fallback.
+            assert_eq!(m["account.1.codec.g722.enable"], "1", "{id}");
+            assert_eq!(m["account.1.codec.g722.priority"], "1");
+            assert_eq!(m["account.1.codec.ilbc.enable"], "1");
+            assert_eq!(m["account.1.codec.ilbc_15_2kpbs.priority"], "2");
+            assert_eq!(m["account.1.codec.ilbc_13_33kpbs.priority"], "3");
+            assert_eq!(m["account.1.codec.pcma.enable"], "1");
+            assert_eq!(m["account.1.codec.pcmu.priority"], "5");
+            assert_eq!(m["account.1.codec.g729.enable"], "0");
+            assert_eq!(m["account.1.codec.g729.priority"], "0");
             assert!(!m.contains_key("account.5.enable"), "{id} has 4 accounts");
             assert!(!m.contains_key("handset.1.name"), "not a DECT base");
             // 16 line keys; the BLF pickup code goes into `extension`.
@@ -571,6 +631,7 @@ mod tests {
                     display_name: format!("H{i}"),
                     username: format!("2{i}-1"),
                     password: "pw".into(),
+                    codecs: AccountCodecs::PhoneDefault,
                 })
                 .collect(),
             keys: vec![],

@@ -7,7 +7,7 @@ use serde_json::json;
 use sqlx::PgPool;
 use talkops_core::crypto::SecretBox;
 use talkops_core::error::CoreError;
-use talkops_core::extensions::{self, DeviceInput, DeviceKind, ExtensionInput};
+use talkops_core::extensions::{self, CodecProfile, DeviceInput, DeviceKind, ExtensionInput};
 use talkops_core::phones::{self, ContactInput, MediaKind, PhoneInput, SectionInput};
 use talkops_core::presets::PresetCatalog;
 use talkops_core::tenant::TenantId;
@@ -169,6 +169,7 @@ async fn extensions_and_devices(pool: PgPool) {
         account_index: None,
         phone_label: String::new(),
         phone_display_name: String::new(),
+        codec_profile: None,
         enabled: true,
     };
     let (dev, password) = extensions::create_device(&pool, T, &sb, &e, &input)
@@ -190,6 +191,35 @@ async fn extensions_and_devices(pool: PgPool) {
         extensions::ring_targets(&pool, e.id).await.unwrap(),
         vec!["200-1", "200-2"]
     );
+    // Codec profile: automatic from the kind until one is set.
+    assert_eq!(auth.codec_profile, None);
+    assert_eq!(auth.effective_codec_profile(), CodecProfile::Standard);
+    let handset = DeviceInput {
+        kind: DeviceKind::Wifi,
+        ..input.clone()
+    };
+    extensions::update_device(&pool, T, dev2.id, &handset)
+        .await
+        .unwrap();
+    let auth = extensions::device_auth(&pool, "200-2")
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(auth.kind, DeviceKind::Wifi);
+    assert_eq!(auth.effective_codec_profile(), CodecProfile::Hd);
+    let robust = DeviceInput {
+        codec_profile: Some(CodecProfile::Robust),
+        ..handset
+    };
+    let updated = extensions::update_device(&pool, T, dev2.id, &robust)
+        .await
+        .unwrap();
+    assert_eq!(updated.codec_profile, Some(CodecProfile::Robust));
+    let auth = extensions::device_auth(&pool, "200-2")
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(auth.effective_codec_profile(), CodecProfile::Robust);
 
     let new_pw = extensions::reset_device_password(&pool, T, &sb, dev.id)
         .await
@@ -561,6 +591,7 @@ async fn phones_accounts_firmware_contacts(pool: PgPool) {
         account_index: None,
         phone_label: String::new(),
         phone_display_name: String::new(),
+        codec_profile: None,
         enabled: true,
     };
     let (d1, _) = extensions::create_device(&pool, T, &sb, &e20, &on_phone("A"))

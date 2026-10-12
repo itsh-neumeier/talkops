@@ -12,7 +12,7 @@ use talkops_core::attendant::{self, Node, RingStrategy};
 use talkops_core::cdr::Direction;
 use talkops_core::dialing::{DialPlanSettings, Dialed, NumberFormat};
 use talkops_core::error::CoreResult;
-use talkops_core::extensions::{self, Extension};
+use talkops_core::extensions::{self, CodecProfile, Extension};
 use talkops_core::presets::{CallerIdHeader, Dtmf, PresetCatalog, Srtp};
 use talkops_core::ring_groups::{self, RingGroup};
 use talkops_core::settings::{self, TenantSettings};
@@ -24,7 +24,8 @@ use talkops_core::{queues, time_conditions};
 use uuid::Uuid;
 
 use super::{
-    CONTEXT_INTERNAL, CONTEXT_PUBLIC, CONTEXT_TRANSFER, SIP_DOMAIN, XmlWriter, sanitize_value,
+    CONTEXT_INTERNAL, CONTEXT_PUBLIC, CONTEXT_TRANSFER, SIP_DOMAIN, XmlWriter, codecs,
+    sanitize_value,
 };
 
 /// The relevant parts of a dialplan lookup request.
@@ -104,7 +105,9 @@ pub struct Routing<'a> {
 /// Decides how to handle a call. Never fails open: errors become rejections.
 pub async fn plan(r: &Routing<'_>, req: &CallRequest) -> Vec<Action> {
     let result = match req.context.as_str() {
-        CONTEXT_INTERNAL => plan_internal(r, req).await,
+        CONTEXT_INTERNAL => plan_internal(r, req)
+            .await
+            .map(|actions| with_caller_codecs(req, actions)),
         CONTEXT_PUBLIC => plan_public(r, req).await,
         CONTEXT_TRANSFER => plan_transfer(r, req).await,
         other => {
@@ -120,6 +123,32 @@ pub async fn plan(r: &Routing<'_>, req: &CallRequest) -> Vec<Action> {
         tracing::error!(error = %err, "dialplan routing failed");
         reject("500 Server Internal Error")
     })
+}
+
+/// Pins the caller's leg to the codec profile of its device (ADR 0023). The
+/// codec lists the plan sets for the call then apply to the called legs only;
+/// FreeSWITCH transcodes between the two.
+fn with_caller_codecs(req: &CallRequest, actions: Vec<Action>) -> Vec<Action> {
+    let Some(media) = req
+        .var("talkops_codec_profile")
+        .and_then(CodecProfile::parse)
+        .and_then(codecs::leg_media)
+    else {
+        return actions;
+    };
+    let mut pinned = vec![
+        set("absolute_codec_string", media.codecs),
+        set("jitterbuffer_msec", media.jitter_buffer),
+    ];
+    pinned.extend(actions.into_iter().map(|(app, data)| {
+        match data.strip_prefix("absolute_codec_string=") {
+            Some(list) if app == "set" || app == "export" => {
+                ("export", format!("nolocal:absolute_codec_string={list}"))
+            }
+            _ => (app, data),
+        }
+    }));
+    pinned
 }
 
 /// Value of a variable the plan sets (`set`/`export name=value`).

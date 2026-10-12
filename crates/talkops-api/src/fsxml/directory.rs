@@ -3,7 +3,7 @@
 
 use talkops_core::extensions::DeviceAuth;
 
-use super::{CONTEXT_INTERNAL, SIP_DOMAIN, XmlWriter, sanitize_value};
+use super::{CONTEXT_INTERNAL, SIP_DOMAIN, XmlWriter, codecs, sanitize_value};
 
 /// Renders one user. `password` is the decrypted SIP password.
 pub fn render_user(device: &DeviceAuth, password: &str) -> String {
@@ -28,6 +28,13 @@ pub fn render_user(device: &DeviceAuth, password: &str) -> String {
         "dial-string",
         &format!("{{^^:sip_invite_domain=${{dialed_domain}}:presence_id={presence}}}${{sofia_contact(*/${{dialed_user}}@${{dialed_domain}})}}"),
     );
+    let profile = device.effective_codec_profile();
+    if let Some(media) = codecs::leg_media(profile) {
+        // Calls to the device: `dial-var-*` replaces the codec list the
+        // dialplan exported for the called legs, for this device only.
+        w.param("dial-var-absolute_codec_string", media.codecs);
+        w.param("dial-var-jitterbuffer_msec", media.jitter_buffer);
+    }
     w.close("params");
     w.open("variables", &[]);
     let vars = [
@@ -47,6 +54,8 @@ pub fn render_user(device: &DeviceAuth, password: &str) -> String {
             "presence_id",
             format!("{}@{SIP_DOMAIN}", sanitize_value(&device.extension_number)),
         ),
+        // Calls from the device: the dialplan pins the caller's leg to it.
+        ("talkops_codec_profile", profile.as_str().to_owned()),
     ];
     for (name, value) in &vars {
         w.empty("variable", &[("name", name), ("value", value)]);
@@ -61,12 +70,12 @@ pub fn render_user(device: &DeviceAuth, password: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use talkops_core::extensions::{CodecProfile, DeviceKind};
     use talkops_core::tenant::TenantId;
     use uuid::Uuid;
 
-    #[test]
-    fn renders_user_with_sanitized_name() {
-        let device = DeviceAuth {
+    fn device(kind: DeviceKind, codec_profile: Option<CodecProfile>) -> DeviceAuth {
+        DeviceAuth {
             device_id: Uuid::from_u128(1),
             tenant_id: TenantId::DEFAULT,
             sip_username: "20-1".into(),
@@ -74,7 +83,64 @@ mod tests {
             extension_id: Uuid::from_u128(2),
             extension_number: "20".into(),
             display_name: "Büro ${evil}".into(),
-        };
+            kind,
+            codec_profile,
+        }
+    }
+
+    /// Value of a directory `param` or `variable`.
+    fn value<'a>(doc: &'a roxmltree::Document<'_>, tag: &str, name: &str) -> Option<&'a str> {
+        doc.descendants()
+            .find(|n| n.has_tag_name(tag) && n.attribute("name") == Some(name))
+            .and_then(|n| n.attribute("value"))
+    }
+
+    #[test]
+    fn codec_profile_sets_the_device_leg() {
+        // Desk phones keep the system codecs.
+        let xml = render_user(&device(DeviceKind::Desk, None), "pw");
+        let doc = roxmltree::Document::parse(&xml).unwrap();
+        assert_eq!(value(&doc, "param", "dial-var-absolute_codec_string"), None);
+        assert_eq!(
+            value(&doc, "variable", "talkops_codec_profile"),
+            Some("standard")
+        );
+
+        // Wi-Fi handsets default to HD.
+        let xml = render_user(&device(DeviceKind::Wifi, None), "pw");
+        let doc = roxmltree::Document::parse(&xml).unwrap();
+        assert_eq!(
+            value(&doc, "param", "dial-var-absolute_codec_string"),
+            Some("G722,PCMA,PCMU")
+        );
+        assert_eq!(
+            value(&doc, "param", "dial-var-jitterbuffer_msec"),
+            Some("60:200")
+        );
+        assert_eq!(value(&doc, "variable", "talkops_codec_profile"), Some("hd"));
+
+        // A configured profile wins over the kind's default.
+        let xml = render_user(&device(DeviceKind::Wifi, Some(CodecProfile::Robust)), "pw");
+        let doc = roxmltree::Document::parse(&xml).unwrap();
+        assert_eq!(
+            value(&doc, "param", "dial-var-absolute_codec_string"),
+            Some("iLBC@20i,iLBC@30i,PCMA,PCMU")
+        );
+        assert_eq!(
+            value(&doc, "variable", "talkops_codec_profile"),
+            Some("robust")
+        );
+        let xml = render_user(
+            &device(DeviceKind::Wifi, Some(CodecProfile::Standard)),
+            "pw",
+        );
+        let doc = roxmltree::Document::parse(&xml).unwrap();
+        assert_eq!(value(&doc, "param", "dial-var-absolute_codec_string"), None);
+    }
+
+    #[test]
+    fn renders_user_with_sanitized_name() {
+        let device = device(DeviceKind::Desk, None);
         let xml = render_user(&device, "pw&1");
         let doc = roxmltree::Document::parse(&xml).unwrap();
         let user = doc.descendants().find(|n| n.has_tag_name("user")).unwrap();

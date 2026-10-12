@@ -91,20 +91,27 @@ fn has(actions: &[(String, String)], app: &str, data: &str) -> bool {
 }
 
 async fn internal_call(router: &axum::Router, ext: &Value, dest: &str) -> Vec<(String, String)> {
+    internal_call_with(router, ext, dest, &[]).await
+}
+
+/// An internal call with additional channel variables of the caller.
+async fn internal_call_with(
+    router: &axum::Router,
+    ext: &Value,
+    dest: &str,
+    vars: &[(&str, &str)],
+) -> Vec<(String, String)> {
     let ext_id = ext["id"].as_str().unwrap();
-    let (status, xml) = fs_post(
-        router,
-        "/fs/xml",
-        &[
-            ("section", "dialplan"),
-            ("Caller-Context", "internal"),
-            ("Caller-Destination-Number", dest),
-            ("Caller-Caller-ID-Number", "200"),
-            ("variable_talkops_tenant_id", TENANT),
-            ("variable_talkops_extension_id", ext_id),
-        ],
-    )
-    .await;
+    let mut params = vec![
+        ("section", "dialplan"),
+        ("Caller-Context", "internal"),
+        ("Caller-Destination-Number", dest),
+        ("Caller-Caller-ID-Number", "200"),
+        ("variable_talkops_tenant_id", TENANT),
+        ("variable_talkops_extension_id", ext_id),
+    ];
+    params.extend_from_slice(vars);
+    let (status, xml) = fs_post(router, "/fs/xml", &params).await;
     assert_eq!(status, StatusCode::OK);
     assert!(xml.contains("<context name=\"internal\">"), "{xml}");
     actions(&xml)
@@ -1617,6 +1624,149 @@ async fn video_only_where_enabled(db: PgPool) {
         codecs(&internal_call(&router, &ext21, "200").await),
         [audio]
     );
+}
+
+/// Directory `param` or `variable` value of a SIP user.
+async fn directory_value(
+    router: &axum::Router,
+    user: &str,
+    tag: &str,
+    name: &str,
+) -> Option<String> {
+    let (status, xml) = fs_post(
+        router,
+        "/fs/xml",
+        &[
+            ("section", "directory"),
+            ("action", "sip_auth"),
+            ("user", user),
+        ],
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let doc = roxmltree::Document::parse(&xml).unwrap();
+    doc.descendants()
+        .find(|n| n.has_tag_name(tag) && n.attribute("name") == Some(name))
+        .and_then(|n| n.attribute("value"))
+        .map(str::to_owned)
+}
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn codec_profiles_pin_the_device_leg(db: PgPool) {
+    let router = router(db);
+    let f = fixture(&router).await;
+    let ext20 = f.ext20["id"].as_str().unwrap();
+    let (s, creds) = f
+        .admin
+        .post(
+            &format!("/api/v1/extensions/{ext20}/devices"),
+            json!({"name": "Handset", "kind": "wifi"}),
+        )
+        .await;
+    assert_eq!(s, StatusCode::OK, "{creds}");
+    let user = creds["sip_username"].as_str().unwrap().to_owned();
+    let device_id = creds["device_id"].as_str().unwrap().to_owned();
+    let dial_codecs = || directory_value(&router, &user, "param", "dial-var-absolute_codec_string");
+
+    // Wi-Fi handsets default to HD: calls to the device use G.722.
+    assert_eq!(dial_codecs().await.as_deref(), Some("G722,PCMA,PCMU"));
+    assert_eq!(
+        directory_value(&router, &user, "param", "dial-var-jitterbuffer_msec")
+            .await
+            .as_deref(),
+        Some("60:200")
+    );
+    assert_eq!(
+        directory_value(&router, &user, "variable", "talkops_codec_profile")
+            .await
+            .as_deref(),
+        Some("hd")
+    );
+
+    // The admin selects the robust profile.
+    let update =
+        |profile: Value| json!({"name": "Handset", "kind": "wifi", "codec_profile": profile});
+    let (s, device) = f
+        .admin
+        .put(
+            &format!("/api/v1/devices/{device_id}"),
+            update(json!("robust")),
+        )
+        .await;
+    assert_eq!(s, StatusCode::OK, "{device}");
+    assert_eq!(device["codec_profile"], "robust");
+    assert_eq!(
+        dial_codecs().await.as_deref(),
+        Some("iLBC@20i,iLBC@30i,PCMA,PCMU")
+    );
+    let (s, _) = f
+        .admin
+        .put(
+            &format!("/api/v1/devices/{device_id}"),
+            update(json!("opus")),
+        )
+        .await;
+    assert!(s.is_client_error(), "unknown profile is rejected");
+
+    // Calls from the device: the caller's leg is pinned to the profile, the
+    // plan's codec lists go to the called legs only.
+    let robust = [("variable_talkops_codec_profile", "robust")];
+    let a = internal_call_with(&router, &f.ext21, "200", &robust).await;
+    assert_eq!(
+        a[..2],
+        [
+            (
+                "set".to_owned(),
+                "absolute_codec_string=iLBC@20i,iLBC@30i,PCMA,PCMU".to_owned()
+            ),
+            ("set".to_owned(), "jitterbuffer_msec=60:200".to_owned()),
+        ],
+        "{a:?}"
+    );
+    assert!(
+        has(
+            &a,
+            "export",
+            "nolocal:absolute_codec_string=OPUS,G722,PCMA,PCMU"
+        ),
+        "{a:?}"
+    );
+    assert!(!has(
+        &a,
+        "export",
+        "absolute_codec_string=OPUS,G722,PCMA,PCMU"
+    ));
+    let a = internal_call_with(&router, &f.ext21, "030123456", &robust).await;
+    assert!(
+        has(&a, "export", "nolocal:absolute_codec_string=G722,PCMA,PCMU"),
+        "{a:?}"
+    );
+    assert!(
+        !has(&a, "set", "absolute_codec_string=G722,PCMA,PCMU"),
+        "{a:?}"
+    );
+
+    // Standard devices keep today's plan.
+    let standard = [("variable_talkops_codec_profile", "standard")];
+    assert_eq!(
+        internal_call_with(&router, &f.ext21, "200", &standard).await,
+        internal_call(&router, &f.ext21, "200").await
+    );
+
+    // Back to automatic (null) and to standard.
+    let (_, device) = f
+        .admin
+        .put(&format!("/api/v1/devices/{device_id}"), update(Value::Null))
+        .await;
+    assert!(device["codec_profile"].is_null());
+    assert_eq!(dial_codecs().await.as_deref(), Some("G722,PCMA,PCMU"));
+    f.admin
+        .put(
+            &format!("/api/v1/devices/{device_id}"),
+            update(json!("standard")),
+        )
+        .await;
+    assert_eq!(dial_codecs().await, None);
 }
 
 /// Dials `user` with the request URI host `host`, as a phone or the

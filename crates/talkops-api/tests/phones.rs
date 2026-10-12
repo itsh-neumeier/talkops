@@ -848,3 +848,87 @@ async fn comfort_settings(db: PgPool) {
     let (_, cfg) = prov_get(&router, "/provisioning/805ec0000099.cfg", Some(creds)).await;
     assert!(!cfg.contains("features.send_key_tone"), "{cfg}");
 }
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn codec_profiles_set_the_phone_codecs(db: PgPool) {
+    let router = router(db);
+    let admin = setup_admin(&router).await;
+    let (_, ext) = admin
+        .post(
+            "/api/v1/extensions",
+            json!({"number": "300", "display_name": "Lager"}),
+        )
+        .await;
+    let ext = ext["id"].as_str().unwrap();
+    let mut phones = Vec::new();
+    for (mac, model) in [("249ad8000077", "ax86r"), ("805ec0000077", "t54w")] {
+        let (status, phone) = admin
+            .post(
+                "/api/v1/phones",
+                json!({"mac": mac, "model": model, "name": model}),
+            )
+            .await;
+        assert_eq!(status, StatusCode::OK, "{phone}");
+        phones.push(phone["id"].as_str().unwrap().to_owned());
+    }
+    let mut devices = Vec::new();
+    for (name, kind, phone) in [
+        ("Handset", "wifi", &phones[0]),
+        ("Desk", "desk", &phones[1]),
+    ] {
+        let (status, d) = admin
+            .post(
+                &format!("/api/v1/extensions/{ext}/devices"),
+                json!({"name": name, "kind": kind, "phone_id": phone}),
+            )
+            .await;
+        assert_eq!(status, StatusCode::OK, "{d}");
+        devices.push(d["device_id"].as_str().unwrap().to_owned());
+    }
+    let (_, info) = admin.get("/api/v1/provisioning").await;
+    let creds = (
+        info["username"].as_str().unwrap(),
+        info["password"].as_str().unwrap(),
+    );
+
+    // The Wi-Fi handset (automatic: HD) gets G.722, iLBC and G.711.
+    let (status, cfg) = prov_get(&router, "/provisioning/249ad8000077.cfg", Some(creds)).await;
+    assert_eq!(status, StatusCode::OK, "{cfg}");
+    for line in [
+        "account.1.codec.g722.enable = 1\n",
+        "account.1.codec.g722.priority = 1\n",
+        "account.1.codec.ilbc.enable = 1\n",
+        "account.1.codec.ilbc_15_2kpbs.enable = 1\n",
+        "account.1.codec.ilbc_13_33kpbs.enable = 1\n",
+        "account.1.codec.pcma.enable = 1\n",
+        "account.1.codec.pcmu.enable = 1\n",
+        "account.1.codec.g729.enable = 0\n",
+    ] {
+        assert!(cfg.contains(line), "{line}: {cfg}");
+    }
+    // The desk phone (standard) keeps its own codec settings.
+    let (_, cfg) = prov_get(&router, "/provisioning/805ec0000077.cfg", Some(creds)).await;
+    assert!(!cfg.contains(".codec."), "{cfg}");
+
+    // Robust or HD: the phone has the same codecs, TalkOps selects per call.
+    // A desk phone set to a profile gets them too.
+    let (status, d) = admin
+        .put(
+            &format!("/api/v1/devices/{}", devices[1]),
+            json!({"name": "Desk", "kind": "desk", "phone_id": phones[1], "codec_profile": "robust"}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{d}");
+    let (_, cfg) = prov_get(&router, "/provisioning/805ec0000077.cfg", Some(creds)).await;
+    assert!(cfg.contains("account.1.codec.ilbc.enable = 1\n"), "{cfg}");
+
+    // Standard on the handset: the phone's codec settings stay unchanged.
+    admin
+        .put(
+            &format!("/api/v1/devices/{}", devices[0]),
+            json!({"name": "Handset", "kind": "wifi", "phone_id": phones[0], "codec_profile": "standard"}),
+        )
+        .await;
+    let (_, cfg) = prov_get(&router, "/provisioning/249ad8000077.cfg", Some(creds)).await;
+    assert!(!cfg.contains(".codec."), "{cfg}");
+}

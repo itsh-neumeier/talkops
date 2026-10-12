@@ -251,7 +251,7 @@ pub async fn update_device(
         "update",
         "device",
         Some(id.to_string()),
-        json!({"enabled": device.enabled}),
+        json!({"enabled": device.enabled, "codec_profile": device.codec_profile}),
     )
     .await?;
     Ok(Json(device))

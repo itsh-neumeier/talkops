@@ -305,6 +305,26 @@ export interface ActiveCall {
 	callee_name: string;
 	state: 'ringing' | 'talking' | 'held' | 'parked' | 'system';
 	started_at: string | null;
+	direction: Call['direction'] | null;
+	caller: CallParty;
+	called: CallParty;
+	answered_at: string | null;
+	transcript_available: boolean;
+}
+
+export interface CallParty {
+	name: string;
+	number: string;
+	extension_id: string | null;
+	ambiguous: boolean;
+}
+
+export interface LiveTranscript {
+	id: string;
+	started_at: string;
+	processed_secs: number;
+	segments: TranscriptSegment[];
+	status: 'queued' | 'running' | 'done' | 'failed';
 }
 
 export type TranscriptStatus = 'none' | 'pending' | 'done' | 'failed';

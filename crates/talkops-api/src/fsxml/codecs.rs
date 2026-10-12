@@ -23,6 +23,28 @@ const ROBUST_CODECS: &str = "iLBC@20i,iLBC@30i,PCMA,PCMU";
 /// Absorbs the delay variation of Wi-Fi without a long fixed delay.
 const JITTER_BUFFER: &str = "60:200";
 
+impl LegMedia {
+    /// Channel variables of the device leg. FreeSWITCH pauses the jitter
+    /// buffer while a call is bridged unless
+    /// `rtp_jitter_buffer_during_bridge` is set.
+    pub fn vars(&self) -> [(&'static str, &'static str); 3] {
+        [
+            ("absolute_codec_string", self.codecs),
+            ("jitterbuffer_msec", self.jitter_buffer),
+            ("rtp_jitter_buffer_during_bridge", "true"),
+        ]
+    }
+
+    /// The variables as `name=value` pairs joined by `sep`.
+    pub fn joined(&self, sep: &str) -> String {
+        self.vars()
+            .iter()
+            .map(|(name, value)| format!("{name}={value}"))
+            .collect::<Vec<_>>()
+            .join(sep)
+    }
+}
+
 /// Media settings for a device leg; `None` for `standard`, where the codec
 /// lists of the dialplan apply.
 pub fn leg_media(profile: CodecProfile) -> Option<LegMedia> {

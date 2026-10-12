@@ -559,12 +559,33 @@ pub async fn device_auth<'e>(
     .await?)
 }
 
-/// SIP usernames of the enabled devices of an extension (the ring targets).
-pub async fn ring_targets<'e>(db: impl PgExecutor<'e>, extension: Uuid) -> CoreResult<Vec<String>> {
-    Ok(sqlx::query_scalar("SELECT sip_username FROM devices WHERE extension_id = $1 AND enabled ORDER BY sip_username")
-        .bind(extension)
-        .fetch_all(db)
-        .await?)
+/// An enabled device of an extension that a call rings.
+#[derive(Debug, Clone, PartialEq, Eq, FromRow)]
+pub struct RingTarget {
+    pub sip_username: String,
+    pub kind: DeviceKind,
+    pub codec_profile: Option<CodecProfile>,
+}
+
+impl RingTarget {
+    /// The codec profile in use for the device.
+    pub fn effective_codec_profile(&self) -> CodecProfile {
+        CodecProfile::effective(self.kind, self.codec_profile)
+    }
+}
+
+/// The enabled devices of an extension (the ring targets).
+pub async fn ring_targets<'e>(
+    db: impl PgExecutor<'e>,
+    extension: Uuid,
+) -> CoreResult<Vec<RingTarget>> {
+    Ok(sqlx::query_as(
+        "SELECT sip_username, kind, codec_profile FROM devices
+         WHERE extension_id = $1 AND enabled ORDER BY sip_username",
+    )
+    .bind(extension)
+    .fetch_all(db)
+    .await?)
 }
 
 /// Creates a device with a generated SIP password. Returns the device and the

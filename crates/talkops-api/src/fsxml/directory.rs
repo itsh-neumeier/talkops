@@ -24,17 +24,19 @@ pub fn render_user(device: &DeviceAuth, password: &str) -> String {
     // Presence (BLF) is reported per extension number, not per device: busy
     // lamps watch "20", whichever of the extension's devices is in a call.
     let presence = format!("{}@{SIP_DOMAIN}", sanitize_value(&device.extension_number));
+    // Calls to the device use its codec profile. This covers calls without
+    // exported codec variables (queues, calls started over ESL). A dialplan
+    // bridge sets the caller's exported variables on the new channel last,
+    // so the dialplan also sets the profile per leg (`device_endpoint`).
+    let profile = device.effective_codec_profile();
+    let media = codecs::leg_media(profile)
+        .map(|m| format!(";{}", m.joined(";")))
+        .unwrap_or_default();
     w.raw_param(
         "dial-string",
-        &format!("{{^^:sip_invite_domain=${{dialed_domain}}:presence_id={presence}}}${{sofia_contact(*/${{dialed_user}}@${{dialed_domain}})}}"),
+        // `;` separates the variables: the jitter buffer value contains `:`.
+        &format!("{{^^;sip_invite_domain=${{dialed_domain}};presence_id={presence}{media}}}${{sofia_contact(*/${{dialed_user}}@${{dialed_domain}})}}"),
     );
-    let profile = device.effective_codec_profile();
-    if let Some(media) = codecs::leg_media(profile) {
-        // Calls to the device: `dial-var-*` replaces the codec list the
-        // dialplan exported for the called legs, for this device only.
-        w.param("dial-var-absolute_codec_string", media.codecs);
-        w.param("dial-var-jitterbuffer_msec", media.jitter_buffer);
-    }
     w.close("params");
     w.open("variables", &[]);
     let vars = [
@@ -95,47 +97,54 @@ mod tests {
             .and_then(|n| n.attribute("value"))
     }
 
+    /// The dial-string of the user (not the domain default).
+    fn user_dial_string(xml: &str) -> String {
+        let doc = roxmltree::Document::parse(xml).unwrap();
+        let user = doc.descendants().find(|n| n.has_tag_name("user")).unwrap();
+        user.descendants()
+            .find(|n| n.attribute("name") == Some("dial-string"))
+            .and_then(|n| n.attribute("value"))
+            .unwrap()
+            .to_owned()
+    }
+
     #[test]
     fn codec_profile_sets_the_device_leg() {
+        let render = |kind, profile| render_user(&device(kind, profile), "pw");
         // Desk phones keep the system codecs.
-        let xml = render_user(&device(DeviceKind::Desk, None), "pw");
+        let xml = render(DeviceKind::Desk, None);
+        assert!(!user_dial_string(&xml).contains("absolute_codec_string"));
         let doc = roxmltree::Document::parse(&xml).unwrap();
-        assert_eq!(value(&doc, "param", "dial-var-absolute_codec_string"), None);
         assert_eq!(
             value(&doc, "variable", "talkops_codec_profile"),
             Some("standard")
         );
 
-        // Wi-Fi handsets default to HD.
-        let xml = render_user(&device(DeviceKind::Wifi, None), "pw");
+        // Wi-Fi handsets default to HD; `;` separates the variables because
+        // the jitter buffer value contains `:`.
+        let xml = render(DeviceKind::Wifi, None);
+        assert_eq!(
+            user_dial_string(&xml),
+            "{^^;sip_invite_domain=${dialed_domain};presence_id=20@talkops.local;\
+             absolute_codec_string=G722,PCMA,PCMU;jitterbuffer_msec=60:200;\
+             rtp_jitter_buffer_during_bridge=true}\
+             ${sofia_contact(*/${dialed_user}@${dialed_domain})}"
+        );
         let doc = roxmltree::Document::parse(&xml).unwrap();
-        assert_eq!(
-            value(&doc, "param", "dial-var-absolute_codec_string"),
-            Some("G722,PCMA,PCMU")
-        );
-        assert_eq!(
-            value(&doc, "param", "dial-var-jitterbuffer_msec"),
-            Some("60:200")
-        );
         assert_eq!(value(&doc, "variable", "talkops_codec_profile"), Some("hd"));
 
         // A configured profile wins over the kind's default.
-        let xml = render_user(&device(DeviceKind::Wifi, Some(CodecProfile::Robust)), "pw");
-        let doc = roxmltree::Document::parse(&xml).unwrap();
-        assert_eq!(
-            value(&doc, "param", "dial-var-absolute_codec_string"),
-            Some("iLBC@20i,iLBC@30i,PCMA,PCMU")
+        let xml = render(DeviceKind::Wifi, Some(CodecProfile::Robust));
+        assert!(
+            user_dial_string(&xml).contains(";absolute_codec_string=iLBC@20i,iLBC@30i,PCMA,PCMU;")
         );
+        let doc = roxmltree::Document::parse(&xml).unwrap();
         assert_eq!(
             value(&doc, "variable", "talkops_codec_profile"),
             Some("robust")
         );
-        let xml = render_user(
-            &device(DeviceKind::Wifi, Some(CodecProfile::Standard)),
-            "pw",
-        );
-        let doc = roxmltree::Document::parse(&xml).unwrap();
-        assert_eq!(value(&doc, "param", "dial-var-absolute_codec_string"), None);
+        let xml = render(DeviceKind::Wifi, Some(CodecProfile::Standard));
+        assert!(!user_dial_string(&xml).contains("absolute_codec_string"));
     }
 
     #[test]

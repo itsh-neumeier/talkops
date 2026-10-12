@@ -188,7 +188,12 @@ async fn extensions_and_devices(pool: PgPool) {
         .unwrap();
     assert_eq!(auth.extension_number, "200");
     assert_eq!(
-        extensions::ring_targets(&pool, e.id).await.unwrap(),
+        extensions::ring_targets(&pool, e.id)
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|t| t.sip_username)
+            .collect::<Vec<_>>(),
         vec!["200-1", "200-2"]
     );
     // Codec profile: automatic from the kind until one is set.

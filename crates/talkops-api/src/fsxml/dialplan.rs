@@ -136,10 +136,11 @@ fn with_caller_codecs(req: &CallRequest, actions: Vec<Action>) -> Vec<Action> {
     else {
         return actions;
     };
-    let mut pinned = vec![
-        set("absolute_codec_string", media.codecs),
-        set("jitterbuffer_msec", media.jitter_buffer),
-    ];
+    let mut pinned: Vec<Action> = media
+        .vars()
+        .iter()
+        .map(|(name, value)| set(name, *value))
+        .collect();
     pinned.extend(actions.into_iter().map(|(app, data)| {
         match data.strip_prefix("absolute_codec_string=") {
             Some(list) if app == "set" || app == "export" => {
@@ -800,12 +801,12 @@ async fn bridge_devices(
     if devices.is_empty() {
         return Ok(vm.unwrap_or_else(|| reject("480 Temporarily Unavailable")));
     }
-    let dial = devices
+    let endpoints: Vec<String> = devices
         .iter()
-        .map(|d| format!("user/{}@{SIP_DOMAIN}", sanitize_value(d)))
+        .map(device_endpoint)
         .chain(std::iter::once(format!("pickup/{}", pickup_group(target))))
-        .collect::<Vec<_>>()
-        .join(",");
+        .collect();
+    let dial = dial_string(&[endpoints], false, 0);
     Ok([
         set("talkops_destination", target.number.clone()),
         set("talkops_dest_extension_id", target.id.to_string()),
@@ -1529,7 +1530,7 @@ async fn ring_legs(
         let mut endpoints: Vec<String> = extensions::ring_targets(r.pool, ext.id)
             .await?
             .iter()
-            .map(|d| format!("user/{}@{SIP_DOMAIN}", sanitize_value(d)))
+            .map(device_endpoint)
             .collect();
         if endpoints.is_empty() {
             continue;
@@ -1540,8 +1541,36 @@ async fn ring_legs(
     Ok(legs)
 }
 
+/// Bridge endpoint of a device. A device with a codec profile gets its codec
+/// list and jitter buffer as per-leg variables (ADR 0023): the bridge sets
+/// the caller's exported variables on the new channel after it is created,
+/// so only `[…]` variables with `local_var_clobber` win over the exported
+/// codec list. `^^;` keeps the commas of the codec list in the variable.
+fn device_endpoint(target: &extensions::RingTarget) -> String {
+    let user = format!("user/{}@{SIP_DOMAIN}", sanitize_value(&target.sip_username));
+    match codecs::leg_media(target.effective_codec_profile()) {
+        Some(m) => format!("[^^;{}]{user}", m.joined(";")),
+        None => user,
+    }
+}
+
 /// All legs at once, or one after the other with `timeout` seconds each.
+/// With per-leg codec variables (see [`device_endpoint`]) the per-leg
+/// variables must win over the exported ones (`local_var_clobber`).
 fn dial_string(legs: &[Vec<String>], sequential: bool, timeout: i32) -> String {
+    let dial = dial_endpoints(legs, sequential, timeout);
+    if legs
+        .iter()
+        .flatten()
+        .any(|e| e.contains("absolute_codec_string="))
+    {
+        format!("{{local_var_clobber=true}}{dial}")
+    } else {
+        dial
+    }
+}
+
+fn dial_endpoints(legs: &[Vec<String>], sequential: bool, timeout: i32) -> String {
     if sequential {
         legs.iter()
             .map(|eps| {
@@ -1642,4 +1671,47 @@ pub fn render(context: &str, actions: &[Action]) -> String {
 /// Helper for tests and the API: format a number the way a trunk expects it.
 pub fn format_for(dial_plan: &DialPlanSettings, e164: &str, format: NumberFormat) -> String {
     dial_plan.format(e164, format)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use talkops_core::extensions::{DeviceKind, RingTarget};
+
+    fn target(user: &str, kind: DeviceKind, profile: Option<CodecProfile>) -> RingTarget {
+        RingTarget {
+            sip_username: user.into(),
+            kind,
+            codec_profile: profile,
+        }
+    }
+
+    #[test]
+    fn device_endpoints_carry_the_codec_profile() {
+        let desk = device_endpoint(&target("20-1", DeviceKind::Desk, None));
+        assert_eq!(desk, "user/20-1@talkops.local");
+        let robust = device_endpoint(&target(
+            "21-1",
+            DeviceKind::Wifi,
+            Some(CodecProfile::Robust),
+        ));
+        assert_eq!(
+            robust,
+            "[^^;absolute_codec_string=iLBC@20i,iLBC@30i,PCMA,PCMU;jitterbuffer_msec=60:200;\
+             rtp_jitter_buffer_during_bridge=true]user/21-1@talkops.local"
+        );
+
+        // Without a profile the dial string stays as before.
+        let plain = vec![vec![desk.clone()]];
+        assert_eq!(dial_string(&plain, false, 20), "user/20-1@talkops.local");
+        // Sequential groups keep the leg timeout as a second `[…]` block.
+        let legs = vec![vec![desk], vec![robust.clone()]];
+        assert_eq!(
+            dial_string(&legs, true, 15),
+            format!(
+                "{{local_var_clobber=true}}[leg_timeout=15]user/20-1@talkops.local|\
+                 [leg_timeout=15]{robust}"
+            )
+        );
+    }
 }

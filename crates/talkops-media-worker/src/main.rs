@@ -8,6 +8,7 @@
 mod api;
 mod transcribe;
 mod tts;
+mod utterances;
 
 use std::path::{Path, PathBuf};
 use std::time::Duration;

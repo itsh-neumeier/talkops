@@ -1,9 +1,12 @@
 //! Local transcription with whisper.cpp (`whisper-cli`).
 //!
 //! Call recordings are stereo (left: caller, right: called party); each
-//! channel is transcribed on its own and the segments are merged by time,
-//! which gives speaker labels without diarization. Audio is converted to
-//! 16 kHz mono 16-bit PCM, the only input whisper.cpp accepts.
+//! channel is transcribed on its own, which gives speaker labels without
+//! diarization. Audio is converted to 16 kHz mono 16-bit PCM, the only input
+//! whisper.cpp accepts. Whisper gives one segment per word (`-ml 1 -sow`),
+//! with its time in the recording also when VAD removed the pauses;
+//! [crate::utterances] makes short lines from the words and merges both
+//! channels by time.
 //!
 //! Models are downloaded on first use into the models volume and verified
 //! against pinned SHA-256 sums. Any other model must be placed there by the
@@ -22,6 +25,8 @@ use sha2::{Digest, Sha256};
 use talkops_core::recordings::Segment;
 use talkops_core::settings::TranscriptionQuality;
 use tokio::process::Command;
+
+use crate::utterances::{self, Word};
 
 pub(crate) const SAMPLE_RATE: u32 = 16_000;
 const MODEL_URL: &str = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main";
@@ -206,6 +211,12 @@ impl Whisper {
             self.threads.to_string(),
             // No "[Musik]", "(lacht)" and the like.
             "-sns".to_owned(),
+            // One segment per word: whisper.cpp maps segment times back to
+            // the recording when VAD removed the pauses (token times stay
+            // in the shortened audio), and the words give exact turns.
+            "-ml".to_owned(),
+            "1".to_owned(),
+            "-sow".to_owned(),
         ];
         if opts.quality != TranscriptionQuality::Fast {
             // Wider beam search: slower, fewer wrong words.
@@ -246,7 +257,7 @@ impl Whisper {
             let (wav, work) = (wav.to_owned(), work.path.clone());
             tokio::task::spawn_blocking(move || prepare(&wav, &work)).await??
         };
-        let mut segments = Vec::new();
+        let mut parties = Vec::new();
         for (speaker, file, samples) in channels {
             let out = file.with_extension("");
             let output = Command::new(&self.bin)
@@ -271,13 +282,27 @@ impl Whisper {
             let json = tokio::fs::read(out.with_extension("json"))
                 .await
                 .context("whisper output")?;
-            let mut parsed = parse_output(&json, speaker)?;
-            refine_starts(&mut parsed, &samples);
-            segments.extend(parsed);
+            parties.push((speaker, parse_output(&json)?, samples));
         }
-        segments.sort_by(|a, b| a.start.total_cmp(&b.start));
-        Ok(segments)
+        Ok(to_lines(&parties))
     }
+}
+
+/// Lines of all parties (speaker, words, 16 kHz samples), merged by time.
+pub(crate) fn to_lines(parties: &[(&str, Vec<Word>, Vec<f32>)]) -> Vec<Segment> {
+    let mut segments = Vec::new();
+    for (i, (speaker, words, samples)) in parties.iter().enumerate() {
+        let other: Vec<Word> = parties
+            .iter()
+            .enumerate()
+            .filter(|(j, _)| *j != i)
+            .flat_map(|(_, p)| p.1.iter().cloned())
+            .collect();
+        let mut lines = utterances::lines(words, &other, speaker);
+        refine_starts(&mut lines, samples);
+        segments.extend(lines);
+    }
+    utterances::merge(segments)
 }
 
 /// Downloads `url` to `file`, checking size and SHA-256.
@@ -500,23 +525,17 @@ struct Offsets {
     to: u64,
 }
 
-/// Parses whisper-cli's `-oj` output; drops empty and non-speech segments
-/// such as `[BLANK_AUDIO]` or `(music)`.
-fn parse_output(json: &[u8], speaker: &str) -> anyhow::Result<Vec<Segment>> {
+/// Parses whisper-cli's `-oj` output (one segment per word with `-ml 1`).
+fn parse_output(json: &[u8]) -> anyhow::Result<Vec<Word>> {
     let out: Output = serde_json::from_slice(json).context("parse whisper output")?;
     Ok(out
         .transcription
         .into_iter()
-        .filter_map(|s| {
-            let text = s.text.trim();
-            let marker = (text.starts_with('[') && text.ends_with(']'))
-                || (text.starts_with('(') && text.ends_with(')'));
-            (!text.is_empty() && !marker).then(|| Segment {
-                start: s.offsets.from as f32 / 1000.0,
-                end: s.offsets.to as f32 / 1000.0,
-                speaker: speaker.to_owned(),
-                text: text.to_owned(),
-            })
+        .filter(|s| !s.text.trim().is_empty())
+        .map(|s| Word {
+            start: s.offsets.from as f32 / 1000.0,
+            end: s.offsets.to as f32 / 1000.0,
+            text: s.text.trim().to_owned(),
         })
         .collect())
 }
@@ -596,18 +615,58 @@ mod tests {
     #[test]
     fn parses_whisper_json() {
         let json = br#"{"result":{"language":"de"},"transcription":[
-            {"timestamps":{"from":"00:00:00,000","to":"00:00:02,660"},"offsets":{"from":0,"to":2660},"text":" Hallo, hier ist Anna."},
-            {"timestamps":{"from":"00:00:02,660","to":"00:00:04,000"},"offsets":{"from":2660,"to":4000},"text":" [BLANK_AUDIO]"}
+            {"timestamps":{"from":"00:00:00,000","to":"00:00:00,420"},"offsets":{"from":0,"to":420},"text":" Hallo,"},
+            {"timestamps":{"from":"00:00:00,420","to":"00:00:00,500"},"offsets":{"from":420,"to":500},"text":" "},
+            {"timestamps":{"from":"00:00:00,500","to":"00:00:00,900"},"offsets":{"from":500,"to":900},"text":" Anna."}
         ]}"#;
-        let s = parse_output(json, "called").unwrap();
+        let w = parse_output(json).unwrap();
         assert_eq!(
-            s,
-            [Segment {
-                start: 0.0,
-                end: 2.66,
-                speaker: "called".into(),
-                text: "Hallo, hier ist Anna.".into()
-            }]
+            w,
+            [
+                Word {
+                    start: 0.0,
+                    end: 0.42,
+                    text: "Hallo,".into()
+                },
+                Word {
+                    start: 0.5,
+                    end: 0.9,
+                    text: "Anna.".into()
+                }
+            ]
+        );
+    }
+
+    #[test]
+    fn channels_become_lines_in_time_order() {
+        let word = |start: f32, text: &str| Word {
+            start,
+            end: start + 0.3,
+            text: text.into(),
+        };
+        // The called party's word starts early in silence: refined to 1.0 s.
+        let mut called = vec![0.0; 16000];
+        called.extend((0..16000).map(|i| (i as f32 * 0.3).sin() * 0.5));
+        let parties = [
+            (
+                "caller",
+                vec![word(0.2, "Hallo."), word(2.5, "Anna?")],
+                vec![0.5; 48000],
+            ),
+            ("called", vec![word(0.6, "Ja."), word(1.0, "Hier.")], called),
+        ];
+        let out = to_lines(&parties);
+        let got: Vec<_> = out
+            .iter()
+            .map(|s| (s.start, s.speaker.as_str(), s.text.as_str()))
+            .collect();
+        assert_eq!(
+            got,
+            [
+                (0.2, "caller", "Hallo."),
+                (1.0, "called", "Ja. Hier."),
+                (2.5, "caller", "Anna?")
+            ]
         );
     }
 }

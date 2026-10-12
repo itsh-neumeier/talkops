@@ -94,16 +94,6 @@ pub struct Config {
     #[arg(long, env = "TALKOPS_METRICS_TOKEN", hide_env_values = true)]
     pub metrics_token: Option<String>,
 
-    /// Directory where FreeSWITCH spools call records it could not deliver
-    /// (`err-log-dir` of mod_xml_cdr, a volume shared with FreeSWITCH).
-    /// TalkOps imports them from there.
-    #[arg(
-        long,
-        env = "TALKOPS_CDR_SPOOL_DIR",
-        default_value = "/var/lib/talkops/cdr-spool"
-    )]
-    pub cdr_spool_dir: PathBuf,
-
     /// FreeSWITCH Event Socket address.
     #[arg(long, env = "TALKOPS_ESL_ADDR", default_value = "127.0.0.1:8021")]
     pub esl_addr: String,
@@ -142,6 +132,14 @@ pub struct Storage {
     /// Postgres connection string.
     #[arg(long, env = "TALKOPS_DATABASE_URL", hide_env_values = true)]
     pub database_url: String,
+
+    /// Shared spool of call records that FreeSWITCH could not deliver.
+    #[arg(
+        long,
+        env = "TALKOPS_CDR_SPOOL_DIR",
+        default_value = "/var/lib/talkops/cdr-spool"
+    )]
+    pub cdr_spool_dir: PathBuf,
 
     /// Writable directory for provisioning data (firmware images).
     #[arg(

@@ -13,6 +13,30 @@ use serde_json::json;
 use sqlx::PgPool;
 use talkops_api::backup::{self, BackupConfig};
 
+#[test]
+fn backup_cli_uses_the_configured_call_record_spool() {
+    use clap::Parser;
+
+    #[derive(Parser)]
+    struct BackupArgs {
+        #[command(flatten)]
+        storage: talkops_api::config::Storage,
+    }
+
+    let args = BackupArgs::try_parse_from([
+        "backup",
+        "--database-url",
+        "postgres://localhost/talkops",
+        "--cdr-spool-dir",
+        "/custom/call-record-spool",
+    ])
+    .unwrap();
+    let config = BackupConfig::from_storage(&args.storage).unwrap();
+    assert!(config.volumes.iter().any(|(name, path)| {
+        *name == "cdr-spool" && path == &PathBuf::from("/custom/call-record-spool")
+    }));
+}
+
 fn test_db_url(db: &PgPool) -> String {
     let base = std::env::var("DATABASE_URL").expect("DATABASE_URL");
     let mut url = url::Url::parse(&base).unwrap();
@@ -55,6 +79,7 @@ async fn backup_and_restore(db: PgPool) {
         volumes: vec![
             ("voicemail", vol("voicemail")),
             ("recordings", vol("recordings")),
+            ("cdr-spool", vol("cdr-spool")),
         ],
     };
     std::fs::create_dir_all(vol("deployment")).unwrap();
@@ -64,6 +89,9 @@ async fn backup_and_restore(db: PgPool) {
     std::fs::create_dir_all(vol("recordings")).unwrap();
     std::fs::write(vol("voicemail/ext1/msg.wav"), b"RIFF-message").unwrap();
     std::fs::write(vol("recordings/call.wav"), b"RIFF-call").unwrap();
+    std::fs::create_dir_all(vol("cdr-spool/rejected")).unwrap();
+    std::fs::write(vol("cdr-spool/pending.xml"), b"<cdr>pending</cdr>").unwrap();
+    std::fs::write(vol("cdr-spool/rejected/invalid.xml"), b"invalid record").unwrap();
 
     let router = talkops_api::app(state(db.clone()).with_backup(cfg.clone()), None);
     let admin = setup_admin(&router).await;
@@ -151,6 +179,8 @@ async fn backup_and_restore(db: PgPool) {
     std::fs::remove_file(vol("voicemail/ext1/msg.wav")).unwrap();
     std::fs::write(vol("voicemail/stray.wav"), b"x").unwrap();
     std::fs::write(vol("recordings/call.wav"), b"changed").unwrap();
+    std::fs::remove_file(vol("cdr-spool/pending.xml")).unwrap();
+    std::fs::write(vol("cdr-spool/stray.xml"), b"post-backup record").unwrap();
     db.close().await;
 
     let pool = talkops_core::db::connect_lazy(&cfg.database_url, 1).unwrap();
@@ -176,7 +206,7 @@ async fn backup_and_restore(db: PgPool) {
     let manifest = backup::restore(&cfg, &pool, &cfg.dir.join(&name))
         .await
         .expect("restore");
-    assert_eq!(manifest.volumes, ["voicemail", "recordings"]);
+    assert_eq!(manifest.volumes, ["voicemail", "recordings", "cdr-spool"]);
     let hour: i16 = sqlx::query_scalar("SELECT hour FROM backup_settings")
         .fetch_one(&pool)
         .await
@@ -213,6 +243,19 @@ async fn backup_and_restore(db: PgPool) {
         b"RIFF-call"
     );
     pool.close().await;
+
+    assert_eq!(
+        std::fs::read(vol("cdr-spool/pending.xml")).unwrap(),
+        b"<cdr>pending</cdr>"
+    );
+    assert_eq!(
+        std::fs::read(vol("cdr-spool/rejected/invalid.xml")).unwrap(),
+        b"invalid record"
+    );
+    assert!(
+        !vol("cdr-spool/stray.xml").exists(),
+        "spool volume replaced"
+    );
 
     // Retention keeps the newest archives only.
     std::fs::write(vol("backups/talkops-20200101-000000.tar.gz"), b"old").unwrap();

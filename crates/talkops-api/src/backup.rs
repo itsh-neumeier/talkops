@@ -7,7 +7,7 @@
 //! ```text
 //! manifest.json          format, versions, volumes, SHA-256 inventory, deployment status
 //! database.dump          pg_dump --format=custom
-//! files/<volume>/...     voicemail, sounds, recordings, snapshots, provisioning
+//! files/<volume>/...     voicemail, sounds, recordings, snapshots, provisioning, cdr-spool
 //! deployment/<file>      selected Compose and environment files (encrypted archives only)
 //! ```
 
@@ -93,6 +93,7 @@ impl BackupConfig {
                 ("recordings", s.recordings_dir.clone()),
                 ("snapshots", s.snapshots_dir.clone()),
                 ("provisioning", s.provisioning_dir.clone()),
+                ("cdr-spool", s.cdr_spool_dir.clone()),
             ],
         })
     }

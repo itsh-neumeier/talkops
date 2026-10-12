@@ -452,6 +452,7 @@ fn prepare_inner(archive: &Path, password: Option<&SecretString>, limit: u64) ->
                 "recordings",
                 "snapshots",
                 "provisioning",
+                "cdr-spool",
             ]
             .iter()
             .any(|v| rest == *v || rest.starts_with(&format!("{v}/")))
@@ -529,6 +530,7 @@ fn prepare_inner(archive: &Path, password: Option<&SecretString>, limit: u64) ->
             "recordings",
             "snapshots",
             "provisioning",
+            "cdr-spool",
         ]
         .contains(&v.as_str())
     }) || manifest.volumes.iter().collect::<BTreeSet<_>>().len() != manifest.volumes.len()

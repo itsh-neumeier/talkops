@@ -6,6 +6,55 @@ All notable changes to TalkOps. The format follows
 
 ## [Unreleased]
 
+## [1.7.7] – 2026-10-12
+
+### Added
+
+- Select a browser softphone identity. Administrators can select any enabled
+  extension in their tenant. Other users select from their assigned extensions.
+  The softphone stays connected during navigation and adds audio device tests,
+  ringtone, optional notifications, contact search, favorites and callback.
+- Recover an instance through the first-setup assistant and offline host tool.
+  Complete recovery backups can include deployment files and application secrets
+  in password-encrypted archives. Existing data-only backups remain supported.
+- Show resolved extensions, trunk numbers and phonebook names in active calls.
+  Recorded calls can show a local, provisional live transcript with speakers,
+  speech times and reduced-motion support.
+
+### Fixed
+
+- Yealink phonebooks use explicit internal numbers such as `**101`. Contacts
+  and CSV imports preserve these numbers. Unknown internal targets no longer
+  fall back to an external call.
+- FreeSWITCH keeps undelivered call records in the shared `cdr-spool` volume.
+  TalkOps imports them every minute. Malformed records are kept for inspection.
+  Backup and restore include this spool, including pending and rejected records.
+
+### Changed
+
+- Store shared task memory for earlier Claude Code contributions.
+
+### Upgrade notes
+
+- **Call pickup changes:** `**<number>` now makes an internal call. Directed
+  pickup uses `*8*<extension>`. Resync provisioned phones and reload phonebooks.
+  Update manually configured BLF, pickup keys and saved pickup speed dials.
+- Update all three images and the Compose configuration together. The new
+  `cdr-spool` volume is shared by the server and FreeSWITCH. Updates restart
+  FreeSWITCH and end active calls.
+- Before replacing an older FreeSWITCH container, copy any undelivered records
+  from `/usr/local/freeswitch/var/log/freeswitch/xml_cdr`. Import them into the
+  new spool after updating. See the installation guide.
+- Forward migrations add browser account ownership
+  (`20261026000002_browser_account_owners`) and live preview state
+  (`20261026000003_live_transcript_previews`). Admin API clients must send
+  `extension_id` to `POST /api/v1/me/webrtc`.
+- Complete recovery backups require a separate backup password and captured
+  deployment files or an encrypted Portainer import. Older binaries cannot
+  read encrypted format-2 archives. Keep the password outside captured files.
+- Live previews use the local `base` model, about 148 MB on first download.
+  Preview text and times are provisional. Existing recording policies apply.
+
 ## [1.7.6] – 2026-10-12
 
 ### Added

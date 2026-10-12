@@ -1,6 +1,7 @@
 # Datensicherung und Wiederherstellung
 
-Ein Backup enthält Datenbank, Voicemail, Ansagen, Provisioning, Türbilder und
+Ein Backup enthält Datenbank, Voicemail, Ansagen, Provisioning, Türbilder,
+ausstehende und zurückgewiesene Anrufdatensätze aus `cdr-spool` und
 optional Gesprächsaufzeichnungen. Vollständige Wiederherstellungsbackups enthalten
 zusätzlich ausgewählte `.env`-, Compose- und Override-Dateien einschließlich
 `TALKOPS_SECRET_KEY`. Das Manifest enthält Prüfsummen, Versionsinformationen,

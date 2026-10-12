@@ -3,7 +3,8 @@
 ## Backup contents
 
 A backup contains a PostgreSQL dump and the volumes `voicemail`, `sounds`,
-`provisioning`, `snapshots` and optionally `recordings`. A complete recovery
+`provisioning`, `snapshots`, `cdr-spool` and optionally `recordings`. The spool
+contains pending and rejected call records. A complete recovery
 backup also contains selected `.env`, Compose and override files, including
 `TALKOPS_SECRET_KEY`. The manifest records file checksums, schema, application
 and PostgreSQL versions, project name, profiles and configuration completeness.

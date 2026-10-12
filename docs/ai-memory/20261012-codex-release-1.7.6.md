@@ -5,7 +5,7 @@
 - Task ID: 20261012-codex-release-1.7.6
 - Date: 2026-10-12, Europe/Berlin
 - Tool: Codex
-- Status: In progress. Candidate prepared; developer handoff and CI pending.
+- Status: In progress. Developer handoff complete; final combined CI pending.
 - Branch: codex/release-initial-batch
 - Base commit: 2fbe3195517b509d2afd3d57247c05a98437f064
 - Related PR: [Integration PR #1](https://github.com/itsh-neumeier/talkops/pull/1)
@@ -13,14 +13,14 @@
 ## Goal
 
 Release PR #1 and PR #2 as TalkOps 1.7.6. The user authorized commits, pushes,
-merges and publication. A later message said the user will report when the
-development agent finishes. Wait for the completed handoff before target merge.
+merges and publication. The user confirmed the completed voicebox handoff and
+asked the release manager to continue.
 
 ## Result
 
 Updated the existing release worktree from the current remote target.
 Preserved PR #1's original head `017476afdb32f6bc03b30c31c87ce789ca98a860`.
-Merged PR #2 head `8ae7edf7c0849318ae7ef5f61aa4609552c90a28` with source history.
+Merged PR #2 final head `9a844f38bfc8b7486fc8579c941b8dcc668385a6` with source history.
 Prepared version 1.7.6 and English release notes. No target merge or publication.
 
 ## Changes
@@ -36,7 +36,8 @@ Prepared version 1.7.6 and English release notes. No target merge or publication
 - Use the requested 1.7.6 version. Record the explicit choice for these
   compatible feature additions rather than silently choosing 1.8.0.
 - Keep integration PR #1 and branch `codex/release-initial-batch`.
-- PR #2 is draft while Linux CI and its developer review are pending.
+- PR #2 is ready. CI and full E2E passed on its final head.
+- New draft softphone PR #3 is outside the agreed scope of PR #1 and PR #2.
 - No new Claude contribution is assigned. Do not infer hidden chat work.
 - Preserve both source histories. No force-push or foreign uncommitted files.
 
@@ -45,6 +46,8 @@ Prepared version 1.7.6 and English release notes. No target merge or publication
 - Passed: Rust format, whitespace, source ancestry and version metadata diffs.
 - Passed: 29 unique migration IDs; released migrations remain unchanged.
 - Passed: DE/EN catalogs contain the same 1,030 keys with no duplicate keys.
+- Passed source CI/E2E at `9a844f3`: Actions runs `38256624961` and
+  `38256624940`. The final source adds a real-Piper speed and WAV test.
 - Manual integration review: Checked API/UI speed fields, defaults, parser,
   prompt and greeting cache identities, WAV assembly and test coverage.
 - Not run locally: Full Linux CI/E2E; Docker Linux and services unavailable.
@@ -58,7 +61,7 @@ Prepared version 1.7.6 and English release notes. No target merge or publication
 ## Dependencies and open work
 
 - Migration: 20261026000001_voicebox_speech_speed. Update server and worker together.
-- Wait for the completed development handoff. Re-fetch PR #2 if its head changes.
+- Re-fetch PR #2 if its head changes. The development handoff is complete.
 - Verify the final integration CI/E2E, merge PR #1, then verify target CI/E2E.
 - Push unused tag `v1.7.6` only on the verified target commit.
 - Verify Release workflow, GitHub release, all three multi-architecture images,
@@ -67,7 +70,7 @@ Prepared version 1.7.6 and English release notes. No target merge or publication
 
 ## Next action
 
-Record candidate CI links in PR #1. Continue after the development handoff.
+Record final candidate CI links in PR #1. Wait for successful combined checks.
 Use the PR body and current GitHub checks to recover the latest state.
 
 ## References

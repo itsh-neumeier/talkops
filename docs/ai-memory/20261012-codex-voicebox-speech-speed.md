@@ -8,7 +8,8 @@
 - Status: In progress. Implementation complete; validation and PR review pending.
 - Branch: codex/voicebox-speech-speed
 - Base commit: 2fbe3195517b509d2afd3d57247c05a98437f064
-- Related commits or PR: Pending
+- Related commits: `d63d235`, `8ae7edf`
+- PR: https://github.com/itsh-neumeier/talkops/pull/2 (draft during validation)
 
 ## Goal
 
@@ -22,7 +23,8 @@ the proposal in this chat before implementation started.
 Implemented box speed, per-prompt speed, inline tags, shared clip previews,
 and spoken count sequences. Added database, parser, call-flow, and audio tests.
 Added English and German user documentation and an implementation document.
-Publication and Linux validation are pending.
+The source branch is pushed and PR 2 is open. Linux CI passed at `8ae7edf`.
+The live-stack test and an added real-Piper speed test are pending.
 
 The remote default target is `ccr-df1c8083-0ce1he`. Fetch confirmed the base
 commit. The original checkout was clean. Created a separate local worktree at
@@ -42,6 +44,8 @@ The app could not attach the checkout. Git can use the worktree.
 - `web/src/lib/i18n/`: Add English and German UI text.
 - `docs/en/voicemail.md`, `docs/de/voicemail.md`, and
   `docs/voicebox-speech-speed.md`: User and implementation documentation.
+- `tests/e2e/run.sh`: Verify real Piper durations for normal, slow, and fast
+  speech. Generate and download a WAV with mixed inline speed sections.
 
 ## Decisions
 
@@ -77,15 +81,23 @@ The user approved the scope below. Additional implementation decisions follow it
 - Passed: git status, branch and worktree inventory, remote HEAD lookup,
   git fetch origin, base commit check, and open PR inventory with gh.
 - Passed: Inspected pinned Piper 2023.11.14-2 upstream main.cpp.
-- Passed: Initial web build and corrected Svelte check (0 errors, 0 warnings).
+- Passed: Local web lint, build, and Svelte check (0 errors, 0 warnings).
+- Passed: Local `cargo fmt --all --check` and `git diff --check`.
+- Passed: Linux CI at `8ae7edf`: formatting, workspace clippy with warnings as
+  errors, all workspace tests with PostgreSQL and LDAP, web checks, Compose
+  validation, server and media-worker image builds and version smoke tests.
+  Run: https://github.com/itsh-neumeier/talkops/actions/runs/38253632072
 - Failed, corrected: Initial Svelte check used an existing playback translation
   key for TTS speed. Added a separate `audio.speechSpeed` key.
 - Failed, environment: Local cargo check cannot build ring because gcc.exe is
   absent. Docker's Linux engine is unavailable; no WSL distribution is installed.
 - Failed, environment: Initial whole-web lint reported CRLF line endings from
   the Windows checkout. Normalized local web text to LF and repeated the check.
-- Not run yet: Full Linux Rust, database, audio, image, and E2E checks.
-- External CodeRabbit review: CLI unavailable. Manual diff review in progress.
+- Failed, corrected: Initial Linux compilation found a missing error conversion
+  in the playback announcement enqueue path. Preserve playback and log enqueue
+  failures. Added a playback test for box and prompt speed selection.
+- Pending: Live-stack E2E checks, including the added real-Piper speed test.
+- External CodeRabbit review: CLI unavailable. Manual diff review completed.
 - STE review: Used the repository writing rules. The full official standard
   was not available. Full language review is pending.
 
@@ -94,16 +106,16 @@ The user approved the scope below. Additional implementation decisions follow it
 - No feature PR dependency found. PR 1 tracks the release batch.
 - Migration ID: `20261026000001_voicebox_speech_speed`. Run it before the updated
   server and worker. No new runtime dependency or voice model is required.
-- Tests must cover speed validation, tag parsing, speed precedence, old data,
+- Tests cover speed validation, tag parsing, speed precedence, old data,
   cache changes, audio assembly, API storage, and spoken message sequences.
-- Add English user documentation and German translations.
+- English user documentation and German translations are complete.
 - Commit, push, and PR creation are authorized after the reviewed changes are
   complete. The release chat owns merges, version changes, tags, and publication.
 
 ## Next action
 
-Finish local web checks. Commit and push the branch. Create a draft PR and
-check the Linux CI results. Resolve task failures, then mark the PR ready.
+Commit and push the real-Piper E2E test. Check the final CI and E2E results.
+Resolve task failures, update the PR transfer details, and mark the PR ready.
 
 ## References
 

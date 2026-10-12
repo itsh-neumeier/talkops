@@ -74,6 +74,9 @@ Database migrations run automatically when `talkops` starts. Pin a version by
 setting `TALKOPS_VERSION` in `.env` (e.g. `1.0`). Make a
 [backup](backup.md) before major updates.
 
+An update restarts FreeSWITCH. The restart ends all calls in progress.
+Update when no calls are active.
+
 ## Alternative: macvlan
 
 If port 5060 is already used on the host (e.g. by another PBX), FreeSWITCH can
@@ -105,3 +108,39 @@ strong ESL password. This setup is not part of the tested standard installation.
 docker compose logs -f talkops freeswitch
 docker compose exec freeswitch fs_cli -p "$TALKOPS_ESL_PASSWORD" -x status
 ```
+
+### Calls are missing from the call log
+
+FreeSWITCH sends the record of a call to TalkOps when the call ends.
+If TalkOps does not accept the record, FreeSWITCH tries again for about
+one minute. Then FreeSWITCH writes the record to the `cdr-spool` volume.
+TalkOps imports the records from this volume every minute. A call
+recording appears in the call log together with its record.
+
+To find the cause, examine the logs:
+
+```sh
+docker compose logs talkops | grep -iE "call record|CDR|event socket"
+docker compose exec freeswitch ls -la /var/lib/talkops/cdr-spool
+```
+
+- `call record stored`: TalkOps stored the record.
+- `cannot store CDR`: the database did not accept the record.
+  FreeSWITCH spools it.
+- `malformed CDR`: TalkOps cannot read the record. After the import,
+  the file is in `cdr-spool/rejected/`. Keep the file for an error report.
+- `lost connection to FreeSWITCH event socket`: TalkOps cannot see calls
+  in progress until the connection is available again.
+
+Versions before the `cdr-spool` volume kept undelivered records inside
+the FreeSWITCH container. A new container does not have them. To keep
+these records, do these steps before the update:
+
+1. Copy the records out of the old container:
+   `docker compose cp freeswitch:/usr/local/freeswitch/var/log/freeswitch/xml_cdr ./xml_cdr-old`
+2. Update TalkOps.
+3. Copy the records into the spool:
+   `docker compose cp ./xml_cdr-old/. freeswitch:/var/lib/talkops/cdr-spool/`
+
+TalkOps imports the records within one minute. Records that TalkOps has
+already stored are not stored again.

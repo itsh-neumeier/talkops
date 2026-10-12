@@ -299,6 +299,7 @@ Loopback-Quellen (bzw. `TALKOPS_FS_PEERS`), nie über einen Reverse-Proxy
 | `snapshots` | `/var/lib/talkops/snapshots` | Bilder der Türsprechstellen |
 | `backups` | `/var/lib/talkops/backups` | Sicherungsarchive (talkops) |
 | `freeswitch-db` | `/usr/local/freeswitch/var/lib/freeswitch/db` | FreeSWITCH-interne SQLite (Registrierungen) |
+| `cdr-spool` | `/var/lib/talkops/cdr-spool` | nicht zugestellte Anrufdatensätze (freeswitch schreibt, talkops liest ein) |
 
 Alle Images nutzen UID/GID **10001**, damit die gemeinsamen Volumes ohne
 `chmod 777` beschreibbar sind.

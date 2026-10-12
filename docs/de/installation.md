@@ -75,6 +75,9 @@ Datenbankmigrationen laufen beim Start von `talkops` automatisch. Für feste
 Versionen `TALKOPS_VERSION` in `.env` setzen (z. B. `1.0`). Vor größeren
 Updates eine [Datensicherung](datensicherung.md) anlegen.
 
+Ein Update startet FreeSWITCH neu. Dabei enden alle laufenden Gespräche.
+Am besten aktualisieren, wenn niemand telefoniert.
+
 ## Alternative: macvlan
 
 Ist Port 5060 auf dem Host belegt (z. B. durch eine andere Anlage), kann
@@ -109,3 +112,39 @@ Standardinstallation.
 docker compose logs -f talkops freeswitch
 docker compose exec freeswitch fs_cli -p "$TALKOPS_ESL_PASSWORD" -x status
 ```
+
+### Anrufe fehlen in der Anrufliste
+
+FreeSWITCH sendet den Datensatz eines Anrufs am Gesprächsende an TalkOps.
+Nimmt TalkOps ihn nicht an, versucht FreeSWITCH es etwa eine Minute lang
+erneut und legt den Datensatz dann im Volume `cdr-spool` ab. TalkOps liest
+dieses Volume jede Minute ein. Eine Gesprächsaufnahme erscheint zusammen mit
+ihrem Datensatz in der Anrufliste.
+
+Ursache in den Logs suchen:
+
+```sh
+docker compose logs talkops | grep -iE "call record|CDR|event socket"
+docker compose exec freeswitch ls -la /var/lib/talkops/cdr-spool
+```
+
+- `call record stored`: TalkOps hat den Datensatz gespeichert.
+- `cannot store CDR`: Die Datenbank hat den Datensatz nicht angenommen.
+  FreeSWITCH legt ihn im Spool ab.
+- `malformed CDR`: TalkOps kann den Datensatz nicht lesen. Nach dem Einlesen
+  liegt die Datei in `cdr-spool/rejected/`. Für eine Fehlermeldung aufheben.
+- `lost connection to FreeSWITCH event socket`: TalkOps sieht laufende
+  Gespräche erst wieder, wenn die Verbindung steht.
+
+Versionen vor dem Volume `cdr-spool` haben nicht zugestellte Datensätze im
+FreeSWITCH-Container abgelegt. Ein neuer Container hat sie nicht mehr. Um
+diese Datensätze zu behalten, **vor** dem Update:
+
+1. Datensätze aus dem alten Container kopieren:
+   `docker compose cp freeswitch:/usr/local/freeswitch/var/log/freeswitch/xml_cdr ./xml_cdr-alt`
+2. TalkOps aktualisieren.
+3. Datensätze in den Spool kopieren:
+   `docker compose cp ./xml_cdr-alt/. freeswitch:/var/lib/talkops/cdr-spool/`
+
+TalkOps liest sie innerhalb einer Minute ein. Bereits gespeicherte Anrufe
+werden nicht doppelt angelegt.

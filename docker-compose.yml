@@ -81,6 +81,7 @@ services:
       - provisioning:/var/lib/talkops/provisioning
       - snapshots:/var/lib/talkops/snapshots
       - backups:/var/lib/talkops/backups
+      - cdr-spool:/var/lib/talkops/cdr-spool
 
   freeswitch:
     image: ghcr.io/itsh-neumeier/talkops-freeswitch:${TALKOPS_VERSION:-latest}
@@ -106,6 +107,8 @@ services:
       - voicemail:/var/lib/talkops/voicemail
       - sounds:/var/lib/talkops/sounds
       - freeswitch-db:/usr/local/freeswitch/var/lib/freeswitch/db
+      # Call records TalkOps could not accept; TalkOps imports them later.
+      - cdr-spool:/var/lib/talkops/cdr-spool
 
   media-worker:
     image: ghcr.io/itsh-neumeier/talkops-media-worker:${TALKOPS_VERSION:-latest}
@@ -188,5 +191,6 @@ volumes:
   backups:
   models:
   freeswitch-db:
+  cdr-spool:
   caddy-data:
   caddy-config:

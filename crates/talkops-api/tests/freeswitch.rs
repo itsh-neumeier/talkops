@@ -458,6 +458,80 @@ async fn cdr_ingestion(db: PgPool) {
 }
 
 #[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn cdr_spool_import(db: PgPool) {
+    let state = state(db);
+    let router = talkops_api::app(state.clone(), None);
+    let f = fixture(&router).await;
+
+    // A malformed post is refused, so FreeSWITCH spools it instead of losing it.
+    let (status, _) = fs_post(&router, "/fs/cdr", &[("cdr", "<cdr>")]).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+
+    let record = |uuid: &str| {
+        format!(
+            r#"<?xml version="1.0"?><cdr><variables>
+            <uuid>{uuid}</uuid><talkops_direction>outbound</talkops_direction>
+            <talkops_tenant_id>{TENANT}</talkops_tenant_id>
+            <talkops_caller_number>200</talkops_caller_number><talkops_destination>%2B4930123456</talkops_destination>
+            <start_epoch>1791150000</start_epoch><answer_epoch>1791150003</answer_epoch><end_epoch>1791152433</end_epoch>
+            <duration>2433</duration><billsec>2430</billsec><hangup_cause>NORMAL_CLEARING</hangup_cause>
+            </variables></cdr>"#
+        )
+    };
+    // Already delivered by POST: the spooled copy is a duplicate.
+    fs_post(&router, "/fs/cdr", &[("cdr", &record("spool-2"))]).await;
+
+    let dir = std::env::temp_dir().join(format!("talkops-spool-{}", uuid::Uuid::new_v4()));
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(dir.join("a_spool-1.cdr.xml"), record("spool-1")).unwrap();
+    std::fs::write(dir.join("a_spool-2.cdr.xml"), record("spool-2")).unwrap();
+    std::fs::write(
+        dir.join("a_scanner.cdr.xml"),
+        "<cdr><variables><uuid>x</uuid></variables></cdr>",
+    )
+    .unwrap();
+    std::fs::write(dir.join("a_broken.cdr.xml"), "<cdr>").unwrap();
+    std::fs::write(dir.join("notes.txt"), "not a record").unwrap();
+
+    // Files that can still be in the middle of a write are left alone.
+    let n = talkops_api::cdr_spool::import_dir(&state, &dir, std::time::Duration::from_secs(3600))
+        .await
+        .unwrap();
+    assert_eq!(n, talkops_api::cdr_spool::Imported::default());
+
+    let n = talkops_api::cdr_spool::import_dir(&state, &dir, std::time::Duration::ZERO)
+        .await
+        .unwrap();
+    assert_eq!(n.done, 3, "stored, duplicate and unrouted records are done");
+    assert_eq!(n.rejected, 1);
+    let mut left: Vec<String> = std::fs::read_dir(&dir)
+        .unwrap()
+        .map(|e| e.unwrap().file_name().into_string().unwrap())
+        .collect();
+    left.sort();
+    assert_eq!(left, ["notes.txt", "rejected"]);
+    assert!(dir.join("rejected/a_broken.cdr.xml").exists());
+
+    let (_, calls) = f.admin.get("/api/v1/calls").await;
+    let mut uuids: Vec<&str> = calls
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| c["call_uuid"].as_str().unwrap())
+        .collect();
+    uuids.sort();
+    assert_eq!(uuids, ["spool-1", "spool-2"]);
+    let spooled = calls
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["call_uuid"] == "spool-1")
+        .unwrap();
+    assert_eq!(spooled["billsec"], 2430);
+    std::fs::remove_dir_all(&dir).unwrap();
+}
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
 async fn voicemail_routing(db: PgPool) {
     let router = router(db);
     let f = fixture(&router).await;

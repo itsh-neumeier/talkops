@@ -5,6 +5,7 @@ pub mod attendant;
 pub mod auth;
 pub mod backup;
 pub mod callcenter;
+pub mod cdr_spool;
 pub mod conference;
 pub mod config;
 pub mod diagnostics;

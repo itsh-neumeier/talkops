@@ -228,8 +228,13 @@ impl Telephony {
     /// Calls in progress; `None` if FreeSWITCH is unreachable.
     pub async fn active_calls(&self) -> Option<Vec<ActiveCall>> {
         let client = self.esl.get().await?;
-        let out = client.api("show calls as json").await.ok()?;
-        Some(parse_calls(&out))
+        match client.api("show calls as json").await {
+            Ok(out) => Some(parse_calls(&out)),
+            Err(err) => {
+                tracing::warn!(error = %err, "show calls failed");
+                None
+            }
+        }
     }
 
     /// Callers waiting in a mod_callcenter queue; `None` if unknown.

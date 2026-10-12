@@ -33,7 +33,8 @@ See the [pinned Piper source](https://github.com/rhasspy/piper/blob/2023.11.14-2
 
 The worker joins compatible 16-bit PCM segments in text order. It writes
 temporary files in a unique render directory. A completed file replaces its
-destination with a rename. Render failures preserve an existing destination.
+destination with a rename. A failure before an item's publication leaves its
+existing destination unchanged.
 
 Effective speed tags are part of each prompt's text hash. Untagged text at
 1.0 keeps its existing prompt path. Box speed changes queue `tts_prompts`.
@@ -46,6 +47,10 @@ starts. Deleting a message also deletes its announcement variants.
 Generated greeting clips are immutable. If a voicebox needs another speed,
 TalkOps creates a separate clip in the same transaction as the box update.
 Other references to the original clip keep their original audio.
+
+Legacy TTS greeting jobs also use a separate file for each generation. The
+call flow selects the current text, language, and speed. Existing normal-speed
+audio at `greeting.wav` remains available as a fallback after an upgrade.
 
 ## Spoken counts
 

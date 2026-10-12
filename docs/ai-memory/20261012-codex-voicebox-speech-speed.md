@@ -5,10 +5,11 @@
 - Task ID: 20261012-codex-voicebox-speech-speed
 - Date: 2026-10-12, Europe/Berlin
 - Tool: Codex
-- Status: In progress. Implementation complete; validation and PR review pending.
+- Status: Completed
 - Branch: codex/voicebox-speech-speed
 - Base commit: 2fbe3195517b509d2afd3d57247c05a98437f064
-- Related commits or PR: Pending
+- Related commits: `d63d235`, `8ae7edf`, `202b540`
+- PR: https://github.com/itsh-neumeier/talkops/pull/2
 
 ## Goal
 
@@ -22,7 +23,10 @@ the proposal in this chat before implementation started.
 Implemented box speed, per-prompt speed, inline tags, shared clip previews,
 and spoken count sequences. Added database, parser, call-flow, and audio tests.
 Added English and German user documentation and an implementation document.
-Publication and Linux validation are pending.
+The source branch is pushed and PR 2 contains the complete implementation.
+Linux CI and the full live-stack E2E checks passed at `202b540`.
+The real-Piper test verifies speed-dependent duration and mixed inline tags.
+Release integration and publication remain with the release manager.
 
 The remote default target is `ccr-df1c8083-0ce1he`. Fetch confirmed the base
 commit. The original checkout was clean. Created a separate local worktree at
@@ -42,6 +46,8 @@ The app could not attach the checkout. Git can use the worktree.
 - `web/src/lib/i18n/`: Add English and German UI text.
 - `docs/en/voicemail.md`, `docs/de/voicemail.md`, and
   `docs/voicebox-speech-speed.md`: User and implementation documentation.
+- `tests/e2e/run.sh`: Verify real Piper durations for normal, slow, and fast
+  speech. Generate and download a WAV with mixed inline speed sections.
 
 ## Decisions
 
@@ -49,7 +55,7 @@ The user approved the scope below. Additional implementation decisions follow it
 
 - Add a voicebox speed setting and optional prompt speed overrides.
 - Define speed as a factor: 1.0 keeps the current voice speed; 0.7 is slower.
-  Proposed range: 0.5 to 2.0. An explicit text tag overrides the prompt speed.
+  Range: 0.5 to 2.0. An explicit text tag overrides the prompt speed.
   A prompt speed overrides the voicebox speed.
 - Add speed and tag help to the shared TTS clip editor. Its preview uses the
   selected speed. Tags use absolute factors. Reject malformed or nested tags.
@@ -59,11 +65,11 @@ The user approved the scope below. Additional implementation decisions follow it
   per-line JSON length scale. Preserve the model's default at speed 1.0.
 - Include speed in generated prompt cache keys. Refresh affected generated
   announcements after settings changes. Preserve recordings and uploaded clips.
-- For two new messages out of four total, propose: "2 von 4 Sprachnachrichten
-  sind neu." During playback, propose: "Nachricht 2 von 4."
+- For two new messages out of four total, use: "2 von 4 Sprachnachrichten
+  sind neu." During playback, use: "Nachricht 2 von 4."
   Keep separate correct forms for empty, singular, and all-new cases.
-- The current count flow has no literal slash. It speaks new and saved counts.
-  The playback flow currently announces only the message position.
+- The original count flow had no literal slash. It spoke new and saved counts.
+  The original playback flow announced only the message position.
 - Use separate hashed files for legacy TTS greeting generations as well.
   Preserve the old greeting path as a fallback for existing normal-speed audio.
 - Keep box speed when an old API client omits the field. Keep prompt overrides
@@ -77,15 +83,25 @@ The user approved the scope below. Additional implementation decisions follow it
 - Passed: git status, branch and worktree inventory, remote HEAD lookup,
   git fetch origin, base commit check, and open PR inventory with gh.
 - Passed: Inspected pinned Piper 2023.11.14-2 upstream main.cpp.
-- Passed: Initial web build and corrected Svelte check (0 errors, 0 warnings).
+- Passed: Local web lint, build, and Svelte check (0 errors, 0 warnings).
+- Passed: Local `cargo fmt --all --check` and `git diff --check`.
+- Passed: Linux CI at `202b540`: formatting, workspace clippy with warnings as
+  errors, all workspace tests with PostgreSQL and LDAP, web checks, Compose
+  validation, server and media-worker image builds and version smoke tests.
+  Run: https://github.com/itsh-neumeier/talkops/actions/runs/38254728619
 - Failed, corrected: Initial Svelte check used an existing playback translation
   key for TTS speed. Added a separate `audio.speechSpeed` key.
 - Failed, environment: Local cargo check cannot build ring because gcc.exe is
   absent. Docker's Linux engine is unavailable; no WSL distribution is installed.
 - Failed, environment: Initial whole-web lint reported CRLF line endings from
   the Windows checkout. Normalized local web text to LF and repeated the check.
-- Not run yet: Full Linux Rust, database, audio, image, and E2E checks.
-- External CodeRabbit review: CLI unavailable. Manual diff review in progress.
+- Failed, corrected: Initial Linux compilation found a missing error conversion
+  in the playback announcement enqueue path. Preserve playback and log enqueue
+  failures. Added a playback test for box and prompt speed selection.
+- Passed: Live-stack E2E at `202b540`: real-Piper speed generation, SIPp call
+  scenarios, voicemail storage, routing, recording, and browser softphone.
+  Run: https://github.com/itsh-neumeier/talkops/actions/runs/38254728657
+- External CodeRabbit review: CLI unavailable. Manual diff review completed.
 - STE review: Used the repository writing rules. The full official standard
   was not available. Full language review is pending.
 
@@ -94,16 +110,16 @@ The user approved the scope below. Additional implementation decisions follow it
 - No feature PR dependency found. PR 1 tracks the release batch.
 - Migration ID: `20261026000001_voicebox_speech_speed`. Run it before the updated
   server and worker. No new runtime dependency or voice model is required.
-- Tests must cover speed validation, tag parsing, speed precedence, old data,
+- Tests cover speed validation, tag parsing, speed precedence, old data,
   cache changes, audio assembly, API storage, and spoken message sequences.
-- Add English user documentation and German translations.
+- English user documentation and German translations are complete.
 - Commit, push, and PR creation are authorized after the reviewed changes are
   complete. The release chat owns merges, version changes, tags, and publication.
 
 ## Next action
 
-Finish local web checks. Commit and push the branch. Create a draft PR and
-check the Linux CI results. Resolve task failures, then mark the PR ready.
+The release manager reviews PR 2, integrates it, and selects the release.
+No implementation work remains. This chat does not merge or publish a release.
 
 ## References
 

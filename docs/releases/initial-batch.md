@@ -10,9 +10,15 @@ by the inventory request. The integration PR is a draft tracking record.
   `https://github.com/itsh-neumeier/talkops.git`.
 - Verified target: `ccr-df1c8083-0ce1he`, confirmed by GitHub's default branch
   and `git ls-remote --symref origin HEAD`.
-- Target commit: `1a77879e8efe4fc54f1efa92149b6638feaea0bd`.
+- Current target commit: `5d4afd85f89c651c65db7731f6f9106467af18b5`.
+  It advanced during the inventory with committed collaboration/release guidance
+  (six documentation files only). This commit was merged into the integration
+  branch without rewriting history. Its [CI](https://github.com/itsh-neumeier/talkops/actions/runs/38248224452)
+  and [E2E](https://github.com/itsh-neumeier/talkops/actions/runs/38248224423)
+  are pending at this snapshot; it is not yet a validated release candidate.
 - Latest published stable release: [TalkOps 1.7.5](https://github.com/itsh-neumeier/talkops/releases/tag/v1.7.5).
-  The tag resolves to exactly that target commit. Sixteen published tags and
+  The tag resolves to the original target baseline,
+  `1a77879e8efe4fc54f1efa92149b6638feaea0bd`. Sixteen published tags and
   releases were listed; no draft release or prerelease was listed.
 - Before opening this tracking PR, GitHub listed no open or historical PRs,
   no open issues, and only the target branch. There are no remotely handed-off
@@ -32,7 +38,7 @@ by the inventory request. The integration PR is a draft tracking record.
 | --- | --- | --- | --- | --- |
 | Claude Code: next contribution | No PR or pushed feature branch available | Handoff missing; task identity and readiness unknown | Not supplied | Await agreed scope and handoff |
 | Codex: next contribution | No PR or pushed feature branch available | Handoff missing; task identity and readiness unknown | Not supplied | Await agreed scope and handoff |
-| Shared collaboration and release guidance in the original checkout | No PR; changes are uncommitted | Visible locally, unavailable as an integrable contribution | Documentation only as observed; ownership not inferred | Await a committed PR from the owning development task |
+| Shared collaboration and release guidance | No source PR; target commit `5d4afd85f89c651c65db7731f6f9106467af18b5`, authored by Timo Neumeier | Already committed and pushed to target during inventory | Documentation only; no migrations | Already in target and integration ancestry; CI/E2E pending |
 | Release manager: this inventory | Tracking integration PR; documentation commit only | Draft / preparation | No new migrations or runtime changes | Tracking only; no release candidate yet |
 
 Included source PRs: **none**. No ready source PR has been excluded. No named
@@ -44,16 +50,19 @@ door-station settings navigation and ringing several extensions per number.
 There is no PR handoff establishing a new Claude or Codex contribution to this
 batch. Developer chats were not accessed or messaged.
 
-The original checkout at `A:/aislop/codex/talkops/talkops` has these changes:
+At the first inspection, the original checkout at
+`A:/aislop/codex/talkops/talkops` had these changes:
 
 - Modified: `CLAUDE.md`, `README.md`.
 - Untracked: `AGENTS.md`, `docs/release-workflow.md`,
   `docs/release-manager-prompt.md`.
 
-These files were read as instructed but were not staged, committed, copied or
-merged into this worktree. Only the older `CLAUDE.md` is tracked at the baseline;
-the new Codex entry point and release documents do not yet travel with new
-checkouts. The owning development task must provide a focused, committed PR.
+These local changes were read as instructed but were not staged, committed or
+copied by the release manager. At the final inspection, the owning checkout
+was clean and the shared rules had been committed and pushed as `5d4afd8`,
+alongside `docs/development-chat-prompt.md`. They were then consumed exclusively
+from the fetched remote target commit. The shared-guidance handoff blocker is
+resolved; the absence of a source PR is recorded rather than inventing one.
 
 ## Validation evidence for the published baseline
 
@@ -99,8 +108,8 @@ Those require inspecting and testing the actual combined contributions.
    suggested English release notes and explicit readiness. Keep unfinished
    contributions as drafts. Missing migrations/dependencies should be stated
    as `none`, not silently omitted.
-3. Receive the committed shared-guidance PR from its owning development task;
-   do not import the original checkout's uncommitted files.
+3. Shared guidance: resolved by target commit `5d4afd8`. For future work, consume
+   only committed contributions and record ready feature PR handoffs.
 4. Integrate the agreed source heads using merge commits from a freshly fetched
    target. Record ancestry, dependencies and conflict decisions in the tracking
    PR, preserving both contributors' behavior.

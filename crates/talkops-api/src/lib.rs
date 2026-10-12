@@ -1,5 +1,6 @@
 //! TalkOps control plane HTTP server.
 
+pub mod active_calls;
 pub mod attendant;
 pub mod auth;
 pub mod backup;
@@ -266,6 +267,7 @@ pub fn api_router() -> (Router<AppState>, utoipa::openapi::OpenApi) {
         .merge(routes::diagnostics::router())
         .merge(routes::blocking::router())
         .merge(routes::dashboard::router())
+        .merge(routes::live_transcripts::router())
         .merge(routes::audio::router())
         .merge(routes::security::router())
         .split_for_parts();

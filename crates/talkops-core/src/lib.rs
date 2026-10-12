@@ -18,6 +18,7 @@ pub mod holidays;
 pub mod identity;
 
 pub mod jobs;
+pub mod live_transcripts;
 pub mod mail;
 pub mod mfa;
 pub mod numbering;

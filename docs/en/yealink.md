@@ -180,6 +180,12 @@ extended there. Sources: Yealink AX86R documentation (firmware 180.87) on
 support.yealink.com; vibration only appears in Yealink's AX8X provisioning
 template 180.87.0.5.
 
+### Audio codecs
+
+TalkOps writes codec settings only for devices with the codec profile HD or
+Robust. Wi-Fi handsets use HD by default. See
+[Codec profiles](codec-profiles.md).
+
 ## 5. Phonebook
 
 Every phone shows **Internal** (all enabled extensions) and **Contacts** (the

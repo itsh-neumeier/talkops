@@ -185,6 +185,12 @@ dort erweitern. Quellen: Yealink-Doku zum AX86R (Firmware 180.87) auf
 support.yealink.com; die Vibration steht nur in Yealinks
 Provisioning-Vorlage AX8X 180.87.0.5.
 
+### Audio-Codecs
+
+TalkOps schreibt Codec-Einstellungen nur für Geräte mit dem Codec-Profil HD
+oder Robust. WLAN-Handsets nutzen standardmäßig HD. Siehe
+[Codec-Profile](codec-profile.md).
+
 ## 5. Telefonbuch
 
 Jedes Telefon zeigt **Intern** (alle aktiven Nebenstellen) und **Kontakte**

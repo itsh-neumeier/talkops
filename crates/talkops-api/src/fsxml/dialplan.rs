@@ -239,16 +239,6 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
         .chars()
         .filter(|c| c.is_ascii_digit() || *c == '+' || *c == '*' || *c == '#')
         .collect();
-    // Explicit internal calls never fall through to external number formatting.
-    let explicit_internal_call = dest.starts_with("**");
-    let dest = if explicit_internal_call {
-        let Some(number) = numbering::explicit_internal_number(&dest) else {
-            return Ok(reject("404 Not Found"));
-        };
-        number.to_owned()
-    } else {
-        dest
-    };
     // Legacy `*<internal number>` (e.g. `*610`): the same as dialing `610`. Checked
     // before the star codes, so `*310` reaches 310 if it exists.
     let star_internal = match dest.strip_prefix('*') {
@@ -264,6 +254,17 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
     let (dest, hide_once) = match dest.strip_prefix("#31#").or(dest.strip_prefix("*31")) {
         Some(rest) if !rest.is_empty() => (rest.to_owned(), true),
         _ => (dest, false),
+    };
+    // Explicit internal calls never fall through to external number formatting,
+    // including calls preceded by a caller-ID hiding prefix.
+    let explicit_internal_call = dest.starts_with("**");
+    let dest = if explicit_internal_call {
+        let Some(number) = numbering::explicit_internal_number(&dest) else {
+            return Ok(reject("404 Not Found"));
+        };
+        number.to_owned()
+    } else {
+        dest
     };
 
     let mut actions = vec![

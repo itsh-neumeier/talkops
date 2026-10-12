@@ -55,6 +55,7 @@ revisions. No target merge or release publication was performed.
 - The user explicitly selected **101 after the review identified its old
   pickup meaning. Use *8*101 for pickup to avoid existing feature prefixes.
 - Existing bare numbers and the single-star alias remain available.
+- Caller-ID hiding prefixes can precede an explicit internal call number.
 - Explicit calls support 2-8 digit internal numbers, including legacy numbers.
 - A contact must use **101 for explicit internal dialing. Do not infer an
   extension by removing +499543 from a stored external number.
@@ -73,6 +74,7 @@ revisions. No target merge or release publication was performed.
 - Passed: English/German catalog parity; 1,030 unique keys in each catalog.
 - Passed: Final local routing rerun after the SIP-address guard, 22 tests.
   The regression includes a request URI host and an unknown ** target.
+  It also checks explicit internal numbers after caller-ID hiding prefixes.
 - Passed on application commit 397c06c: Linux CI, including full workspace
   fmt, clippy without exclusions, tests, web checks, Compose, image builds
   and smoke tests. PR run 38282000282; push run 38281907317.

@@ -1830,6 +1830,11 @@ async fn explicit_internal_calls_do_not_become_external_or_pickup(db: PgPool) {
         let plain = internal_call(&router, &f.ext21, number).await;
         let explicit = internal_call(&router, &f.ext21, &format!("**{number}")).await;
         assert_eq!(plain, explicit, "{number}");
+        for hide_prefix in ["*31", "#31#"] {
+            let hidden =
+                internal_call(&router, &f.ext21, &format!("{hide_prefix}**{number}")).await;
+            assert_eq!(plain, hidden, "{hide_prefix}**{number}");
+        }
         assert!(
             has(&explicit, "set", "talkops_direction=internal"),
             "{explicit:?}"
@@ -1896,6 +1901,8 @@ async fn explicit_internal_calls_do_not_become_external_or_pickup(db: PgPool) {
     assert!(!a.iter().any(|(app, _)| app == "bridge"), "{a:?}");
     for dest in [
         "**999",
+        "*31**999",
+        "#31#**999",
         "**110",
         "**112",
         "**115",

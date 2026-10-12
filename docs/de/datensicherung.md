@@ -18,12 +18,13 @@ kopieren; Backups auf derselben Platte helfen bei einem Plattenausfall nicht.
 
 ## Vollständige Compose-Backups
 
-1. Eine separate Passwortdatei erstellen:
+1. Eine separate Passwortdatei erstellen. Der ausführende Benutzer ist Eigentümer;
+   Gruppe 10001 gibt dem Container Leserechte:
 
    ```sh
    openssl rand -base64 32 > backup-password
-   sudo chown 10001:10001 backup-password
-   sudo chmod 600 backup-password
+   sudo chown "$(id -u)":10001 backup-password
+   sudo chmod 640 backup-password
    ```
 
 2. `TALKOPS_DEPLOYMENT_FILES` in `.env` auf alle tatsächlich verwendeten Dateien

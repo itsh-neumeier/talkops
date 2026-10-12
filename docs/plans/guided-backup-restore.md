@@ -1,6 +1,6 @@
 # Guided backup and restore proposal
 
-Status: Accepted by the user on 2026-10-12. Implementation is in progress.
+Status: Accepted by the user on 2026-10-12. Implementation is complete. See the task summary for results.
 Date: 2026-10-12.
 Base: `2fbe3195517b509d2afd3d57247c05a98437f064`.
 
@@ -158,9 +158,9 @@ Invalidate restored web sessions and login challenges; use a new login.
 
 ## Review decision
 
-Confirm or change the proposed scope before code changes. The main product
-decisions are a separate backup password and a guided host step for the offline
-restore. Implementation, tests, commit, push and PR follow that review.
+The user accepted this scope before implementation. The accepted decisions
+include a separate backup password and a guided host step for offline restore.
+See the task summary for implementation and verification results.
 
 Language review: Clear English review. The official ASD-STE100 standard was
 not available. Full language review is pending.

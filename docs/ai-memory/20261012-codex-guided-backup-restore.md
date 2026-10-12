@@ -5,11 +5,12 @@
 - Task ID: 20261012-codex-guided-backup-restore
 - Date: 2026-10-12, Europe/Berlin
 - Tool: Codex
-- Status: In progress. Implementation complete; final verification pending.
+- Status: Completed. Code verification passed; final documentation transfer.
 - Branch: codex/guided-backup-restore
 - Base commit: 2fbe3195517b509d2afd3d57247c05a98437f064
 - Feature commit: ef39d2d
-- Related PR: https://github.com/itsh-neumeier/talkops/pull/4 (draft)
+- Related PR: https://github.com/itsh-neumeier/talkops/pull/4
+- Application head checked: 90bebe0. Use the PR for final head and readiness.
 
 ## Goal
 
@@ -58,24 +59,36 @@ were preserved. App registration failed, but the Git worktree is usable.
 - Passed: Browser setup flow using headless Edge and API fixtures.
 - Passed: Compose production, development and backup-override validation.
 - Passed: Host-script export, confirmation, options and failure-state tests.
-- In progress: Full local API/core tests and final clippy revision.
+- Passed: Final API/core clippy with warnings denied on target 1.7.6.
+- Passed: Final encrypted backup/restore and setup/import integration tests (4).
+  Includes wrong-key rejection without data changes and non-admin import denial.
+- The wider local API/core run stopped on three phone template CRLF assertions.
+  Normalized embedded template line endings without Git content changes.
+- Passed: Linux CI run 38261126875 at application head 90bebe0. Includes
+  full Rust workspace tests, clippy, fmt, web/browser tests, Compose and both
+  server/worker image build and smoke tests.
+- Passed: Linux SIPp and browser-softphone E2E run 38261126999 at 90bebe0.
+- Passed: Documentation links and whitespace (13 changed Markdown files).
 - Earlier failures: Missing GNU compiler, full system disk and CRLF lint noise.
   Used MSVC, isolated test storage and normalized worktree text line endings.
 - Not run locally: Linux image builds, SIPp and worker Unix-only tests.
+  Linux CI covers the images and Unix-only tests.
 - CodeRabbit CLI is unavailable. Manual diff review is used.
 - STE review: Clear English review. Full standard unavailable; pending.
 
 ## Dependencies and open work
 
-- No dependency on PR #2 or #3. Integration overlaps include worker/main.rs,
+- No dependency on PR #3. The reviewed PR #2 release is already included. Integration overlaps include worker/main.rs,
   web/api.ts, language catalogs, CI and the ADR index. Preserve both behaviors.
 - Database migration IDs: None.
-- Final test results, commit, push, PR and CI verification remain pending.
+- Implementation is committed and pushed. PR #4 is attached. The final transfer
+  changes documentation only. Use the PR for current verification and readiness.
+- The isolated PostgreSQL test service and active task preview were stopped.
 
 ## Next action
 
-Finish checks, commit the task, push its branch and create the PR. Update this
-summary with final results and the PR URL.
+The release chat selects scope and version, integrates the PR, runs combined
+checks and controls target merges, tags and publication. No feature work remains.
 
 ## References
 

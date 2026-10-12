@@ -19,12 +19,13 @@ Copy archives to another machine. Same-disk backups cannot survive disk failure.
 
 ## Complete backups with Compose
 
-1. Create a separate password file:
+1. Create a separate password file. The operator owns the file; group 10001
+   gives the container read access:
 
    ```sh
    openssl rand -base64 32 > backup-password
-   sudo chown 10001:10001 backup-password
-   sudo chmod 600 backup-password
+   sudo chown "$(id -u)":10001 backup-password
+   sudo chmod 640 backup-password
    ```
 
 2. Set `TALKOPS_DEPLOYMENT_FILES` in `.env` to every active source file, for

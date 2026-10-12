@@ -249,10 +249,9 @@ impl Directory {
         // Outbound bridge CID can describe the local device, rather than the target.
         if resolved.direction == Some(Direction::Outbound)
             && !resolved.metadata.destination.is_empty()
+            && peer_extension.is_none()
         {
-            if peer_extension.is_none() {
-                resolved.called = self.external_party(&resolved.metadata.destination, "");
-            }
+            resolved.called = self.external_party(&resolved.metadata.destination, "");
         }
         resolved
     }

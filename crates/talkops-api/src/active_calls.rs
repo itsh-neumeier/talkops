@@ -48,6 +48,8 @@ pub struct Metadata {
     pub number: Option<Uuid>,
     pub caller_number: String,
     pub destination: String,
+    pub channel_destination: String,
+    pub peer_number: String,
     pub recording: String,
     pub answered_at: Option<DateTime<Utc>>,
 }
@@ -81,6 +83,16 @@ impl Metadata {
             number: id("talkops_number_id"),
             caller_number: var("talkops_caller_number").to_owned(),
             destination: var("talkops_destination").to_owned(),
+            channel_destination: if var("dialed_user").is_empty() {
+                event
+                    .headers
+                    .get("Caller-Destination-Number")
+                    .unwrap_or_else(|| var("destination_number"))
+                    .to_owned()
+            } else {
+                var("dialed_user").to_owned()
+            },
+            peer_number: String::new(),
             recording: var("talkops_recording").to_owned(),
             answered_at: var("answer_epoch")
                 .parse::<i64>()
@@ -169,7 +181,7 @@ impl Directory {
         let name = if ambiguous {
             String::new()
         } else {
-            first.map(|c| c.name.clone()).unwrap_or_else(|| {
+            first.map(Contact::display_name).unwrap_or_else(|| {
                 if fallback.is_empty()
                     || fallback == raw
                     || matches!(fallback, "Outbound Call" | "Inbound Call")
@@ -210,21 +222,10 @@ impl Directory {
         } else {
             self.party(raw_caller, &call.caller_name, caller_ext)
         };
-        // For transfers, prefer the current answered extension over the original destination.
-        let current_called = self.party(&call.callee_number, &call.callee_name, None);
-        let called = if current_called.extension_id.is_some() {
-            current_called
-        } else {
-            self.party(
-                if !call.callee_number.is_empty() {
-                    &call.callee_number
-                } else {
-                    raw_called
-                },
-                &call.callee_name,
-                called_ext,
-            )
-        };
+        // A bridge's caller ID can still identify the original caller. Use the
+        // peer's dialed destination, then the routing target, instead.
+        let peer_extension = self.extension(&meta.peer_number, None).map(|e| e.id);
+        let called = self.party(raw_called, &call.callee_name, peer_extension.or(called_ext));
         let mut resolved = OverviewCall {
             call,
             direction: meta.direction,
@@ -249,7 +250,9 @@ impl Directory {
         if resolved.direction == Some(Direction::Outbound)
             && !resolved.metadata.destination.is_empty()
         {
-            resolved.called = self.external_party(&resolved.metadata.destination, "");
+            if peer_extension.is_none() {
+                resolved.called = self.external_party(&resolved.metadata.destination, "");
+            }
         }
         resolved
     }
@@ -296,7 +299,8 @@ pub async fn load(
             continue;
         }
         let mut meta = Metadata::default();
-        for uuid in [&call.uuid.clone(), &call.bridge_uuid.clone()] {
+        let channels = [call.uuid.clone(), call.bridge_uuid.clone()];
+        for uuid in &channels {
             if Uuid::parse_str(uuid).is_err() {
                 continue;
             }
@@ -321,6 +325,26 @@ pub async fn load(
         }
         if meta.tenant != Some(tenant) {
             continue;
+        }
+        if let Some(peer) = channels
+            .iter()
+            .find(|id| **id != call.uuid && Uuid::parse_str(id).is_ok())
+        {
+            let dump = if let Some(dump) = dumps.get(peer) {
+                dump.clone()
+            } else {
+                let dump = Metadata::parse(
+                    &client
+                        .api(&format!("uuid_dump {peer}"))
+                        .await
+                        .unwrap_or_default(),
+                );
+                dumps.insert(peer.clone(), dump.clone());
+                dump
+            };
+            if dump.tenant == Some(tenant) {
+                meta.peer_number = dump.channel_destination;
+            }
         }
         let mut resolved = directory.resolve(call, meta);
         resolved.transcript_available = settings.transcription_enabled
@@ -393,6 +417,8 @@ mod tests {
     #[test]
     fn matches_all_fields_formats_and_keeps_internal_numbers_separate() {
         let mut dir = directory();
+        dir.contacts[0].name = "Family Vollmeier".into();
+        dir.contacts[0].company = "Maria".into();
         for raw in [
             "095458589",
             "+4995458589",
@@ -488,5 +514,45 @@ mod tests {
             1791450000123456
         );
         assert!(Metadata::parse("-ERR absent").tenant.is_none());
+    }
+
+    #[test]
+    fn bridge_caller_id_does_not_replace_the_target_extension() {
+        let mut dir = directory();
+        let mut target = dir.extensions[0].clone();
+        target.id = Uuid::new_v4();
+        target.number = "202".into();
+        target.display_name = "Target".into();
+        let target_id = target.id;
+        dir.extensions.push(target);
+        let meta = Metadata {
+            direction: Some(Direction::Internal),
+            extension: Some(dir.extensions[0].id),
+            dest_extension: Some(target_id),
+            caller_number: "101".into(),
+            destination: "202".into(),
+            ..Default::default()
+        };
+        let resolved = dir.resolve(call(), meta.clone());
+        assert_eq!(resolved.called.extension_id, Some(target_id));
+        assert_eq!(resolved.called.name, "Target");
+        let mut transferred = dir.extensions[0].clone();
+        transferred.id = Uuid::new_v4();
+        transferred.number = "303".into();
+        transferred.display_name = "Transferred target".into();
+        let transferred_id = transferred.id;
+        dir.extensions.push(transferred);
+        let resolved = dir.resolve(
+            call(),
+            Metadata {
+                peer_number: "303".into(),
+                ..meta
+            },
+        );
+        assert_eq!(resolved.called.extension_id, Some(transferred_id));
+        assert_eq!(
+            Metadata::parse("Caller-Destination-Number: 303\n\n").channel_destination,
+            "303"
+        );
     }
 }

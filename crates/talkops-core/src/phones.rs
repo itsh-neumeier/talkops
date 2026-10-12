@@ -772,6 +772,17 @@ pub struct Contact {
     pub section_id: Option<Uuid>,
 }
 
+impl Contact {
+    /// The same label used by the shared phonebook and live call overview.
+    pub fn display_name(&self) -> String {
+        if self.company.is_empty() || self.name.is_empty() {
+            format!("{}{}", self.name, self.company)
+        } else {
+            format!("{} ({})", self.name, self.company)
+        }
+    }
+}
+
 #[derive(Debug, Clone, Deserialize, utoipa::ToSchema)]
 pub struct ContactInput {
     pub name: String,

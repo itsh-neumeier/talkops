@@ -82,6 +82,13 @@ try {
   await dialog.getByRole('alert').waitFor();
   await dialog.getByRole('button', { name: 'Schließen', exact: true }).click();
   assert.deepEqual(errors, []);
+  failing = false;
+  await section.getByRole('button', { name: 'Live-Transkript', exact: true }).first().click();
+  await dialog.getByText('Hallo, hier ist Maria.', { exact: true }).first().waitFor();
+  calls = calls.map(call => call.uuid === 'outgoing' ? { ...call, called: { ...remote, number: '+4995459999' } } : call);
+  await dialog.getByText('Das Gespräch oder die Live-Vorschau ist beendet.', { exact: true }).waitFor({ timeout: 15_000 });
+  const afterTransfer = polls; await page.waitForTimeout(3300); assert.equal(polls, afterTransfer);
+  await dialog.getByRole('button', { name: 'Schließen', exact: true }).click();
   await context.close();
   console.log('PASS: call brackets, directions, speakers, times, popup, reduced motion, cleanup, mobile layout and errors');
 } finally { await browser.close(); }

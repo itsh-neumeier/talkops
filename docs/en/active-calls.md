@@ -24,6 +24,9 @@ Text is provisional and can lag behind speech. Each job reads at most eight
 seconds. Each tenant can have four previews. The popup keeps the last 200
 segments. Use the final transcript for complete text and search.
 
+If the call is transferred to another party, reopen the popup. The old
+preview stops so that its speaker names do not identify the new party.
+
 Close the popup to stop requests and delete temporary text. Abandoned previews
 stop work after 30 seconds without requests. Cleanup deletes abandoned text
 within one hour. Final transcripts keep normal retention.

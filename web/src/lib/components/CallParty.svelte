@@ -4,7 +4,7 @@
 	let { party }: { party: CallParty } = $props();
 </script>
 
-{#if party.name}<strong class="font-medium">{party.name}</strong>{/if}
+{#if party.name}<strong class="font-medium [overflow-wrap:anywhere]">{party.name}</strong>{/if}
 {#if party.name}{' '}{/if}
 {#if party.number && party.number !== 'anonymous'}
 	<span class="inline-block max-w-full break-all text-slate-500 dark:text-slate-400"

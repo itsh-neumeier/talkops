@@ -116,8 +116,15 @@ Keep round brackets in contact names, such as Family Vollmeier (Maria).
 - Pending: Linux CI/E2E.
 - Final review: Remove old completed live jobs as well as abandoned previews.
   This prevents continuous popup polling from growing the jobs table.
+- Stop the open preview when its remote party changes after a transfer.
+  This keeps the initial speaker names separate from the new party.
+- Share the existing phonebook name formatter. Include company/name suffixes
+  in round brackets. Test a separate name and company that produce the example.
 - Remote browser fixture: Wait for the incoming preview response before
   asserting its speaker labels. Keep all assertions and the typing check.
+- First live-stack E2E found that the bridge caller ID can identify the
+  originating extension. Use the peer's dialed destination or routing target
+  for the called party. Add a regression test and repeat live-stack E2E.
 - Failed remote web check: The existing mobile header exceeded 320 pixels with
   Linux fonts. Keep branding text on larger screens so mobile controls fit.
   Repeat the full browser check on Linux. No assertion was removed.

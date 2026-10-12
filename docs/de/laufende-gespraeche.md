@@ -28,6 +28,10 @@ höchstens acht Sekunden Audio gelesen. Pro Mandant sind vier Vorschauen
 möglich. Das Popup behält die letzten 200 Textabschnitte. Das endgültige
 Transkript bleibt für vollständige Texte und Suche zuständig.
 
+Bei einem Transfer zu einem anderen Gesprächspartner das Popup neu öffnen.
+Die bisherige Vorschau stoppt, damit ihre Sprechernamen nicht dem neuen
+Gesprächspartner zugeordnet werden.
+
 Schließen beendet Anfragen und löscht temporären Text. Verlassene Vorschauen
 stoppen neue Arbeit nach 30 Sekunden ohne Anfragen. Ihre Texte werden innerhalb
 einer Stunde gelöscht. Endgültige Transkripte behalten die normale Löschfrist.

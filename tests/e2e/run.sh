@@ -235,7 +235,7 @@ for _ in $(seq 1 20); do
 done
 [ -n "$LIVE_UUID" ] || fail "recorded call missing from the resolved overview"
 echo "$LIVE_CALL" | jq -e '.caller.name == "E2E 200" and .called.name == "E2E 210" and .answered_at != null' >/dev/null \
-    || fail "live call identities or answer time are incorrect"
+    || { echo "$LIVE_CALL" | jq .; fail "live call identities or answer time are incorrect"; }
 # Play real Piper speech into the recording while SIPp keeps both legs alive.
 LIVE_CLIP=$(echo "$TTS_NORMAL" | jq -r .id)
 docker compose exec -T freeswitch sh -c 'fs_cli -p "$TALKOPS_ESL_PASSWORD" -x "$1"' talkops \

@@ -97,7 +97,7 @@ async fn resolves_contacts_and_protects_live_content(db: PgPool) {
     let (_, section) = admin
         .post("/api/v1/phonebook-sections", json!({"name":"Family"}))
         .await;
-    admin.post("/api/v1/contacts", json!({"name":"Family Vollmeier (Maria)","phone_other":"095458589","section_id":section["id"]})).await;
+    admin.post("/api/v1/contacts", json!({"name":"Family Vollmeier","company":"Maria","phone_other":"095458589","section_id":section["id"]})).await;
     let tenant = talkops_core::tenant::TenantId::DEFAULT;
     let trunk: Uuid = sqlx::query_scalar(
         "INSERT INTO trunks (tenant_id, name, preset) VALUES ($1, 'Test', 'generic') RETURNING id",

@@ -79,6 +79,11 @@
 	<LiveTranscript
 		call={selected}
 		onclose={() => (selected = null)}
-		ended={!calls.some((call) => call.uuid === selected?.uuid)}
+		ended={!calls.some(
+			(call) =>
+				call.uuid === selected?.uuid &&
+				call.called.extension_id === selected.called.extension_id &&
+				call.called.number === selected.called.number
+		)}
 	/>
 {/if}

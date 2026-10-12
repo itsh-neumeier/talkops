@@ -21,13 +21,16 @@
 	let disposed = false;
 	let first = true;
 	const path = $derived(`/telephony/calls/${call.uuid}/transcript`);
+	$effect(() => {
+		if (ended) void api.del(path).catch(() => {});
+	});
 
 	async function poll() {
 		if (busy || disposed || stopped || ended) return;
 		busy = true;
 		try {
 			const result = await api.post<LiveTranscript>(path);
-			if (disposed) {
+			if (disposed || ended) {
 				void api.del(path).catch(() => {});
 				return;
 			}

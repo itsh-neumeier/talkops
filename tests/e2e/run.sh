@@ -10,7 +10,9 @@
 # offers its caller to a registered agent, that answered calls are
 # recorded, that a door station's ring reaches a phone with video and
 # (WEBRTC_E2E=1, needs Node.js with Playwright) that the browser softphone
-# can call an extension, and that repeated wrong passwords ban the address.
+# can call an extension, that TalkOps transcodes to iLBC for a Wi-Fi handset
+# with the robust codec profile, and that repeated wrong passwords ban the
+# address.
 #
 #   BASE=http://127.0.0.1:8080 SIP_HOST=192.168.1.10 tests/e2e/run.sh
 set -euo pipefail
@@ -272,6 +274,34 @@ if [ "${WEBRTC_E2E:-0}" = 1 ]; then
     node "$DIR/../e2e/webrtc.mjs" "$BASE" e2e-web e2e-web-password 210 || fail "softphone call"
     wait "$WEB_PID" || { cat "$WORK/web-callee.log" 2>/dev/null; fail "callee of the softphone call failed"; }
 fi
+
+log "codec profile: TalkOps transcodes for a device with the robust profile"
+EXT240=$(api POST /api/v1/extensions '{"number":"240","display_name":"E2E 240"}' | jq -r .id) || fail "create extension 240"
+read -r HANDSET HANDSET_PW <<<"$(api POST "/api/v1/extensions/$EXT240/devices" '{"name":"Handset","kind":"wifi","codec_profile":"robust"}' \
+    | jq -r '"\(.sip_username) \(.sip_password)"')" || fail "create Wi-Fi handset"
+# Calls to the handset: the INVITE offers iLBC; the caller only has G.711.
+sipp -sf "$DIR/uas_ilbc.xml" -p 5094 -i "$SIP_HOST" -m 1 -min_rtp_port 17400 -max_rtp_port 17450 -timeout 60 -timeout_error \
+    -trace_err -error_file "$WORK/ilbc-callee.log" >"$WORK/ilbc-callee.out" 2>&1 &
+ILBC_PID=$!
+sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/register.xml" -set contact_port 5094 -s "$HANDSET" -au "$HANDSET" -ap "$HANDSET_PW" \
+    -m 1 -p 5097 -i "$SIP_HOST" -timeout 20 -timeout_error -trace_err -error_file "$WORK/register-handset.log" >/dev/null \
+    || { cat "$WORK/register-handset.log" 2>/dev/null; fail "registration of the Wi-Fi handset failed"; }
+printf 'SEQUENTIAL\n240;\n' > "$WORK/handset.csv"
+sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/call.xml" -inf "$WORK/handset.csv" -s "$CALLER" -au "$CALLER" -ap "$CALLER_PW" \
+    -m 1 -p 5098 -min_rtp_port 17500 -max_rtp_port 17550 -i "$SIP_HOST" -timeout 30 -timeout_error -trace_err -error_file "$WORK/to-handset.log" >/dev/null \
+    || { cat "$WORK/to-handset.log" 2>/dev/null; fail "G.711 call to the iLBC handset failed"; }
+wait "$ILBC_PID" || { cat "$WORK/ilbc-callee.log" 2>/dev/null; fail "the handset was not offered iLBC only"; }
+# Calls from the handset: TalkOps answers with iLBC although G.722 comes first.
+sipp -sn uas -p 5094 -i "$SIP_HOST" -m 1 -min_rtp_port 17600 -max_rtp_port 17650 -timeout 60 -timeout_error \
+    -trace_err -error_file "$WORK/from-handset-callee.log" >"$WORK/from-handset-callee.out" 2>&1 &
+FROM_PID=$!
+sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/register.xml" -set contact_port 5094 -s "$CALLEE" -au "$CALLEE" -ap "$CALLEE_PW" \
+    -m 1 -p 5092 -i "$SIP_HOST" -timeout 20 -timeout_error -trace_err -error_file "$WORK/register6.log" >/dev/null \
+    || { cat "$WORK/register6.log" 2>/dev/null; fail "registration for the handset call failed"; }
+sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/call_ilbc.xml" -inf "$WORK/dest.csv" -s "$HANDSET" -au "$HANDSET" -ap "$HANDSET_PW" \
+    -m 1 -p 5097 -min_rtp_port 17700 -max_rtp_port 17750 -i "$SIP_HOST" -timeout 30 -timeout_error -trace_err -error_file "$WORK/from-handset.log" >/dev/null \
+    || { cat "$WORK/from-handset.log" 2>/dev/null; fail "the handset's call was not answered with iLBC"; }
+wait "$FROM_PID" || { cat "$WORK/from-handset-callee.log" 2>/dev/null; fail "callee of the handset call failed"; }
 
 log "repeated wrong passwords ban the address"
 api PUT /api/v1/security/sip \

@@ -125,6 +125,13 @@ export default {
 	'ext.resetConfirm': 'Generate a new SIP password? The phone must then be reconfigured.',
 	'ext.online': 'online',
 	'ext.offline': 'offline',
+	'ext.codecProfile': 'Codec profile',
+	'ext.codecAuto': 'Automatic ({profile})',
+	'ext.codecHint':
+		'TalkOps uses this codec with the device and converts it for the other party. Robust (iLBC) helps on Wi-Fi with packet loss but has narrowband sound. A provisioned phone gets new codec settings after a resync.',
+	'codecProfiles.standard': 'Standard',
+	'codecProfiles.hd': 'HD (G.722)',
+	'codecProfiles.robust': 'Robust (iLBC)',
 	'kinds.desk': 'Desk phone',
 	'kinds.dect': 'DECT handset',
 	'kinds.softphone': 'Softphone',

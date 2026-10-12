@@ -2,6 +2,8 @@
 	import { onMount } from 'svelte';
 	import {
 		api,
+		effectiveCodecProfile,
+		type CodecProfile,
 		type Device,
 		type DeviceCredentials,
 		type DeviceKind,
@@ -28,6 +30,7 @@
 	} = $props();
 
 	const kinds: DeviceKind[] = ['desk', 'dect', 'wifi', 'softphone', 'mobile', 'door', 'other'];
+	const codecProfiles: CodecProfile[] = ['standard', 'hd', 'robust'];
 	let error = $state('');
 	let addOpen = $state(false);
 	let credOpen = $state(false);
@@ -41,6 +44,7 @@
 		account_index: '' as number | '',
 		phone_label: '',
 		phone_display_name: '',
+		codec_profile: '' as CodecProfile | '',
 		enabled: true
 	});
 	let form = $state(empty());
@@ -73,6 +77,7 @@
 			account_index: d.account_index ?? '',
 			phone_label: d.phone_label,
 			phone_display_name: d.phone_display_name,
+			codec_profile: d.codec_profile ?? '',
 			enabled: d.enabled
 		};
 		addOpen = true;
@@ -84,6 +89,7 @@
 		const body = {
 			...form,
 			phone_id: form.phone_id || null,
+			codec_profile: form.codec_profile || null,
 			account_index: form.phone_id && form.account_index !== '' ? Number(form.account_index) : null
 		};
 		try {
@@ -146,6 +152,11 @@
 						<div class="font-medium">
 							{d.name}
 							<span class="text-sm font-normal text-slate-500">· {t(`kinds.${d.kind}`)}</span>
+							{#if effectiveCodecProfile(d.kind, d.codec_profile) !== 'standard'}
+								<span class="badge badge-muted"
+									>{t(`codecProfiles.${effectiveCodecProfile(d.kind, d.codec_profile)}`)}</span
+								>
+							{/if}
 							{#if registrations}
 								<span class="badge {online(d) ? 'badge-ok' : 'badge-muted'}"
 									>{online(d) ? t('ext.online') : t('ext.offline')}</span
@@ -207,6 +218,18 @@
 					placeholder={t('phones.nextFree')}
 				/>
 			</div>
+		</div>
+		<div>
+			<label for="d-codec">{t('ext.codecProfile')}</label>
+			<select id="d-codec" class="input" bind:value={form.codec_profile}>
+				<option value=""
+					>{t('ext.codecAuto', {
+						profile: t(`codecProfiles.${effectiveCodecProfile(form.kind, null)}`)
+					})}</option
+				>
+				{#each codecProfiles as p (p)}<option value={p}>{t(`codecProfiles.${p}`)}</option>{/each}
+			</select>
+			<p class="hint">{t('ext.codecHint')}</p>
 		</div>
 		<p class="hint">{t('phones.deviceHint')}</p>
 		{#if form.phone_id}

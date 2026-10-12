@@ -122,6 +122,13 @@ const de: Record<keyof typeof en, string> = {
 		'Neues SIP-Passwort erzeugen? Das Telefon muss danach neu eingerichtet werden.',
 	'ext.online': 'online',
 	'ext.offline': 'offline',
+	'ext.codecProfile': 'Codec-Profil',
+	'ext.codecAuto': 'Automatisch ({profile})',
+	'ext.codecHint':
+		'TalkOps nutzt diesen Codec mit dem Gerät und wandelt ihn für die Gegenseite um. Robust (iLBC) hilft bei WLAN mit Paketverlust, klingt aber schmalbandig. Ein provisioniertes Telefon erhält neue Codec-Einstellungen nach einem Resync.',
+	'codecProfiles.standard': 'Standard',
+	'codecProfiles.hd': 'HD (G.722)',
+	'codecProfiles.robust': 'Robust (iLBC)',
 	'kinds.desk': 'Tischtelefon',
 	'kinds.dect': 'DECT-Mobilteil',
 	'kinds.softphone': 'Softphone',

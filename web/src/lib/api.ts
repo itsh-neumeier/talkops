@@ -122,7 +122,20 @@ export interface Device {
 	phone_label: string;
 	/** Caller name sent by the provisioned phone; empty = display name. */
 	phone_display_name: string;
+	/** Codec profile; null = automatic from the device kind. */
+	codec_profile: CodecProfile | null;
 	enabled: boolean;
+}
+
+/** Codecs TalkOps uses with a device (ADR 0023). */
+export type CodecProfile = 'standard' | 'hd' | 'robust';
+
+/** Profile in use: the configured one, else the default of the device kind. */
+export function effectiveCodecProfile(
+	kind: DeviceKind,
+	configured: CodecProfile | null
+): CodecProfile {
+	return configured ?? (kind === 'wifi' ? 'hd' : 'standard');
 }
 
 export interface ExtensionWithDevices extends Extension {

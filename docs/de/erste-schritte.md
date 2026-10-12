@@ -1,5 +1,10 @@
 # Erste Schritte
 
+Bei der Ersteinrichtung zwischen einer neuen Instanz und Wiederherstellung aus
+Backup wählen. Der Restore legt keinen Ersatz-Administrator an; danach die
+wiederhergestellten Konten verwenden. Siehe
+[Datensicherung und Wiederherstellung](datensicherung.md).
+
 Nach der [Installation](installation.md) ist TalkOps unter `http://<host>:8080`
 erreichbar. Das Dashboard zeigt Admins eine Liste *Erste Schritte*, die diese
 Schritte abhakt, sobald sie erledigt sind.

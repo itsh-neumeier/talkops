@@ -1,6 +1,74 @@
 import type en from './en';
 
 const de: Record<keyof typeof en, string> = {
+	'setup.choose':
+		'Neue Instanz einrichten oder eine bestehende Instanz aus einem Backup wiederherstellen.',
+	'setup.new': 'Neue Instanz einrichten',
+	'setup.restore': 'Aus Backup wiederherstellen',
+	'restore.title': 'Bestehende Instanz wiederherstellen',
+	'restore.intro':
+		'Dieser Assistent prüft das Backup und bereitet Deployment-Dateien vor. Das Host-Werkzeug führt die Wiederherstellung offline aus.',
+	'restore.hostFirst':
+		'Falls der Server noch nicht starten kann, nutze die Host-Schritte unten, um zuerst die ursprüngliche Konfiguration zu exportieren.',
+	'restore.limits':
+		'Browser-Prüfung: bis 512 MiB Upload und 8 GiB entpackte Daten. Für größere Backups das Host-Werkzeug verwenden.',
+	'restore.inspect': '1. Backup auswählen und prüfen',
+	'restore.token': 'Lokales Setup-Token',
+	'restore.tokenHint':
+		'TALKOPS_SETUP_TOKEN auf dem Host auf einen zufälligen Wert mit mindestens 32 Zeichen setzen, TalkOps neu starten und den Wert hier eingeben. Sobald ein Konto existiert, wird dieser Zugang geschlossen.',
+	'restore.archive': 'Backup-Archiv',
+	'restore.password': 'Backup-Passwort (bei alten unverschlüsselten Archiven leer lassen)',
+	'restore.inspectButton': 'Backup prüfen',
+	'restore.review': '2. Wiederherstellungsdaten prüfen',
+	'restore.date': 'Backup-Datum',
+	'restore.schema': 'Datenbankschema',
+	'restore.volumes': 'Enthaltene Daten-Volumes',
+	'restore.noRecordings':
+		'Dieses Backup enthält keine Gesprächsaufzeichnungen. Diese werden nicht wiederhergestellt.',
+	'restore.complete': 'Die benötigten Deployment-Dateien und Zugangsdaten sind enthalten.',
+	'restore.incomplete':
+		'Die Wiederherstellungskonfiguration ist unvollständig. Fehlende Dateien oder Werte vor dem Restore ergänzen.',
+	'restore.project': 'Compose-Projekt',
+	'restore.profiles': 'Profile',
+	'restore.configDate': 'Konfiguration erfasst',
+	'restore.imported':
+		'Diese Konfiguration wurde manuell importiert. Prüfe, ob sie dem ursprünglichen Stack entspricht.',
+	'restore.legacy':
+		'Dieses alte Backup enthält keine Deployment-Konfiguration. Ursprüngliche Compose-Dateien, .env und TALKOPS_SECRET_KEY bereitstellen.',
+	'restore.downloadConsent':
+		'Der Download enthält unverschlüsselte Passwörter und den Anwendungsschlüssel. Ich werde ihn sicher aufbewahren.',
+	'restore.download': 'Deployment-Dateien herunterladen',
+	'restore.hostSteps': '3. Wiederherstellung auf dem Linux-Host abschließen',
+	'restore.getTool':
+		'Host-Werkzeug aus einem TalkOps-Image exportieren, das dieses Backup-Format unterstützt. Im Produktivbetrieb eine passende Image-Version festlegen.',
+	'restore.prepareHint':
+		'Archiv als backup.archive speichern. Backup-Passwort in einer privaten Datei namens backup-password ablegen. Dieser Befehl exportiert Dateien in ein neues Verzeichnis. Bei alten Archiven --password-file weglassen.',
+	'restore.checkHost':
+		'Exportierte .env und Compose-Dateien prüfen. TALKOPS_SECRET_KEY beibehalten. IP-Adressen, Domain, Ports, Volume-Speicher, Image-Versionen, Projektname und Profile kontrollieren. Fehlende Konfiguration ergänzen.',
+	'restore.runHint':
+		'Im geprüften Deployment-Verzeichnis ausführen. Beispielpfade, Projektname und alle -f-, --env-file- und --profile-Optionen anpassen. Das Werkzeug fragt nach Bestätigung, stoppt schreibende Dienste, stellt Daten wieder her und startet den Stack.',
+	'restore.portainer':
+		'In Portainer den geprüften Stack und die Umgebungswerte importieren. TalkOps, Media-Worker und FreeSWITCH stoppen; PostgreSQL laufen lassen. talkops restore --yes in einem temporären Container mit denselben Volumes und Umgebungswerten ausführen; danach den geprüften Stack neu bereitstellen.',
+	'restore.verify':
+		'Nach dem Neustart mit einem wiederhergestellten Konto einschließlich MFA anmelden. Dienstzustand, Telefonregistrierung und einen Testanruf prüfen.',
+	'restore.failure':
+		'Bei einem Fehler bleiben schreibende Dienste gestoppt. restore-state.json im Backups-Volume prüfen, die Ursache beheben und mit dem Originalarchiv erneut versuchen. Datenbank und Volumes werden nicht in einer gemeinsamen Transaktion ersetzt.',
+	'restore.login': 'Abschluss prüfen und zur Anmeldung',
+	'restore.notFinished':
+		'Noch kein wiederhergestelltes Konto vorhanden. Zuerst den Restore auf dem Host abschließen.',
+	'backup.configTitle': 'Wiederherstellungskonfiguration',
+	'backup.configComplete': 'Benötigte Deployment-Dateien sind enthalten.',
+	'backup.configMissing': 'Wiederherstellungskonfiguration unvollständig. Es fehlt:',
+	'backup.configImported': 'Importierte Konfiguration nach jeder Stack-Änderung aktualisieren.',
+	'backup.encryptionMissing':
+		'Kein Backup-Passwort konfiguriert. Vollständige Backups mit Deployment-Zugangsdaten benötigen TALKOPS_BACKUP_PASSWORD oder TALKOPS_BACKUP_PASSWORD_FILE.',
+	'backup.importTitle': 'Portainer-Deployment-Konfiguration importieren',
+	'backup.importHint':
+		'Dateien .env und docker-compose*.yml/yaml auswählen. Portainer-Umgebungswerte zuvor in eine lokale .env kopieren. Backup-Passwort separat speichern. Importierte Dateien werden verschlüsselt abgelegt.',
+	'backup.importFiles': 'Deployment-Dateien',
+	'backup.importButton': 'Konfiguration speichern',
+	'backup.project': 'Compose-Projektname',
+	'backup.profiles': 'Aktive Profile (kommagetrennt)',
 	'app.tagline': 'by ITSH Neumeier',
 	'theme.toggle': 'Dunkelmodus umschalten',
 	'locale.label': 'Sprache',

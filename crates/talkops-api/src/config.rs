@@ -25,6 +25,10 @@ pub struct Config {
     #[arg(long, env = "TALKOPS_SECRET_KEY", hide_env_values = true)]
     pub secret_key: String,
 
+    /// Local bootstrap authorization for first-setup archive inspection.
+    #[arg(long, env = "TALKOPS_SETUP_TOKEN", hide_env_values = true)]
+    pub setup_token: Option<String>,
+
     /// Directory with the built web UI. Not served if it does not exist.
     #[arg(
         long,
@@ -180,4 +184,36 @@ pub struct Storage {
     /// Directory with `pg_dump`/`pg_restore` (default: from `PATH`).
     #[arg(long, env = "TALKOPS_PG_BIN_DIR")]
     pub pg_bin_dir: Option<PathBuf>,
+
+    /// Separate password for age-encrypted backups. Never include it in deployment files.
+    #[arg(long, env = "TALKOPS_BACKUP_PASSWORD", hide_env_values = true)]
+    pub backup_password: Option<String>,
+
+    #[arg(long, env = "TALKOPS_BACKUP_PASSWORD_FILE")]
+    pub backup_password_file: Option<PathBuf>,
+
+    /// Read-only directory with selected deployment source files.
+    #[arg(long, env = "TALKOPS_DEPLOYMENT_DIR")]
+    pub deployment_dir: Option<PathBuf>,
+
+    #[arg(
+        long,
+        env = "TALKOPS_DEPLOYMENT_FILES",
+        value_delimiter = ',',
+        default_value = ".env,docker-compose.yml"
+    )]
+    pub deployment_files: Vec<String>,
+
+    #[arg(long, env = "TALKOPS_COMPOSE_PROJECT", default_value = "talkops")]
+    pub compose_project: String,
+
+    #[arg(long, env = "TALKOPS_COMPOSE_PROFILES", default_value = "")]
+    pub compose_profiles: String,
+
+    #[arg(
+        long,
+        env = "TALKOPS_RESTORE_MAX_BYTES",
+        default_value_t = 68_719_476_736
+    )]
+    pub restore_max_bytes: u64,
 }

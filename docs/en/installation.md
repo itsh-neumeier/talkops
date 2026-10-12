@@ -19,6 +19,10 @@ not fully work there.
 
 ## Install with Docker Compose
 
+For recovery on a new host, export the backup configuration before creating
+new credentials. See [Backup and restore](backup.md). First setup also has
+a restore assistant.
+
 ```sh
 mkdir talkops && cd talkops
 curl -LO https://raw.githubusercontent.com/itsh-neumeier/talkops/main/docker-compose.yml

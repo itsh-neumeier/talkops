@@ -46,7 +46,8 @@ async function send<T>(method: string, path: string, body?: unknown): Promise<T>
 	if (res.status === 204) return undefined as T;
 	const data = await res.json().catch(() => ({}));
 	if (!res.ok) {
-		if (res.status === 401 && !path.startsWith('/auth/login')) onUnauthorized();
+		if (res.status === 401 && !path.startsWith('/auth/login') && path !== '/auth/me')
+			onUnauthorized();
 		throw new ApiError(res.status, data.error ?? 'error', data.message ?? res.statusText);
 	}
 	return data as T;

@@ -1,5 +1,9 @@
 # First steps
 
+On first setup, select a new instance or restore from a backup. Recovery does
+not create a replacement administrator. Use the restored accounts after the
+offline restore. See [Backup and restore](backup.md).
+
 After the [installation](installation.md) TalkOps is available at
 `http://<host>:8080`. The dashboard shows admins a *Getting started*
 checklist that ticks off these steps as they are done.

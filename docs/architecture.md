@@ -97,7 +97,8 @@ Jede Anfrage im Kontext `internal` (authentifizierte Geräte) bzw. `public`
 | public | unbekannt | `404` |
 | internal | `*78` / `*79` | Nicht stören an/aus (Bestätigungston, kein CDR) |
 | internal | `*72<Nummer>` / `*73` | Rufumleitung sofort an/aus (Ziel: Nebenstelle oder externe Nummer) |
-| internal | `**<Nebenstelle>` | gezieltes Heranholen (`pickup ext-<uuid>`) |
+| internal | `**<number>` | Explicit internal call; unknown targets return `404` without trunk fallback. |
+| internal | `*8*<Nebenstelle>` | gezieltes Heranholen (`pickup ext-<uuid>`) |
 | internal | `*97` / `*98` | eigene Mailbox / beliebige Mailbox mit PIN (ESL outbound) |
 | internal | `*30<Nummer>` | Zeitsteuerung zwischen Automatik und „geschlossen“ umschalten |
 | internal | `*51` … `*59` | Parkplatz: parken bzw. abholen (`valet_park talkops *5N`) |
@@ -106,7 +107,7 @@ Beim Klingeln einer Nebenstelle gilt (Phase 2): deaktiviert → `480`,
 **Nicht stören** → `486 Busy Here`, **Rufumleitung** → genau ein Sprung (keine
 Ketten, keine Schleifen) zu einer Nebenstelle bzw. extern über die Rufnummer
 der umleitenden Nebenstelle (sonst Standardrufnummer). Jeder Klingelvorgang
-enthält zusätzlich den Endpunkt `pickup/ext-<uuid>`, damit `**<Nebenstelle>`
+enthält zusätzlich den Endpunkt `pickup/ext-<uuid>`, damit `*8*<Nebenstelle>`
 und BLF-Tasten den Anruf übernehmen können. Geräte melden Presence als
 `<Nebenstelle>@talkops.local` (`presence_id` im Directory) – darauf
 abonnieren BLF-Tasten (`manage-presence` im Profil `internal`).
@@ -298,6 +299,7 @@ Loopback-Quellen (bzw. `TALKOPS_FS_PEERS`), nie über einen Reverse-Proxy
 | `snapshots` | `/var/lib/talkops/snapshots` | Bilder der Türsprechstellen |
 | `backups` | `/var/lib/talkops/backups` | Sicherungsarchive (talkops) |
 | `freeswitch-db` | `/usr/local/freeswitch/var/lib/freeswitch/db` | FreeSWITCH-interne SQLite (Registrierungen) |
+| `cdr-spool` | `/var/lib/talkops/cdr-spool` | nicht zugestellte Anrufdatensätze (freeswitch schreibt, talkops liest ein) |
 
 Alle Images nutzen UID/GID **10001**, damit die gemeinsamen Volumes ohne
 `chmod 777` beschreibbar sind.

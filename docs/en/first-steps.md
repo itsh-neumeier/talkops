@@ -1,5 +1,9 @@
 # First steps
 
+On first setup, select a new instance or restore from a backup. Recovery does
+not create a replacement administrator. Use the restored accounts after the
+offline restore. See [Backup and restore](backup.md).
+
 After the [installation](installation.md) TalkOps is available at
 `http://<host>:8080`. The dashboard shows admins a *Getting started*
 checklist that ticks off these steps as they are done.
@@ -42,6 +46,8 @@ their calls under *Call log*.
 | Input | Dialed as |
 |---|---|
 | `210`, `610` | extension 210 or 610 |
+| `**101` | call internal extension 101; no country code or area code is added |
+| `*8*101` | pick up a call ringing at extension 101 |
 | `*610` | also extension 610 (star + internal number, from `*100`, 3–4 digits) |
 | `*1` … `*99` | system codes, see [Yealink phones](yealink.md#4-feature-codes) |
 | `110`, `112` | emergency – always via the default number, never with hidden caller ID |

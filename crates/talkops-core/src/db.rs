@@ -31,7 +31,64 @@ pub async fn migrate(pool: &PgPool) -> Result<(), DbError> {
     Ok(())
 }
 
+/// Hold this connection for the lifetime of a writer or an offline restore.
+/// A dedicated connection avoids exhausting small application pools.
+pub async fn operation_guard(
+    database_url: &str,
+    restore: bool,
+) -> Result<sqlx::PgConnection, sqlx::Error> {
+    use sqlx::Connection;
+    let mut connection = sqlx::PgConnection::connect(database_url).await?;
+    let query = if restore {
+        "SELECT pg_try_advisory_lock(7231002)"
+    } else {
+        "SELECT pg_try_advisory_lock_shared(7231002)"
+    };
+    let locked: bool = sqlx::query_scalar(query).fetch_one(&mut connection).await?;
+    if !locked {
+        return Err(sqlx::Error::Protocol(
+            "restore conflicts with an active TalkOps writer".into(),
+        ));
+    }
+    Ok(connection)
+}
+
 /// Cheap round-trip used by readiness probes.
 pub async fn ping(pool: &PgPool) -> Result<(), sqlx::Error> {
     sqlx::query("SELECT 1").execute(pool).await.map(|_| ())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sqlx::Connection;
+    #[sqlx::test]
+    async fn restore_lock_excludes_writers_and_other_restores(pool: PgPool) {
+        let base = std::env::var("DATABASE_URL").unwrap();
+        // Connect with the test pool's options so the lock belongs to this test database.
+        let mut writer = sqlx::PgConnection::connect_with(&pool.connect_options())
+            .await
+            .unwrap();
+        let shared: bool = sqlx::query_scalar("SELECT pg_try_advisory_lock_shared(7231002)")
+            .fetch_one(&mut writer)
+            .await
+            .unwrap();
+        assert!(shared);
+        let mut url = url_for_test(&base, pool.connect_options().get_database().unwrap());
+        assert!(operation_guard(&url, true).await.is_err());
+        writer.close().await.unwrap();
+        let guard = operation_guard(&url, true).await.unwrap();
+        assert!(operation_guard(&url, false).await.is_err());
+        assert!(operation_guard(&url, true).await.is_err());
+        guard.close().await.unwrap();
+        let guard = operation_guard(&url, false).await.unwrap();
+        guard.close().await.unwrap();
+        url.clear();
+    }
+    fn url_for_test(base: &str, name: &str) -> String {
+        let Some((prefix, _)) = base.rsplit_once('/') else {
+            panic!("test URL");
+        };
+        format!("{prefix}/{name}")
+    }
 }

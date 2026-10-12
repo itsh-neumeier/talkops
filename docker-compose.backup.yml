@@ -1,0 +1,17 @@
+# Optional complete recovery backups. Keep backup-password outside captured files.
+# Use with: docker compose -f docker-compose.yml -f docker-compose.backup.yml up -d
+services:
+  talkops:
+    environment:
+      TALKOPS_DEPLOYMENT_DIR: /var/lib/talkops/deployment
+      TALKOPS_DEPLOYMENT_FILES: ${TALKOPS_DEPLOYMENT_FILES:-.env,docker-compose.yml,docker-compose.backup.yml}
+      TALKOPS_BACKUP_PASSWORD_FILE: /run/backup-password
+    volumes:
+      - type: bind
+        source: ${TALKOPS_DEPLOYMENT_SOURCE:-.}
+        target: /var/lib/talkops/deployment
+        read_only: true
+      - type: bind
+        source: ${TALKOPS_BACKUP_PASSWORD_SOURCE:-./backup-password}
+        target: /run/backup-password
+        read_only: true

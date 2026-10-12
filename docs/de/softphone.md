@@ -1,9 +1,61 @@
 # Browser-Softphone (WebRTC)
 
-Jeder Benutzer mit Nebenstelle kann direkt im Browser telefonieren – mit
-Video, Halten, Stummschalten und Tastentönen. Das Softphone klingelt
-zusammen mit den anderen Telefonen der Nebenstelle, solange die Seite
-**Softphone** geöffnet ist.
+Das Softphone unterstützt Audio, Video, Halten, Stummschalten und Tastentöne.
+Nach dem ersten Öffnen klingelt es mit den anderen Telefonen der gewählten
+Nebenstelle und bleibt beim Navigieren innerhalb von TalkOps verbunden.
+
+## Nebenstelle auswählen und erreichbar bleiben
+
+Administratoren wählen unter **Telefonie-Identität** eine aktive Nebenstelle
+des eigenen Mandanten. Eine feste Zuordnung zum Admin-Konto ist nicht nötig.
+Nutzer und Operatoren verwenden ausschließlich ihre zugewiesenen aktiven
+Nebenstellen. Bei einer Nebenstelle erfolgt die Auswahl automatisch; bei
+mehreren erscheint ein Dropdown.
+
+Die Auswahl zeigt Nebenstelle, Name und ausgehende Rufnummer. Die
+Standardrufnummer ist gekennzeichnet. Ohne ausgehende Route sind externe
+Anrufe nicht möglich; interne Anrufe können weiterhin funktionieren.
+Rufnummerunterdrückung und Notrufrouting verwenden die bisherigen Regeln.
+
+Auch eingehende Anrufe folgen der ausgewählten Nebenstelle. Die Auswahl
+ändert weder den Besitzer noch die Einstellungen der Nebenstelle. Während
+eines Gesprächs ist kein Wechsel möglich. Admin und Nutzer erhalten getrennte
+Browser-SIP-Konten. Vorhandene Zugangsdaten des zugewiesenen Nutzers bleiben
+beim Upgrade erhalten.
+
+Nach dem ersten Öffnen bleibt das Softphone beim Navigieren in TalkOps aktiv.
+Ein kleines Fenster zeigt Status und Gespräch und erlaubt Annehmen,
+Ablehnen, Stummschalten und Auflegen. Abmelden, Neuladen oder Schließen des
+Tabs trennt die Verbindung. Auch ein vom Browser angehaltener Tab kann die
+Erreichbarkeit verlieren. Nach einem Verbindungsabbruch versucht TalkOps die
+Wiederanmeldung; bei Bedarf **Neu verbinden** verwenden.
+
+## Audio, Kontakte und letzte Anrufe
+
+Unter **Audiogeräte und Tests** lassen sich Mikrofon und Ausgabe wählen.
+Mikrofonzugriff erlauben, um Gerätenamen zu sehen. Der Mikrofontest zeigt den
+Pegel und endet beim Anrufen oder Verlassen der Softphone-Ansicht.
+Mikrofonänderungen gelten für den nächsten Anruf. **Ton testen** prüft die
+gewählte Ausgabe. Unterstützt der Browser die Ausgabewahl nicht, erfolgt sie
+im Betriebssystem. Bei getrennten Geräten wird auf den Systemstandard
+zurückgegriffen; den Ton vor dem nächsten Gespräch prüfen.
+
+**Hörbarer Klingelton** gilt nur für diesen Browser. Er aktiviert nicht
+„Nicht stören“ für die Nebenstelle. Bei blockierter Wiedergabe **Klingelton
+aktivieren / Ton testen** anklicken. Anrufbenachrichtigungen sind optional
+und benötigen die Browser-Erlaubnis. Ein geschlossener Tab empfängt dadurch
+keine Anrufe.
+
+Das Telefonbuch lässt sich nach Name, Firma und Nummer durchsuchen.
+Sterne markieren Favoriten und sortieren sie nach oben. Eine Nummer übernimmt
+sie ins Wählfeld; die Telefontaste ruft direkt an. Favoriten und
+Audioeinstellungen werden je Nutzer lokal in diesem Browser gespeichert.
+
+**Letzte Anrufe** zeigt bis zu 30 Anrufe der gewählten Nebenstelle.
+Der Filter **Verpasste eingehende Anrufe** zeigt nicht beantwortete eingehende Anrufe.
+Ausgehende erfolglose Anrufe erscheinen als **Nicht beantwortet**.
+Rückrufe verwenden die Nummer der Gegenstelle. **Aktualisieren** lädt die
+Kontakte und Anrufliste erneut.
 
 ## Voraussetzungen
 
@@ -11,12 +63,13 @@ zusammen mit den anderen Telefonen der Nebenstelle, solange die Seite
   Am einfachsten mit der Caddy-Option (`COMPOSE_PROFILES=caddy`,
   `TALKOPS_DOMAIN=pbx.example.com`, siehe [Installation](installation.md)).
   Auf dem TalkOps-Rechner selbst funktioniert auch `http://localhost:8080`.
-- Der Benutzer braucht eine **Nebenstelle** (Admin: Nebenstelle → Benutzer).
+- Nutzer und Operatoren brauchen eine zugewiesene **Nebenstelle**
+  (Admin: Nebenstelle → Benutzer). Administratoren können ohne feste
+  Zuordnung eine aktive Nebenstelle auswählen.
 - Aktuelles Chrome, Edge, Firefox oder Safari.
 
-Beim ersten Öffnen legt TalkOps automatisch ein Gerät „Browser“ (Typ
-*Browser*) an der Nebenstelle an. Es erscheint wie andere Geräte und kann
-dort deaktiviert oder gelöscht werden.
+Beim ersten Öffnen legt TalkOps ein eigenes Gerät vom Typ *Browser* je Nutzer
+und gewählter Nebenstelle an. Es kann dort deaktiviert oder gelöscht werden.
 
 ## Netzwerk
 

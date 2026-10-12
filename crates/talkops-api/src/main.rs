@@ -47,6 +47,21 @@ enum Command {
         #[arg(long)]
         yes: bool,
     },
+    /// Inspect and validate a backup without a running database. Optionally export configuration.
+    Inspect {
+        archive: std::path::PathBuf,
+        #[arg(long, env = "TALKOPS_BACKUP_PASSWORD", hide_env_values = true)]
+        backup_password: Option<String>,
+        #[arg(long, env = "TALKOPS_BACKUP_PASSWORD_FILE")]
+        backup_password_file: Option<std::path::PathBuf>,
+        /// New output directory; existing files are never overwritten.
+        #[arg(long)]
+        output: Option<std::path::PathBuf>,
+        #[arg(long, default_value_t = 68_719_476_736)]
+        max_bytes: u64,
+    },
+    /// Print the host recovery script. No database or secrets are required.
+    RecoveryScript,
     /// Probe the local server's readiness endpoint (container healthcheck).
     Healthcheck {
         /// Port of the local server; defaults to the port of TALKOPS_LISTEN.
@@ -60,6 +75,7 @@ async fn main() -> anyhow::Result<()> {
     match Cli::parse().command {
         Command::Serve(config) => serve(*config).await,
         Command::Migrate { database_url } => {
+            let _writer_guard = talkops_core::db::operation_guard(&database_url, false).await?;
             let pool = talkops_core::db::connect_lazy(&database_url, 1)?;
             talkops_core::db::migrate(&pool).await?;
             println!("migrations applied");
@@ -69,7 +85,7 @@ async fn main() -> anyhow::Result<()> {
             storage,
             without_recordings,
         } => {
-            let cfg = BackupConfig::from_storage(&storage);
+            let cfg = BackupConfig::from_storage(&storage)?;
             let pool = talkops_core::db::connect_lazy(&storage.database_url, 2)?;
             let name = backup::create(&cfg, &pool, !without_recordings).await?;
             println!("{}", cfg.dir.join(name).display());
@@ -87,7 +103,7 @@ async fn main() -> anyhow::Result<()> {
                     archive.display()
                 );
             }
-            let cfg = BackupConfig::from_storage(&storage);
+            let cfg = BackupConfig::from_storage(&storage)?;
             let pool = talkops_core::db::connect_lazy(&storage.database_url, 1)?;
             let manifest = backup::restore(&cfg, &pool, &archive).await?;
             println!(
@@ -96,6 +112,28 @@ async fn main() -> anyhow::Result<()> {
                 manifest.talkops_version,
                 manifest.volumes.join(", ")
             );
+            Ok(())
+        }
+        Command::Inspect {
+            archive,
+            backup_password,
+            backup_password_file,
+            output,
+            max_bytes,
+        } => {
+            let password = talkops_api::recovery::password(
+                backup_password.as_deref(),
+                backup_password_file.as_deref(),
+            )?;
+            let prepared = talkops_api::recovery::prepare(&archive, password.as_ref(), max_bytes)?;
+            if let Some(output) = output {
+                prepared.export(&output)?;
+            }
+            println!("{}", serde_json::to_string_pretty(&prepared.manifest)?);
+            Ok(())
+        }
+        Command::RecoveryScript => {
+            print!("{}", include_str!("../../../scripts/recover.sh"));
             Ok(())
         }
         Command::Healthcheck { port } => healthcheck(port).await,
@@ -108,6 +146,8 @@ async fn serve(config: Config) -> anyhow::Result<()> {
 
     let db =
         talkops_core::db::connect_lazy(&config.storage.database_url, config.db_max_connections)?;
+    let _writer_guard =
+        talkops_core::db::operation_guard(&config.storage.database_url, false).await?;
     if config.auto_migrate {
         let mut delay = Duration::from_secs(1);
         loop {
@@ -144,6 +184,15 @@ async fn serve(config: Config) -> anyhow::Result<()> {
         external_port: config.sip_trunk_port,
         external_ip: String::new(),
     };
+    if config
+        .setup_token
+        .as_ref()
+        .is_some_and(|t| !t.is_empty() && t.len() < 32)
+    {
+        anyhow::bail!("TALKOPS_SETUP_TOKEN must have at least 32 characters");
+    }
+    let mut backup_cfg = BackupConfig::from_storage(&config.storage)?;
+    backup_cfg.deployment_key = Some(config.secret_key.clone().into());
     let state = AppState::new(
         db.clone(),
         secrets,
@@ -162,7 +211,8 @@ async fn serve(config: Config) -> anyhow::Result<()> {
     .with_outbound_socket(&config.esl_outbound_listen)
     .with_sip_ws(&config.sip_ws_url)
     .with_metrics_token(config.metrics_token.as_deref())
-    .with_backup(BackupConfig::from_storage(&config.storage))
+    .with_backup(backup_cfg)
+    .with_setup_token(config.setup_token.as_deref())
     .with_fs_peers(config.fs_peers.clone())
     .with_turn(
         config.turn_urls.clone(),
@@ -195,6 +245,7 @@ async fn serve(config: Config) -> anyhow::Result<()> {
     }));
     talkops_api::mailer::spawn(state.db.clone(), state.secrets.clone(), state.media.clone());
     talkops_api::retention::spawn(db.clone(), state.media.clone());
+    talkops_api::cdr_spool::spawn(state.clone(), config.storage.cdr_spool_dir.clone());
     match talkops_core::attendant::adopt_legacy_greetings(&db, &state.media.sounds).await {
         Ok(0) => {}
         Ok(n) => tracing::info!(count = n, "moved voice menu greetings to audio clips"),

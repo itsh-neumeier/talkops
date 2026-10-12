@@ -134,8 +134,9 @@ fn valid_attr(a: &str) -> bool {
 
 fn validate(i: &IdentityInput) -> CoreResult<()> {
     let invalid = |m: &str| Err(CoreError::Validation(m.into()));
-    if !i.public_url.is_empty()
-        && !(i.public_url.starts_with("https://") || i.public_url.starts_with("http://"))
+    if !(i.public_url.is_empty()
+        || i.public_url.starts_with("https://")
+        || i.public_url.starts_with("http://"))
     {
         return invalid("the public URL must start with http:// or https://");
     }

@@ -269,7 +269,7 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
         .chars()
         .filter(|c| c.is_ascii_digit() || *c == '+' || *c == '*' || *c == '#')
         .collect();
-    // `*<internal number>` (e.g. `*610`): the same as dialing `610`. Checked
+    // Legacy `*<internal number>` (e.g. `*610`): the same as dialing `610`. Checked
     // before the star codes, so `*310` reaches 310 if it exists.
     let star_internal = match dest.strip_prefix('*') {
         Some(rest) if (3..=4).contains(&rest.len()) && rest.bytes().all(|b| b.is_ascii_digit()) => {
@@ -284,6 +284,17 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
     let (dest, hide_once) = match dest.strip_prefix("#31#").or(dest.strip_prefix("*31")) {
         Some(rest) if !rest.is_empty() => (rest.to_owned(), true),
         _ => (dest, false),
+    };
+    // Explicit internal calls never fall through to external number formatting,
+    // including calls preceded by a caller-ID hiding prefix.
+    let explicit_internal_call = dest.starts_with("**");
+    let dest = if explicit_internal_call {
+        let Some(number) = numbering::explicit_internal_number(&dest) else {
+            return Ok(reject("404 Not Found"));
+        };
+        number.to_owned()
+    } else {
+        dest
     };
 
     let mut actions = vec![
@@ -321,7 +332,7 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
         return Ok(actions);
     }
 
-    if let Some((user, host, hide)) = sip_address(req) {
+    if let Some((user, host, hide)) = sip_address(req).filter(|_| !explicit_internal_call) {
         actions.extend(
             plan_sip_address(
                 r,
@@ -360,6 +371,9 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
         return Ok(actions);
     }
 
+    if explicit_internal_call {
+        return Ok(reject("404 Not Found"));
+    }
     let dial_plan = settings.dial_plan();
     let (route_number, dialed_e164, raw_dial, emergency) = match dial_plan.classify(&dest) {
         Dialed::Emergency(n) => (settings.default_number_id, None, n, true),
@@ -587,7 +601,7 @@ fn confirm() -> Vec<Action> {
 }
 
 /// Name of the pickup group every extension's calls are registered in, so
-/// `**<ext>` and BLF keys can grab them.
+/// `*8*<ext>` and BLF keys can grab them.
 fn pickup_group(ext: &Extension) -> String {
     format!("ext-{}", ext.id.simple())
 }
@@ -598,7 +612,7 @@ fn pickup_group(ext: &Extension) -> String {
 ///
 /// - `*78` / `*79`: do not disturb on / off
 /// - `*72<number>` / `*73`: unconditional call forwarding on / off
-/// - `**<ext>`: pick up a call ringing at `<ext>`
+/// - `*8*<ext>`: pick up a call ringing at `<ext>`
 /// - `*97` / `*98`: own voicemail / any voicemail with PIN
 /// - `*30<number>`: toggle a time condition between schedule and closed
 /// - `*51` … `*59`: park in / pick up from a park slot
@@ -702,7 +716,7 @@ async fn feature_code(
         a.extend(confirm());
         return Ok(Some(a));
     }
-    if let Some(number) = dest.strip_prefix("**") {
+    if let Some(number) = dest.strip_prefix("*8*") {
         let Some(target) = extensions::find_by_number(pool, tenant, number).await? else {
             return Ok(Some(reject("404 Not Found")));
         };
@@ -1153,6 +1167,12 @@ async fn plan_transfer(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
         let kind: Option<NumberDestination> = serde_json::from_value(serde_json::json!(kind)).ok();
         kind.zip(id.parse::<Uuid>().ok())
     } else if let Some(number) = req.destination.strip_prefix("dial:") {
+        numbering::resolve(r.pool, tenant, number).await?
+    } else if req.destination.starts_with("**") {
+        let Some(number) = numbering::explicit_internal_number(&req.destination) else {
+            return Ok(reject("404 Not Found"));
+        };
+        // An explicit internal REFER target must not become an external call.
         numbering::resolve(r.pool, tenant, number).await?
     } else if let Some(slot) = park_slot(
         req.destination

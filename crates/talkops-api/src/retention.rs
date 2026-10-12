@@ -45,6 +45,9 @@ pub async fn purge_clips(db: &PgPool, sounds: &Path) -> CoreResult<usize> {
 pub fn spawn(db: PgPool, media: Arc<MediaPaths>) {
     tokio::spawn(async move {
         loop {
+            if let Err(err) = talkops_core::live_transcripts::cleanup(&db).await {
+                tracing::warn!(error = %err, "live transcript cleanup failed");
+            }
             loop {
                 match purge(&db, &media.recordings).await {
                     Ok(0) => break,

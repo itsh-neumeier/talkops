@@ -54,6 +54,9 @@ Wer darf was?
 
 ## Transkription
 
+Die Übersicht bietet eine optionale [Live-Vorschau](laufende-gespraeche.md)
+für bereits aufgezeichnete Gespräche. Endgültige Transkripte bleiben separat.
+
 Bei eingeschalteter Transkription wandelt der Media-Worker jede neue
 Aufnahme und jede neue Sprachnachricht in Text um:
 

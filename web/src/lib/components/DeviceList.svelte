@@ -14,6 +14,7 @@
 	import Modal from '#lib/components/Modal.svelte';
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import { copy, errorMessage } from '#lib/util.ts';
+	import { session } from '#lib/session.svelte.ts';
 
 	let {
 		extensionId,
@@ -170,8 +171,10 @@
 						</div>
 					</div>
 					<div class="space-x-1">
-						<button class="btn btn-sm" onclick={() => show(d)}>{t('ext.showCredentials')}</button>
-						<button class="btn btn-sm" onclick={() => reset(d)}>{t('ext.resetPassword')}</button>
+						{#if admin || !d.browser_user_id || d.browser_user_id === session.user?.id}
+							<button class="btn btn-sm" onclick={() => show(d)}>{t('ext.showCredentials')}</button>
+							<button class="btn btn-sm" onclick={() => reset(d)}>{t('ext.resetPassword')}</button>
+						{/if}
 						{#if admin}<button class="btn btn-sm" onclick={() => openEdit(d)}
 								>{t('common.edit')}</button
 							>{/if}

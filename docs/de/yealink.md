@@ -125,7 +125,8 @@ Tones* und *Wallpaper Customization*; für AX83H/AX86R die Yealink-Doku
 |---|---|
 | `*78` / `*79` | Nicht stören an / aus |
 | `*72<Nummer>` / `*73` | alle Anrufe umleiten (Nebenstelle oder externe Nummer) / aus |
-| `**<Nebenstelle>` | klingelnden Anruf heranholen |
+| `**<Nebenstelle>` | interne Nebenstelle anrufen |
+| `*8*<Nebenstelle>` | klingelnden Anruf heranholen |
 | `*51` … `*59` | Anruf parken / geparkten Anruf holen ([Anrufsteuerung](anrufsteuerung.md)) |
 | `*30<Nummer>` | Zeitsteuerung „geschlossen“ ein/aus |
 | `*97` / `*98` | eigene Voicemail / beliebige Voicemail mit PIN ([Voicemail](voicemail.md)) |
@@ -145,14 +146,12 @@ Nummern gehen nach einer Sekunde raus:
 - Notrufnummern (110, 112 bzw. die unter *Einstellungen → Telefonie*
   eingetragenen),
 - die festen Codes `*51`–`*59`, `*73`, `*78`, `*79`, `*97`, `*98`,
-- alle internen Nummern (Nebenstellen, Gruppen, Menüs, Warteschlangen).
+- ausdrücklich interne Nummern wie `**101` (Nebenstellen, Gruppen, Menüs, Warteschlangen).
 
 Ausgenommen ist jede Nummer, mit der eine andere wählbare Nummer beginnt –
-gibt es z. B. die 300 und die 3000, wartet das Telefon bei der 300 weiter.
-`*1`–`*99` sind für Systemcodes reserviert und haben Vorrang; `*<Nummer>`
-für interne Nummern beginnt bei `*100`. Interne Nummern, deren Anfang ein
-Systemcode ist (z. B. 510 → `*51`), wählst du am Yealink deshalb ohne Stern.
-Interne Nummern ab `11` (Servicenummern wie 11833) und – wenn eine
+gibt es z. B. `**300` und `**3000`, wartet das Telefon bei `**300` weiter.
+`**101` und `**510` kollidieren nicht mit Systemcodes mit einem Stern.
+Interne Nummern ohne Präfix ab `11` (Servicenummern wie 11833) und – wenn eine
 Ortsvorwahl eingetragen ist – alle internen Nummern bleiben ebenfalls ohne
 Sofortwahl, weil dann Ortsnummern ohne Vorwahl gewählt werden können. Neue
 Nebenstellen kommen beim nächsten Resync aufs Telefon (spätestens nachts).
@@ -194,8 +193,16 @@ oder Robust. WLAN-Handsets nutzen standardmäßig HD. Siehe
 ## 5. Telefonbuch
 
 Jedes Telefon zeigt **Intern** (alle aktiven Nebenstellen) und **Kontakte**
-(das globale Telefonbuch: alle Kontakte ohne Bereich). Nummern werden national
-angezeigt und können direkt gewählt werden.
+(das globale Telefonbuch: alle Kontakte ohne Bereich). Im internen Telefonbuch
+steht `**101` für einen Anruf der Nebenstelle `101`. TalkOps ergänzt dabei keine
+Landes- oder Ortsvorwahl. Die Nebenstellen- und SIP-Kennungen in der Datenbank
+bleiben unverändert. Externe Kontakte werden national angezeigt und können
+direkt gewählt werden.
+
+Trage interne Kontakte als `**101` in ein Rufnummernfeld oder eine CSV-Datei ein.
+TalkOps speichert das Präfix und gibt es in globalen und Bereichstelefonbüchern
+unverändert aus. Eine externe Nummer wie `+499543101` wird nicht automatisch
+umgeschrieben. Korrigiere einen falsch gespeicherten Kontakt selbst auf `**101`.
 
 **Bereiche** sind zusätzliche Telefonbücher, die nur auf ausgewählten
 Telefonen erscheinen – z. B. *Familie* nur im Wohnzimmer, *Lieferanten* nur
@@ -208,6 +215,16 @@ im Büro:
 
 Ein gelöschter Bereich verschwindet mit seinen Kontakten auch von den
 Telefonen.
+
+### Umstellung und Anrufübernahme
+
+`**101` ruft jetzt die Nebenstelle `101` an und übernimmt keinen klingelnden
+Anruf mehr. Verwende dafür `*8*101`. Führe nach dem Update einen Resync aller
+provisionierten Telefone durch und lade das entfernte Telefonbuch neu.
+TalkOps aktualisiert dabei die BLF-Übernahmecodes. Passe auch manuell eingerichtete
+BLF-Tasten, Übernahmecodes und gespeicherte Kurzwahlen an. Interne Anrufe ohne
+Präfix und der bisherige Alias mit einem Stern bleiben möglich. Unbekannte
+explizite interne Ziele liefern `404` und werden nicht über einen Trunk gewählt.
 
 ### Kontakte importieren (CSV)
 

@@ -175,7 +175,7 @@ async fn phones_and_provisioning(db: PgPool) {
         cred["sip_password"].as_str().unwrap()
     )));
     assert!(cfg.contains("linekey.3.type = 16"), "{cfg}");
-    assert!(cfg.contains("linekey.3.pickup_value = **210"), "{cfg}");
+    assert!(cfg.contains("linekey.3.pickup_value = *8*210"), "{cfg}");
     // Dial now: emergency numbers, fixed feature codes, internal 200/210.
     assert!(cfg.contains("dialplan.dialnow.rule.1 = 11[0,2]"), "{cfg}");
     assert!(cfg.contains("= *9[7,8]"), "{cfg}");
@@ -203,7 +203,7 @@ async fn phones_and_provisioning(db: PgPool) {
     )
     .await;
     assert_eq!(status, StatusCode::OK);
-    assert!(xml.contains("<Name>Office</Name>") && xml.contains(">200</Telephone>"));
+    assert!(xml.contains("<Name>Office</Name>") && xml.contains(">**200</Telephone>"));
     let (status, contact) = admin
         .post(
             "/api/v1/contacts",
@@ -667,6 +667,106 @@ async fn ringtones_wallpapers_labels_and_phonebook_sections(db: PgPool) {
     .await;
     assert!(!cfg.contains("ringtone.url"));
     assert!(cfg.contains("remote_phonebook.data.3.url = \n"), "{cfg}");
+}
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn internal_phonebook_and_contacts_preserve_explicit_dialing(db: PgPool) {
+    let router = router(db);
+    let admin = setup_admin(&router).await;
+    for (number, enabled) in [("101", true), ("102", false)] {
+        let (status, ext) = admin
+            .post(
+                "/api/v1/extensions",
+                json!({
+                    "number": number, "display_name": format!("Office {number}"), "enabled": enabled
+                }),
+            )
+            .await;
+        assert_eq!(status, StatusCode::OK, "{ext}");
+    }
+    let (_, mut settings) = admin.get("/api/v1/settings").await;
+    settings["area_code"] = json!("9543");
+    let (status, _) = admin.put("/api/v1/settings", settings).await;
+    assert_eq!(status, StatusCode::OK);
+    let (status, credentials) = admin.get("/api/v1/provisioning").await;
+    assert_eq!(status, StatusCode::OK);
+    let creds = Some((
+        credentials["username"].as_str().unwrap(),
+        credentials["password"].as_str().unwrap(),
+    ));
+    for path in [
+        "/provisioning/phonebook/internal.xml",
+        "/provisioning/phonebook/internal.xml?search=101",
+        "/provisioning/phonebook/internal.xml?search=%2A%2A101",
+    ] {
+        let (status, xml) = prov_get(&router, path, creds).await;
+        assert_eq!(status, StatusCode::OK, "{xml}");
+        assert!(xml.contains(">**101</Telephone>"), "{xml}");
+        assert!(
+            !xml.contains("**102") && !xml.contains("+499543101"),
+            "{xml}"
+        );
+    }
+    let (status, contact) = admin
+        .post(
+            "/api/v1/contacts",
+            json!({
+                "name": "Reception", "phone_work": " ** 101 ", "phone_mobile": "+49 171 2345678"
+            }),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{contact}");
+    assert_eq!(contact["phone_work"], "**101");
+    assert_eq!(contact["phone_mobile"], "+491712345678");
+    let contact_path = format!("/api/v1/contacts/{}", contact["id"].as_str().unwrap());
+    let (status, contact) = admin.put(&contact_path, json!({
+        "name": "Reception", "phone_work": "**101", "phone_mobile": "+491712345678", "phone_other": "**12345678"
+    })).await;
+    assert_eq!(status, StatusCode::OK, "{contact}");
+    assert_eq!(contact["phone_other"], "**12345678");
+    let (status, report) = admin
+        .post(
+            "/api/v1/contacts/import",
+            json!({
+                "csv": "Name,Work,Section\nInternal office,**101,Office\nBroken,***101,\n"
+            }),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{report}");
+    assert_eq!(report["created"], 1, "{report}");
+    assert_eq!(report["failed"], 1, "{report}");
+    let (_, sections) = admin.get("/api/v1/phonebook-sections").await;
+    let section_id = sections[0]["id"].as_str().unwrap();
+    for path in [
+        "/provisioning/phonebook/contacts.xml".to_owned(),
+        format!("/provisioning/phonebook/section/{section_id}.xml"),
+    ] {
+        let (status, xml) = prov_get(&router, &path, creds).await;
+        assert_eq!(status, StatusCode::OK, "{xml}");
+        assert!(xml.contains(">**101</Telephone>"), "{xml}");
+        assert!(!xml.contains("+499543101"), "{xml}");
+        if path.ends_with("contacts.xml") {
+            assert!(xml.contains(">01712345678</Telephone>"), "{xml}");
+        }
+    }
+    for number in [
+        "**",
+        "**1",
+        "**0101",
+        "***101",
+        "**+101",
+        "**123456789",
+        "*8*101",
+        "*78",
+    ] {
+        let (status, _) = admin
+            .post(
+                "/api/v1/contacts",
+                json!({"name": "Invalid", "phone_work": number}),
+            )
+            .await;
+        assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{number}");
+    }
 }
 
 #[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]

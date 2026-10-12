@@ -19,11 +19,13 @@ use crate::AppState;
 use crate::auth::AuthUser;
 use crate::backup::{self, BackupConfig, BackupError, BackupFile};
 use crate::error::{ApiError, ApiResult};
+use crate::recovery::{self, DeploymentInfo, DeploymentInput};
 
 pub fn router() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
         .routes(routes!(list_backups, start_backup))
         .routes(routes!(update_backup_settings))
+        .routes(routes!(import_deployment))
         .routes(routes!(download_backup, delete_backup))
 }
 
@@ -51,14 +53,24 @@ pub struct BackupOverview {
     pub files: Vec<BackupFile>,
     /// A backup is being written right now.
     pub running: bool,
+    pub configuration: Option<DeploymentInfo>,
+    pub configuration_error: Option<String>,
+    pub encryption_configured: bool,
 }
 
 async fn overview(state: &AppState, auth: &AuthUser) -> ApiResult<BackupOverview> {
     let cfg = config(state)?;
+    let (configuration, configuration_error) = match recovery::capture(cfg) {
+        Ok((_, info)) => (Some(info), None),
+        Err(err) => (None, Some(err.to_string())),
+    };
     Ok(BackupOverview {
         settings: backups::get(&state.db, auth.tenant).await?,
         files: backup::list(&cfg.dir).await?,
         running: backup::is_busy(),
+        configuration,
+        configuration_error,
+        encryption_configured: cfg.password.is_some(),
     })
 }
 
@@ -77,6 +89,12 @@ pub async fn list_backups(
 pub async fn start_backup(State(state): State<AppState>, auth: AuthUser) -> ApiResult<StatusCode> {
     auth.require(Role::Admin)?;
     let cfg = config(&state)?.clone();
+    let (deployment, _) = recovery::capture(&cfg)?;
+    if !deployment.files.is_empty() && cfg.password.is_none() {
+        return Err(ApiError::Conflict(
+            "configure a separate backup password before capturing deployment files".into(),
+        ));
+    }
     if backup::is_busy() {
         return Err(BackupError::Busy.into());
     }
@@ -125,6 +143,58 @@ pub async fn update_backup_settings(
     Ok(Json(settings))
 }
 
+/// Import the exact Portainer stack and environment files. Stored encrypted at rest.
+#[utoipa::path(put, path = "/api/v1/backups/deployment", tag = "system", request_body = DeploymentInput, responses((status = 200, body = DeploymentInfo)))]
+pub async fn import_deployment(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Json(input): Json<DeploymentInput>,
+) -> ApiResult<Json<DeploymentInfo>> {
+    use std::io::Write;
+    auth.require(Role::Admin)?;
+    let cfg = config(&state)?;
+    if cfg.deployment_dir.is_some() {
+        return Err(ApiError::Conflict(
+            "mounted deployment files take precedence; update those files".into(),
+        ));
+    }
+    recovery::validate_configuration(&input)?;
+    if input
+        .files
+        .values()
+        .any(|s| recovery::env_value(s, "TALKOPS_BACKUP_PASSWORD").is_some_and(|p| !p.is_empty()))
+    {
+        return Err(ApiError::BadRequest(
+            "keep the backup password outside imported deployment files".into(),
+        ));
+    }
+    let encrypted = state
+        .secrets
+        .encrypt(&serde_json::to_string(&input).expect("configuration"))
+        .map_err(|_| ApiError::Internal("configuration encryption failed".into()))?;
+    std::fs::create_dir_all(&cfg.dir).map_err(|e| ApiError::Internal(e.to_string()))?;
+    let mut temp =
+        tempfile::NamedTempFile::new_in(&cfg.dir).map_err(|e| ApiError::Internal(e.to_string()))?;
+    temp.write_all(encrypted.as_bytes())
+        .map_err(|e| ApiError::Internal(e.to_string()))?;
+    temp.as_file()
+        .sync_all()
+        .map_err(|e| ApiError::Internal(e.to_string()))?;
+    temp.persist(cfg.dir.join(recovery::IMPORT_FILE))
+        .map_err(|_| ApiError::Internal("configuration import failed".into()))?;
+    let info = recovery::deployment_info(&input, "imported", chrono::Utc::now());
+    audit::record(
+        &state.db,
+        &auth.actor(),
+        "update",
+        "backup_deployment",
+        None,
+        json!({"files": info.files, "complete":info.complete}),
+    )
+    .await?;
+    Ok(Json(info))
+}
+
 fn checked_name(name: &str) -> ApiResult<&str> {
     if backup::valid_name(name) {
         Ok(name)
@@ -163,7 +233,15 @@ pub async fn download_backup(
     .await;
     Ok((
         [
-            (header::CONTENT_TYPE, "application/gzip".to_owned()),
+            (
+                header::CONTENT_TYPE,
+                if name.ends_with(".age") {
+                    "application/octet-stream"
+                } else {
+                    "application/gzip"
+                }
+                .to_owned(),
+            ),
             (header::CONTENT_LENGTH, len.to_string()),
             (header::CACHE_CONTROL, "no-store".to_owned()),
             (

@@ -114,6 +114,10 @@ Keep round brackets in contact names, such as Family Vollmeier (Maria).
   job bounds, cleanup, growing WAV input, subprocess cancellation, and i18n.
 - CodeRabbit CLI: Unavailable. Manual review completed.
 - Pending: Linux CI/E2E.
+- Final review: Remove old completed live jobs as well as abandoned previews.
+  This prevents continuous popup polling from growing the jobs table.
+- Remote browser fixture: Wait for the incoming preview response before
+  asserting its speaker labels. Keep all assertions and the typing check.
 - Failed remote web check: The existing mobile header exceeded 320 pixels with
   Linux fonts. Keep branding text on larger screens so mobile controls fit.
   Repeat the full browser check on Linux. No assertion was removed.

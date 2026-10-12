@@ -56,16 +56,12 @@ pub async fn request(
     if !valid_file(file, tenant, call) {
         return Err(CoreError::Validation("invalid recording identity".into()));
     }
+    cleanup(pool).await?;
     let mut tx = pool.begin().await?;
     sqlx::query("SELECT pg_advisory_xact_lock(hashtext($1)::bigint)")
         .bind(format!("live:{tenant}"))
         .execute(&mut *tx)
         .await?;
-    sqlx::query(
-        "DELETE FROM live_transcript_previews WHERE requested_at < now() - interval '5 minutes'",
-    )
-    .execute(&mut *tx)
-    .await?;
     let count: i64 = sqlx::query_scalar("SELECT count(*) FROM live_transcript_previews WHERE tenant_id = $1 AND requested_at > now() - interval '30 seconds' AND NOT (user_id = $2 AND call_uuid = $3)")
         .bind(tenant).bind(user).bind(call).fetch_one(&mut *tx).await?;
     if count >= 4 {
@@ -146,6 +142,8 @@ pub async fn cleanup(pool: &PgPool) -> CoreResult<()> {
     )
     .execute(pool)
     .await?;
+    sqlx::query("DELETE FROM jobs WHERE kind = $1 AND status IN ('done', 'failed') AND finished_at < now() - interval '5 minutes'")
+        .bind(JOB).execute(pool).await?;
     Ok(())
 }
 
@@ -293,5 +291,22 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(count, 0);
+        let job = jobs::claim(&pool, "test", &[JOB]).await.unwrap().unwrap();
+        jobs::complete(&pool, job.id).await.unwrap();
+        sqlx::query("UPDATE jobs SET finished_at = now() - interval '6 minutes' WHERE id = $1")
+            .bind(job.id)
+            .execute(&pool)
+            .await
+            .unwrap();
+        let other = jobs::enqueue(&pool, NewJob::new("unrelated", serde_json::json!({})))
+            .await
+            .unwrap();
+        cleanup(&pool).await.unwrap();
+        let ids: Vec<Uuid> = sqlx::query_scalar("SELECT id FROM jobs")
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+        assert!(!ids.contains(&job.id));
+        assert!(ids.contains(&other));
     }
 }

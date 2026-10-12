@@ -60,6 +60,7 @@ try {
   await page.setViewportSize({ width: 320, height: 780 });
   await section.getByRole('button', { name: 'Live-Transkript', exact: true }).last().click();
   await dialog.waitFor();
+  await dialog.getByText('Angerufene: Familie Zweig', { exact: true }).waitFor();
   const geometry = await page.evaluate(() => ({ width: innerWidth, scroll: document.documentElement.scrollWidth,
     overflow: [...document.querySelectorAll('body *')].filter(el => el.getBoundingClientRect().right > innerWidth + 1).slice(0, 8).map(el => ({ tag: el.tagName, text: el.textContent?.slice(0, 60), right: el.getBoundingClientRect().right })) }));
   assert.ok(geometry.scroll <= geometry.width, JSON.stringify(geometry));

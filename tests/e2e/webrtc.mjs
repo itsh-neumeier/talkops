@@ -43,6 +43,16 @@ const tracks = await page.evaluate(() =>
 		.flatMap((s) => s.getTracks().map((t) => `${t.kind}:${t.readyState}`))
 );
 if (!tracks.includes('audio:live')) await fail(`no remote audio (${tracks})`);
+// A page change must retain the established call and its media elements.
+await page.click('nav a[href="/phonebook"]');
+await page.waitForURL(`${base}/phonebook`);
+await page.waitForSelector('aside .badge:has-text("in call")');
+const liveAfterNavigation = await page.evaluate(() =>
+	[...document.querySelectorAll('audio, video')].some(el =>
+		el.srcObject?.getAudioTracks().some(track => track.readyState === 'live')
+	)
+);
+if (!liveAfterNavigation) await fail('navigation lost remote audio');
 await page.click('button:has-text("Hang up")');
 await page
 	.waitForSelector('.badge:has-text("ready")', { timeout: 10000 })

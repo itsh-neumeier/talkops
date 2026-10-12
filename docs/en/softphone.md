@@ -1,8 +1,8 @@
 # Browser softphone (WebRTC)
 
-Every user with an extension can make calls right in the browser – with
-video, hold, mute and key tones. The softphone rings together with the
-extension's other phones while the **Softphone** page is open.
+The browser softphone supports audio, video, hold, mute and key tones.
+It rings with the selected extension's other phones after you first open
+**Softphone**. It stays connected when you navigate within TalkOps.
 
 ## Requirements
 
@@ -10,12 +10,69 @@ extension's other phones while the **Softphone** page is open.
   easiest way is the Caddy option (`COMPOSE_PROFILES=caddy`,
   `TALKOPS_DOMAIN=pbx.example.com`, see [installation](installation.md)).
   On the TalkOps machine itself `http://localhost:8080` works too.
-- The user needs an **extension** (admin: extension → user).
+- Regular users and operators need an assigned **extension** (admin: extension → user).
+  Administrators can select an active extension without an assignment.
 - A current Chrome, Edge, Firefox or Safari.
 
-On first use TalkOps creates a device "Browser" (type *Browser*) on the
-extension. It shows up like other devices and can be disabled or deleted
-there.
+On first use TalkOps creates a separate *Browser* device for the user on the
+selected extension. Administrators and regular users do not share SIP
+credentials. You can disable or delete the device in the extension settings.
+
+## Select a call identity
+
+Administrators must select an extension in **Call identity**. The list shows
+all active extensions in the same tenant. Regular users and operators see
+only their assigned active extensions. One assigned extension is selected
+automatically. With several assignments, the user can select an extension.
+
+The list shows the internal number, name and outgoing public number.
+**Default number** identifies the configured fallback. **No outbound route**
+means that public calls have no usable trunk route. Internal calls can still
+work. Caller ID hiding and emergency calls follow the existing extension and
+dialplan rules.
+
+The identity also determines which incoming calls ring in this browser.
+Selection does not change the extension's assigned owner or call settings.
+You cannot change identity during a call. The old identity unregisters before
+the new identity registers.
+
+## Reachability and audio
+
+Open **Softphone** once to start it. You can then navigate to other TalkOps
+pages. A small panel shows its state and lets you answer, decline, mute or
+end calls. Return to **Softphone** for all controls. Logout, a page reload or
+closing the tab disconnects it. A suspended browser can also stop receiving
+calls. Keep the tab open and the browser active when you need incoming calls.
+
+**Audio devices and tests** lets you select a microphone and an output device.
+Allow microphone access to see device names. **Test microphone** shows the
+input level. The test stops when a call starts or you leave the softphone
+view. Microphone changes apply to the next call. **Test sound** plays a short
+tone on the selected output. If output selection is unavailable, use the
+operating system's audio settings. A removed device falls back to the system
+default; check the audio before the next call.
+
+Enable **Audible ringtone** for incoming calls. Click **Enable ringtone /
+test sound** if the browser blocks playback. Muting this ringtone does not
+set the extension to Do Not Disturb and does not silence its other phones.
+**Enable call notifications** requests browser notification permission.
+Notifications do not make the softphone reachable when the tab is closed.
+
+TalkOps attempts to reconnect after a transport failure. The panel shows a
+connection error while it is disconnected. Use **Reconnect** if automatic
+reconnection does not restore registration.
+
+## Contacts, favorites and recent calls
+
+Search the shared phonebook by name, company or number. Mark a contact with
+the star to put it first. Select a number to put it in the dial field. The
+phone button starts a call directly. Favorites and audio preferences are
+stored in this browser separately for each user.
+
+**Recent calls** shows up to 30 calls for the selected extension. Filter by
+**Missed** to show unanswered incoming calls. An unanswered outgoing call is
+marked **Unanswered**. The callback number is the other party's number,
+including internal calls. Use **Refresh** to update contacts and recent calls.
 
 ## Network
 

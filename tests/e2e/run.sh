@@ -227,6 +227,7 @@ api GET /api/v1/door-events | jq -e '.[] | select(.kind == "ring" and .detail.di
     || fail "door ring not logged"
 
 if [ "${WEBRTC_E2E:-0}" = 1 ]; then
+    node "$DIR/../e2e/softphone-ui.mjs" "$BASE" || fail "softphone UI"
     log "browser softphone (WebRTC) calls an extension"
     WEBU=$(api POST /api/v1/users '{"username":"e2e-web","display_name":"E2E Web","role":"user","password":"e2e-web-password"}' | jq -r .id) \
         || fail "create web user"

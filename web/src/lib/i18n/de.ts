@@ -909,7 +909,7 @@ const de: Record<keyof typeof en, string> = {
 	'phone.hold': 'Halten',
 	'phone.resume': 'Fortsetzen',
 	'phone.hint':
-		'Das Browser-Softphone klingelt mit Ihren anderen Telefonen, solange diese Seite geöffnet ist. Mikrofon (und für Video die Kamera) erlauben, wenn der Browser fragt.',
+		'Diesen Tab geöffnet lassen, um beim Navigieren in TalkOps Anrufe zu empfangen. Mikrofon (und für Video die Kamera) erlauben, wenn der Browser fragt.',
 	'kinds.browser': 'Browser',
 	'backup.title': 'Datensicherung',
 	'backup.hint':
@@ -1135,7 +1135,44 @@ const de: Record<keyof typeof en, string> = {
 	'flow.menu.removeKey': 'Zweig „{key}“ entfernen',
 	'flow.menu.confirmRemove': '{n} Schritte löschen?',
 	'flow.menu.confirmBranches': 'Die {n} Schritte darunter werden gelöscht. Fortfahren?',
-	'flow.rightClickHint': 'Tipp: Rechtsklick auf einen Schritt oder eine Taste für weitere Aktionen.'
+	'flow.rightClickHint':
+		'Tipp: Rechtsklick auf einen Schritt oder eine Taste für weitere Aktionen.',
+	'phone.identity': 'Telefonie-Identität',
+	'phone.selectIdentity': 'Nebenstelle auswählen',
+	'phone.noOutbound': 'Keine ausgehende Route',
+	'phone.outbound': 'Ausgehende Rufnummer',
+	'phone.identityHelp':
+		'Eingehende Anrufe und Anrufeinstellungen folgen der ausgewählten Nebenstelle. Das Softphone bleibt beim Navigieren in TalkOps verbunden. Tab schließen oder abmelden trennt die Verbindung.',
+	'phone.reconnect': 'Neu verbinden',
+	'phone.audioSettings': 'Audiogeräte und Tests',
+	'phone.microphone': 'Mikrofon',
+	'phone.output': 'Headset / Lautsprecher',
+	'phone.systemDefault': 'Systemstandard',
+	'phone.outputUnsupported':
+		'Dieser Browser verwendet die Systemausgabe. Wähle den Lautsprecher im Betriebssystem.',
+	'phone.deviceLost':
+		'Ein Audiogerät wurde getrennt. Der Systemstandard ist ausgewählt. Prüfe den Ton vor dem nächsten Anruf.',
+	'phone.testMicrophone': 'Mikrofon testen',
+	'phone.stopTest': 'Test beenden',
+	'phone.testSound': 'Ton testen',
+	'phone.microphoneLevel': 'Mikrofonpegel',
+	'phone.microphoneHelp':
+		'Mikrofonzugriff erlauben, um Gerätenamen zu sehen. Mikrofonänderungen gelten für den nächsten Anruf.',
+	'phone.ringtone': 'Hörbarer Klingelton',
+	'phone.enableSound': 'Klingelton aktivieren / Ton testen',
+	'phone.enableNotifications': 'Anrufbenachrichtigungen aktivieren',
+	'phone.disableNotifications': 'Anrufbenachrichtigungen deaktivieren',
+	'phone.refresh': 'Aktualisieren',
+	'phone.searchContacts': 'Kontakte suchen',
+	'phone.favorite': 'Favorit: {name}',
+	'phone.recentCalls': 'Letzte Anrufe',
+	'phone.callFilter': 'Anrufe filtern',
+	'phone.allCalls': 'Alle Anrufe',
+	'phone.unanswered': 'Nicht beantwortet',
+	'phone.callNumber': '{number} anrufen',
+	'phone.noIdentity': 'Für dieses Konto ist keine aktive Nebenstelle verfügbar.',
+	'phone.identityUnavailable':
+		'Diese Nebenstelle ist nicht mehr verfügbar. Liste aktualisieren und eine verfügbare Nebenstelle auswählen.'
 };
 
 export default de;

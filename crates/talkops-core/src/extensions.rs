@@ -310,6 +310,8 @@ pub enum DeviceKind {
 pub struct Device {
     pub id: Uuid,
     pub extension_id: Uuid,
+    /// Owner of a separate browser SIP identity; null for other devices.
+    pub browser_user_id: Option<Uuid>,
     pub name: String,
     pub kind: DeviceKind,
     pub sip_username: String,
@@ -393,7 +395,7 @@ pub async fn set_phone_texts(
         .await?)
 }
 
-const DEV_COLUMNS: &str = "id, extension_id, name, kind, sip_username, sip_password_enc, phone_id, account_index, phone_label, phone_display_name, enabled";
+const DEV_COLUMNS: &str = "id, extension_id, browser_user_id, name, kind, sip_username, sip_password_enc, phone_id, account_index, phone_label, phone_display_name, enabled";
 
 /// Resolves the account slot for a device on a phone: the requested one, or
 /// the lowest free slot. Checks that the phone exists.
@@ -491,7 +493,11 @@ pub async fn device_auth<'e>(
         "SELECT d.id AS device_id, d.tenant_id, d.sip_username, d.sip_password_enc,
                 e.id AS extension_id, e.number AS extension_number, e.display_name
          FROM devices d JOIN extensions e ON e.id = d.extension_id
-         WHERE lower(d.sip_username) = lower($1) AND d.enabled AND e.enabled",
+         WHERE lower(d.sip_username) = lower($1) AND d.enabled AND e.enabled
+           AND (d.browser_user_id IS NULL OR EXISTS (
+               SELECT 1 FROM users u WHERE u.id = d.browser_user_id
+                 AND u.tenant_id = d.tenant_id AND u.enabled
+                 AND (u.role = 'admin' OR e.user_id = u.id)))",
     )
     .bind(sip_username)
     .fetch_optional(db)
@@ -500,10 +506,88 @@ pub async fn device_auth<'e>(
 
 /// SIP usernames of the enabled devices of an extension (the ring targets).
 pub async fn ring_targets<'e>(db: impl PgExecutor<'e>, extension: Uuid) -> CoreResult<Vec<String>> {
-    Ok(sqlx::query_scalar("SELECT sip_username FROM devices WHERE extension_id = $1 AND enabled ORDER BY sip_username")
-        .bind(extension)
-        .fetch_all(db)
-        .await?)
+    Ok(sqlx::query_scalar(
+        "SELECT d.sip_username FROM devices d JOIN extensions e ON e.id = d.extension_id
+         WHERE d.extension_id = $1 AND d.enabled
+           AND (d.browser_user_id IS NULL OR EXISTS (
+               SELECT 1 FROM users u WHERE u.id = d.browser_user_id
+                 AND u.tenant_id = d.tenant_id AND u.enabled
+                 AND (u.role = 'admin' OR e.user_id = u.id))) ORDER BY d.sip_username",
+    )
+    .bind(extension)
+    .fetch_all(db)
+    .await?)
+}
+
+/// Gets a user's browser device without sharing another user's SIP credentials.
+/// Lock the extension so concurrent requests cannot create duplicate accounts.
+pub async fn browser_device(
+    pool: &sqlx::PgPool,
+    secrets: &SecretBox,
+    extension: &Extension,
+    actor: &crate::audit::Actor,
+    display_name: &str,
+) -> CoreResult<(Device, String)> {
+    let user = actor.user_id.ok_or(CoreError::NotFound)?;
+    let mut tx = pool.begin().await?;
+    // Recheck authorization under the lock before credentials are returned.
+    let authorized: Option<Uuid> = sqlx::query_scalar(
+        "SELECT e.id FROM extensions e JOIN users u ON u.id = $3 AND u.tenant_id = e.tenant_id
+         WHERE e.id = $2 AND e.tenant_id = $1 AND e.enabled AND u.enabled
+           AND (u.role = 'admin' OR e.user_id = u.id) FOR UPDATE OF e",
+    )
+    .bind(actor.tenant)
+    .bind(extension.id)
+    .bind(user)
+    .fetch_optional(&mut *tx)
+    .await?;
+    if authorized.is_none() {
+        return Err(CoreError::NotFound);
+    }
+    let sql = format!(
+        "SELECT {DEV_COLUMNS} FROM devices WHERE tenant_id = $1
+                       AND extension_id = $2 AND browser_user_id = $3 AND kind = 'browser'"
+    );
+    let existing: Option<Device> = sqlx::query_as(&sql)
+        .bind(actor.tenant)
+        .bind(extension.id)
+        .bind(user)
+        .fetch_optional(&mut *tx)
+        .await?;
+    let (device, password, action) = if let Some(device) = existing {
+        let password = secrets.decrypt(&device.sip_password_enc)?;
+        (device, password, "view_credentials")
+    } else {
+        let password = crypto::random_password(20)?;
+        let sql = format!(
+            "INSERT INTO devices
+            (tenant_id, extension_id, browser_user_id, name, kind, sip_username, sip_password_enc)
+            VALUES ($1, $2, $3, $4, 'browser', $5, $6) RETURNING {DEV_COLUMNS}"
+        );
+        let device: Device = sqlx::query_as(&sql)
+            .bind(actor.tenant)
+            .bind(extension.id)
+            .bind(user)
+            .bind(format!("Browser ({display_name})"))
+            .bind(format!("web-{}", Uuid::new_v4()))
+            .bind(secrets.encrypt(&password)?)
+            .fetch_one(&mut *tx)
+            .await?;
+        (device, password, "create")
+    };
+    if device.enabled {
+        crate::audit::record(
+            &mut *tx,
+            actor,
+            action,
+            "device",
+            Some(device.id.to_string()),
+            serde_json::json!({"extension": extension.number, "kind": "browser"}),
+        )
+        .await?;
+    }
+    tx.commit().await?;
+    Ok((device, password))
 }
 
 /// Creates a device with a generated SIP password. Returns the device and the

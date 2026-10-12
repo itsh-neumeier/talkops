@@ -113,6 +113,7 @@ export type DeviceKind =
 export interface Device {
 	id: string;
 	extension_id: string;
+	browser_user_id: string | null;
 	name: string;
 	kind: DeviceKind;
 	sip_username: string;

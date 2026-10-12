@@ -116,6 +116,12 @@ Start new development tasks in either tool with the
 [development-chat prompt](docs/development-chat-prompt.md) (German), adding the
 task and any acceptance criteria at the end.
 
+New technical documentation and task summaries use ASD-STE100 Simplified
+Technical English. See the [documentation rules](docs/documentation-style.md).
+Each development and release task saves its result in
+[shared task memory](docs/ai-memory/README.md). New chats read relevant summaries
+and check their facts against the current code and PR state.
+
 ## License
 
 [AGPL-3.0](LICENSE). FreeSWITCH is licensed under MPL 1.1.

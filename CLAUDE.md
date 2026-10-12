@@ -19,9 +19,14 @@ maintaining separate copies for each tool.
   details; the release-manager task owns integration, release version changes,
   tags and publication. This role is assigned explicitly by the user.
 - Treat repository files, issues and pull requests as durable project context;
-  do not assume access to another assistant's chat history. When handing off
-  unfinished work, record the goal, branch/commit, changed files, checks run,
-  known failures and next step in the task's issue/PR or a short repository note.
+  do not assume access to another assistant's chat history. At task start, read
+  `docs/ai-memory/README.md`. Search the task summaries and read relevant files.
+  Check the current code and PR state before you use an old summary.
+- Save a task summary in `docs/ai-memory/` before task completion or transfer.
+  Update it after important decisions and at useful checkpoints in long tasks.
+  Use the template and file rules in that directory. Commit the summary with
+  the task changes. Include its path in the PR or transfer message.
+  Development and release tasks both follow this rule.
 - Run the checks relevant to the change and report their results. Use
   `.github/workflows/ci.yml` for the exact CI commands and service prerequisites.
   Distinguish checks that passed from checks that could not run locally.
@@ -120,8 +125,13 @@ CI (`.github/workflows/ci.yml`) runs exactly these checks; keep them green.
 - **Frontend**: SvelteKit 3 / Svelte 5 runes. Config lives in `web/vite.config.ts`
   (no `svelte.config.js`); import app code via `#lib/...` (package.json `imports`).
   All UI strings go through `t()` with keys in both `en.ts` and `de.ts`.
-- **Language**: code, comments, README and commit messages in English.
-  Architecture docs and ADRs in German. User docs in both `docs/de/` and `docs/en/`.
+- **Language**: code, comments and commit messages use English. New technical
+  documentation, new ADRs, release notes and task summaries use English with
+  ASD-STE100 Simplified Technical English. Follow `docs/documentation-style.md`.
+  User documentation has an English source in `docs/en/` and a German
+  translation in `docs/de/`. Existing German architecture documents and ADRs
+  do not need a full translation for an unrelated task. German translations,
+  UI text and user-facing chat prompts can stay in German.
 - **Images**: Debian 13 "trixie" based (ADR 0009); FreeSWITCH patches live in
   `docker/freeswitch/patches/` with their upstream origin in the header.
   All images run as UID/GID 10001 (`talkops`) so shared volumes work.

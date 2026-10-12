@@ -1,169 +1,122 @@
-# Active call overview proposal
+# Active call overview and live transcript preview
 
 ## Task state
 
 - Task ID: 20261012-codex-active-call-overview
 - Date: 2026-10-12, Europe/Berlin
 - Tool: Codex
-- Status: In progress. Implementation complete. Final validation pending.
+- Status: Completed implementation. PR readiness is recorded on PR 7.
 - Branch: codex/active-call-overview
 - Base commit: 4503fb3b96167aa77320cc936597fc6147b392c3
-- Related commits or PR: Pending
+- Related commits or PR: [PR 7](https://github.com/itsh-neumeier/talkops/pull/7),
+  application fixes 37f446c and d1e20f5
 
 ## Goal
 
-Improve the dashboard display for active calls. Match both parties against
-all phonebook entries. Compare national and international number formats.
-Show two lines on the left. Keep call status and duration on the right.
-Assess an optional live transcript popup with speaker labels, timestamps,
-and a typing animation. The user requires proposal review before code changes.
+Resolve the parties in active calls against extensions and all phonebooks.
+Show two lines with status and talk time on the right. Add an optional live
+transcript popup. The user approved the proposal before implementation and
+specified square brackets for all phone numbers.
 
 ## Result
 
-Read the project guidance, release workflow, task memory, relevant ADRs,
-and current dashboard, routing, phonebook, and transcription code.
-Verified the remote target and fetched its current commit. The original
-checkout was clean. Created a separate worktree and feature branch.
-Prepared a local interactive preview with example data outside the repository.
-The user approved the proposal and specified square brackets for all numbers.
-Implemented the overview and an on-demand local live transcript preview.
-Application commit 1562aa4 is pushed. Draft PR 7 is open:
-https://github.com/itsh-neumeier/talkops/pull/7.
+Implemented and published the changes on the feature branch in PR 7.
+Names use the existing phonebook label, including round brackets for a suffix.
+Numbers use square brackets. The popup transcribes recent audio locally during
+an already recorded call. It shows provisional text, speakers, speech times,
+and a typing animation. It supports reduced motion.
 
-The task worktree is at
+The exclusive task worktree is
 `C:/Users/timo/.codex/worktrees/active-call-overview/talkops`.
-App worktree registration failed. Git can use this checkout after an exact
-safe.directory exception. Do not create a second checkout for this task.
+App registration failed; Git works with an exact safe.directory exception.
+The original checkout and other worktrees were preserved.
 
 ## Changes
 
-- API: Resolve tenant calls from routing variables. Match all contact fields
-  and sections. Return structured caller/called parties and answer timestamps.
-- Core: Add bounded, temporary preview jobs with expiry, isolation, and cursor
-  compare-and-set. Add migration 20261026000003_live_transcript_previews.
-- Worker: Add a separate live lane. Read bounded growing WAV snapshots and
-  transcribe locally with base, at most two threads, and a 60-second timeout.
-- Web: Add two-line call rows, square brackets, status/time, a native dialog,
-  speaker labels, speech times, and typing with reduced-motion support.
-- Tests: Add directory, authorization, database, WAV, and browser checks.
-  Extend E2E to transcribe real Piper speech during a recorded SIPp call.
-- Documentation: Add ADR 0022 and English/German active-call guides.
-- This summary: Save implementation and validation state.
-- Conversation preview: Show inbound and outbound rows and a transcript demo.
-  The preview does not connect to TalkOps or contain real transcript data.
+- `crates/talkops-api/src/active_calls.rs`: Resolve routing metadata, both bridge
+  legs, extensions, device logins, trunk numbers and contact format variants.
+- `crates/talkops-api/src/routes/live_transcripts.rs`: Authenticate, authorize
+  and audit preview access. Stop subscriptions when the viewer closes them.
+- `crates/talkops-core/src/live_transcripts.rs`: Bound jobs and text, isolate
+  viewers and tenants, expire subscriptions, and remove old preview jobs.
+- `crates/talkops-media-worker/src/live.rs`: Read growing stereo WAV snapshots
+  and run local recognition in a separate worker lane.
+- `web/src/lib/components/`: Show two-line calls, status, time and transcript
+  dialogs. Stop the old preview when a transfer changes the remote party.
+- `tests/browser/active-calls.mjs`: Check display, brackets, animation, access
+  states, subscription cleanup, transfers and a 320-pixel viewport.
+- `tests/e2e/run.sh`: Check resolved call parties and real Piper speech in an
+  active SIPp recording. Preserve the existing SIPp and softphone checks.
+- `docs/adr/0022-active-call-identities-and-live-previews.md`: Record the design.
+- `docs/en/active-calls.md` and `docs/de/laufende-gespraeche.md`: Document use.
 
 ## Decisions
 
-The user approved the proposal. Use square brackets for every phone number.
-Keep round brackets in contact names, such as Family Vollmeier (Maria).
-
-- Enrich active calls in the API. Read TalkOps channel variables for tenant,
-  direction, extension, trunk number, and destination. Do not infer direction
-  only from FreeSWITCH channel direction or formatted caller ID.
-- Read contacts once per refresh. Match all sections and all three number
-  fields. Reuse tenant dialing settings for 0, +49, 0049, and provider formats.
-  Check internal identities before external normalization. Keep service codes
-  and anonymous numbers separate. Do not turn an extension into a local number.
-- Prefer the internal extension identity for the local party. Use the actual
-  call route number for the external number shown beside that extension.
-  Handle duplicate contact matches without selecting an arbitrary person.
-- Show direction and the local party in the first line. Show the remote party
-  in the second line. Use full names and readable wrapping on narrow screens.
-  Keep the status marker and duration on the right. Distinguish ringing,
-  talking, held, parked, and system calls. Define talk time from answer time.
-- Live transcription needs new backend work. Current jobs start after the CDR.
-  Assess bounded stereo audio snapshots during authorized recorded calls.
-  Use a separate bounded worker lane and local whisper.cpp by default.
-  Send timestamped segments to an authenticated popup. Show recognition delay
-  and unavailable states. Use existing content access rules and audit access.
-  Do not start recording from a popup click. Keep final transcription intact.
-- Animate only newly received text. Keep speaker labels and speech timestamps
-  stable. Respect reduced motion. Stop subscriptions when the popup closes.
-- Implement both reviewed scopes on this feature branch. Keep final transcripts
-  separate from temporary live text. The preview begins at recent audio.
+- Resolve direction and ownership from tenant routing variables. A bridge
+  caller ID can still identify the original caller. Resolve the target from
+  the peer destination or the routing target instead.
+- Match all contact sections and all three number fields. Use tenant dialing
+  settings for national, international and provider formats. Resolve internal
+  identities first; do not match an external number to an extension by suffix.
+- Do not select an arbitrary contact when matches are ambiguous.
+- Use the existing phonebook name formatter for labels such as
+  `Familie Vollmeier (Maria)`. Put every phone number in square brackets.
+- Limit previews to four per tenant, one pending job per viewer/call,
+  eight seconds per snapshot and 200 segments. Work expires after 30 seconds
+  without requests. Remove stale data and completed jobs after five minutes
+  during requests or through hourly retention.
+- Keep final transcripts separate. Do not enable recording through the popup.
+  Animate only new segments and keep screen-reader text complete.
 
 ## Checks
 
-- Passed: Remote HEAD lookup, git fetch origin, target commit lookup, original
-  git status, worktree inventory, and feature branch creation.
-- Passed: Open PR inventory with the GitHub connector. PRs 3, 4, and 5 are open.
-- Passed: Preview browser checks with headless Edge. Both popup buttons work.
-  Speaker labels change with direction. Typing completes without script errors.
-  Escape and Close return to the overview. Reduced motion shows full text
-  immediately. The overview and popup fit a 320-pixel viewport.
-- Failed: App worktree registration and attachment. The checkout remains usable.
-- Failed then corrected: Preview runner imports and the default Edge path were
-  unavailable. Used the bundled CommonJS module and installed system Edge.
-- Passed after approval: Rust API/worker check; three active-call unit tests;
-  three core preview tests; active-call and existing dashboard API tests;
-  two growing-WAV tests; web lint/check/build and browser fixtures.
-- Passed: Local clippy with -D warnings -A clippy::nonminimal_bool. The single
-  exclusion covers an existing identity.rs warning under MSVC Rust 1.94.1.
-  CI must run full workspace clippy without that exclusion.
-- Failed then corrected: API audit assertion omitted the earlier operator
-  access. Updated the expected count; repeated polling does not duplicate it.
-- Failed then corrected: Existing Piper test helpers used Unix permissions on
-  Windows. Apply the existing Unix test scope to that helper module.
-- Failed then corrected: Web lint reported Windows CRLF checkout files.
-  Normalize local web text to LF without unrelated Git content changes.
-- Passed: Final browser animation check. New segments appear in steps and do
-  not replay on refresh. Reduced motion shows complete text immediately.
-- Failed then corrected: The local preview server kept the previous build
-  manifest. Restarted the task server after rebuilding; browser checks pass.
-- Manual review: Checked tenant filtering, phonebook ambiguity, content access,
-  job bounds, cleanup, growing WAV input, subprocess cancellation, and i18n.
-- CodeRabbit CLI: Unavailable. Manual review completed.
-- Pending: Linux CI/E2E.
-- Final review: Remove old completed live jobs as well as abandoned previews.
-  This prevents continuous popup polling from growing the jobs table.
-- Stop the open preview when its remote party changes after a transfer.
-  This keeps the initial speaker names separate from the new party.
-- Share the existing phonebook name formatter. Include company/name suffixes
-  in round brackets. Test a separate name and company that produce the example.
-- Remote browser fixture: Wait for the incoming preview response before
-  asserting its speaker labels. Keep all assertions and the typing check.
-- First live-stack E2E found that the bridge caller ID can identify the
-  originating extension. Use the peer's dialed destination or routing target
-  for the called party. Add a regression test and repeat live-stack E2E.
-- Failed remote web check: The existing mobile header exceeded 320 pixels with
-  Linux fonts. Keep branding text on larger screens so mobile controls fit.
-  Repeat the full browser check on Linux. No assertion was removed.
-- STE review: Used repository writing rules. The full official standard was
-  unavailable. Full language review is pending.
+- Passed locally: Four active-call unit tests, three core preview tests,
+  active-call and existing dashboard API tests, and two growing-WAV tests.
+- Passed locally: Web npm ci/lint/check/build, browser fixtures with Edge,
+  Rust formatting, Git whitespace and shell syntax checks.
+- Passed locally: Targeted clippy with `-D warnings -A clippy::nonminimal_bool`.
+  The exception covers an existing identity.rs warning with MSVC Rust 1.94.1.
+  Linux CI uses the full workspace command without that exception.
+- Passed remotely: Full CI at 64580c4, including Rust, web, Compose and images.
+- Passed remotely: Real SIPp/browser E2E at 37f446c, including Piper speech in
+  the live popup. PR run 38291604177 and push run 38291596419 both succeeded.
+- Failed then corrected: E2E exposed the bridge caller-ID target error.
+  Added a regression test and repeated real E2E successfully.
+- Failed then corrected: Clippy at 37f446c requested one collapsed condition.
+  d1e20f5 applies that change; local clippy passes.
+- Failed then corrected: Linux mobile header overflow and an asynchronous
+  fixture assertion. The full browser checks then passed without weaker tests.
+- Final revision: Consult PR 7 for its CI/E2E results and readiness. Keep it as
+  a draft if any required check fails. The PR records the verified source head.
+- Manual review: Checked routing, tenant boundaries, content access, job
+  bounds, cleanup, growing audio input, subprocess cancellation and i18n.
+- Not run: CodeRabbit CLI, which is unavailable. Manual review was completed.
+  Linux Docker/SIPp checks ran in GitHub Actions instead of on Windows.
+- STE review: Used repository rules. The full official standard was unavailable;
+  full language review remains pending.
 
 ## Dependencies and open work
 
-- No new package dependency. The local base model needs about 148 MB on disk.
-- Migration ID: 20261026000003_live_transcript_previews. PR 3 uses ID 2 and
-  the released voicebox work uses ID 1. Update server and worker together.
-- PR 5 changes explicit internal dialing to **101. Preserve that distinction
-  during contact matching. Do not map +499543101 to extension 101 by suffix.
-- PRs 3, 4, and 5 overlap shared API or translation files. Preserve their work
-  during release integration. No hard PR dependency is established.
-- Add regression tests for both call directions, device login identities,
-  all phonebook sections, all number fields, format variants, duplicate matches,
-  anonymous callers, tenant boundaries, transfers, states, and duration.
-- For live work, test speaker mapping, partial WAV input, chunk order, retries,
-  access rules, disconnects, call end, and worker load. Verify with real audio.
-- Run web lint/check/build and relevant Rust checks and database tests.
-  Use CI and SIPp/browser checks for the Linux stack. Record exact results.
-- Commit, push, and PR creation are authorized after reviewed implementation.
-  The release chat owns target merges, versions, tags, and publication.
+- Migration: 20261026000003_live_transcript_previews. Update server and worker
+  together. No new application package or service dependency.
+- The local base model needs about 148 MB and downloads on first use if absent.
+  Preview recognition adds worker CPU/memory use. Text and times are provisional;
+  snapshot boundaries can split words. The popup begins at recent audio.
+- No hard dependency on another PR. PRs 3, 4 and 5 overlap API, translations,
+  CI or phonebook code. Preserve their behavior during integration. This task
+  respects PR 5's explicit internal **101 format. Migration IDs do not collide.
+- Target merges, release versions, tags and publication belong to the release
+  chat. No release metadata was changed and no other chat was messaged.
 
 ## Next action
 
-Finish validation and manual review. Commit and push the feature branch.
-Create a draft PR with test results, dependencies, migration ID, upgrade
-details, and proposed English release notes. Wait for Linux CI/E2E. Update
-this summary and mark the PR ready when final checks pass.
+The release chat reviews PR 7, integrates the agreed scope and runs combined
+release checks. The PR contains migration details and proposed release notes.
 
 ## References
 
+- [PR 7](https://github.com/itsh-neumeier/talkops/pull/7)
+- [Successful real E2E](https://github.com/itsh-neumeier/talkops/actions/runs/38291604177)
+- [Earlier full CI](https://github.com/itsh-neumeier/talkops/actions/runs/38289743847)
 - ../release-workflow.md
-- ../development-chat-prompt.md
-- ../architecture.md
-- ../adr/0004-frontend-sveltekit.md
-- ../adr/0005-job-queue-postgres.md
-- ../adr/0012-aufzeichnung-und-transkription.md
-- ../adr/0019-transkription-in-zwei-durchgaengen-und-ki-api.md
-- https://github.com/itsh-neumeier/talkops/pull/5
+- ../adr/0022-active-call-identities-and-live-previews.md

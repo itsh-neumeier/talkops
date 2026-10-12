@@ -5,10 +5,11 @@
 - Task ID: 20261012-codex-yealink-internal-phonebook
 - Date: 2026-10-12, Europe/Berlin
 - Tool: Codex
-- Status: In progress. Implementation complete. Final checks pending.
+- Status: Completed. Application checks passed. Release integration is separate.
 - Branch: codex/yealink-internal-phonebook
 - Base commit: 4503fb3b96167aa77320cc936597fc6147b392c3
-- Related commits or PR: Pending
+- Application commit: 397c06cdb8e7171d3616e6c913ab7e7a2ef464a1
+- Related PR: https://github.com/itsh-neumeier/talkops/pull/5
 
 ## Goal
 
@@ -24,6 +25,9 @@ The internal directory emits **101. Call pickup now uses *8*101. Updated
 Yealink BLF provisioning, dial-now rules, UI hints and English/German guides.
 Added regression tests and a second SIPp call with an explicit internal number.
 No database migration or package dependency was added.
+Committed and pushed the application change. Created PR #5. All application
+CI and E2E checks passed. The PR records check results for later documentation
+revisions. No target merge or release publication was performed.
 
 ## Changes
 
@@ -59,19 +63,27 @@ No database migration or package dependency was added.
 
 ## Checks
 
-- Passed: 48 core unit tests and 11 provisioning unit tests on Windows MSVC.
-- Passed: Initial FreeSWITCH API suite, 22 tests, with isolated PostgreSQL 17.
-- Passed: New internal phonebook/contact integration test and CSV import test.
+- Passed: All 88 relevant local tests: 48 core tests, 11 provisioning tests,
+  22 FreeSWITCH API tests and 7 phone API tests, with isolated PostgreSQL 17.
 - Passed: Web npm ci, lint, check and build. No type errors or warnings.
 - Passed: Rust formatting, Git whitespace check and bash syntax check.
+- Passed: English/German catalog parity; 1,030 unique keys in each catalog.
+- Passed on application commit 397c06c: Linux CI, including full workspace
+  fmt, clippy without exclusions, tests, web checks, Compose, image builds
+  and smoke tests. PR run 38282000282; push run 38281907317.
+- Passed on application commit 397c06c: SIPp and browser E2E, including real
+  calls to 210 and **210, phonebook and BLF checks. PR run 38282000293;
+  push run 38281907331. Browser call reported live audio in both directions.
 - Manual review: Checked prefix routing, pickup/BLF, tenant scope, stored
   values, search, transfers, dial-now ambiguity and upgrade instructions.
 - Failed then corrected: Windows CRLF templates failed existing LF assertions.
   Normalized embedded templates locally without unrelated Git content changes.
-  Final phone API rerun pending. Web lint passed after local LF normalization.
+  Final reruns passed. Restored unrelated files. Web lint also passed after
+  local LF normalization. No broad formatting changes are committed.
 - Local clippy limitation: MSVC Rust 1.94.1 reports a pre-existing
   nonminimal_bool lint in unchanged identity.rs. Target CI with current stable
-  passed. A local rerun excludes that lint; full Linux clippy remains required.
+  passed. Local API/core/provisioning clippy passed with -D warnings and
+  -A clippy::nonminimal_bool. Full Linux clippy passed without exclusions.
 - Not run locally: Linux Docker builds and SIPp/browser E2E; daemon unavailable.
 - Not run: CodeRabbit CLI review; CLI not installed. Manual review completed.
 - STE review: Applied repository writing rules. The full official standard
@@ -88,13 +100,13 @@ No database migration or package dependency was added.
   manager must account for the pickup-code compatibility change.
 - Device/firmware validation is pending on the user's handset.
 - The Git worktree exists but the app could not attach it as a managed worktree.
-- Final local reruns, pushed-branch CI/E2E and PR handoff are pending.
+- The isolated local PostgreSQL test service was stopped. Worktree is preserved.
+- No feature work remains. The PR is the release-manager handoff.
 
 ## Next action
 
-Run the final checks. Push the task branch and create a draft PR. Record final
-CI/E2E results and mark the PR ready when checks pass. Leave target integration
-and release publication to the release chat.
+The release chat selects the release version and integrates PR #5. Account
+for the pickup-code compatibility change. Resync phones after installation.
 
 ## References
 
@@ -103,3 +115,5 @@ and release publication to the release chat.
 - ../en/first-steps.md
 - https://github.com/itsh-neumeier/talkops/pull/3
 - https://github.com/itsh-neumeier/talkops/pull/4
+- https://github.com/itsh-neumeier/talkops/actions/runs/38282000282
+- https://github.com/itsh-neumeier/talkops/actions/runs/38282000293

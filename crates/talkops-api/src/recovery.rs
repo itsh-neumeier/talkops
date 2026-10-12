@@ -36,7 +36,8 @@ pub fn password(value: Option<&str>, file: Option<&Path>) -> Result<Option<Secre
 }
 
 pub const CONFIG_LIMIT: u64 = 1 << 20;
-const MAX_ENTRIES: usize = 100_000;
+pub const MAX_ENTRIES: usize = 100_000;
+pub const MANIFEST_LIMIT: u64 = 32 << 20;
 pub const IMPORT_FILE: &str = ".deployment.enc";
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
@@ -463,7 +464,7 @@ fn prepare_inner(archive: &Path, password: Option<&SecretString>, limit: u64) ->
         total = total
             .checked_add(entry.size())
             .ok_or_else(|| BackupError::Invalid("archive too large".into()))?;
-        if total > limit || (name == "manifest.json" && entry.size() > CONFIG_LIMIT) {
+        if total > limit || (name == "manifest.json" && entry.size() > MANIFEST_LIMIT) {
             return Err(BackupError::Invalid(
                 "archive exceeds restore size limit".into(),
             ));
@@ -500,7 +501,7 @@ fn prepare_inner(archive: &Path, password: Option<&SecretString>, limit: u64) ->
             "decompressed archive exceeds restore size limit".into(),
         ));
     }
-    let manifest: Manifest =
+    let mut manifest: Manifest =
         serde_json::from_slice(&std::fs::read(root.path().join("manifest.json"))?)
             .map_err(|_| BackupError::Invalid("invalid backup manifest".into()))?;
     if ![1, 2].contains(&manifest.format) {
@@ -571,6 +572,13 @@ fn prepare_inner(archive: &Path, password: Option<&SecretString>, limit: u64) ->
             "deployment secrets require an encrypted archive".into(),
         ));
     }
+    if manifest.format == 1 {
+        if !manifest.inventory.is_empty() || manifest.deployment.is_some() {
+            return Err(BackupError::Invalid("unexpected format-1 metadata".into()));
+        }
+        // Legacy archives have no inventory. Use verified staged sizes for target-space checks.
+        manifest.inventory = actual;
+    }
     std::fs::remove_file(plain)?;
     Ok(Prepared { root, manifest })
 }
@@ -605,6 +613,10 @@ mod tests {
         assert_eq!(
             std::fs::read(prepared.root.path().join("files/voicemail/msg.wav")).unwrap(),
             b"message"
+        );
+        assert_eq!(
+            prepared.manifest.inventory["files/voicemail/msg.wav"].size,
+            7
         );
         assert!(prepared.bundle().unwrap().is_none());
         assert!(prepared.export(&root.path().join("out")).is_err());
@@ -767,5 +779,60 @@ mod tests {
             );
             std::fs::remove_file(&archive).unwrap();
         }
+    }
+    #[test]
+    fn large_media_inventory_remains_restorable() {
+        let root = tempfile::tempdir().unwrap();
+        let archive = root.path().join("large-backup");
+        let mut manifest = Manifest {
+            format: 2,
+            talkops_version: "1.7.6".into(),
+            created_at: Utc::now(),
+            schema_version: 0,
+            volumes: vec!["voicemail".into()],
+            inventory: BTreeMap::new(),
+            deployment: None,
+        };
+        let mut tar = tar::Builder::new(flate2::write::GzEncoder::new(
+            private_file(&archive).unwrap(),
+            flate2::Compression::fast(),
+        ));
+        let dump = b"PGDMP-test";
+        append_bytes(&mut tar, "database.dump", dump).unwrap();
+        manifest.inventory.insert(
+            "database.dump".into(),
+            FileInfo {
+                size: dump.len() as u64,
+                sha256: hex::encode(Sha256::digest(dump)),
+            },
+        );
+        let hash = hex::encode(Sha256::digest([]));
+        for n in 0..8192 {
+            let name = format!("files/voicemail/message-{n:05}.wav");
+            append_bytes(&mut tar, &name, b"").unwrap();
+            manifest.inventory.insert(
+                name,
+                FileInfo {
+                    size: 0,
+                    sha256: hash.clone(),
+                },
+            );
+        }
+        let json = serde_json::to_vec_pretty(&manifest).unwrap();
+        assert!(
+            json.len() as u64 > CONFIG_LIMIT,
+            "test must exceed the old manifest limit"
+        );
+        append_bytes(&mut tar, "manifest.json", &json).unwrap();
+        tar.into_inner().unwrap().finish().unwrap();
+        let prepared = prepare(&archive, None, 16 << 20).unwrap();
+        assert_eq!(prepared.manifest.inventory.len(), 8193);
+        assert!(
+            prepared
+                .root
+                .path()
+                .join("files/voicemail/message-08191.wav")
+                .is_file()
+        );
     }
 }

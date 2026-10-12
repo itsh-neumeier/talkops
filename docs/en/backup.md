@@ -130,7 +130,8 @@ After offline restore, it checks for an account and opens normal login.
 Browser limits are 512 MiB uploaded and 8 GiB extracted. Larger backups use
 the host tool. CLI staging defaults to 64 GiB; change `inspect --max-bytes` or
 `TALKOPS_RESTORE_MAX_BYTES` when needed. Temporary storage must hold compressed
-and extracted data. Limits are 100,000 entries and 1 MiB of deployment data.
+and extracted data. Limits are 100,000 entries, 32 MiB for the manifest and
+1 MiB of deployment data. Creation uses the same limits as recovery.
 
 Inspection requires the local token and CSRF request header. Inspection and
 administrator creation share a database lock. Access closes when an account
@@ -167,6 +168,7 @@ passwords, corrupt data, newer schemas, checksum mismatches, unsafe paths,
 links and devices. It stages files and checks the dump with PostgreSQL tools.
 Writers and restore processes use a database lock. Backup and restore commands
 also use a filesystem lock. Verify lock support for NAS backup storage.
+Use real volume directories; backup and restore reject volume-root symlinks.
 
 Older schemas are migrated. Restored sessions and login challenges are cleared.
 Accounts, passwords and MFA remain in effect. After login, check service health,

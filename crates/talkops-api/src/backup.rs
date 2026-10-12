@@ -282,11 +282,18 @@ fn append_source<W: Write>(
     source: &Path,
     name: &str,
     inventory: &mut BTreeMap<String, FileInfo>,
+    entries: &mut usize,
 ) -> Result<()> {
     let meta = std::fs::symlink_metadata(source)?;
     if meta.is_symlink() {
         return Ok(());
     } // Do not archive links or their targets.
+    *entries += 1;
+    if *entries > recovery::MAX_ENTRIES {
+        return Err(BackupError::Invalid(
+            "backup exceeds the archive entry limit".into(),
+        ));
+    }
     if meta.is_dir() {
         let mut header = tar::Header::new_gnu();
         header.set_entry_type(tar::EntryType::Directory);
@@ -308,6 +315,7 @@ fn append_source<W: Write>(
                 &entry.path(),
                 &format!("{name}/{component}"),
                 inventory,
+                entries,
             )?;
         }
     } else if meta.is_file() {
@@ -357,14 +365,27 @@ fn write_archive<W: Write>(
 ) -> Result<W> {
     let gz = flate2::write::GzEncoder::new(out, flate2::Compression::fast());
     let mut tar = tar::Builder::new(gz);
-    append_source(&mut tar, dump, "database.dump", &mut manifest.inventory)?;
+    let mut entries = 0;
+    append_source(
+        &mut tar,
+        dump,
+        "database.dump",
+        &mut manifest.inventory,
+        &mut entries,
+    )?;
     for (vol, dir) in volumes {
         if dir.is_dir() {
+            if std::fs::symlink_metadata(dir)?.is_symlink() {
+                return Err(BackupError::Invalid(
+                    "backup volume root cannot be a symlink".into(),
+                ));
+            }
             append_source(
                 &mut tar,
                 dir,
                 &format!("files/{vol}"),
                 &mut manifest.inventory,
+                &mut entries,
             )?;
         }
     }
@@ -380,11 +401,15 @@ fn write_archive<W: Write>(
             },
         );
     }
-    recovery::append_bytes(
-        &mut tar,
-        "manifest.json",
-        &serde_json::to_vec_pretty(&manifest).expect("manifest"),
-    )?;
+    let json = serde_json::to_vec_pretty(&manifest).expect("manifest");
+    if json.len() as u64 > recovery::MANIFEST_LIMIT
+        || entries + deployment.files.len() + 1 > recovery::MAX_ENTRIES
+    {
+        return Err(BackupError::Invalid(
+            "backup exceeds manifest or entry limits; reduce included data".into(),
+        ));
+    }
+    recovery::append_bytes(&mut tar, "manifest.json", &json)?;
     Ok(tar.into_inner()?.finish()?)
 }
 

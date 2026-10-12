@@ -134,7 +134,8 @@ ein Konto vorhanden ist, und öffnet die normale Anmeldung.
 Browser-Grenzen: 512 MiB Upload und 8 GiB entpackte Daten. Größere Archive mit dem
 Host-Werkzeug prüfen. CLI-Standard: 64 GiB; `inspect --max-bytes` oder
 `TALKOPS_RESTORE_MAX_BYTES` ändern diese Grenze. Temporärer Speicher muss komprimierte
-und entpackte Daten aufnehmen können. Höchstens 100.000 Einträge und 1 MiB Deployment-Daten.
+und entpackte Daten aufnehmen können. Höchstens 100.000 Einträge, 32 MiB Manifest
+und 1 MiB Deployment-Daten. Sicherung und Wiederherstellung verwenden dieselben Grenzen.
 
 Die Prüfung benötigt lokales Token und CSRF-Anfrageheader. Prüfung und Kontoanlage
 verwenden dieselbe Datenbanksperre. Sobald ein Konto existiert, ist der Prüfzugang
@@ -169,7 +170,8 @@ Vor Änderungen wird das komplette Archiv geprüft. Falsche Passwörter, beschä
 Daten, neuere Schemas, falsche Prüfsummen, unsichere Pfade, Links und Gerätedateien
 werden abgelehnt. Dateien werden vorbereitet und Dumps mit PostgreSQL-Werkzeugen
 geprüft. Datenbank- und Dateisperren verhindern konkurrierende unterstützte Prozesse.
-Bei NAS-Speicherung die Unterstützung für Dateisperren prüfen.
+Bei NAS-Speicherung die Unterstützung für Dateisperren prüfen. Für Volumes echte
+Verzeichnisse verwenden; Symlinks als Volume-Wurzel werden abgelehnt.
 
 Ältere Schemas werden migriert. Sitzungen und Login-Challenges werden gelöscht.
 Konten, Passwörter und MFA bleiben erhalten. Nach Anmeldung Dienstzustand,

@@ -5,12 +5,12 @@
 - Task ID: 20261012-codex-guided-backup-restore
 - Date: 2026-10-12, Europe/Berlin
 - Tool: Codex
-- Status: Completed. Code verification passed; final documentation transfer.
+- Status: In progress. Large-archive review fix is under final verification.
 - Branch: codex/guided-backup-restore
 - Base commit: 2fbe3195517b509d2afd3d57247c05a98437f064
 - Feature commit: ef39d2d
 - Related PR: https://github.com/itsh-neumeier/talkops/pull/4
-- Application head checked: 90bebe0. Use the PR for final head and readiness.
+- Initial application head checked: 90bebe0. Use the PR for final head and readiness.
 
 ## Goal
 
@@ -69,6 +69,11 @@ were preserved. App registration failed, but the Git worktree is usable.
   server/worker image build and smoke tests.
 - Passed: Linux SIPp and browser-softphone E2E run 38261126999 at 90bebe0.
 - Passed: Documentation links and whitespace (13 changed Markdown files).
+- Late review fix: Raise the manifest limit to 32 MiB and enforce the same
+  entry and manifest limits during creation. Reject symlink volume roots.
+  Derive legacy file sizes from staging for target-space checks.
+- Passed: Five archive regression tests, including 8,192 media files and a
+  manifest above the former 1 MiB limit. Final Linux checks will verify the fix.
 - Earlier failures: Missing GNU compiler, full system disk and CRLF lint noise.
   Used MSVC, isolated test storage and normalized worktree text line endings.
 - Not run locally: Linux image builds, SIPp and worker Unix-only tests.
@@ -82,7 +87,8 @@ were preserved. App registration failed, but the Git worktree is usable.
   web/api.ts, language catalogs, CI and the ADR index. Preserve both behaviors.
 - Database migration IDs: None.
 - Implementation is committed and pushed. PR #4 is attached. The final transfer
-  changes documentation only. Use the PR for current verification and readiness.
+  records the initial code checks. The large-archive fix needs final checks.
+  Use the PR for current verification and readiness.
 - The isolated PostgreSQL test service and active task preview were stopped.
 
 ## Next action

@@ -8,7 +8,8 @@
 - Status: In progress. Implementation complete; final checks pending.
 - Branch: codex/admin-softphone-selection
 - Base commit: 2fbe3195517b509d2afd3d57247c05a98437f064
-- Related commits or PR: Pending
+- Source commit: ea13328c38c63f82dfb180e37bbae7572b70407a
+- PR: https://github.com/itsh-neumeier/talkops/pull/3 (draft)
 
 ## Goal
 
@@ -68,12 +69,12 @@ Transfer and multiple active calls remain a separate proposed second scope.
 - Passed: Remote and working-tree inspection. Initial checkout was clean.
 - Passed: `npm ci`, web type check, Node tests and an initial production build.
 - Passed: Web lint after local CRLF normalization. Unchanged source content is
-  not part of the patch. Latest formatting and type checks will run again.
+  not part of the patch. Final lint, type check, Node tests and build passed.
 - Passed: Browser fixture scenarios for admin, one/multiple user extensions and
   an operator with no extension. Includes successful blob audio playback,
   incoming ringtone, notifications, favorites and automatic SIP reconnection.
 - Passed: Visual inspection. Corrected the audio CSP failure found in the first
-  screenshot. Final visual inspection is pending.
+  screenshot. Final visual inspection passed.
 - Passed: MSVC `cargo check -p talkops-core -p talkops-api --all-targets --locked`
   before the final browser-owner field and access-control changes.
 - Passed: MSVC `cargo test -p talkops-api --lib routes::webrtc::tests --locked`:
@@ -82,6 +83,11 @@ Transfer and multiple active calls remain a separate proposed second scope.
   include Unix-only worker tests. The older MSVC Clippy (Rust 1.94.1) reports
   an existing `identity.rs` warning. A retry exhausted local build disk space;
   `cargo clean` removed only this worktree's generated target directory.
+- Initial remote results: Formatting, full Clippy, web checks, Compose and image
+  smoke tests passed. Six of seven WebRTC integration tests passed. The caller
+  number test expected E.164 instead of the provider format. The real browser
+  call kept live audio after navigation, but its hangup selector targeted the
+  hidden full view. Corrected both test assumptions. A new run is required.
 - Not run locally: Full database and FreeSWITCH tests. PostgreSQL, Linux Docker
   and SIPp are not available. Linux CI and E2E are required before PR readiness.
 - Review: Manual diff review found and fixed shared credential access through
@@ -105,8 +111,8 @@ Transfer and multiple active calls remain a separate proposed second scope.
 
 ## Next action
 
-Run final checks, commit and push the branch, and open a draft PR. Fix any
-CI or E2E failures. Mark the PR ready only after the required checks pass.
+The branch is committed and pushed. PR #3 is a draft. Wait for Linux CI and
+E2E, fix any failures, and mark the PR ready after the required checks pass.
 
 ## References
 

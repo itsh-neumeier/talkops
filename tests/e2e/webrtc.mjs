@@ -53,9 +53,9 @@ const liveAfterNavigation = await page.evaluate(() =>
 	)
 );
 if (!liveAfterNavigation) await fail('navigation lost remote audio');
-await page.click('button:has-text("Hang up")');
+await page.click('aside button:has-text("Hang up")');
 await page
-	.waitForSelector('.badge:has-text("ready")', { timeout: 10000 })
+	.waitForSelector('aside .badge:has-text("ready")', { timeout: 10000 })
 	.catch(() => fail('hang up'));
 console.log(`softphone call ok (${tracks.join(', ')})`);
 await browser.close();

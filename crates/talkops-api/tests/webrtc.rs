@@ -447,7 +447,26 @@ async fn choices_and_dialplan_use_the_selected_outbound_number(db: PgPool) {
             ],
         )
         .await;
-        assert!(xml.contains(public), "{xml}");
+        // LEONET sends caller IDs in international format without the leading '+'.
+        assert!(
+            xml.contains(&format!(
+                "data=\"effective_caller_id_number={}\"",
+                public.trim_start_matches('+')
+            )),
+            "{xml}"
+        );
+        let number_id = if ext["id"] == first["id"] {
+            &line_a["number"]["id"]
+        } else {
+            &line_b["number"]["id"]
+        };
+        assert!(
+            xml.contains(&format!(
+                "data=\"talkops_number_id={}\"",
+                number_id.as_str().unwrap()
+            )),
+            "{xml}"
+        );
     }
 }
 

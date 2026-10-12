@@ -1,5 +1,7 @@
 # Betrieb mit Portainer
 
+Für vollständige Wiederherstellungsbackups Stack-YAML und Umgebungsdateien unter **Einstellungen → Backups** importieren. Das Backup-Passwort separat bereitstellen. Siehe [Datensicherung und Wiederherstellung](datensicherung.md).
+
 `docker-compose.yml` verwendet ausschließlich fertige Images von GHCR und ist
 daher direkt als Portainer-Stack nutzbar.
 

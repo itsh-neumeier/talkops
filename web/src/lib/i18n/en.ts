@@ -1,4 +1,69 @@
 export default {
+	'setup.choose': 'Create a new instance or recover an existing instance from a backup.',
+	'setup.new': 'Set up a new instance',
+	'setup.restore': 'Restore from backup',
+	'restore.title': 'Restore an existing instance',
+	'restore.intro':
+		'This assistant checks your backup and prepares deployment files. The host tool performs the offline restore.',
+	'restore.hostFirst':
+		'If this server cannot start yet, use the host steps below to export the original configuration first.',
+	'restore.limits':
+		'Browser inspection: up to 512 MiB uploaded and 8 GiB extracted. Use the host tool for larger backups.',
+	'restore.inspect': '1. Select and inspect the backup',
+	'restore.token': 'Local setup token',
+	'restore.tokenHint':
+		'Set TALKOPS_SETUP_TOKEN to a random value of at least 32 characters on the host, restart TalkOps, and enter that value here. Access closes when an account exists.',
+	'restore.archive': 'Backup archive',
+	'restore.password': 'Backup password (leave empty for an old unencrypted archive)',
+	'restore.inspectButton': 'Inspect backup',
+	'restore.review': '2. Review the recovery material',
+	'restore.date': 'Backup date',
+	'restore.schema': 'Database schema',
+	'restore.volumes': 'Included data volumes',
+	'restore.noRecordings': 'This backup excludes call recordings. They will not be recovered.',
+	'restore.complete': 'The required deployment files and credentials are included.',
+	'restore.incomplete':
+		'Recovery configuration is incomplete. Supply the missing files or values before restore.',
+	'restore.project': 'Compose project',
+	'restore.profiles': 'Profiles',
+	'restore.configDate': 'Configuration captured',
+	'restore.imported':
+		'This configuration was imported manually. Check that it matches the original stack.',
+	'restore.legacy':
+		'This old backup contains no deployment configuration. Supply the original Compose files, .env and TALKOPS_SECRET_KEY.',
+	'restore.downloadConsent':
+		'I understand that the download contains unencrypted passwords and the application key. I will store it securely.',
+	'restore.download': 'Download deployment files',
+	'restore.hostSteps': '3. Complete recovery on the Linux host',
+	'restore.getTool':
+		'Export the host tool from a TalkOps image that supports this backup format. Pin a suitable image version in production.',
+	'restore.prepareHint':
+		'Save the archive as backup.archive. Put the backup password in a private file named backup-password. Run this command to export files into a new directory. For old archives, omit --password-file.',
+	'restore.checkHost':
+		'Review the exported .env and Compose files. Preserve TALKOPS_SECRET_KEY. Check IP addresses, domain, ports, volume storage, image versions, project name and profiles. Supply missing configuration.',
+	'restore.runHint':
+		'Run from the reviewed deployment directory. Adapt the example paths, project name and all -f, --env-file and --profile options. The tool asks for confirmation, stops writers, restores data and restarts the stack.',
+	'restore.portainer':
+		'For Portainer, import the reviewed stack and environment values. Stop TalkOps, the media worker and FreeSWITCH. Keep PostgreSQL running. Run talkops restore --yes in a temporary container with the same volumes and environment; then redeploy the reviewed stack.',
+	'restore.verify':
+		'After restart, sign in with a restored account, including its MFA. Check service health, phone registration and a test call.',
+	'restore.failure':
+		'If restore fails, writers stay stopped. Check restore-state.json in the backups volume. Correct the failed phase and retry with the original archive. Database and volume replacement do not share one transaction.',
+	'restore.login': 'Check completion and go to login',
+	'restore.notFinished': 'No restored account is available yet. Finish the host restore first.',
+	'backup.configTitle': 'Recovery configuration',
+	'backup.configComplete': 'Required deployment files are included.',
+	'backup.configMissing': 'Recovery configuration is incomplete. Missing:',
+	'backup.configImported': 'Imported configuration must be updated after every stack change.',
+	'backup.encryptionMissing':
+		'No backup password is configured. Complete backups with deployment secrets require TALKOPS_BACKUP_PASSWORD or TALKOPS_BACKUP_PASSWORD_FILE.',
+	'backup.importTitle': 'Import Portainer deployment configuration',
+	'backup.importHint':
+		'Select .env and docker-compose*.yml/yaml files. Paste Portainer environment values into a local .env first. Keep the backup password in a separate file. Imported files are stored encrypted.',
+	'backup.importFiles': 'Deployment files',
+	'backup.importButton': 'Store configuration',
+	'backup.project': 'Compose project name',
+	'backup.profiles': 'Enabled profiles (comma-separated)',
 	'audio.speechSpeed': 'Speech speed',
 	'audio.speedHint': '0.5× to 2.0×. 1.0× keeps the previous speed; lower values are slower.',
 	'audio.speedTagsHint':

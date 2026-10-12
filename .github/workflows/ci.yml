@@ -72,6 +72,19 @@ jobs:
       - run: npm run check
       - run: npm test
       - run: npm run build
+      - name: Setup recovery browser test
+        run: |
+          mkdir -p "$RUNNER_TEMP/pw"
+          npm install --prefix "$RUNNER_TEMP/pw" --no-audit --no-fund playwright@1.56.1
+          "$RUNNER_TEMP/pw/node_modules/.bin/playwright" install --with-deps chromium
+          npm exec -- vite preview --host 127.0.0.1 --port 4178 > "$RUNNER_TEMP/recovery-preview.log" 2>&1 &
+          preview_pid=$!
+          trap 'kill "$preview_pid"' EXIT
+          for i in $(seq 1 30); do
+            curl --fail --silent http://127.0.0.1:4178/setup > /dev/null && break
+            sleep 1
+          done
+          PLAYWRIGHT_MODULE="$RUNNER_TEMP/pw/node_modules/playwright/index.mjs" node ../tests/recovery/browser.mjs
 
   compose:
     name: Compose files
@@ -92,6 +105,11 @@ jobs:
             echo "docker-compose.yml must only reference prebuilt images" >&2
             exit 1
           fi
+      - name: Validate backup override and host recovery workflow
+        run: |
+          docker compose --env-file ci.env -f docker-compose.yml -f docker-compose.backup.yml config -q
+          bash -n scripts/recover.sh
+          bash tests/recovery/host.sh
 
   images:
     name: Image build (${{ matrix.image }})

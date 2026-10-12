@@ -214,6 +214,7 @@ async fn main() -> anyhow::Result<()> {
     }
     tracing::info!(version = talkops_core::VERSION, worker_id = %args.worker_id, "media worker starting");
 
+    let _writer_guard = talkops_core::db::operation_guard(&args.database_url, false).await?;
     let pool = talkops_core::db::connect_lazy(&args.database_url, 4)?;
     let mut listener = loop {
         match PgListener::connect_with(&pool).await {

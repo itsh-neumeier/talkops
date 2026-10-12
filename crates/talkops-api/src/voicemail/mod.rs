@@ -499,7 +499,9 @@ async fn listen<C: Call>(
                     .map_err(|e| talkops_core::error::CoreError::Validation(e.to_string()))?,
             );
             job.tenant_id = tenant;
-            jobs::enqueue(&ctx.db, job).await?;
+            if let Err(err) = jobs::enqueue(&ctx.db, job).await {
+                tracing::warn!(error = %err, "caller announcement not queued");
+            }
         }
         loop {
             let mut seq = Seq::default();

@@ -144,6 +144,87 @@ async fn counts_use_words_and_handle_empty_singular_and_mixed_boxes() {
     std::fs::remove_dir_all(dir).unwrap();
 }
 
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn playback_uses_box_and_prompt_speeds_and_announces_position_of_total(pool: PgPool) {
+    let (ctx, ext, dir) = setup(&pool).await;
+    let input: VoicemailBoxInput = serde_json::from_value(serde_json::json!({
+        "enabled":true, "speech_speed":0.7
+    }))
+    .unwrap();
+    voicemail::update_box(&pool, T, ext, &input, "de")
+        .await
+        .unwrap();
+    let mut config = VoicemailConfig::default();
+    config.speeds.insert(
+        "de".into(),
+        std::collections::BTreeMap::from([("vm_message".into(), 0.8), ("vm_numbers".into(), 0.9)]),
+    );
+    config.announce = vmc::Announce {
+        name: false,
+        number: false,
+        date: false,
+        cnam: false,
+    };
+    vmc::set(&pool, T, &config).await.unwrap();
+    let prompt_path = |key: &str| {
+        let text = config.rendered_text(key, "de", 0.7).unwrap();
+        talkops_core::prompts::path_for(
+            &ctx.media.sounds,
+            key,
+            "de",
+            config.voice_model("de"),
+            &text,
+        )
+    };
+    for key in talkops_core::prompts::keys() {
+        let path = prompt_path(&key);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        write_wav(&path, 1);
+    }
+    for _ in 0..4 {
+        let mut c = call("vm_deposit", Some(ext));
+        c.record_secs.push_back(1);
+        run(&mut c, &ctx, "vm_deposit").await.unwrap();
+    }
+    let messages = voicemail::list_messages(&pool, T, ext).await.unwrap();
+    for msg in &messages[..2] {
+        voicemail::set_message_status(&pool, T, msg.id, true)
+            .await
+            .unwrap();
+    }
+    let mut c = call("vm_check", Some(ext));
+    c.digits.extend(["1", "#", "#", "#", "#", "*"]);
+    run(&mut c, &ctx, "vm_check").await.unwrap();
+    let overview = c
+        .executed
+        .iter()
+        .find(|(app, _)| app == "play_and_get_digits")
+        .unwrap();
+    assert!(overview.1.contains(&format!(
+        "{}!{}!{}!{}!{}",
+        prompt_path("n2").display(),
+        prompt_path("vm_of").display(),
+        prompt_path("n4").display(),
+        prompt_path("vm_messages_are").display(),
+        prompt_path("vm_new").display()
+    )));
+    let second = format!(
+        "file_string://{}!{}!{}!{}!silence_stream://250!",
+        prompt_path("vm_message").display(),
+        prompt_path("n2").display(),
+        prompt_path("vm_of").display(),
+        prompt_path("n4").display()
+    );
+    assert!(
+        c.executed
+            .iter()
+            .any(|(app, arg)| app == "playback" && arg.starts_with(&second)),
+        "{:?}",
+        c.executed
+    );
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
 async fn setup(pool: &PgPool) -> (VmContext, Uuid, std::path::PathBuf) {
     let dir = std::env::temp_dir().join(format!("talkops-vm-{}", Uuid::new_v4()));
     let ctx = VmContext {

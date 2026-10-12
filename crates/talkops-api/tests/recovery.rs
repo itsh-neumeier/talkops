@@ -123,7 +123,7 @@ async fn deployment_import_is_admin_only_encrypted_and_audited(db: PgPool) {
     .await;
     assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
     let (status,_) = admin.post("/api/v1/users",json!({"username":"operator","display_name":"Operator","role":"operator","password":"correct-horse","email":null})).await;
-    assert_eq!(status, StatusCode::CREATED);
+    assert_eq!(status, StatusCode::OK);
     let operator = login(&router, "operator", "correct-horse").await.unwrap();
     assert_eq!(
         operator

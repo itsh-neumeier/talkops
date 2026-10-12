@@ -8,7 +8,8 @@
 - Status: In progress. Implementation complete; final verification pending.
 - Branch: codex/guided-backup-restore
 - Base commit: 2fbe3195517b509d2afd3d57247c05a98437f064
-- Related commits or PR: Pending
+- Feature commit: ef39d2d
+- Related PR: https://github.com/itsh-neumeier/talkops/pull/4 (draft)
 
 ## Goal
 
@@ -23,8 +24,9 @@ Portainer import, standalone configuration export and an offline host tool.
 Existing format-1 archives remain readable. Restored sessions are cleared.
 No release metadata, tag, merge or publication was changed.
 
-The worktree is C:/Users/timo/.codex/worktrees/guided-backup-restore/talkops.
-The remote target remains ccr-df1c8083-0ce1he at the base commit. Other worktrees
+The worktree name is guided-backup-restore. Use git worktree list for its path.
+Merged reviewed target commit 4503fb3 (release 1.7.6) into the feature branch.
+Preserved both features when resolving translation conflicts. Other worktrees
 were preserved. App registration failed, but the Git worktree is usable.
 
 ## Changes

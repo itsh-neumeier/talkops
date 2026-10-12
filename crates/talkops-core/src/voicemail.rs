@@ -37,6 +37,7 @@ pub struct VoicemailBox {
     /// The audio clip played when `greeting` is `clip`.
     pub greeting_clip_id: Option<Uuid>,
     pub max_message_secs: i32,
+    pub speech_speed: f64,
 }
 
 impl VoicemailBox {
@@ -53,6 +54,7 @@ impl VoicemailBox {
             greeting_status: "none".into(),
             greeting_clip_id: None,
             max_message_secs: 180,
+            speech_speed: 1.0,
         }
     }
 
@@ -99,6 +101,9 @@ pub struct VoicemailBoxInput {
     /// Ring time of the extension before voicemail answers (kept if absent).
     #[serde(default)]
     pub ring_timeout_secs: Option<i32>,
+    /// TTS speed factor. An absent value keeps the current setting.
+    #[serde(default)]
+    pub speech_speed: Option<f64>,
 }
 
 fn yes() -> bool {
@@ -113,11 +118,53 @@ fn default_max_secs() -> i32 {
 
 const BOX_COLUMNS: &str = "extension_id, enabled, pin_hash, email_notify, attach_audio, language, \
                            greeting, greeting_text, greeting_status, greeting_clip_id, \
-                           max_message_secs";
+                           max_message_secs, speech_speed";
 
 /// Relative path of a box's custom greeting.
 pub fn greeting_file(tenant: TenantId, extension: Uuid) -> String {
     format!("{tenant}/{extension}/greeting.wav")
+}
+
+/// Separate generations prevent delayed jobs from replacing newer audio.
+pub fn greeting_tts_file(
+    tenant: TenantId,
+    extension: Uuid,
+    lang: &str,
+    text: &str,
+    speed: f64,
+) -> CoreResult<String> {
+    use sha2::{Digest, Sha256};
+    let text = crate::speech::with_speed(text, speed)?;
+    let voice = crate::prompts::voice(lang);
+    let hash = hex::encode(&Sha256::digest(format!("{voice}\n{text}").as_bytes())[..8]);
+    Ok(format!("{tenant}/{extension}/greeting-{hash}.wav"))
+}
+
+pub fn greeting_path(
+    dir: &std::path::Path,
+    tenant: TenantId,
+    vbox: &VoicemailBox,
+    lang: &str,
+) -> CoreResult<std::path::PathBuf> {
+    let legacy = dir.join(greeting_file(tenant, vbox.extension_id));
+    if vbox.greeting != "tts" {
+        return Ok(legacy);
+    }
+    let generated = dir.join(greeting_tts_file(
+        tenant,
+        vbox.extension_id,
+        lang,
+        &vbox.greeting_text,
+        vbox.speech_speed,
+    )?);
+    if !generated.is_file()
+        && vbox.speech_speed == 1.0
+        && vbox.greeting_status == "ready"
+        && legacy.is_file()
+    {
+        return Ok(legacy);
+    }
+    Ok(generated)
 }
 
 /// Relative path of a message recording.
@@ -143,6 +190,12 @@ pub async fn get_box<'e>(
 }
 
 fn validate(input: &VoicemailBoxInput) -> CoreResult<()> {
+    if let Some(speed) = input.speech_speed {
+        crate::speech::validate_speed(speed)?;
+    }
+    if input.greeting == "tts" {
+        crate::speech::segments(&input.greeting_text, input.speech_speed.unwrap_or(1.0))?;
+    }
     if let Some(pin) = input.pin.as_deref().filter(|p| !p.is_empty()) {
         if !(4..=10).contains(&pin.len()) || !pin.bytes().all(|b| b.is_ascii_digit()) {
             return Err(CoreError::Validation("PIN must have 4 to 10 digits".into()));
@@ -185,12 +238,35 @@ pub async fn update_box(
     default_language: &str,
 ) -> CoreResult<VoicemailBox> {
     validate(input)?;
-    let clip = (input.greeting == "clip")
+    let mut clip = (input.greeting == "clip")
         .then_some(input.greeting_clip_id)
         .flatten();
     crate::audio::ensure_exists(pool, tenant, clip).await?;
     let mut tx = pool.begin().await?;
     let old = get_box(&mut *tx, tenant, extension).await?;
+    let speech_speed = input.speech_speed.unwrap_or(old.speech_speed);
+    if let Some(id) = clip {
+        let current = crate::audio::get(pool, tenant, id).await?;
+        if current.source == "tts" && current.speech_speed != speech_speed {
+            // Clips can be shared. Create a new clip rather than changing
+            // the greeting of another box or attendant.
+            clip = Some(
+                crate::audio::create_tts_in(
+                    &mut tx,
+                    tenant,
+                    None,
+                    &crate::audio::TtsInput {
+                        text: current.text,
+                        language: current.language,
+                        voice: current.voice,
+                        speech_speed,
+                    },
+                )
+                .await?
+                .id,
+            );
+        }
+    }
     let pin_hash = match input.pin.as_deref() {
         None => old.pin_hash.clone(),
         Some("") => None,
@@ -202,6 +278,7 @@ pub async fn update_box(
         && (old.greeting != "tts"
             || old.greeting_text != text
             || old.language != language
+            || old.speech_speed != speech_speed
             || old.greeting_status == "failed");
     let status = match input.greeting.as_str() {
         "default" | "clip" | "none" => "none",
@@ -217,13 +294,13 @@ pub async fn update_box(
     let sql = format!(
         "INSERT INTO voicemail_boxes (extension_id, tenant_id, enabled, pin_hash, email_notify,
                                       attach_audio, language, greeting, greeting_text,
-                                      greeting_status, max_message_secs, greeting_clip_id)
-         SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+                                      greeting_status, max_message_secs, greeting_clip_id, speech_speed)
+         SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
          WHERE EXISTS (SELECT 1 FROM extensions WHERE id = $1 AND tenant_id = $2)
          ON CONFLICT (extension_id) DO UPDATE SET
              enabled = $3, pin_hash = $4, email_notify = $5, attach_audio = $6, language = $7,
              greeting = $8, greeting_text = $9, greeting_status = $10, max_message_secs = $11,
-             greeting_clip_id = $12, updated_at = now()
+             greeting_clip_id = $12, speech_speed = $13, updated_at = now()
          RETURNING {BOX_COLUMNS}"
     );
     let saved: VoicemailBox = sqlx::query_as(&sql)
@@ -239,6 +316,7 @@ pub async fn update_box(
         .bind(status)
         .bind(input.max_message_secs)
         .bind(clip)
+        .bind(speech_speed)
         .fetch_optional(&mut *tx)
         .await?
         .ok_or(CoreError::NotFound)?;
@@ -249,12 +327,21 @@ pub async fn update_box(
             serde_json::json!({
                 "extension_id": extension,
                 "text": text,
+                "speech_speed": speech_speed,
                 "language": crate::prompts::language(lang),
-                "file": greeting_file(tenant, extension),
+                "file": greeting_tts_file(tenant, extension, lang, text, speech_speed)?,
             }),
         );
         job.tenant_id = tenant;
         job.priority = 10;
+        jobs::enqueue(&mut *tx, job).await?;
+    }
+    if old.speech_speed != speech_speed {
+        let mut job = NewJob::new(
+            crate::voicemail_config::JOB_TTS_PROMPTS,
+            serde_json::json!({}),
+        );
+        job.tenant_id = tenant;
         jobs::enqueue(&mut *tx, job).await?;
     }
     tx.commit().await?;
@@ -269,13 +356,24 @@ pub async fn set_greeting_status(
     text: &str,
     ready: bool,
 ) -> CoreResult<()> {
+    set_greeting_status_at_speed(pool, extension, text, 1.0, ready).await
+}
+
+pub async fn set_greeting_status_at_speed(
+    pool: &PgPool,
+    extension: Uuid,
+    text: &str,
+    speed: f64,
+    ready: bool,
+) -> CoreResult<()> {
     sqlx::query(
         "UPDATE voicemail_boxes SET greeting_status = $3, updated_at = now()
-         WHERE extension_id = $1 AND greeting = 'tts' AND greeting_text = $2",
+         WHERE extension_id = $1 AND greeting = 'tts' AND greeting_text = $2 AND speech_speed = $4",
     )
     .bind(extension)
     .bind(text)
     .bind(if ready { "ready" } else { "failed" })
+    .bind(speed)
     .execute(pool)
     .await?;
     Ok(())

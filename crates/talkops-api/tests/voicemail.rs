@@ -206,6 +206,7 @@ async fn voicemail_control_settings(db: PgPool) {
     assert_eq!(status, StatusCode::OK);
     assert_eq!(v["config"]["keys"]["delete"], "7");
     assert_eq!(v["config"]["announce"]["date"], true);
+    assert_eq!(v["config"]["speeds"], json!({}));
     let menu = v["prompts"]
         .as_array()
         .unwrap()
@@ -220,6 +221,21 @@ async fn voicemail_control_settings(db: PgPool) {
             .contains("{listen}")
     );
 
+    for speeds in [
+        json!({"de":{"vm_main_menu":0.4}}),
+        json!({"fr":{"vm_main_menu":1.0}}),
+        json!({"de":{"unknown":1.0}}),
+    ] {
+        let mut c = v["config"].clone();
+        c["speeds"] = speeds;
+        let (status, _) = admin.put("/api/v1/settings/voicemail", c).await;
+        assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    }
+    let mut c = v["config"].clone();
+    c["texts"] = json!({"de":{"vm_goodbye":"<speed:0.7>Bye"}});
+    let (status, _) = admin.put("/api/v1/settings/voicemail", c).await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+
     // The same key twice in one menu, unknown placeholders: refused.
     let mut c = v["config"].clone();
     c["keys"]["save"] = json!("7");
@@ -233,12 +249,17 @@ async fn voicemail_control_settings(db: PgPool) {
     let mut c = v["config"].clone();
     c["keys"]["delete"] = json!("3");
     c["voices"] = json!({"de": 2, "en": 1});
+    c["speeds"] = json!({"de": {"vm_main_menu": 0.7, "vm_numbers": 1.0}});
     c["announce"]["date"] = json!(false);
     c["texts"] = json!({"de": {"vm_goodbye": " Tschüss! ", "vm_and": "und"}});
     let (status, v) = admin.put("/api/v1/settings/voicemail", c).await;
     assert_eq!(status, StatusCode::OK, "{v}");
     // Defaults are not stored: voice 1, texts equal to the default.
     assert_eq!(v["config"]["voices"], json!({"de": 2}));
+    assert_eq!(
+        v["config"]["speeds"],
+        json!({"de": {"vm_main_menu": 0.7, "vm_numbers": 1.0}})
+    );
     assert_eq!(
         v["config"]["texts"],
         json!({"de": {"vm_goodbye": "Tschüss!"}})

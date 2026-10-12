@@ -22,6 +22,39 @@ the extension page:
   on, the mail also contains the text of the message (see
   [recording & transcription](recording.md)).
 
+## Speech speed
+
+Set **Speech speed** in the settings of each voicebox. The range is 0.5× to
+2.0×. The default, 1.0×, keeps the previous voice speed. Lower values are
+slower. This setting controls generated greetings, menu prompts, spoken
+numbers, and caller and date announcements. Recordings and uploaded audio
+keep their original speed.
+
+An admin can set a speed for each prompt and language in **Settings →
+Voicemail**. An empty field uses the voicebox speed. An explicit 1.0 override
+uses normal speed, even if the voicebox uses another speed. **Speed for
+numbers and digits** controls the numbers in prompt sequences.
+
+To change the speed of part of a TTS text, use an inline tag:
+
+```text
+Welcome. <speed:0.7>Please have your customer number ready.</speed> Thank you.
+```
+
+The tagged text uses 0.7×. The selected prompt or voicebox speed resumes
+after the closing tag. Tag values are absolute factors, from 0.5 to 2.0.
+Use a decimal point. Do not nest tags or leave a tagged section empty.
+TalkOps rejects invalid tags when you save or generate the text.
+
+The shared **Generate** editor also has a speech speed control and a preview.
+For a voicebox greeting, the preview uses that voicebox's speed. If you change
+the text or speed, generate a new preview to hear the result. Saving also
+generates the changed clip. Other users of a shared clip keep their clip.
+
+The media worker generates changed prompts and stored message announcements
+in the background. Standard prompts can play until new prompts are ready.
+The message recording keeps its original speed.
+
 ## Greetings and audio
 
 Wherever TalkOps plays a prompt – voicemail, Smart Attendant, queues – you get
@@ -50,7 +83,13 @@ Main menu (default): **1** listen to messages, **5** record greeting,
 **\*** exit. During a message: **1** repeat, **7** delete, **9** save, **#**
 next message. When leaving a message, **#** ends the recording.
 
-Before each message TalkOps says who called and when, e.g. "Message 1 from
+For two new messages out of four total messages, the German overview says
+"2 von 4 Sprachnachrichten sind neu." The English overview says "2 of 4
+voice messages are new." Empty boxes, single messages, and boxes with only
+new or saved messages have their own prompt forms.
+
+Before each message TalkOps says its position, who called, and when.
+For example: "Message 1 of 4 from
 Anna Müller, 0 3 0, 1 2 3, 4 5 6. Received on Thursday, October 8, at 2:32 PM."
 The name comes from the phone book or the extension list, otherwise – if
 enabled – from the provider (CNAM). The announcement is made when the message

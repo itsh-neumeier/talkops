@@ -22,6 +22,41 @@ auf der Seite der Nebenstelle:
   enthält die Mail auch den Text der Nachricht (siehe
   [Aufzeichnung & Transkription](aufzeichnung.md)).
 
+## Sprechgeschwindigkeit
+
+Stelle **Sprechgeschwindigkeit** in den Einstellungen jeder Voicebox ein.
+Der Bereich ist 0,5× bis 2,0×. Der Standard 1,0× behält das bisherige Tempo
+der Stimme bei. Kleinere Werte sind langsamer. Die Einstellung gilt für
+generierte Begrüßungen, Menütexte, gesprochene Zahlen sowie Anrufer- und
+Datumsansagen. Aufnahmen und hochgeladene Audiodateien behalten ihr Tempo.
+
+Als Admin kannst du unter **Einstellungen → Voicemail** ein Tempo je Ansage
+und Sprache festlegen. Ein leeres Feld übernimmt das Tempo der Voicebox.
+Eine ausdrückliche Vorgabe von 1,0 verwendet normales Tempo, auch wenn die
+Voicebox langsamer spricht. **Tempo für Zahlen und Ziffern** gilt für die
+Zahlen in den Ansagefolgen.
+
+Mit einem Tag passt du einzelne Stellen eines TTS-Textes an:
+
+```text
+Willkommen. <speed:0.7>Bitte halten Sie Ihre Kundennummer bereit.</speed> Vielen Dank.
+```
+
+Der markierte Text verwendet 0,7×. Nach dem schließenden Tag gilt wieder das
+Tempo der Ansage oder Voicebox. Tag-Werte sind absolute Faktoren von 0.5 bis
+2.0. Verwende einen Dezimalpunkt. Tags dürfen nicht verschachtelt oder leer
+sein. Fehlerhafte Tags werden beim Speichern oder Generieren abgelehnt.
+
+Der gemeinsame Editor **Generieren** bietet ebenfalls eine Tempoauswahl und
+Hörvorschau. Die Vorschau einer Voicebox-Begrüßung verwendet deren Tempo.
+Erzeuge nach einer Text- oder Tempoänderung eine neue Vorschau, um sie
+anzuhören. Auch beim Speichern wird der geänderte Clip neu erzeugt. Andere
+Nutzer eines geteilten Clips behalten ihren bisherigen Clip.
+
+Der Media-Worker erzeugt geänderte Ansagen und die Informationen zu
+gespeicherten Nachrichten im Hintergrund. Bis neue Ansagen fertig sind,
+können Standardansagen laufen. Die Nachrichtenaufnahme behält ihr Tempo.
+
 ## Ansagen und Audio
 
 Überall, wo TalkOps etwas ansagt – Voicemail, Smart Attendant, Warteschlangen –
@@ -51,8 +86,14 @@ Hauptmenü (Standard): **1** Nachrichten abhören, **5** Ansage aufnehmen,
 **9** speichern, **#** nächste Nachricht. Beim Aufsprechen beendet **#** die
 Aufnahme.
 
-Vor jeder Nachricht sagt TalkOps, wer angerufen hat und wann, z. B. „Nachricht
-1 von Anna Müller, 0 3 0, 1 2 3, 4 5 6. Empfangen am Donnerstag, 8. Oktober, um
+Bei zwei neuen von insgesamt vier Nachrichten lautet die Übersicht:
+„2 von 4 Sprachnachrichten sind neu.“ Leere Mailboxen, einzelne Nachrichten
+und Mailboxen mit ausschließlich neuen oder gespeicherten Nachrichten
+haben passende eigene Formulierungen.
+
+Vor jeder Nachricht sagt TalkOps ihre Position sowie Anrufer und Zeitpunkt,
+z. B. „Nachricht 1 von 4 von Anna Müller, 0 3 0, 1 2 3, 4 5 6.
+Empfangen am Donnerstag, 8. Oktober, um
 14 Uhr 32.“ Der Name kommt aus dem Telefonbuch bzw. der Nebenstellenliste,
 sonst – falls eingeschaltet – vom Anbieter (CNAM). Die Ansage wird beim
 Speichern der Nachricht erzeugt; ist sie (noch) nicht fertig, liest TalkOps

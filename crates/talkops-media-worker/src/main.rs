@@ -359,16 +359,17 @@ async fn tts_clip(ctx: &Ctx, job: &Job) -> anyhow::Result<()> {
         .sounds_dir
         .join(audio::clip_file(clip.tenant_id, p.clip_id));
     let voice = audio::voice(&clip.language, clip.voice);
-    let result = ctx
-        .piper
-        .render_with(voice.model, &[(clip.text.clone(), path.clone())])
-        .await;
-    let duration = match &result {
-        Ok(()) => Some(wav_duration_ms(&path).unwrap_or(0)),
-        Err(_) => None,
-    };
+    let result: anyhow::Result<i32> = async {
+        let text = talkops_core::speech::with_speed(&clip.text, clip.speech_speed)?;
+        ctx.piper
+            .render_with(voice.model, &[(text, path.clone())])
+            .await?;
+        wav_duration_ms(&path)
+    }
+    .await;
+    let duration = result.as_ref().ok().copied();
     audio::set_rendered(&ctx.pool, p.clip_id, duration).await?;
-    result
+    result.map(|_| ())
 }
 
 /// Length of a WAV file in milliseconds.
@@ -382,12 +383,27 @@ fn wav_duration_ms(path: &Path) -> anyhow::Result<i32> {
 /// Renders a voicemail greeting; the box status tells the UI the outcome.
 async fn tts_greeting(ctx: &Ctx, job: &Job) -> anyhow::Result<()> {
     let p = TtsPayload::parse(job)?;
+    let current = voicemail::get_box(&ctx.pool, job.tenant_id, p.owner).await?;
+    if current.greeting != "tts"
+        || current.greeting_text != p.text
+        || current.speech_speed != p.speech_speed
+    {
+        return Ok(());
+    }
     let path = ctx.voicemail_dir.join(&p.file);
-    let result = ctx
-        .piper
-        .render(&p.language, &[(p.text.clone(), path)])
-        .await;
-    voicemail::set_greeting_status(&ctx.pool, p.owner, &p.text, result.is_ok()).await?;
+    let result = async {
+        let text = talkops_core::speech::with_speed(&p.text, p.speech_speed)?;
+        ctx.piper.render(&p.language, &[(text, path)]).await
+    }
+    .await;
+    voicemail::set_greeting_status_at_speed(
+        &ctx.pool,
+        p.owner,
+        &p.text,
+        p.speech_speed,
+        result.is_ok(),
+    )
+    .await?;
     result
 }
 
@@ -418,7 +434,9 @@ async fn tenant_prompts(
 ) -> anyhow::Result<usize> {
     let tenants: Vec<talkops_core::tenant::TenantId> = sqlx::query_scalar(
         "SELECT tenant_id FROM tenant_settings
-         WHERE voicemail_config <> '{}'::jsonb AND ($1::uuid IS NULL OR tenant_id = $1)",
+         WHERE ($1::uuid IS NOT NULL OR voicemail_config <> '{}'::jsonb OR EXISTS (
+             SELECT 1 FROM voicemail_boxes b WHERE b.tenant_id = tenant_settings.tenant_id
+             AND b.speech_speed <> 1.0)) AND ($1::uuid IS NULL OR tenant_id = $1)",
     )
     .bind(only)
     .fetch_all(&ctx.pool)
@@ -426,22 +444,56 @@ async fn tenant_prompts(
     let mut rendered = 0;
     for tenant in tenants {
         let config = vmc::get(&ctx.pool, tenant).await?;
-        for lang in talkops_core::prompts::LANGUAGES {
-            let model = config.voice_model(lang);
-            let missing: Vec<(String, PathBuf)> = talkops_core::prompts::keys()
-                .filter_map(|key| {
-                    let text = config.text(&key, lang)?;
-                    let path =
-                        talkops_core::prompts::path_for(&ctx.sounds_dir, &key, lang, model, &text);
-                    (!path.is_file()).then_some((text, path))
-                })
-                .collect();
-            if missing.is_empty() {
-                continue;
+        let mut speeds: Vec<f64> = sqlx::query_scalar(
+            "SELECT DISTINCT speech_speed FROM voicemail_boxes WHERE tenant_id = $1",
+        )
+        .bind(tenant)
+        .fetch_all(&ctx.pool)
+        .await?;
+        if !speeds.contains(&1.0) {
+            speeds.push(1.0);
+        }
+        for speed in speeds {
+            for lang in talkops_core::prompts::LANGUAGES {
+                let model = config.voice_model(lang);
+                let missing: Vec<(String, PathBuf)> = talkops_core::prompts::keys()
+                    .filter_map(|key| {
+                        let text = config.rendered_text(&key, lang, speed)?;
+                        let path = talkops_core::prompts::path_for(
+                            &ctx.sounds_dir,
+                            &key,
+                            lang,
+                            model,
+                            &text,
+                        );
+                        (!path.is_file()).then_some((text, path))
+                    })
+                    .collect();
+                if missing.is_empty() {
+                    continue;
+                }
+                tracing::info!(%tenant, lang, count = missing.len(), "rendering tenant prompts");
+                ctx.piper.render_with(model, &missing).await?;
+                rendered += missing.len();
             }
-            tracing::info!(%tenant, lang, count = missing.len(), "rendering tenant prompts");
-            ctx.piper.render_with(model, &missing).await?;
-            rendered += missing.len();
+        }
+        // Refresh the caller/date audio of stored messages after settings
+        // changes. Content hashes separate old jobs from current settings.
+        let boxes: Vec<uuid::Uuid> =
+            sqlx::query_scalar("SELECT extension_id FROM voicemail_boxes WHERE tenant_id = $1")
+                .bind(tenant)
+                .fetch_all(&ctx.pool)
+                .await?;
+        for ext in boxes {
+            for msg in voicemail::list_messages(&ctx.pool, tenant, ext).await? {
+                if let Some(p) = vmc::message_info_job(&ctx.pool, tenant, &msg).await? {
+                    let path = ctx.voicemail_dir.join(&p.file);
+                    if !path.is_file() && ctx.voicemail_dir.join(&msg.file).is_file() {
+                        ctx.piper.render_with(&p.voice, &[(p.text, path)]).await?;
+                        rendered += 1;
+                    }
+                }
+            }
         }
     }
     Ok(rendered)
@@ -485,6 +537,8 @@ struct TtsPayload {
     text: String,
     language: String,
     file: String,
+    #[serde(default = "talkops_core::speech::default_speed")]
+    speech_speed: f64,
 }
 
 impl TtsPayload {
@@ -645,3 +699,6 @@ async fn run_engine(
         }
     }
 }
+
+#[cfg(all(test, unix))]
+mod tests;

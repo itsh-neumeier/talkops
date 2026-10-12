@@ -87,6 +87,31 @@ const PROMPTS: &[Prompt] = &[
         en: "and",
     },
     Prompt {
+        key: "vm_of",
+        de: "von",
+        en: "of",
+    },
+    Prompt {
+        key: "vm_messages_are",
+        de: "Sprachnachrichten sind",
+        en: "voice messages are",
+    },
+    Prompt {
+        key: "vm_one_of",
+        de: "Eine von",
+        en: "One of",
+    },
+    Prompt {
+        key: "vm_messages_is",
+        de: "Sprachnachrichten ist",
+        en: "voice messages is",
+    },
+    Prompt {
+        key: "vm_new",
+        de: "neu.",
+        en: "new.",
+    },
+    Prompt {
         key: "vm_one_saved_message",
         de: "eine gespeicherte Nachricht.",
         en: "one saved message.",

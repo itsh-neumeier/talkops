@@ -81,6 +81,7 @@ pub struct Clip {
     pub text: String,
     pub language: String,
     pub voice: i16,
+    pub speech_speed: f64,
     /// `pending`, `ready` or `failed`.
     pub status: String,
     pub duration_ms: i32,
@@ -94,6 +95,8 @@ pub struct TtsInput {
     pub language: String,
     #[serde(default = "default_voice")]
     pub voice: i16,
+    #[serde(default = "crate::speech::default_speed")]
+    pub speech_speed: f64,
 }
 
 fn default_language() -> String {
@@ -103,7 +106,8 @@ fn default_voice() -> i16 {
     1
 }
 
-const COLUMNS: &str = "id, source, text, language, voice, status, duration_ms, created_at";
+const COLUMNS: &str =
+    "id, source, text, language, voice, speech_speed, status, duration_ms, created_at";
 
 /// Relative path (sounds volume) of a clip's audio.
 pub fn clip_file(tenant: TenantId, id: Uuid) -> String {
@@ -146,6 +150,18 @@ pub async fn create_tts(
     user: Option<Uuid>,
     input: &TtsInput,
 ) -> CoreResult<Clip> {
+    let mut tx = pool.begin().await?;
+    let clip = create_tts_in(&mut tx, tenant, user, input).await?;
+    tx.commit().await?;
+    Ok(clip)
+}
+
+pub(crate) async fn create_tts_in(
+    db: &mut sqlx::PgConnection,
+    tenant: TenantId,
+    user: Option<Uuid>,
+    input: &TtsInput,
+) -> CoreResult<Clip> {
     let text = input.text.split_whitespace().collect::<Vec<_>>().join(" ");
     if text.is_empty() {
         return Err(CoreError::Validation("the text is empty".into()));
@@ -161,10 +177,10 @@ pub async fn create_tts(
     {
         return Err(CoreError::Validation("unknown voice".into()));
     }
-    let mut tx = pool.begin().await?;
+    crate::speech::segments(&text, input.speech_speed)?;
     let sql = format!(
-        "INSERT INTO audio_clips (tenant_id, source, text, language, voice, created_by)
-         VALUES ($1, 'tts', $2, $3, $4, $5) RETURNING {COLUMNS}"
+        "INSERT INTO audio_clips (tenant_id, source, text, language, voice, created_by, speech_speed)
+         VALUES ($1, 'tts', $2, $3, $4, $5, $6) RETURNING {COLUMNS}"
     );
     let clip: Clip = sqlx::query_as(&sql)
         .bind(tenant)
@@ -172,15 +188,15 @@ pub async fn create_tts(
         .bind(&input.language)
         .bind(input.voice)
         .bind(user)
-        .fetch_one(&mut *tx)
+        .bind(input.speech_speed)
+        .fetch_one(&mut *db)
         .await?;
     let mut job = NewJob::new(JOB_TTS_CLIP, serde_json::json!({ "clip_id": clip.id }));
     job.tenant_id = tenant;
     // Someone is waiting for the preview: before transcriptions and the like.
     job.priority = 10;
     job.max_attempts = 2;
-    jobs::enqueue(&mut *tx, job).await?;
-    tx.commit().await?;
+    jobs::enqueue(&mut *db, job).await?;
     Ok(clip)
 }
 
@@ -227,11 +243,12 @@ pub struct RenderJob {
     pub text: String,
     pub language: String,
     pub voice: i16,
+    pub speech_speed: f64,
 }
 
 pub async fn render_job(pool: &PgPool, id: Uuid) -> CoreResult<RenderJob> {
     sqlx::query_as(
-        "SELECT tenant_id, text, language, voice FROM audio_clips
+        "SELECT tenant_id, text, language, voice, speech_speed FROM audio_clips
          WHERE id = $1 AND source = 'tts'",
     )
     .bind(id)

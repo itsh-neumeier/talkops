@@ -64,6 +64,21 @@ export default {
 	'backup.importButton': 'Store configuration',
 	'backup.project': 'Compose project name',
 	'backup.profiles': 'Enabled profiles (comma-separated)',
+	'audio.speechSpeed': 'Speech speed',
+	'audio.speedHint': '0.5× to 2.0×. 1.0× keeps the previous speed; lower values are slower.',
+	'audio.speedTagsHint':
+		'For part of a text: <speed:0.7>Sample text</speed>. The selected speed resumes after the tag. Use 0.5 to 2.0; do not nest tags.',
+	'vm.speedHint':
+		'Applies to generated greetings, menu prompts and message information for this voicebox. Prompt speed overrides and text tags take precedence.',
+	'vmc.speedHint':
+		'Set a speed for each prompt and language. Empty fields use the voicebox speed. Text tags take precedence.',
+	'vmc.speedInherit': 'Voicebox speed',
+	'vmc.numbersSpeed': 'Speed for numbers and digits',
+	'vmc.prompt.vm_of': '"of" (message counter)',
+	'vmc.prompt.vm_messages_are': '"voice messages are"',
+	'vmc.prompt.vm_new': '"new"',
+	'vmc.prompt.vm_one_of': '"One of"',
+	'vmc.prompt.vm_messages_is': '"voice messages is"',
 	'app.tagline': 'by ITSH Neumeier',
 	'theme.toggle': 'Toggle dark mode',
 	'locale.label': 'Language',

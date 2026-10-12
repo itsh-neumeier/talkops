@@ -101,6 +101,130 @@ fn call(app: &str, ext: Option<Uuid>) -> FakeCall {
     }
 }
 
+#[tokio::test]
+async fn counts_use_words_and_handle_empty_singular_and_mixed_boxes() {
+    let dir = std::env::temp_dir().join(format!("talkops-counts-{}", Uuid::new_v4()));
+    for key in talkops_core::prompts::keys() {
+        let path = talkops_core::prompts::path(&dir, &key, "de").unwrap();
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        write_wav(&path, 1);
+    }
+    for (new, saved, expected) in [
+        (0, 0, vec!["vm_no_new_messages"]),
+        (1, 0, vec!["vm_you_have", "vm_one_new_message"]),
+        (2, 0, vec!["vm_you_have", "n2", "vm_new_messages"]),
+        (0, 1, vec!["vm_you_have", "vm_one_saved_message"]),
+        (0, 4, vec!["vm_you_have", "n4", "vm_saved_messages"]),
+        (1, 3, vec!["vm_one_of", "n4", "vm_messages_is", "vm_new"]),
+        (2, 2, vec!["n2", "vm_of", "n4", "vm_messages_are", "vm_new"]),
+    ] {
+        let mut c = FakeCall::default();
+        let mut ivr = Ivr::new(&mut c, &dir, "de");
+        let mut seq = Seq::default();
+        counts_prompt(&ivr, &mut seq, new, saved);
+        ivr.play(&seq).await.unwrap();
+        let spoken: Vec<&str> = c.executed[0]
+            .1
+            .strip_prefix("file_string://")
+            .unwrap_or(&c.executed[0].1)
+            .split('!')
+            .map(|p| {
+                Path::new(p)
+                    .file_name()
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .split('-')
+                    .next()
+                    .unwrap()
+            })
+            .collect();
+        assert_eq!(spoken, expected, "new={new}, saved={saved}");
+    }
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn playback_uses_box_and_prompt_speeds_and_announces_position_of_total(pool: PgPool) {
+    let (ctx, ext, dir) = setup(&pool).await;
+    let input: VoicemailBoxInput = serde_json::from_value(serde_json::json!({
+        "enabled":true, "speech_speed":0.7
+    }))
+    .unwrap();
+    voicemail::update_box(&pool, T, ext, &input, "de")
+        .await
+        .unwrap();
+    let mut config = VoicemailConfig::default();
+    config.speeds.insert(
+        "de".into(),
+        std::collections::BTreeMap::from([("vm_message".into(), 0.8), ("vm_numbers".into(), 0.9)]),
+    );
+    config.announce = vmc::Announce {
+        name: false,
+        number: false,
+        date: false,
+        cnam: false,
+    };
+    vmc::set(&pool, T, &config).await.unwrap();
+    let prompt_path = |key: &str| {
+        let text = config.rendered_text(key, "de", 0.7).unwrap();
+        talkops_core::prompts::path_for(
+            &ctx.media.sounds,
+            key,
+            "de",
+            config.voice_model("de"),
+            &text,
+        )
+    };
+    for key in talkops_core::prompts::keys() {
+        let path = prompt_path(&key);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        write_wav(&path, 1);
+    }
+    for _ in 0..4 {
+        let mut c = call("vm_deposit", Some(ext));
+        c.record_secs.push_back(1);
+        run(&mut c, &ctx, "vm_deposit").await.unwrap();
+    }
+    let messages = voicemail::list_messages(&pool, T, ext).await.unwrap();
+    for msg in &messages[..2] {
+        voicemail::set_message_status(&pool, T, msg.id, true)
+            .await
+            .unwrap();
+    }
+    let mut c = call("vm_check", Some(ext));
+    c.digits.extend(["1", "#", "#", "#", "#", "*"]);
+    run(&mut c, &ctx, "vm_check").await.unwrap();
+    let overview = c
+        .executed
+        .iter()
+        .find(|(app, _)| app == "play_and_get_digits")
+        .unwrap();
+    assert!(overview.1.contains(&format!(
+        "{}!{}!{}!{}!{}",
+        prompt_path("n2").display(),
+        prompt_path("vm_of").display(),
+        prompt_path("n4").display(),
+        prompt_path("vm_messages_are").display(),
+        prompt_path("vm_new").display()
+    )));
+    let second = format!(
+        "file_string://{}!{}!{}!{}!silence_stream://250!",
+        prompt_path("vm_message").display(),
+        prompt_path("n2").display(),
+        prompt_path("vm_of").display(),
+        prompt_path("n4").display()
+    );
+    assert!(
+        c.executed
+            .iter()
+            .any(|(app, arg)| app == "playback" && arg.starts_with(&second)),
+        "{:?}",
+        c.executed
+    );
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
 async fn setup(pool: &PgPool) -> (VmContext, Uuid, std::path::PathBuf) {
     let dir = std::env::temp_dir().join(format!("talkops-vm-{}", Uuid::new_v4()));
     let ctx = VmContext {
@@ -151,6 +275,7 @@ async fn setup(pool: &PgPool) -> (VmContext, Uuid, std::path::PathBuf) {
             greeting_text: String::new(),
             max_message_secs: 60,
             ring_timeout_secs: None,
+            speech_speed: None,
             greeting_clip_id: None,
         },
         "de",
@@ -215,6 +340,7 @@ async fn deposit_stores_messages(pool: PgPool) {
                 greeting_text: String::new(),
                 max_message_secs: 60,
                 ring_timeout_secs: None,
+                speech_speed: None,
                 greeting_clip_id: clip_id,
             },
             "de",
@@ -262,6 +388,7 @@ async fn deposit_stores_messages(pool: PgPool) {
             greeting_text: vbox.greeting_text,
             max_message_secs: 60,
             ring_timeout_secs: None,
+            speech_speed: None,
             greeting_clip_id: None,
         },
         "de",
@@ -615,7 +742,10 @@ async fn custom_keys_texts_and_caller_announcement(pool: PgPool) {
         "{}",
         info.text
     );
-    assert_eq!(info.file, vmc::info_file(&msg.file));
+    assert_eq!(
+        info.file,
+        vmc::info_file_for(&msg.file, &info.voice, &info.text)
+    );
     assert_eq!(info.voice, "de_DE-thorsten-medium");
     // The worker renders it; listening plays it before the message.
     write_wav(&ctx.path(&info.file), 1);
@@ -635,7 +765,7 @@ async fn custom_keys_texts_and_caller_announcement(pool: PgPool) {
     assert!(
         c.executed
             .iter()
-            .any(|(a, d)| a == "playback" && d.contains(&format!("{}-info.wav", msg.id))),
+            .any(|(a, d)| a == "playback" && d.contains(&info.file)),
         "{:?}",
         c.executed
     );

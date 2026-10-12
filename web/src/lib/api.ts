@@ -513,6 +513,7 @@ export interface VoicemailBox {
 	greeting_text: string;
 	greeting_status: 'none' | 'pending' | 'ready' | 'failed';
 	greeting_clip_id: string | null;
+	speech_speed: number;
 	max_message_secs: number;
 	/** How long the extension rings before voicemail answers. */
 	ring_timeout_secs: number;

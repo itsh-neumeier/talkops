@@ -105,6 +105,7 @@ pub async fn update_box(
             "greeting": vbox.greeting,
             "email_notify": vbox.email_notify,
             "ring_timeout_secs": input.ring_timeout_secs,
+            "speech_speed": vbox.speech_speed,
         }),
     )
     .await?;
@@ -146,10 +147,17 @@ pub async fn greeting_audio(
     Path(id): Path<Uuid>,
 ) -> ApiResult<Response> {
     owned_extension(&state, &auth, id).await?;
-    wav(state
-        .media
-        .voicemail
-        .join(voicemail::greeting_file(auth.tenant, id)))
+    let vbox = voicemail::get_box(&state.db, auth.tenant, id).await?;
+    let default_lang = settings::get(&state.db, auth.tenant)
+        .await?
+        .default_language;
+    let lang = vbox.language.as_deref().unwrap_or(&default_lang);
+    wav(voicemail::greeting_path(
+        &state.media.voicemail,
+        auth.tenant,
+        &vbox,
+        lang,
+    )?)
     .await
 }
 
@@ -407,7 +415,7 @@ pub async fn update_vm_config(
         "update",
         "voicemail_config",
         None,
-        json!({"keys": config.keys, "voices": config.voices, "announce": config.announce,
+        json!({"keys": config.keys, "voices": config.voices, "speeds": config.speeds, "announce": config.announce,
                "texts_changed": config.texts.values().map(|t| t.len()).sum::<usize>()}),
     )
     .await?;

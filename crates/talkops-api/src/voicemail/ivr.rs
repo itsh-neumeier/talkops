@@ -80,6 +80,7 @@ pub struct Ivr<'a, C: Call> {
     seq: u32,
     /// Reworded prompts and voice of the tenant (voicemail flows).
     config: Option<Arc<VoicemailConfig>>,
+    speech_speed: f64,
 }
 
 impl<'a, C: Call> Ivr<'a, C> {
@@ -90,6 +91,7 @@ impl<'a, C: Call> Ivr<'a, C> {
             lang: prompts::language(lang),
             seq: 0,
             config: None,
+            speech_speed: 1.0,
         }
     }
 
@@ -99,11 +101,16 @@ impl<'a, C: Call> Ivr<'a, C> {
         self
     }
 
+    pub fn with_speed(mut self, speed: f64) -> Self {
+        self.speech_speed = speed;
+        self
+    }
+
     /// Appends a system prompt (skipped if the media worker has not rendered
     /// it). Reworded prompts fall back to the default until rendered.
     pub fn prompt(&self, seq: &mut Seq, key: &str) {
         let custom = self.config.as_ref().and_then(|c| {
-            let text = c.text(key, self.lang)?;
+            let text = c.rendered_text(key, self.lang, self.speech_speed)?;
             Some(prompts::path_for(
                 self.sounds,
                 key,
@@ -144,6 +151,10 @@ impl<'a, C: Call> Ivr<'a, C> {
 
     pub fn beep(&self, seq: &mut Seq) {
         seq.0.push(BEEP.to_owned());
+    }
+
+    pub fn pause(&self, seq: &mut Seq) {
+        seq.0.push(SILENCE.to_owned());
     }
 
     /// Builds a sequence from prompt keys.

@@ -6,6 +6,33 @@ All notable changes to TalkOps. The format follows
 
 ## [Unreleased]
 
+## [1.7.6] – 2026-10-12
+
+### Added
+
+- Set speech speed from 0.5× to 2.0× for each voicemail box. Administrators
+  can set a speed for each voicemail prompt and language.
+- Use inline tags such as `<speed:0.7>Text</speed>` in generated audio.
+  The audio editor previews the selected speed. Recorded and uploaded audio
+  keep their original speed.
+- Add shared development, handoff and release instructions for Claude Code
+  and Codex. Store task summaries in the repository.
+
+### Changed
+
+- Voicemail announces new messages as part of the total. Playback announces
+  the message position and total. Empty and singular counts use the correct
+  forms in English and German.
+
+### Upgrade notes
+
+- Update the server and media worker together. Migration
+  `20261026000001_voicebox_speech_speed` adds speed fields with a default of
+  1.0. Apply it before the updated services start.
+- Generated greetings that are shared with another box or attendant are
+  copied when the box needs a different speed. Existing API clients can omit
+  the new speed fields.
+
 ## [1.7.5] – 2026-10-10
 
 ### Changed

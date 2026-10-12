@@ -47,6 +47,37 @@ else
     CSRF=$(api POST /api/v1/auth/login '{"username":"admin","password":"e2e-password-1"}' | jq -r .csrf_token)
 fi
 
+log "generated speech speed with the bundled Piper voice"
+render_tts() { # JSON request -> ready clip JSON
+    local id clip status
+    id=$(api POST /api/v1/audio/clips/tts "$1" | jq -r .id) || fail "queue TTS clip"
+    for _ in $(seq 1 90); do
+        clip=$(api GET "/api/v1/audio/clips/$id") || fail "read TTS clip"
+        status=$(echo "$clip" | jq -r .status)
+        if [ "$status" = ready ]; then
+            echo "$clip"
+            return
+        fi
+        [ "$status" != failed ] || fail "Piper failed to render TTS clip"
+        sleep 1
+    done
+    fail "TTS clip did not become ready"
+}
+TTS_TEXT='Willkommen bei TalkOps. Bitte halten Sie Ihre Kundennummer bereit. Drücken Sie die Eins, um Ihre Nachrichten abzuhören.'
+TTS_NORMAL=$(render_tts "$(jq -nc --arg text "$TTS_TEXT" '{text:$text}')")
+TTS_SLOW=$(render_tts "$(jq -nc --arg text "$TTS_TEXT" '{text:$text,speech_speed:0.7}')")
+TTS_FAST=$(render_tts "$(jq -nc --arg text "$TTS_TEXT" '{text:$text,speech_speed:1.5}')")
+jq -ne --argjson normal "$TTS_NORMAL" --argjson slow "$TTS_SLOW" --argjson fast "$TTS_FAST" \
+    '$normal.speech_speed == 1 and $slow.speech_speed == 0.7 and $fast.speech_speed == 1.5
+     and $normal.duration_ms > 0 and $slow.duration_ms > $normal.duration_ms * 1.15
+     and $fast.duration_ms < $normal.duration_ms * 0.9' >/dev/null \
+    || fail "speech speed did not change the generated duration"
+TTS_TAGGED=$(render_tts '{"text":"Willkommen. <speed:0.7>Bitte halten Sie Ihre Kundennummer bereit.</speed> Vielen Dank.","speech_speed":1.2}')
+TTS_TAGGED_ID=$(echo "$TTS_TAGGED" | jq -r .id)
+curl -sf -b "$COOKIES" -o "$WORK/tts-tagged.wav" "$BASE/api/v1/audio/clips/$TTS_TAGGED_ID/audio" \
+    || fail "tagged TTS audio cannot be downloaded"
+[ "$(head -c 4 "$WORK/tts-tagged.wav")" = RIFF ] || fail "tagged TTS audio is not a WAV file"
+
 log "extensions and devices"
 device() { # number -> "username password"
     local ext id

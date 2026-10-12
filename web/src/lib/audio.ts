@@ -10,6 +10,7 @@ export interface Clip {
 	text: string;
 	language: 'de' | 'en';
 	voice: 1 | 2;
+	speech_speed: number;
 	status: 'pending' | 'ready' | 'failed';
 	duration_ms: number;
 	created_at: string;

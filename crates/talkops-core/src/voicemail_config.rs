@@ -97,7 +97,7 @@ impl Default for Announce {
     }
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
 #[serde(default)]
 pub struct VoicemailConfig {
     pub keys: MenuKeys,
@@ -105,6 +105,9 @@ pub struct VoicemailConfig {
     pub texts: BTreeMap<String, BTreeMap<String, String>>,
     /// Voice per language (see [crate::audio::VOICES]); default voice 1.
     pub voices: BTreeMap<String, i16>,
+    /// Absolute speed overrides: language → prompt key → speed factor.
+    /// `vm_numbers` controls the spoken numbers in prompt sequences.
+    pub speeds: BTreeMap<String, BTreeMap<String, f64>>,
     pub announce: Announce,
 }
 
@@ -119,6 +122,11 @@ pub const EDITABLE: &[(&str, &[&str])] = &[
     ("vm_no_new_messages", &[]),
     ("vm_one_new_message", &[]),
     ("vm_new_messages", &[]),
+    ("vm_of", &[]),
+    ("vm_messages_are", &[]),
+    ("vm_one_of", &[]),
+    ("vm_messages_is", &[]),
+    ("vm_new", &[]),
     ("vm_and", &[]),
     ("vm_one_saved_message", &[]),
     ("vm_saved_messages", &[]),
@@ -191,6 +199,7 @@ impl VoicemailConfig {
                 if placeholders(text).iter().any(|p| !allowed.contains(p)) {
                     return bad("unknown placeholder in a prompt text");
                 }
+                crate::speech::segments(text, 1.0)?;
             }
         }
         for (lang, voice) in &self.voices {
@@ -199,6 +208,17 @@ impl VoicemailConfig {
                 .any(|v| v.language == lang && v.voice == *voice)
             {
                 return bad("unknown voice");
+            }
+        }
+        for (lang, speeds) in &self.speeds {
+            if !prompts::LANGUAGES.contains(&lang.as_str()) {
+                return bad("unknown language");
+            }
+            for (key, speed) in speeds {
+                if key != "vm_numbers" && !EDITABLE.iter().any(|(k, _)| k == key) {
+                    return bad("this prompt speed cannot be changed");
+                }
+                crate::speech::validate_speed(*speed)?;
             }
         }
         Ok(())
@@ -214,6 +234,7 @@ impl VoicemailConfig {
         }
         self.texts.retain(|_, t| !t.is_empty());
         self.voices.retain(|_, v| *v != 1);
+        self.speeds.retain(|_, speeds| !speeds.is_empty());
         self
     }
 
@@ -231,6 +252,23 @@ impl VoicemailConfig {
             None => prompts::template(key, lang)?.into_owned(),
         };
         Some(fill_keys(&template, &self.keys, lang))
+    }
+
+    /// Prompt overrides take precedence over the box speed. Inline tags
+    /// remain absolute overrides inside the selected prompt.
+    pub fn rendered_text(&self, key: &str, lang: &str, box_speed: f64) -> Option<String> {
+        let speed_key = if key.starts_with('n') && key[1..].parse::<u32>().is_ok() {
+            "vm_numbers"
+        } else {
+            key
+        };
+        let speed = self
+            .speeds
+            .get(prompts::language(lang))
+            .and_then(|s| s.get(speed_key))
+            .copied()
+            .unwrap_or(box_speed);
+        crate::speech::with_speed(&self.text(key, lang)?, speed).ok()
     }
 }
 
@@ -291,12 +329,68 @@ pub struct MessageInfoJob {
     pub file: String,
 }
 
+/// Builds the announcement from stored message time and current settings.
+/// The worker and call flow use the same text and cache identity.
+pub async fn message_info_job(
+    pool: &sqlx::PgPool,
+    tenant: TenantId,
+    msg: &crate::voicemail::Message,
+) -> CoreResult<Option<MessageInfoJob>> {
+    let config = get(pool, tenant).await?;
+    let settings = crate::settings::get(pool, tenant).await?;
+    let vbox = crate::voicemail::get_box(pool, tenant, msg.extension_id).await?;
+    let lang = vbox
+        .language
+        .as_deref()
+        .unwrap_or(&settings.default_language);
+    let plan = settings.dial_plan();
+    let mut caller = Caller {
+        cnam: (!msg.caller_name.is_empty()).then(|| msg.caller_name.clone()),
+        ..Default::default()
+    };
+    if msg.caller_number.starts_with('+') {
+        caller.number = Some(plan.for_display(&msg.caller_number));
+        caller.name = crate::phones::contact_name(pool, tenant, &msg.caller_number, &plan).await?;
+    } else if !msg.caller_number.is_empty() && msg.caller_number.chars().all(|c| c.is_ascii_digit())
+    {
+        caller.number = Some(msg.caller_number.clone());
+        caller.name = crate::extensions::find_by_number(pool, tenant, &msg.caller_number)
+            .await?
+            .map(|e| e.display_name);
+    }
+    let tz = settings
+        .timezone
+        .parse()
+        .unwrap_or(chrono_tz::Europe::Berlin);
+    let Some(text) = message_info_with_speed(
+        &config,
+        lang,
+        &caller,
+        msg.created_at,
+        tz,
+        vbox.speech_speed,
+    ) else {
+        return Ok(None);
+    };
+    let voice = config.voice_model(lang).to_owned();
+    let file = info_file_for(&msg.file, &voice, &text);
+    Ok(Some(MessageInfoJob { text, voice, file }))
+}
+
 /// Announcement file of a message (`…/<id>.wav` → `…/<id>-info.wav`).
 pub fn info_file(message_file: &str) -> String {
     match message_file.strip_suffix(".wav") {
         Some(stem) => format!("{stem}-info.wav"),
         None => format!("{message_file}-info.wav"),
     }
+}
+
+/// Content-addressed announcement. Old jobs cannot overwrite a new setting.
+pub fn info_file_for(message_file: &str, voice: &str, text: &str) -> String {
+    use sha2::{Digest, Sha256};
+    let hash = hex::encode(&Sha256::digest(format!("{voice}\n{text}").as_bytes())[..8]);
+    let stem = message_file.strip_suffix(".wav").unwrap_or(message_file);
+    format!("{stem}-{hash}-info.wav")
 }
 
 /// A number spoken digit by digit in groups: "030123456" → "0 3 0, 1 2 3,
@@ -429,6 +523,17 @@ pub fn message_info(
     at: DateTime<Utc>,
     tz: chrono_tz::Tz,
 ) -> Option<String> {
+    message_info_with_speed(config, lang, caller, at, tz, 1.0)
+}
+
+pub fn message_info_with_speed(
+    config: &VoicemailConfig,
+    lang: &str,
+    caller: &Caller,
+    at: DateTime<Utc>,
+    tz: chrono_tz::Tz,
+    box_speed: f64,
+) -> Option<String> {
     let lang = prompts::language(lang);
     let a = config.announce;
     let name = caller
@@ -462,14 +567,14 @@ pub fn message_info(
     if let Some(who) = who {
         parts.push(
             config
-                .text("vm_info_caller", lang)?
+                .rendered_text("vm_info_caller", lang, box_speed)?
                 .replace("{caller}", &who),
         );
     }
     if a.date {
         parts.push(
             config
-                .text("vm_info_date", lang)?
+                .rendered_text("vm_info_date", lang, box_speed)?
                 .replace("{date}", &spoken_date(at, tz, lang)),
         );
     }
@@ -490,6 +595,68 @@ fn clean(name: &str) -> String {
 mod tests {
     use super::*;
     use chrono::TimeZone;
+
+    #[test]
+    fn speed_precedence_validation_and_cache_identity() {
+        let mut c: VoicemailConfig = serde_json::from_str("{}").unwrap();
+        assert!(c.speeds.is_empty());
+        c.texts.insert(
+            "de".into(),
+            BTreeMap::from([(
+                "vm_goodbye".into(),
+                "Hallo <speed:0.7>langsam</speed> Ende".into(),
+            )]),
+        );
+        c.speeds.insert(
+            "de".into(),
+            BTreeMap::from([("vm_goodbye".into(), 1.2), ("vm_numbers".into(), 0.6)]),
+        );
+        c.validate().unwrap();
+        let text = c.rendered_text("vm_goodbye", "de", 0.8).unwrap();
+        assert_eq!(
+            crate::speech::segments(&text, 1.0)
+                .unwrap()
+                .iter()
+                .map(|s| s.speed)
+                .collect::<Vec<_>>(),
+            [1.2, 0.7, 1.2]
+        );
+        let number = c.rendered_text("n42", "de", 0.8).unwrap();
+        assert_eq!(crate::speech::segments(&number, 1.0).unwrap()[0].speed, 0.6);
+        let default = VoicemailConfig::default();
+        let fast = default.rendered_text("vm_goodbye", "de", 1.2).unwrap();
+        assert_ne!(
+            prompts::path_for(
+                std::path::Path::new("/s"),
+                "vm_goodbye",
+                "de",
+                c.voice_model("de"),
+                &fast
+            ),
+            prompts::path(std::path::Path::new("/s"), "vm_goodbye", "de").unwrap()
+        );
+        assert_ne!(
+            info_file_for("x.wav", "v", &fast),
+            info_file_for("x.wav", "v", "Goodbye.")
+        );
+        c.speeds
+            .get_mut("de")
+            .unwrap()
+            .insert("vm_goodbye".into(), 0.4);
+        assert!(c.validate().is_err());
+        c.speeds.get_mut("de").unwrap().remove("vm_goodbye");
+        c.speeds
+            .get_mut("de")
+            .unwrap()
+            .insert("unknown".into(), 1.0);
+        assert!(c.validate().is_err());
+        c.speeds.clear();
+        c.texts
+            .get_mut("de")
+            .unwrap()
+            .insert("vm_goodbye".into(), "<speed:0.7>x".into());
+        assert!(c.validate().is_err());
+    }
 
     #[test]
     fn default_menu_texts_are_unchanged() {

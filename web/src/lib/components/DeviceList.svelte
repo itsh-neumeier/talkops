@@ -8,7 +8,8 @@
 		type DeviceCredentials,
 		type DeviceKind,
 		type Phone,
-		type Registration
+		type Registration,
+		type SipPasswordFormat
 	} from '#lib/api.ts';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
 	import Modal from '#lib/components/Modal.svelte';
@@ -35,10 +36,18 @@
 
 	const kinds: DeviceKind[] = ['desk', 'dect', 'wifi', 'softphone', 'mobile', 'door', 'other'];
 	const codecProfiles: CodecProfile[] = ['standard', 'hd', 'robust'];
+	const pwFormats: SipPasswordFormat[] = ['standard', 'compact15'];
+	// Door stations (e.g. Dahua VTO/VTH) accept at most 15 characters.
+	const defaultPwFormat = (kind: DeviceKind): SipPasswordFormat =>
+		kind === 'door' ? 'compact15' : 'standard';
 	let error = $state('');
 	let addOpen = $state(false);
 	let credOpen = $state(false);
 	let creds = $state<DeviceCredentials | null>(null);
+	let credsKind = $state<DeviceKind | null>(null);
+	let resetting = $state<Device | null>(null);
+	let resetOpen = $state(false);
+	let resetFormat = $state<SipPasswordFormat>('standard');
 	let phones = $state<Phone[]>([]);
 	let editing = $state<Device | null>(null);
 	const empty = () => ({
@@ -49,6 +58,7 @@
 		phone_label: '',
 		phone_display_name: '',
 		codec_profile: '' as CodecProfile | '',
+		sip_password_format: 'standard' as SipPasswordFormat,
 		// Part of the SIP username after the extension number; empty = generated
 		// (new device) or unchanged (edit).
 		sip_suffix: '',
@@ -85,6 +95,7 @@
 			phone_label: d.phone_label,
 			phone_display_name: d.phone_display_name,
 			codec_profile: d.codec_profile ?? '',
+			sip_password_format: d.sip_password_format,
 			sip_suffix:
 				extensionNumber && d.sip_username.startsWith(extensionNumber)
 					? d.sip_username.slice(extensionNumber.length)
@@ -111,6 +122,7 @@
 				await api.put(`/devices/${editing.id}`, body);
 			} else {
 				creds = await api.post<DeviceCredentials>(`/extensions/${extensionId}/devices`, body);
+				credsKind = form.kind;
 				credOpen = true;
 			}
 			addOpen = false;
@@ -123,18 +135,36 @@
 	async function show(d: Device) {
 		try {
 			creds = await api.get<DeviceCredentials>(`/devices/${d.id}/credentials`);
+			credsKind = d.kind;
 			credOpen = true;
 		} catch (err) {
 			error = errorMessage(err);
 		}
 	}
 
-	async function reset(d: Device) {
-		if (!confirm(t('ext.resetConfirm'))) return;
+	function openReset(d: Device) {
+		resetting = d;
+		resetFormat = d.sip_password_format;
+		resetOpen = true;
+	}
+
+	// An explicit password change: the device must then use the new password.
+	async function reset(e: SubmitEvent) {
+		e.preventDefault();
+		const d = resetting;
+		if (!d) return;
+		error = '';
 		try {
-			creds = await api.post<DeviceCredentials>(`/devices/${d.id}/reset-password`);
+			// Only admins change the format; owners reset with the stored one.
+			const body =
+				admin && resetFormat !== d.sip_password_format ? { sip_password_format: resetFormat } : {};
+			creds = await api.post<DeviceCredentials>(`/devices/${d.id}/reset-password`, body);
+			credsKind = d.kind;
+			resetOpen = false;
 			credOpen = true;
+			onchange();
 		} catch (err) {
+			resetOpen = false;
 			error = errorMessage(err);
 		}
 	}
@@ -171,6 +201,9 @@
 									>{t(`codecProfiles.${effectiveCodecProfile(d.kind, d.codec_profile)}`)}</span
 								>
 							{/if}
+							{#if d.sip_password_format === 'compact15'}
+								<span class="badge badge-muted">{t('ext.pwFormatBadge')}</span>
+							{/if}
 							{#if registrations}
 								<span class="badge {online(d) ? 'badge-ok' : 'badge-muted'}"
 									>{online(d) ? t('ext.online') : t('ext.offline')}</span
@@ -186,7 +219,9 @@
 					<div class="space-x-1">
 						{#if admin || !d.browser_user_id || d.browser_user_id === session.user?.id}
 							<button class="btn btn-sm" onclick={() => show(d)}>{t('ext.showCredentials')}</button>
-							<button class="btn btn-sm" onclick={() => reset(d)}>{t('ext.resetPassword')}</button>
+							<button class="btn btn-sm" onclick={() => openReset(d)}
+								>{t('ext.resetPassword')}</button
+							>
 						{/if}
 						{#if admin}<button class="btn btn-sm" onclick={() => openEdit(d)}
 								>{t('common.edit')}</button
@@ -209,7 +244,14 @@
 		</div>
 		<div>
 			<label for="d-kind">{t('ext.kind')}</label>
-			<select id="d-kind" class="input" bind:value={form.kind}>
+			<select
+				id="d-kind"
+				class="input"
+				bind:value={form.kind}
+				onchange={() => {
+					if (!editing) form.sip_password_format = defaultPwFormat(form.kind);
+				}}
+			>
 				{#each kinds as k (k)}<option value={k}>{t(`kinds.${k}`)}</option>{/each}
 			</select>
 		</div>
@@ -268,6 +310,20 @@
 			</select>
 			<p class="hint">{t('ext.codecHint')}</p>
 		</div>
+		{#if editing?.kind !== 'browser' && form.kind !== 'browser'}
+			<div>
+				<label for="d-pwformat">{t('ext.pwFormat')}</label>
+				<select id="d-pwformat" class="input" bind:value={form.sip_password_format}>
+					{#each pwFormats as f (f)}<option value={f}>{t(`ext.pwFormat.${f}`)}</option>{/each}
+				</select>
+				<p class="hint">
+					{t('ext.pwFormatHint')}
+					{#if editing && form.sip_password_format !== editing.sip_password_format}{t(
+							'ext.pwFormatKeep'
+						)}{/if}
+				</p>
+			</div>
+		{/if}
 		<p class="hint">{t('phones.deviceHint')}</p>
 		{#if form.phone_id}
 			<div class="grid grid-cols-2 gap-3">
@@ -292,6 +348,36 @@
 			<button class="btn btn-primary">{editing ? t('common.save') : t('common.add')}</button>
 		</div>
 	</form>
+</Modal>
+
+<Modal title={t('ext.resetTitle')} bind:open={resetOpen}>
+	{#if resetting}
+		<form class="space-y-3 text-sm" onsubmit={reset}>
+			<p>{t('ext.resetConfirm')}</p>
+			<p class="font-mono text-xs text-slate-500">{resetting.sip_username}</p>
+			{#if admin && resetting.kind !== 'browser'}
+				<div>
+					<label for="r-pwformat">{t('ext.pwFormat')}</label>
+					<select id="r-pwformat" class="input" bind:value={resetFormat}>
+						{#each pwFormats as f (f)}<option value={f}>{t(`ext.pwFormat.${f}`)}</option>{/each}
+					</select>
+					<p class="hint">{t('ext.pwFormatHint')}</p>
+				</div>
+			{:else}
+				<p class="hint">
+					{t('ext.resetFormatCurrent', {
+						format: t(`ext.pwFormat.${resetting.sip_password_format}`)
+					})}
+				</p>
+			{/if}
+			<div class="flex justify-end gap-2">
+				<button type="button" class="btn" onclick={() => (resetOpen = false)}
+					>{t('common.cancel')}</button
+				>
+				<button class="btn btn-primary">{t('ext.resetGenerate')}</button>
+			</div>
+		</form>
+	{/if}
 </Modal>
 
 <Modal title={t('ext.credentials')} bind:open={credOpen}>
@@ -321,5 +407,6 @@
 				</dd>
 			</div>
 		</dl>
+		{#if credsKind === 'door'}<p class="hint mt-3">{t('ext.credsDoorHint')}</p>{/if}
 	{/if}
 </Modal>

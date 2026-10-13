@@ -162,7 +162,7 @@ mod tests {
         // 0023 and 0025) gives an element name with a colon.
         let xml = SAMPLE.replace(
             "<uuid>",
-            "<nolocal:absolute_codec_string>G722%2CPCMA</nolocal:absolute_codec_string>\n    <uuid>",
+            "<nolocal:absolute_codec_string>G722%2CPCMA</nolocal:absolute_codec_string>\n    <nolocal:talkops_door_dtmf>00000000-0000-4000-8000-000000000002</nolocal:talkops_door_dtmf>\n    <uuid>",
         );
         let (_, cdr, _) = parse(&xml).unwrap().unwrap();
         assert_eq!(cdr.destination, "+49301234567");

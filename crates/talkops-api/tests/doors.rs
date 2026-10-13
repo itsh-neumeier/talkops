@@ -102,6 +102,15 @@ fn actions(xml: &str) -> Vec<(String, String)> {
 }
 
 async fn call(router: &Router, ext: &Value, dest: &str) -> Vec<(String, String)> {
+    call_with_offer(router, ext, dest, "").await
+}
+
+async fn call_with_offer(
+    router: &Router,
+    ext: &Value,
+    dest: &str,
+    sdp: &str,
+) -> Vec<(String, String)> {
     let (status, xml) = fs_post(
         router,
         "/fs/xml",
@@ -111,6 +120,7 @@ async fn call(router: &Router, ext: &Value, dest: &str) -> Vec<(String, String)>
             ("Caller-Destination-Number", dest),
             ("variable_talkops_tenant_id", TENANT),
             ("variable_talkops_extension_id", ext["id"].as_str().unwrap()),
+            ("variable_switch_r_sdp", sdp),
         ],
     )
     .await;
@@ -355,9 +365,28 @@ async fn door_station(db: PgPool) {
     assert!(!audit.to_string().contains("#2"), "codes are not audited");
     // The answering leg of a ring and the caller's leg of a direct call to
     // the station listen for the codes; the station's own leg does not.
-    let a = call(&router, &door_ext, "9901").await;
+    // The combined video policy must keep video on the same door call.
+    let a = call_with_offer(
+        &router,
+        &door_ext,
+        "9901",
+        "v=0\r\nm=video 1234 RTP/AVP 99\r\na=rtpmap:99 H264/90000\r\n",
+    )
+    .await;
     assert!(
         has(&a, "export", &format!("nolocal:talkops_door_dtmf={sid}")),
+        "{a:?}"
+    );
+    assert!(
+        a.iter().any(|(app, data)| app == "set"
+            && data.starts_with("absolute_codec_string=")
+            && data.contains("H264")),
+        "{a:?}"
+    );
+    assert!(
+        a.iter().any(|(app, data)| app == "bridge"
+            && data.contains("user/200-1@")
+            && data.contains("H264")),
         "{a:?}"
     );
     let a = call(&router, &ext20, "8001").await;

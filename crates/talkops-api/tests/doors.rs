@@ -137,6 +137,7 @@ async fn wait_for<F: Fn(&Value) -> bool>(client: &Client, path: &str, f: F) -> V
 async fn door_station(db: PgPool) {
     let state = state(db.clone());
     let snapshots = state.media.snapshots.clone();
+    let door_ctx = talkops_api::doors::DoorCtx::from(&state);
     let router = talkops_api::app(state, None);
     let admin = setup_admin(&router).await;
     let (host, port, fake) = fake_vto().await;
@@ -323,6 +324,102 @@ async fn door_station(db: PgPool) {
     assert!(has(&a, "respond", "404 Not Found"), "{a:?}");
     let a = call(&router, &ext20, "*859999").await;
     assert!(has(&a, "respond", "404 Not Found"), "{a:?}");
+
+    // DTMF unlock codes: stored encrypted, never returned.
+    let (status, _) = admin
+        .put(
+            &format!("/api/v1/door-stations/{sid}"),
+            json!({"name": "Front door", "extension_id": id(&door_ext),
+                   "host": host, "port": port, "doors": 2,
+                   "destination_type": "extension", "destination_id": id(&ext20),
+                   "unlock_code_1": "12", "unlock_code_2": "x"}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    let (status, station) = admin
+        .put(
+            &format!("/api/v1/door-stations/{sid}"),
+            json!({"name": "Front door", "extension_id": id(&door_ext),
+                   "host": host, "port": port, "doors": 2,
+                   "destination_type": "extension", "destination_id": id(&ext20),
+                   "buttons": [{"number": "9902", "type": "extension", "id": id(&ext21)}],
+                   "events_enabled": false,
+                   "unlock_code_1": "*1", "unlock_code_2": "#2"}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{station}");
+    assert_eq!(station["has_unlock_code_1"], true);
+    assert_eq!(station["has_unlock_code_2"], true);
+    assert!(!station.to_string().contains("*1"), "{station}");
+    let (_, audit) = admin.get("/api/v1/audit").await;
+    assert!(!audit.to_string().contains("#2"), "codes are not audited");
+    // The answering leg of a ring and the caller's leg of a direct call to
+    // the station listen for the codes; the station's own leg does not.
+    let a = call(&router, &door_ext, "9901").await;
+    assert!(
+        has(&a, "export", &format!("nolocal:talkops_door_dtmf={sid}")),
+        "{a:?}"
+    );
+    let a = call(&router, &ext20, "8001").await;
+    assert!(has(&a, "set", &format!("talkops_door_dtmf={sid}")), "{a:?}");
+    let a = call(&router, &ext20, "210").await;
+    assert!(
+        !a.iter().any(|(_, d)| d.contains("talkops_door_dtmf")),
+        "{a:?}"
+    );
+    // ESL events of the answering phone: the code opens door 2.
+    let event = |pairs: &[(&str, &str)]| {
+        let mut h = talkops_esl::Headers::default();
+        for (k, v) in pairs {
+            h.push((*k).into(), (*v).into());
+        }
+        talkops_esl::Event {
+            headers: h,
+            body: None,
+        }
+    };
+    let leg = "6f1c2c1e-0000-4000-8000-000000000001";
+    let mut matcher = talkops_api::door_dtmf::Matcher::default();
+    let answer = event(&[
+        ("Event-Name", "CHANNEL_ANSWER"),
+        ("Unique-ID", leg),
+        ("Channel-Name", "sofia/internal/200-1@192.0.2.10:5060"),
+        ("variable_talkops_door_dtmf", &sid),
+        ("variable_talkops_tenant_id", TENANT),
+        ("variable_talkops_extension_id", &id(&ext20)),
+    ]);
+    assert!(
+        talkops_api::door_dtmf::handle(&door_ctx, &mut matcher, &answer)
+            .await
+            .is_none()
+    );
+    let mut unlock = None;
+    for d in ["5", "#", "2"] {
+        let dtmf = event(&[
+            ("Event-Name", "DTMF"),
+            ("Unique-ID", leg),
+            ("DTMF-Digit", d),
+        ]);
+        unlock = talkops_api::door_dtmf::handle(&door_ctx, &mut matcher, &dtmf).await;
+    }
+    let unlock = unlock.expect("code detected");
+    assert_eq!(unlock.door, 2);
+    let st = talkops_core::doors::get(&db, unlock.tenant, unlock.station)
+        .await
+        .unwrap();
+    door_ctx
+        .open(unlock.tenant, &st, unlock.door, unlock.by)
+        .await
+        .unwrap();
+    assert_eq!(fake.opened.lock().unwrap().last().unwrap(), "2");
+    let events = wait_for(&admin, "/api/v1/door-events", |v| {
+        v[0]["kind"] == "open_command"
+    })
+    .await;
+    assert_eq!(events[0]["detail"]["by"]["dtmf"], true);
+    assert_eq!(events[0]["detail"]["by"]["device"], "200-1");
+    assert_eq!(events[0]["detail"]["door"], 2);
+    fake.opened.lock().unwrap().pop();
 
     // Token hook for Home Assistant.
     let hook = |token: Option<String>| {

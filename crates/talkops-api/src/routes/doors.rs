@@ -67,7 +67,8 @@ pub async fn create_station(
         "create",
         "door_station",
         Some(station.id.to_string()),
-        json!({"name": station.name, "host": station.host}),
+        json!({"name": station.name, "host": station.host,
+               "unlock_codes": [station.has_unlock_code_1, station.has_unlock_code_2]}),
     )
     .await?;
     Ok(Json(station))
@@ -84,7 +85,8 @@ pub async fn get_station(
     Ok(Json(doors::get(&state.db, auth.tenant, id).await?))
 }
 
-/// Updates a door station (admin). Password and webhook: omit to keep.
+/// Updates a door station (admin). Password, webhook and unlock codes: omit
+/// to keep, `""` to remove.
 #[utoipa::path(put, path = "/api/v1/door-stations/{id}", tag = "doors", params(("id" = Uuid, Path)), request_body = DoorStationInput, responses((status = 200, body = DoorStation)))]
 pub async fn update_station(
     State(state): State<AppState>,
@@ -102,7 +104,9 @@ pub async fn update_station(
         Some(id.to_string()),
         json!({"name": station.name, "host": station.host,
                "password_changed": input.password.is_some(),
-               "webhook_changed": input.webhook_url.is_some()}),
+               "webhook_changed": input.webhook_url.is_some(),
+               // Never the codes themselves.
+               "unlock_codes_changed": [input.unlock_code_1.is_some(), input.unlock_code_2.is_some()]}),
     )
     .await?;
     Ok(Json(station))

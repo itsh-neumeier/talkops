@@ -252,6 +252,56 @@ async fn extensions_devices_and_self_service(db: PgPool) {
     assert_eq!(status, StatusCode::OK);
     assert_eq!(again["sip_password"], creds["sip_password"]);
 
+    // A free SIP username: extension number plus suffix. Only admins rename;
+    // the rename is audited.
+    let (status, vth) = admin
+        .post(
+            &format!("/api/v1/extensions/{ext_id}/devices"),
+            json!({"name": "VTH", "kind": "other", "sip_username": "200vth"}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{vth}");
+    assert_eq!(vth["sip_username"], "200vth");
+    let (status, err) = admin
+        .post(
+            &format!("/api/v1/extensions/{ext_id}/devices"),
+            json!({"name": "X", "kind": "desk", "sip_username": "201-x"}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(err["message"].as_str().unwrap().contains("200"), "{err}");
+    let (status, _) = admin
+        .post(
+            &format!("/api/v1/extensions/{ext_id}/devices"),
+            json!({"name": "X", "kind": "desk", "sip_username": "200VTH"}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::CONFLICT);
+    let rename = json!({"name": "VTH", "kind": "other", "sip_username": "200hall"});
+    let vth_id = vth["device_id"].as_str().unwrap();
+    let (status, _) = bob_client
+        .put(&format!("/api/v1/devices/{vth_id}"), rename.clone())
+        .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    let (status, renamed) = admin
+        .put(&format!("/api/v1/devices/{vth_id}"), rename)
+        .await;
+    assert_eq!(status, StatusCode::OK, "{renamed}");
+    assert_eq!(renamed["sip_username"], "200hall");
+    let (_, audit) = admin.get("/api/v1/audit").await;
+    assert!(
+        audit
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|e| e["details"]["previous_sip_username"] == "200vth"
+                && e["details"]["sip_username"] == "200hall"),
+        "{audit}"
+    );
+    admin
+        .call("DELETE", &format!("/api/v1/devices/{vth_id}"), None)
+        .await;
+
     let (_, other) = admin
         .post(
             "/api/v1/extensions",

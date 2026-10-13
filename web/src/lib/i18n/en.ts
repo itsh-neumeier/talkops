@@ -188,6 +188,10 @@ export default {
 	'ext.addDevice': 'Add device',
 	'ext.kind': 'Type',
 	'ext.sipUsername': 'SIP username',
+	'ext.sipSuffixAuto': 'automatic',
+	'ext.sipSuffixHint':
+		"The extension number plus a free ending, e.g. vto, vth or -2 (letters, digits, '.', '_', '-'; not a digit first). Empty: generated (door stations: vto, without '-').",
+	'ext.sipRenameHint': 'After a change the device must register again with the new username.',
 	'ext.sipPassword': 'SIP password',
 	'ext.sipServer': 'SIP server',
 	'ext.sipServerHint': 'IP address or host name of this TalkOps server, port 5060.',
@@ -890,6 +894,10 @@ export default {
 	'door.passwordKeep': 'unchanged',
 	'door.doors': 'Locks',
 	'door.doorsHint': 'Second lock: via an RS-485 extension module of the station.',
+	'door.unlockCode': 'Unlock code door {door}',
+	'door.unlockCodeRemove': 'Remove unlock codes',
+	'door.unlockCodeHint':
+		'2-8 keys (0-9, *, #). When pressed on the phone during a ring or a call to the station, TalkOps opens the door through the HTTP access (required). Use a different code than the one stored in the station.',
 	'door.snapshots': 'Save a picture with every ring',
 	'door.events': 'Event log',
 	'door.webhook': 'Webhook (Home Assistant)',

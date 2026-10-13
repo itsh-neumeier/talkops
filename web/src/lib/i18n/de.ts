@@ -188,6 +188,11 @@ const de: Record<keyof typeof en, string> = {
 	'ext.addDevice': 'Gerät hinzufügen',
 	'ext.kind': 'Typ',
 	'ext.sipUsername': 'SIP-Benutzername',
+	'ext.sipSuffixAuto': 'automatisch',
+	'ext.sipSuffixHint':
+		"Nebenstellennummer plus freie Endung, z. B. vto, vth oder -2 (Buchstaben, Ziffern, '.', '_', '-'; nicht mit einer Ziffer beginnen). Leer: automatisch (Türstationen: vto, ohne '-').",
+	'ext.sipRenameHint':
+		'Nach einer Änderung muss sich das Gerät mit dem neuen Benutzernamen neu registrieren.',
 	'ext.sipPassword': 'SIP-Passwort',
 	'ext.sipServer': 'SIP-Server',
 	'ext.sipServerHint': 'IP-Adresse oder Hostname dieses TalkOps-Servers, Port 5060.',
@@ -892,6 +897,10 @@ const de: Record<keyof typeof en, string> = {
 	'door.passwordKeep': 'unverändert',
 	'door.doors': 'Schlösser',
 	'door.doorsHint': 'Zweites Schloss: über ein RS-485-Erweiterungsmodul der Station.',
+	'door.unlockCode': 'Öffnungscode Tür {door}',
+	'door.unlockCodeRemove': 'Öffnungscodes entfernen',
+	'door.unlockCodeHint':
+		'2–8 Tasten (0–9, *, #). Am Telefon während des Klingelns oder eines Anrufs bei der Station gedrückt, öffnet TalkOps die Tür über den HTTP-Zugang (erforderlich). Einen anderen Code als den in der Station hinterlegten verwenden.',
 	'door.snapshots': 'Bei jedem Klingeln ein Bild speichern',
 	'door.events': 'Ereignisprotokoll',
 	'door.webhook': 'Webhook (Home Assistant)',

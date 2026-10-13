@@ -43,6 +43,9 @@ pub struct DoorStation {
     pub snapshots: bool,
     pub has_webhook: bool,
     pub has_api_token: bool,
+    /// A DTMF unlock code is stored for door 1 / door 2 (never returned).
+    pub has_unlock_code_1: bool,
+    pub has_unlock_code_2: bool,
     pub online: bool,
     pub model: String,
     pub last_seen: Option<DateTime<Utc>>,
@@ -53,6 +56,11 @@ impl DoorStation {
     /// Has an HTTP API to talk to (door opener, snapshots, events).
     pub fn has_api(&self) -> bool {
         !self.host.is_empty()
+    }
+
+    /// TalkOps listens for DTMF unlock codes in calls with this station.
+    pub fn detects_unlock_codes(&self) -> bool {
+        self.enabled && self.has_api() && (self.has_unlock_code_1 || self.has_unlock_code_2)
     }
 
     /// Destination for a ring: the button whose number was dialed, else the
@@ -75,7 +83,8 @@ impl DoorStation {
 const COLUMNS: &str = "id, name, extension_id, host, port, username, password_enc IS NOT NULL AS has_password, \
      doors, destination_type, destination_id, buttons, events_enabled, snapshots, \
      webhook_url_enc IS NOT NULL AS has_webhook, api_token_hash IS NOT NULL AS has_api_token, \
-     online, model, last_seen, enabled";
+     unlock_code_1_enc IS NOT NULL AS has_unlock_code_1, \
+     unlock_code_2_enc IS NOT NULL AS has_unlock_code_2, online, model, last_seen, enabled";
 
 #[derive(Debug, Clone, Deserialize, utoipa::ToSchema)]
 pub struct DoorStationInput {
@@ -105,6 +114,14 @@ pub struct DoorStationInput {
     /// `None` keeps the stored webhook, `""` removes it.
     #[serde(default)]
     pub webhook_url: Option<String>,
+    /// DTMF code that opens door 1 during a call with the station
+    /// (2-8 characters of `0-9 * #`). `None` keeps the stored code, `""`
+    /// removes it.
+    #[serde(default)]
+    pub unlock_code_1: Option<String>,
+    /// The same for door 2 (only for stations with two doors).
+    #[serde(default)]
+    pub unlock_code_2: Option<String>,
     #[serde(default = "yes")]
     pub enabled: bool,
 }
@@ -129,6 +146,13 @@ fn valid_host(h: &str) -> bool {
     h.len() <= 253
         && h.bytes()
             .all(|b| b.is_ascii_alphanumeric() || b".:-[]".contains(&b))
+}
+
+/// A DTMF unlock code: 2-8 characters of `0-9 * #`.
+pub fn valid_unlock_code(c: &str) -> bool {
+    (2..=8).contains(&c.len())
+        && c.bytes()
+            .all(|b| b.is_ascii_digit() || b == b'#' || b == b'*')
 }
 
 fn valid_dialed(n: &str) -> bool {
@@ -157,6 +181,23 @@ async fn validate(pool: &PgPool, tenant: TenantId, input: &DoorStationInput) -> 
     if let Some(url) = input.webhook_url.as_deref().filter(|u| !u.is_empty()) {
         if !(url.starts_with("http://") || url.starts_with("https://")) || url.len() > 2000 {
             return invalid("the webhook must be an http(s) URL");
+        }
+    }
+    let codes = [&input.unlock_code_1, &input.unlock_code_2].map(|c| c.as_deref());
+    for code in codes.into_iter().flatten().filter(|c| !c.is_empty()) {
+        if !valid_unlock_code(code) {
+            return invalid("unlock codes have 2-8 digits, * or #");
+        }
+    }
+    if input.doors < 2 && codes[1].is_some_and(|c| !c.is_empty()) {
+        return invalid("an unlock code for door 2 needs a station with two doors");
+    }
+    // One code must not end with the other: the shorter one would always
+    // match first. Unchanged (`None`) codes are checked against the stored
+    // ones by the caller.
+    if let [Some(a), Some(b)] = codes {
+        if !a.is_empty() && !b.is_empty() && (a.ends_with(b) || b.ends_with(a)) {
+            return invalid("the unlock codes of the two doors must not end with each other");
         }
     }
     let ext: Option<Uuid> =
@@ -247,11 +288,14 @@ pub async fn create(
     validate(pool, tenant, input).await?;
     let password = encrypt_opt(secrets, input.password.as_deref())?.flatten();
     let webhook = encrypt_opt(secrets, input.webhook_url.as_deref())?.flatten();
+    let code_1 = encrypt_opt(secrets, input.unlock_code_1.as_deref())?.flatten();
+    let code_2 = encrypt_opt(secrets, input.unlock_code_2.as_deref())?.flatten();
     let sql = format!(
         "INSERT INTO door_stations (tenant_id, name, extension_id, host, port, username, password_enc,
                                     doors, destination_type, destination_id, buttons, events_enabled,
-                                    snapshots, webhook_url_enc, enabled)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+                                    snapshots, webhook_url_enc, enabled, unlock_code_1_enc,
+                                    unlock_code_2_enc)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
          RETURNING {COLUMNS}"
     );
     sqlx::query_as(&sql)
@@ -270,6 +314,8 @@ pub async fn create(
         .bind(input.snapshots)
         .bind(webhook)
         .bind(input.enabled)
+        .bind(code_1)
+        .bind(code_2)
         .fetch_one(pool)
         .await
         .map_err(|e| match e {
@@ -288,15 +334,26 @@ pub async fn update(
     input: &DoorStationInput,
 ) -> CoreResult<DoorStation> {
     validate(pool, tenant, input).await?;
+    check_kept_codes(pool, secrets, tenant, id, input).await?;
     let password = encrypt_opt(secrets, input.password.as_deref())?;
     let webhook = encrypt_opt(secrets, input.webhook_url.as_deref())?;
+    let code_1 = encrypt_opt(secrets, input.unlock_code_1.as_deref())?;
+    // A station with one door keeps no code for door 2.
+    let code_2 = if input.doors < 2 {
+        Some(None)
+    } else {
+        encrypt_opt(secrets, input.unlock_code_2.as_deref())?
+    };
     let sql = format!(
         "UPDATE door_stations SET name = $3, extension_id = $4, host = $5, port = $6, username = $7,
              password_enc = CASE WHEN $8 THEN $9 ELSE password_enc END,
              doors = $10, destination_type = $11, destination_id = $12, buttons = $13,
              events_enabled = $14, snapshots = $15,
              webhook_url_enc = CASE WHEN $16 THEN $17 ELSE webhook_url_enc END,
-             enabled = $18, updated_at = now()
+             enabled = $18,
+             unlock_code_1_enc = CASE WHEN $19 THEN $20 ELSE unlock_code_1_enc END,
+             unlock_code_2_enc = CASE WHEN $21 THEN $22 ELSE unlock_code_2_enc END,
+             updated_at = now()
          WHERE tenant_id = $1 AND id = $2 RETURNING {COLUMNS}"
     );
     sqlx::query_as(&sql)
@@ -318,6 +375,10 @@ pub async fn update(
         .bind(webhook.is_some())
         .bind(webhook.flatten())
         .bind(input.enabled)
+        .bind(code_1.is_some())
+        .bind(code_1.flatten())
+        .bind(code_2.is_some())
+        .bind(code_2.flatten())
         .fetch_one(pool)
         .await
         .map_err(|e| match e {
@@ -382,6 +443,49 @@ pub async fn connection(
             .transpose()?
             .unwrap_or_default(),
     }))
+}
+
+/// The decrypted DTMF unlock codes of door 1 and door 2 (`None` = no code).
+/// Never log them.
+pub async fn unlock_codes(
+    pool: &PgPool,
+    secrets: &SecretBox,
+    tenant: TenantId,
+    id: Uuid,
+) -> CoreResult<[Option<String>; 2]> {
+    let (c1, c2): (Option<String>, Option<String>) = sqlx::query_as(
+        "SELECT unlock_code_1_enc, unlock_code_2_enc FROM door_stations
+         WHERE tenant_id = $1 AND id = $2",
+    )
+    .bind(tenant)
+    .bind(id)
+    .fetch_one(pool)
+    .await?;
+    let dec = |c: Option<String>| c.map(|c| secrets.decrypt(&c)).transpose();
+    Ok([dec(c1)?, dec(c2)?])
+}
+
+/// On update, a code that is kept (`None`) must not end with a new code of
+/// the other door either.
+async fn check_kept_codes(
+    pool: &PgPool,
+    secrets: &SecretBox,
+    tenant: TenantId,
+    id: Uuid,
+    input: &DoorStationInput,
+) -> CoreResult<()> {
+    if input.unlock_code_1.is_some() == input.unlock_code_2.is_some() || input.doors < 2 {
+        return Ok(());
+    }
+    let [s1, s2] = unlock_codes(pool, secrets, tenant, id).await?;
+    let a = input.unlock_code_1.clone().or(s1).unwrap_or_default();
+    let b = input.unlock_code_2.clone().or(s2).unwrap_or_default();
+    if !a.is_empty() && !b.is_empty() && (a.ends_with(&b) || b.ends_with(&a)) {
+        return Err(CoreError::Validation(
+            "the unlock codes of the two doors must not end with each other".into(),
+        ));
+    }
+    Ok(())
 }
 
 pub async fn webhook_url(
@@ -603,11 +707,30 @@ mod tests {
             snapshots: true,
             has_webhook: false,
             has_api_token: false,
+            has_unlock_code_1: false,
+            has_unlock_code_2: false,
             online: false,
             model: String::new(),
             last_seen: None,
             enabled: true,
         }
+    }
+
+    #[test]
+    fn unlock_code_format() {
+        for ok in ["12", "*1", "#9", "1234#", "*#0*#0*#"] {
+            assert!(valid_unlock_code(ok), "{ok}");
+        }
+        for bad in ["", "1", "123456789", "12a", "1 2", "١٢"] {
+            assert!(!valid_unlock_code(bad), "{bad}");
+        }
+        let mut s = station(vec![]);
+        s.has_unlock_code_1 = true;
+        assert!(!s.detects_unlock_codes(), "no HTTP API");
+        s.host = "192.168.1.20".into();
+        assert!(s.detects_unlock_codes());
+        s.enabled = false;
+        assert!(!s.detects_unlock_codes());
     }
 
     #[test]

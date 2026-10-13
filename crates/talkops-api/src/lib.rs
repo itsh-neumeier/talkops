@@ -9,6 +9,7 @@ pub mod cdr_spool;
 pub mod conference;
 pub mod config;
 pub mod diagnostics;
+pub mod door_dtmf;
 pub mod doors;
 pub mod error;
 pub mod esl;

@@ -327,6 +327,14 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
         actions.push(set("talkops_direction", "internal"));
         actions.push(set("talkops_door_id", station.id.to_string()));
         actions.push(set("talkops_door_dialed", dest.clone()));
+        if station.detects_unlock_codes() {
+            // The answering leg (not the station's own) listens for the
+            // DTMF unlock code (`door_dtmf`).
+            actions.push((
+                "export",
+                format!("nolocal:{}={}", crate::door_dtmf::MARK, station.id),
+            ));
+        }
         let name = sanitize_value(&station.name);
         actions.extend(route_to(r, tenant, kind, id, &name, 0).await?);
         return Ok(actions);
@@ -365,6 +373,16 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
         if !video {
             // Exported: the called leg must not be offered video either.
             actions.push(("export", format!("absolute_codec_string={AUDIO_CODECS}")));
+        }
+        // A direct call to a door station: the caller's leg listens for the
+        // DTMF unlock code (`door_dtmf`).
+        if kind == NumberDestination::Extension {
+            if let Some(station) = doors::for_extension(pool, id)
+                .await?
+                .filter(|s| s.detects_unlock_codes())
+            {
+                actions.push(set(crate::door_dtmf::MARK, station.id.to_string()));
+            }
         }
         let name = sanitize_value(&caller.display_name);
         actions.extend(route_to(r, tenant, kind, Some(id), &name, 0).await?);

@@ -182,6 +182,83 @@ async fn extensions_and_devices(pool: PgPool) {
         .unwrap();
     assert_eq!(dev2.sip_username, "200-2");
 
+    // SIP usernames: extension number plus a free suffix. Door stations get
+    // a name without '-' (Dahua VTO does not accept it).
+    let named = |kind, name: Option<&str>| DeviceInput {
+        kind,
+        sip_username: name.map(Into::into),
+        ..input.clone()
+    };
+    let (vto, _) = extensions::create_device(&pool, T, &sb, &e, &named(DeviceKind::Door, None))
+        .await
+        .unwrap();
+    assert_eq!(vto.sip_username, "200vto");
+    let (vto2, _) = extensions::create_device(&pool, T, &sb, &e, &named(DeviceKind::Door, None))
+        .await
+        .unwrap();
+    assert_eq!(vto2.sip_username, "200vto2");
+    let (vth, _) = extensions::create_device(
+        &pool,
+        T,
+        &sb,
+        &e,
+        &named(DeviceKind::Other, Some(" 200vth ")),
+    )
+    .await
+    .unwrap();
+    assert_eq!(vth.sip_username, "200vth");
+    for bad in ["201vth", "2001", "200 x", "200-ä", "web-200"] {
+        assert!(
+            matches!(
+                extensions::create_device(&pool, T, &sb, &e, &named(DeviceKind::Desk, Some(bad)))
+                    .await,
+                Err(CoreError::Validation(_))
+            ),
+            "{bad}"
+        );
+    }
+    // Unique without regard to case.
+    assert!(matches!(
+        extensions::create_device(&pool, T, &sb, &e, &named(DeviceKind::Desk, Some("200VTH")))
+            .await,
+        Err(CoreError::Conflict(_))
+    ));
+    // Rename; an empty name keeps the current one.
+    let renamed =
+        extensions::update_device(&pool, T, vto2.id, &named(DeviceKind::Door, Some("200gate")))
+            .await
+            .unwrap();
+    assert_eq!(renamed.sip_username, "200gate");
+    let kept = extensions::update_device(&pool, T, vto2.id, &named(DeviceKind::Door, Some("")))
+        .await
+        .unwrap();
+    assert_eq!(kept.sip_username, "200gate");
+    assert!(
+        extensions::update_device(&pool, T, vto2.id, &named(DeviceKind::Door, Some("200vto")))
+            .await
+            .is_err()
+    );
+    assert!(
+        extensions::device_auth(&pool, "200gate")
+            .await
+            .unwrap()
+            .is_some()
+    );
+    // The lowest free number is used after a device is deleted.
+    for d in [vto.id, vto2.id, vth.id] {
+        extensions::delete_device(&pool, T, d).await.unwrap();
+    }
+    extensions::delete_device(&pool, T, dev.id).await.unwrap();
+    let (again, _) = extensions::create_device(&pool, T, &sb, &e, &input)
+        .await
+        .unwrap();
+    assert_eq!(again.sip_username, "200-1");
+    extensions::delete_device(&pool, T, again.id).await.unwrap();
+    let (dev, _) = extensions::create_device(&pool, T, &sb, &e, &input)
+        .await
+        .unwrap();
+    assert_eq!(dev.sip_username, "200-1");
+
     let auth = extensions::device_auth(&pool, "200-1")
         .await
         .unwrap()
@@ -1412,9 +1489,98 @@ async fn door_stations_and_events(pool: PgPool) {
         events_enabled: true,
         snapshots: true,
         webhook_url: Some("https://ha.local/api/webhook/abc".into()),
+        unlock_code_1: Some("*1".into()),
+        unlock_code_2: None,
         enabled: true,
     };
     let s = doors::create(&pool, T, &secrets, &input).await.unwrap();
+    assert!(s.has_unlock_code_1 && !s.has_unlock_code_2);
+    // The codes are stored encrypted, never in plain text.
+    let raw: Option<String> =
+        sqlx::query_scalar("SELECT unlock_code_1_enc FROM door_stations WHERE id = $1")
+            .bind(s.id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert!(raw.is_some_and(|r| !r.contains("*1")));
+    assert_eq!(
+        doors::unlock_codes(&pool, &secrets, T, s.id).await.unwrap(),
+        [Some("*1".into()), None]
+    );
+    // Invalid codes; codes that end with each other (also a kept code).
+    for (c1, c2) in [
+        (Some("1"), None),
+        (Some("12a"), None),
+        (Some("123456789"), None),
+        (Some("#91"), Some("91")),
+        (None, Some("#*1")),
+    ] {
+        let bad = DoorStationInput {
+            unlock_code_1: c1.map(Into::into),
+            unlock_code_2: c2.map(Into::into),
+            ..input.clone()
+        };
+        assert!(
+            matches!(
+                doors::update(&pool, T, &secrets, s.id, &bad).await,
+                Err(CoreError::Validation(_))
+            ),
+            "{c1:?} {c2:?}"
+        );
+    }
+    // Door 2 needs a second lock.
+    assert!(
+        doors::update(
+            &pool,
+            T,
+            &secrets,
+            s.id,
+            &DoorStationInput {
+                doors: 1,
+                unlock_code_2: Some("#2".into()),
+                ..input.clone()
+            },
+        )
+        .await
+        .is_err()
+    );
+    let codes = doors::update(
+        &pool,
+        T,
+        &secrets,
+        s.id,
+        &DoorStationInput {
+            unlock_code_1: None,
+            unlock_code_2: Some("#2".into()),
+            ..input.clone()
+        },
+    )
+    .await
+    .unwrap();
+    assert!(codes.has_unlock_code_1 && codes.has_unlock_code_2);
+    assert_eq!(
+        doors::unlock_codes(&pool, &secrets, T, s.id).await.unwrap(),
+        [Some("*1".into()), Some("#2".into())]
+    );
+    // "" removes a code; one door removes the code of door 2.
+    let one = doors::update(
+        &pool,
+        T,
+        &secrets,
+        s.id,
+        &DoorStationInput {
+            doors: 1,
+            unlock_code_1: Some(String::new()),
+            unlock_code_2: None,
+            ..input.clone()
+        },
+    )
+    .await
+    .unwrap();
+    assert!(!one.has_unlock_code_1 && !one.has_unlock_code_2);
+    doors::update(&pool, T, &secrets, s.id, &input)
+        .await
+        .unwrap();
     // None keeps password and webhook, "" removes them.
     let s2 = doors::update(
         &pool,

@@ -85,6 +85,7 @@
 		<section class="card">
 			<DeviceList
 				extensionId={ext.id}
+				extensionNumber={ext.number}
 				devices={ext.devices}
 				registrations={live?.registrations ?? null}
 				admin={hasRole('admin')}

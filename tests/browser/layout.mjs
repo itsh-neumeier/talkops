@@ -22,6 +22,17 @@ const fixtures = {
   '/api/v1/backups': { settings: { last_run_at: null } },
   '/api/v1/settings': { country_code: '49', area_code: '9543', national_prefix: '0', international_prefix: '00', emergency_numbers: ['110', '112'], external_ip: '', default_language: 'de', default_number_id: null, timezone: 'Europe/Berlin', record_inbound: false, record_outbound: false, record_internal: false, recording_announcement: false, recording_retention_days: 30, transcription_enabled: false, transcription_quality: 'fast', transcription_refine: '', sip_uri_dialing: false, transcription_vocabulary: '', hold_music: '', hold_music_clip_id: null },
   '/api/v1/phone-settings': { catalog: [], values: {} },
+  '/api/v1/settings/transcription': {
+    providers: [{ id: 'p1', name: long, kind: 'openai', url: 'https://api.openai.com/v1', has_key: true }],
+    profiles: ['live', 'recording', 'recording_refine', 'voicemail', 'voicemail_refine'].map(purpose => ({
+      purpose, engine: purpose === 'live' ? 'cloud' : purpose.endsWith('_refine') ? 'off' : 'local',
+      local_model: purpose === 'live' ? 'base' : 'fast', provider_id: purpose === 'live' ? 'p1' : null,
+      model: purpose === 'live' ? 'gpt-live-transcribe' : '', realtime: purpose === 'live',
+      price_per_minute: null, list_price: purpose === 'live' ? 0.017 : null
+    })),
+    usage: [{ month: '2026-10-01', purpose: 'live', engine: `${long}/gpt-live-transcribe`, seconds: 600, cost: 0.17, unpriced_seconds: 0 }],
+    openai_prices: [{ model: 'gpt-live-transcribe', price_per_minute: 0.017 }]
+  },
   '/api/v1/extensions': [ext(1), ext(2), ext(3)],
   '/api/v1/users': [{ id: 'u1', username: 'administrator.mustermann', display_name: long, email: null, role: 'admin', enabled: true, auth_source: 'local', last_login_at: now, totp_enabled: true }],
   '/api/v1/numbers': [number],
@@ -31,7 +42,7 @@ const fixtures = {
   '/api/v1/contacts': [{ id: 'k1', name: long, company: long, phone_work: '+4995431241000', phone_mobile: '+4915112345678', phone_other: '+4995431241999', section_id: null }],
   '/api/v1/audit': [{ id: 1, username: 'administrator.mustermann', action: 'extension.update', entity_type: 'extension', entity_id: 'e1', details: { display_name: long, number: '101' }, ip: '192.168.178.100', created_at: now }]
 };
-const routes = ['/', '/phone', '/calls', '/voicemail', '/doors', '/phonebook', '/search', '/settings', '/me', '/extensions', '/numbers', '/routing', '/trunks', '/trunks/t1', '/phones', '/users', '/audit', '/door-stations', '/login', '/setup'];
+const routes = ['/', '/phone', '/calls', '/voicemail', '/doors', '/phonebook', '/search', '/settings', '/settings#calls', '/me', '/extensions', '/numbers', '/routing', '/trunks', '/trunks/t1', '/phones', '/users', '/audit', '/door-stations', '/login', '/setup'];
 async function context(options, theme) {
   const context = await browser.newContext({ locale: 'de-DE', timezoneId: 'Europe/Berlin', reducedMotion: 'reduce', ...options });
   await context.addInitScript((stored) => {

@@ -414,10 +414,10 @@ mod tests {
                     }
                     let form = String::from_utf8_lossy(&bytes[header_end..]);
                     let words = !reject_words || request == 0;
-                    assert_eq!(form.contains("timestamp_granularities[]"), words);
+                    assert_eq!(form.contains("\r\n\r\nword\r\n"), words);
                     let rejected = reject_words && request == 0;
                     let caller = request == usize::from(reject_words);
-                    let body = if rejected {
+                    let mut body = if rejected {
                         serde_json::json!({"error":{"message":"word timestamps unsupported"}})
                     } else if caller {
                         serde_json::json!({"segments":[
@@ -428,6 +428,9 @@ mod tests {
                         serde_json::json!({"segments":[{"start":1.4,"end":2.0,"text":"Ja."}],
                             "words":[{"start":1.4,"end":2.0}]})
                     };
+                    if reject_words && !rejected {
+                        body.as_object_mut().unwrap().remove("words");
+                    }
                     let body = body.to_string();
                     let code = if rejected {
                         "400 Bad Request"

@@ -262,7 +262,9 @@
 					data-testid={id}
 				>
 					<legend class="sr-only">{t(`stt.purpose.${purpose}`)}</legend>
-					<div class="grid grid-cols-1 gap-2 @xl:grid-cols-[minmax(0,14rem)_minmax(0,1fr)] @xl:items-start">
+					<div
+						class="grid grid-cols-1 gap-2 @xl:grid-cols-[minmax(0,14rem)_minmax(0,1fr)] @xl:items-start"
+					>
 						<div>
 							<label for={`${id}-engine`} class="font-medium">{t(`stt.purpose.${purpose}`)}</label>
 							<p class="hint">{t(`stt.purposeHint.${purpose}`)}</p>

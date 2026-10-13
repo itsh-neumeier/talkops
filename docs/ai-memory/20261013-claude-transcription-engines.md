@@ -8,7 +8,7 @@
 - Status: Completed. The PR records the readiness.
 - Branch: claude/cool-pasteur-8btt22
 - Base commit: 21f5a5158978bfdddb86c293cdf4688c73223e5b (origin/main, release 1.7.7)
-- Related commits or PR: Pending
+- Related commits or PR: [PR 14](https://github.com/itsh-neumeier/talkops/pull/14)
 
 ## Goal
 

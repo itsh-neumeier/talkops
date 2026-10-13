@@ -1,21 +1,30 @@
-# Door station (Dahua VTO)
+# Door stations
 
-TalkOps integrates Dahua VTO door stations (e.g. VTO2202F, VTO2211G,
-VTO3221E, VTO4202F) directly: the station registers like a phone, its ring
-goes to an extension, ring group or any other destination, and the camera
-picture (H.264) reaches video phones. The door opens from a phone, the web
-interface or Home Assistant.
+TalkOps connects door stations and indoor monitors as SIP devices: the
+station registers like a phone, its ring goes to an extension, ring group
+or another destination, and the camera picture (H.264) reaches video phones.
+The door opens from a phone, the web interface or Home Assistant.
 
-> **Status:** tested with a SIP simulator and a re-created Dahua HTTP API,
-> not yet with real hardware. Dahua's HTTP interface is not publicly
-> documented; TalkOps uses the requests established open-source integrations
-> use. Feedback with model and firmware version is welcome.
+SIP, ring routing, video and unlock codes are the same for all vendors. The
+HTTP integration (door opener, pictures, events) and the device settings
+depend on the vendor (ADR 0026).
 
-## 1. Create an extension for the door
+| Vendor | Devices | Setup |
+|---|---|---|
+| Dahua | VTO door stations, VTH indoor monitors | [Dahua VTO and VTH](door-station-dahua.md) |
 
-**Settings → Extensions → New extension**, e.g. `8001` "Front door". Inside it,
-**Add device**, type **Door station**. The station needs the SIP credentials shown
-(user name `8001vto`, password).
+The web interface shows a step-by-step guide for each vendor and device
+type: **Settings → Door stations → Setup guide**.
+
+> **Status:** tested with a SIP simulator and a re-created Dahua HTTP API.
+> Field reports with real devices are in the vendor page. Feedback with
+> model and firmware version is welcome.
+
+## 1. Create an extension for each device
+
+**Settings → Extensions → New extension**, e.g. `8000` "Front door". Inside it,
+**Add device**, type **Door station**. The device needs the SIP credentials
+shown (user name `8000vto`, password).
 
 The SIP user name is the extension number plus an ending. For a door station
 TalkOps uses `vto` if you do not enter an ending. Dahua VTO and VTH devices do
@@ -32,37 +41,28 @@ Permitted: letters, digits, `.`, `_` and `-`. The ending must not start with a
 digit. An admin can change the user name of a device later (**Edit**). After
 the change, the device must register again with the new user name.
 
-## 2. Configure the station (VTO web interface)
+### SIP password format
 
-Menus differ by firmware; names follow Dahua's guides (VTO quick start
-guide v4.5, VTO2311R-WP manual).
+| Format | Length | Use |
+|---|---|---|
+| Standard | 20 letters and digits | all devices (default) |
+| Compatible | 15 letters and digits | devices that accept at most 15 characters, e.g. Dahua VTO and VTH |
 
-1. **Network → SIP Server:**
+- TalkOps selects **Compatible (15 characters)** when you add a device of the
+  type **Door station**. You can change it in the dialog.
+- The format applies when TalkOps generates a password. **Edit** stores the
+  format for the next new password and keeps the current password.
+- **New password** generates a password at once. An admin can select the
+  format in this dialog. The old password stops working immediately; enter
+  the new password in the device.
+- TalkOps stores SIP passwords encrypted. The audit log records the format,
+  never the password.
 
-   | VTO field | Value |
-   |---|---|
-   | SIP Server – Enable | **off** (otherwise the station acts as a PBX itself) |
-   | Server Type | *ThirdParty* (some firmware: *Asterisk*) |
-   | IP Addr. | IP address or host name of the TalkOps host |
-   | Port | `5060` |
-   | Username + **Enable** | set **Enable**, then the SIP user name from step 1, e.g. `8001vto`. Without *Enable* the station uses its own VTO number. |
-   | Password | the SIP password from step 1 |
-   | SIP Domain | `talkops.local` (the Dahua default `VDP` also works) |
-   | SIP Server Username | **the same** SIP user name as in *Username* – not `admin` |
-   | SIP Server Password | **the same** SIP password |
+## 2. Configure the device
 
-   TalkOps accepts a registration only if the authentication user name is
-   the same as the SIP user name. Thus *Username* and *SIP Server Username*
-   must be identical.
-2. **Local Settings → Basic:** the **Call No.** (default `9901`) is what the
-   station dials when someone rings. On multi-button stations every button
-   has its own number.
-3. **Unlock by key tone in the station (optional):** set an unlock code and
-   choose **RFC 2833** – **only one** method (RFC 2833 *or* SIP INFO);
-   according to Dahua neither works when both are selected. As an
-   alternative, TalkOps can detect its own unlock codes (see section 3).
-
-The station then shows up on the **Dashboard** under *Registered devices* as `8001vto`.
+Follow the vendor page, e.g. [Dahua VTO and VTH](door-station-dahua.md).
+Check the registration: the **Dashboard** shows the SIP user name under
+*Registered devices*.
 
 ## 3. Door station in TalkOps
 
@@ -70,7 +70,8 @@ The station then shows up on the **Dashboard** under *Registered devices* as `80
 
 | Field | Meaning |
 |---|---|
-| Extension | the extension from step 1 – every call from it is a ring |
+| Manufacturer | selects the HTTP integration and the setup guide (at the moment: Dahua) |
+| Extension | the extension of the door station from step 1 – every call from it is a ring |
 | Ring goes to | extension, ring group, time condition, Smart Attendant, queue or voicemail |
 | Buttons | for multi-tenant stations: dialed number (e.g. `9902`) → its own destination; `9902#0` and `9902` count as the same |
 | HTTP access | IP/port and web login of the station; without a host only rings, no door opener/picture/log |
@@ -83,11 +84,17 @@ The station then shows up on the **Dashboard** under *Registered devices* as `80
 **Test connection** shows the reported model. The station password is
 stored encrypted.
 
+### Ring target and ring group
+
+To ring more than one indoor monitor or phone, open **Call routing → Ring
+groups** and create a ring group, e.g. with `8001` and `8002`. Then set
+**Ring goes to** to this ring group.
+
 ## Opening the door
 
 | Way | How |
 |---|---|
-| During the call | type the TalkOps unlock code on the phone (see below) or the station's own unlock code (step 2.3) |
+| During the call | type the TalkOps unlock code on the phone (see below) or the station's own unlock code (see the vendor page) |
 | Feature code | `*85` (first door station) or `*85<extension>`, e.g. `*858001`; `*86…` for the second lock. An announcement confirms. Works well as a speed-dial key. |
 | Web interface | **Door → Open door** (all users, with confirmation) |
 | Automation | `POST /hooks/door/<id>/open` with a token, see below |
@@ -172,8 +179,26 @@ rest_command:
     payload: '{"door": 1}'
 ```
 
+## SIP login protection
+
+The SIP login protection bans addresses after failed logins
+(**Settings → Sign-in & security → SIP login protection**). It is not
+necessary to switch it off for a door station.
+
+- If TalkOps banned the address of a device during the setup, select
+  **Unban** for this address.
+- If a device fails often during the setup, add only its IP address to
+  *Trusted networks* (e.g. `192.168.1.50`), not the full network.
+- Remove the exception after a successful setup if you do not need it.
+
 ## Troubleshooting
 
+- **`401`, then `403 Forbidden`:** TalkOps rejected the login. The causes
+  are a wrong or shortened password, an unknown SIP user name, an
+  authentication name that is different from the SIP user name, or a banned
+  address. The TalkOps log shows the user name and the address:
+  `docker compose logs -f talkops | grep "SIP authentication"`. The vendor
+  page has the device-specific checks.
 - **Station does not register:** "SIP Server" on the station off?
   *Username* (with *Enable*) and *SIP Server Username* both set to the SIP
   user name (e.g. `8001vto`) and both passwords set? Is the PBX's SIP port

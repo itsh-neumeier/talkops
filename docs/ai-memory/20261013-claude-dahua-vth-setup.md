@@ -8,7 +8,7 @@
 - Status: Completed (PR submitted for review)
 - Branch: `claude/busy-fermat-sy3r41` (worktree `../talkops-dahua`)
 - Base commit: `bfc4642` (origin/main, TalkOps 1.7.9)
-- Related commits or PR: Pending
+- Related commits or PR: https://github.com/itsh-neumeier/talkops/pull/19
 
 ## Goal
 

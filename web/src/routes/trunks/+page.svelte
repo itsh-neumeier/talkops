@@ -1,4 +1,6 @@
 <script lang="ts">
+	import EmptyRow from '#lib/components/EmptyRow.svelte';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import SkeletonRows from '#lib/components/SkeletonRows.svelte';
 	import { net } from '#lib/net.svelte.ts';
 	import { goto } from '$app/navigation';
@@ -62,20 +64,21 @@
 </script>
 
 <div class="space-y-4">
-	<div class="flex items-center justify-between">
-		<h1>{t('nav.trunks')}</h1>
-		{#if hasRole('admin')}<button class="btn btn-primary" onclick={() => (open = true)}
-				>{t('trunks.new')}</button
-			>{/if}
-	</div>
+	<PageHeader title={t('nav.trunks')}>
+		{#snippet actions()}
+			{#if hasRole('admin')}<button class="btn btn-primary" onclick={() => (open = true)}
+					>{t('trunks.new')}</button
+				>{/if}
+		{/snippet}
+	</PageHeader>
 	<ErrorBox {error} />
-	<div class="card overflow-x-auto">
+	<div class="card scroll-x">
 		<table class="table">
 			<thead>
 				<tr
-					><th>{t('common.name')}</th><th>{t('trunks.preset')}</th><th>{t('trunks.numbers')}</th><th
-						>{t('trunks.state')}</th
-					></tr
+					><th>{t('common.name')}</th><th class="col-opt">{t('trunks.preset')}</th><th
+						class="col-opt-lg">{t('trunks.numbers')}</th
+					><th>{t('trunks.state')}</th></tr
 				>
 			</thead>
 			<tbody>
@@ -83,8 +86,10 @@
 					{@const p = presets.find((x) => x.id === trunk.preset)}
 					<tr>
 						<td><a class="hover:underline" href="/trunks/{trunk.id}">{trunk.name}</a></td>
-						<td>{p ? presetLabel(p) : trunk.preset}</td>
-						<td class="font-mono text-xs">{trunk.numbers.map((n) => n.e164).join(', ') || '—'}</td>
+						<td class="col-opt">{p ? presetLabel(p) : trunk.preset}</td>
+						<td class="col-opt-lg font-mono text-xs"
+							>{trunk.numbers.map((n) => n.e164).join(', ') || '—'}</td
+						>
 						<td>
 							{#if !trunk.enabled}<span class="badge badge-muted">{t('common.disabled')}</span>
 							{:else}<span
@@ -95,7 +100,7 @@
 						</td>
 					</tr>
 				{:else}
-					{#if !net.settled}<SkeletonRows cols={4} />{/if}
+					{#if !net.settled}<SkeletonRows cols={4} />{:else}<EmptyRow cols={4} />{/if}
 				{/each}
 			</tbody>
 		</table>
@@ -119,7 +124,7 @@
 			</select>
 		</div>
 		{#if preset}
-			<div class="space-y-2 rounded-md bg-slate-50 p-3 text-sm dark:bg-slate-800/50">
+			<div class="space-y-2 rounded-lg bg-slate-50 p-3 text-sm dark:bg-slate-800/50">
 				<span class="badge {statusClass[preset.status]}">{t(statusKey[preset.status])}</span>
 				{#if preset.status === 'untested'}<p class="hint">{t('trunks.untestedHint')}</p>{/if}
 				<p>{presetNotes(preset)}</p>

@@ -37,7 +37,9 @@
 			const previous = new Map(rows.map((row) => [row.key, row]));
 			rows = result.segments.map((segment) => {
 				const key = `${segment.speaker}:${segment.start}:${segment.end}`;
-				return previous.get(key) ?? { ...segment, key, animate: !first };
+				// Streamed text grows while times stay the same.
+				const old = previous.get(key);
+				return old ? { ...old, text: segment.text } : { ...segment, key, animate: !first };
 			});
 			preview = result;
 			first = false;
@@ -76,11 +78,11 @@
 	aria-labelledby="live-transcript-title"
 	oncancel={onclose}
 	{onclose}
-	class="m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-2xl overflow-y-auto rounded-xl border border-slate-200 bg-white p-5 text-slate-900 shadow-xl backdrop:bg-black/40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+	class="dialog-panel m-auto w-[calc(100%-2rem)] max-w-2xl rounded-xl backdrop:bg-black/40"
 >
-	<div class="mb-3 flex items-center justify-between gap-3">
+	<div class="mb-4 flex items-center justify-between gap-3">
 		<h2 id="live-transcript-title">{t('dash.live.title')}</h2>
-		<button class="btn btn-sm" onclick={onclose}>{t('common.close')}</button>
+		<button class="btn btn-sm" onclick={onclose} aria-label={t('common.close')}>✕</button>
 	</div>
 	<div class="space-y-1 text-sm">
 		<p><CallParty party={call.caller} /></p>

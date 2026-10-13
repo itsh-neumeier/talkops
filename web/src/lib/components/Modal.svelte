@@ -19,12 +19,12 @@
 		onclick={(e) => e.target === e.currentTarget && (open = false)}
 	>
 		<div
-			class="max-h-[90vh] w-full overflow-y-auto rounded-t-xl bg-white p-4 shadow-xl sm:max-w-lg sm:rounded-xl dark:bg-slate-900"
+			class="dialog-panel w-full rounded-t-xl sm:max-w-lg sm:rounded-xl"
 			role="dialog"
 			aria-modal="true"
 			aria-label={title}
 		>
-			<div class="mb-4 flex items-center justify-between">
+			<div class="mb-4 flex items-center justify-between gap-3">
 				<h2>{title}</h2>
 				<button class="btn btn-sm" onclick={() => (open = false)} aria-label={t('common.close')}
 					>✕</button

@@ -19,7 +19,7 @@
 	<ol class="space-y-1">
 		{#each members as m, i (m)}
 			<li
-				class="flex items-center justify-between gap-2 rounded border border-slate-200 px-2 py-1 dark:border-slate-700"
+				class="flex items-center justify-between gap-2 rounded-md border border-slate-200 px-2 py-1 dark:border-slate-700"
 			>
 				<span
 					><span class="text-slate-500">{i + 1}.</span>

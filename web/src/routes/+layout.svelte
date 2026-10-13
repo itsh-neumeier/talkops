@@ -80,15 +80,19 @@
 	<title>TalkOps</title>
 </svelte:head>
 
-<div class="min-h-screen">
+<!-- Escape closes the mobile menu. -->
+<svelte:window onkeydown={(e) => menuOpen && e.key === 'Escape' && (menuOpen = false)} />
+
+<div class="min-h-dvh">
 	<header
-		class="sticky top-0 z-30 flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900"
+		class="sticky top-0 z-30 flex h-(--header-h) items-center justify-between gap-4 border-b border-slate-200 bg-white px-4 dark:border-slate-800 dark:bg-slate-900"
 	>
 		<div class="flex items-center gap-3">
 			{#if session.user}
 				<button
 					class="btn btn-sm md:hidden"
 					aria-label={t('nav.menu')}
+					aria-expanded={menuOpen}
 					onclick={() => (menuOpen = !menuOpen)}>☰</button
 				>
 			{/if}
@@ -132,21 +136,21 @@
 		{#if session.user}
 			<nav
 				class="{menuOpen
-					? 'block'
-					: 'hidden'} fixed inset-x-0 top-[57px] z-20 border-b border-slate-200 bg-white p-2 md:sticky md:top-[57px] md:block md:h-[calc(100vh-57px)] md:w-56 md:shrink-0 md:border-r md:border-b-0 md:bg-transparent dark:border-slate-800 dark:bg-slate-900 md:dark:bg-transparent"
+					? 'flex'
+					: 'hidden'} fixed inset-x-0 top-(--header-h) z-20 max-h-[calc(100dvh-var(--header-h))] flex-col gap-1 overflow-y-auto border-b border-slate-200 bg-white p-2 shadow-lg md:sticky md:flex md:h-[calc(100dvh-var(--header-h))] md:max-h-none md:w-56 md:shrink-0 md:border-r md:border-b-0 md:bg-transparent md:shadow-none dark:border-slate-800 dark:bg-slate-900 md:dark:bg-transparent"
+				aria-label={t('nav.menu')}
 			>
 				{#each nav.filter((n) => hasRole(n.role) && shown(n.href)) as item (item.href)}
 					<a
 						href={item.href}
 						onclick={() => (menuOpen = false)}
-						class="block rounded-md px-3 py-2 text-sm {active(item.href)
-							? 'bg-teal-50 font-medium text-teal-800 dark:bg-teal-950 dark:text-teal-200'
-							: 'hover:bg-slate-100 dark:hover:bg-slate-800'}">{t(item.key)}</a
+						class="nav-item"
+						aria-current={active(item.href) ? 'page' : undefined}>{t(item.key)}</a
 					>
 				{/each}
 			</nav>
 		{/if}
-		<main class="min-w-0 flex-1 p-4">
+		<main class="@container min-w-0 flex-1 p-4">
 			{#if session.loaded && (session.user || publicPaths.includes(page.url.pathname))}
 				{@render children()}
 				{#if session.user && phoneOwner === session.user.id}

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import PhoneSettingsEditor from '#lib/components/PhoneSettingsEditor.svelte';
 	import { assignExtension } from '#lib/phoneAssign.ts';
 	import { goto } from '$app/navigation';
@@ -225,26 +226,28 @@
 </script>
 
 <div class="space-y-4">
-	<a class="text-sm text-slate-500 hover:underline" href="/phones">← {t('common.back')}</a>
+	<PageHeader
+		back={{ href: '/phones', label: t('nav.phones') }}
+		heading={phone ? heading : undefined}
+		actions={phone && hasRole('admin') ? actions : undefined}
+	/>
+	{#snippet heading()}
+		{phone!.name}
+		<span class="text-base font-normal text-slate-500 dark:text-slate-400">{model?.name}</span>
+	{/snippet}
+	{#snippet actions()}
+		<button class="btn" title={t('phones.resyncHint')} onclick={() => resync(false)}
+			>{t('phones.resync')}</button
+		>
+		<button class="btn" onclick={() => resync(true)}>{t('phones.reboot')}</button>
+		<button class="btn" onclick={showConfig}>{t('phones.showConfig')}</button>
+		<button class="btn btn-danger" onclick={remove}>{t('common.delete')}</button>
+	{/snippet}
 	<ErrorBox {error} />
 	{#if message}<p class="text-sm text-emerald-700 dark:text-emerald-400">{message}</p>{/if}
 	{#if phone}
-		<div class="flex flex-wrap items-center justify-between gap-2">
-			<h1>{phone.name} <span class="text-base font-normal text-slate-500">{model?.name}</span></h1>
-			{#if hasRole('admin')}
-				<div class="space-x-1">
-					<button class="btn" title={t('phones.resyncHint')} onclick={() => resync(false)}
-						>{t('phones.resync')}</button
-					>
-					<button class="btn" onclick={() => resync(true)}>{t('phones.reboot')}</button>
-					<button class="btn" onclick={showConfig}>{t('phones.showConfig')}</button>
-					<button class="btn btn-danger" onclick={remove}>{t('common.delete')}</button>
-				</div>
-			{/if}
-		</div>
-
 		<section class="card space-y-3">
-			<div class="grid gap-3 sm:grid-cols-3">
+			<div class="grid grid-cols-1 gap-3 @xl:grid-cols-3">
 				<div>
 					<label for="ph-name">{t('common.name')}</label>
 					<input id="ph-name" class="input" bind:value={form.name} />
@@ -277,7 +280,7 @@
 				<p class="hint">{t('phones.accountTextsHint')}</p>
 				<ul class="divide-y divide-slate-100 dark:divide-slate-800">
 					{#each phone.accounts as a (a.device_id)}
-						<li class="grid gap-2 py-2 sm:grid-cols-3 sm:items-end">
+						<li class="grid grid-cols-1 gap-2 py-2 @xl:grid-cols-3 sm:items-end">
 							<div>
 								<span class="text-slate-500">{t('phones.account')} {a.account_index}:</span>
 								<a class="font-mono hover:underline" href="/extensions/{a.extension_id}"
@@ -347,7 +350,7 @@
 
 		<section class="card space-y-3">
 			<h2>{t('phones.personalize')}</h2>
-			<div class="grid gap-3 sm:grid-cols-2">
+			<div class="grid grid-cols-1 gap-3 @lg:grid-cols-2">
 				<div>
 					<label for="ph-ring">{t('media.ringtone')}</label>
 					{#if model?.ringtone_max_kb}
@@ -419,7 +422,7 @@
 			<section class="card space-y-3">
 				<h2>{t('phones.keys')}</h2>
 				<p class="hint">{t('phones.keysHint')}</p>
-				<div class="overflow-x-auto">
+				<div class="scroll-x">
 					<table class="table">
 						<thead>
 							<tr
@@ -495,5 +498,5 @@
 </div>
 
 <Modal title={t('phones.showConfig')} bind:open={configOpen}>
-	<pre class="overflow-x-auto rounded bg-slate-100 p-2 text-xs dark:bg-slate-800">{config}</pre>
+	<pre class="overflow-x-auto rounded-lg bg-slate-100 p-2 text-xs dark:bg-slate-800">{config}</pre>
 </Modal>

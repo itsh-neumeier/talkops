@@ -1,4 +1,6 @@
 <script lang="ts">
+	import EmptyRow from '#lib/components/EmptyRow.svelte';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import Skeleton from '#lib/components/Skeleton.svelte';
 	import { net } from '#lib/net.svelte.ts';
 	import { goto } from '$app/navigation';
@@ -234,21 +236,22 @@
 </script>
 
 <div class="space-y-4">
-	<a class="text-sm text-slate-500 hover:underline" href="/trunks">← {t('common.back')}</a>
+	<PageHeader
+		back={{ href: '/trunks', label: t('nav.trunks') }}
+		heading={trunk ? heading : undefined}
+		actions={trunk && admin ? actions : undefined}
+	/>
+	{#snippet heading()}
+		{trunk!.name}
+		{#if !trunk!.enabled}<span class="badge badge-muted align-middle">{t('common.disabled')}</span
+			>{/if}
+	{/snippet}
+	{#snippet actions()}
+		<button class="btn" onclick={openEdit}>{t('common.edit')}</button>
+		<button class="btn btn-danger" onclick={removeTrunk}>{t('common.delete')}</button>
+	{/snippet}
 	<ErrorBox {error} />
 	{#if trunk}
-		<div class="flex flex-wrap items-center justify-between gap-2">
-			<h1>
-				{trunk.name}
-				{#if !trunk.enabled}<span class="badge badge-muted">{t('common.disabled')}</span>{/if}
-			</h1>
-			{#if admin}
-				<div class="space-x-1">
-					<button class="btn" onclick={openEdit}>{t('common.edit')}</button>
-					<button class="btn btn-danger" onclick={removeTrunk}>{t('common.delete')}</button>
-				</div>
-			{/if}
-		</div>
 		{#if preset}
 			<section class="card space-y-2 text-sm">
 				<div class="flex items-center gap-2">
@@ -298,7 +301,7 @@
 		</section>
 
 		<section class="card space-y-3">
-			<div class="flex items-center justify-between">
+			<div class="flex flex-wrap items-center justify-between gap-2">
 				<h2>{t('trunks.numbers')}</h2>
 				{#if admin && preset?.credentials.mode !== 'per_number'}
 					<button class="btn btn-sm" onclick={() => (numberOpen = true)}
@@ -306,29 +309,33 @@
 					>
 				{/if}
 			</div>
-			<table class="table">
-				<thead
-					><tr
-						><th>{t('numbers.number')}</th><th>{t('numbers.label')}</th><th
-							>{t('trunks.destination')}</th
-						><th></th></tr
-					></thead
-				>
-				<tbody>
-					{#each trunk.numbers as n (n.id)}
-						<tr>
-							<td class="font-mono">{n.e164}</td>
-							<td>{n.label}</td>
-							<td><NumberDestination number={n} editable={admin} onchange={load} /></td>
-							<td class="text-right"
-								>{#if admin}<button class="btn btn-sm btn-danger" onclick={() => removeNumber(n)}
-										>{t('common.delete')}</button
-									>{/if}</td
-							>
-						</tr>
-					{/each}
-				</tbody>
-			</table>
+			<div class="scroll-x">
+				<table class="table">
+					<thead
+						><tr
+							><th>{t('numbers.number')}</th><th class="col-opt">{t('numbers.label')}</th><th
+								>{t('trunks.destination')}</th
+							><th></th></tr
+						></thead
+					>
+					<tbody>
+						{#each trunk.numbers as n (n.id)}
+							<tr>
+								<td class="font-mono">{n.e164}</td>
+								<td class="col-opt">{n.label}</td>
+								<td><NumberDestination number={n} editable={admin} onchange={load} /></td>
+								<td class="text-right"
+									>{#if admin}<button class="btn btn-sm btn-danger" onclick={() => removeNumber(n)}
+											>{t('common.delete')}</button
+										>{/if}</td
+								>
+							</tr>
+						{:else}
+							<EmptyRow cols={4} />
+						{/each}
+					</tbody>
+				</table>
+			</div>
 		</section>
 	{:else if !net.settled}
 		<div class="card"><Skeleton lines={6} /></div>

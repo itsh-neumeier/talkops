@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import SkeletonRows from '#lib/components/SkeletonRows.svelte';
 	import { net } from '#lib/net.svelte.ts';
 	import { onMount } from 'svelte';
@@ -124,17 +125,15 @@
 </script>
 
 <div class="space-y-4">
-	<div class="flex flex-wrap items-center justify-between gap-2">
-		<h1>{t('nav.phonebook')}</h1>
-		{#if hasRole('operator')}
-			<div class="space-x-1">
+	<PageHeader title={t('nav.phonebook')} intro={t('contacts.hint')}>
+		{#snippet actions()}
+			{#if hasRole('operator')}
 				<button class="btn" onclick={() => (sectionsOpen = true)}>{t('contacts.sections')}</button>
 				<button class="btn" onclick={() => (importOpen = true)}>{t('contacts.import')}</button>
 				<button class="btn btn-primary" onclick={() => open(null)}>{t('contacts.new')}</button>
-			</div>
-		{/if}
-	</div>
-	<p class="text-sm text-slate-600 dark:text-slate-300">{t('contacts.hint')}</p>
+			{/if}
+		{/snippet}
+	</PageHeader>
 	<ErrorBox {error} />
 	<div class="flex flex-wrap items-center gap-2">
 		<input class="input max-w-sm" placeholder={t('common.search')} bind:value={search} />
@@ -146,7 +145,7 @@
 			</select>
 		{/if}
 	</div>
-	<div class="card overflow-x-auto">
+	<div class="card scroll-x">
 		{#if contacts.length === 0 && net.settled}
 			<p class="text-sm text-slate-500">{t('contacts.none')}</p>
 		{:else}
@@ -154,7 +153,9 @@
 				<thead>
 					<tr
 						><th>{t('common.name')}</th><th>{t('contacts.work')}</th><th>{t('contacts.mobile')}</th
-						><th>{t('contacts.other')}</th><th>{t('contacts.section')}</th><th></th></tr
+						><th class="col-opt-lg">{t('contacts.other')}</th><th class="col-opt"
+							>{t('contacts.section')}</th
+						><th></th></tr
 					>
 				</thead>
 				<tbody>
@@ -167,8 +168,8 @@
 							>
 							<td class="font-mono text-sm">{c.phone_work}</td>
 							<td class="font-mono text-sm">{c.phone_mobile}</td>
-							<td class="font-mono text-sm">{c.phone_other}</td>
-							<td class="text-sm text-slate-500">{sectionName(c.section_id)}</td>
+							<td class="col-opt-lg font-mono text-sm">{c.phone_other}</td>
+							<td class="col-opt text-sm text-slate-500">{sectionName(c.section_id)}</td>
 							<td class="space-x-1 text-right whitespace-nowrap">
 								{#if hasRole('operator')}
 									<button class="btn btn-sm" onclick={() => open(c)}>{t('common.edit')}</button>
@@ -189,7 +190,7 @@
 
 <Modal title={editing ? t('common.edit') : t('contacts.new')} bind:open={editOpen}>
 	<form class="space-y-3" onsubmit={save}>
-		<div class="grid gap-3 sm:grid-cols-2">
+		<div class="grid grid-cols-1 gap-3 @lg:grid-cols-2">
 			<div>
 				<label for="c-name">{t('common.name')}</label>
 				<input id="c-name" class="input" bind:value={form.name} required />

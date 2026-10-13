@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import Skeleton from '#lib/components/Skeleton.svelte';
 	import { net } from '#lib/net.svelte.ts';
 	import { onMount } from 'svelte';
@@ -22,8 +23,7 @@
 </script>
 
 <div class="space-y-4">
-	<h1>{t('nav.voicemail')}</h1>
-	<p class="text-sm text-slate-600 dark:text-slate-300">{t('vm.intro')}</p>
+	<PageHeader title={t('nav.voicemail')} intro={t('vm.intro')} />
 	<ErrorBox {error} />
 	{#if extensions && extensions.length === 0}
 		<p class="text-sm text-slate-500">{t('me.none')}</p>

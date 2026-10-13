@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import Skeleton from '#lib/components/Skeleton.svelte';
 	import { net } from '#lib/net.svelte.ts';
 	import { onDestroy, onMount } from 'svelte';
@@ -72,12 +73,13 @@
 </script>
 
 <div class="space-y-4">
-	<div class="flex flex-wrap items-center justify-between gap-2">
-		<h1>{t('nav.doors')}</h1>
-		{#if hasRole('admin')}
-			<a class="btn" href="/door-stations">{t('door.setup')}</a>
-		{/if}
-	</div>
+	<PageHeader title={t('nav.doors')}>
+		{#snippet actions()}
+			{#if hasRole('admin')}
+				<a class="btn" href="/door-stations">{t('door.setup')}</a>
+			{/if}
+		{/snippet}
+	</PageHeader>
 	<ErrorBox {error} />
 	{#if info}<p class="text-sm text-emerald-700 dark:text-emerald-400" role="status">{info}</p>{/if}
 
@@ -85,7 +87,7 @@
 		<div class="card text-sm text-slate-600 dark:text-slate-300">{t('door.none')}</div>
 	{/if}
 
-	<div class="grid gap-4 md:grid-cols-2">
+	<div class="grid grid-cols-1 gap-4 @3xl:grid-cols-2">
 		{#each stations ?? [] as s (s.id)}
 			<div class="card space-y-3">
 				<div class="flex flex-wrap items-center justify-between gap-2">
@@ -102,7 +104,7 @@
 				</div>
 				{#if live[s.id]}
 					<img
-						class="aspect-video w-full rounded-md bg-slate-200 object-cover dark:bg-slate-800"
+						class="aspect-video w-full rounded-lg bg-slate-200 object-cover dark:bg-slate-800"
 						src="/api/v1/door-stations/{s.id}/snapshot?t={live[s.id]}"
 						alt={t('door.liveAlt', { name: s.name })}
 					/>
@@ -126,7 +128,7 @@
 		{/each}
 	</div>
 
-	<div class="card overflow-x-auto">
+	<div class="card scroll-x">
 		<h2 class="mb-2">{t('door.events')}</h2>
 		{#if events.length === 0}
 			<p class="text-sm text-slate-500">{t('door.noEvents')}</p>

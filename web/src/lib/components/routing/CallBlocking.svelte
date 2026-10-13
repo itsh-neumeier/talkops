@@ -193,7 +193,7 @@
 					/>
 					{t('block.phoneblockEnable')}</label
 				>
-				<div class="grid gap-3 sm:grid-cols-2">
+				<div class="grid grid-cols-1 gap-3 @lg:grid-cols-2">
 					<div>
 						<label for="b-token">{t('block.token')}</label>
 						<input

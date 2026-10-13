@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import InternalNumberInput from '#lib/components/InternalNumberInput.svelte';
 	// Smart Attendant editor: the call flow as a tree on the left, the
 	// settings of the selected step on the right.
@@ -83,27 +84,24 @@
 </script>
 
 <div class="space-y-4">
-	<div class="flex flex-wrap items-center justify-between gap-2">
-		<div>
-			<a href="/routing" class="text-sm text-teal-700 hover:underline dark:text-teal-300"
-				>← {t('nav.routing')}</a
+	<PageHeader
+		back={{ href: '/routing', label: t('nav.routing') }}
+		title={t('flow.title')}
+		actions={hasRole('admin') ? actions : undefined}
+	/>
+	{#snippet actions()}
+		<div class="flex items-center gap-3">
+			{#if saved && !dirty}<span class="text-sm text-emerald-700 dark:text-emerald-400"
+					>{t('common.saved')}</span
+				>{:else if dirty}<span class="text-sm text-amber-600">{t('flow.dirty')}</span>{/if}
+			<button class="btn btn-primary" onclick={save} disabled={saving || !editor}
+				>{t('common.save')}</button
 			>
-			<h1>{t('flow.title')}</h1>
 		</div>
-		{#if hasRole('admin')}
-			<div class="flex items-center gap-3">
-				{#if saved && !dirty}<span class="text-sm text-emerald-700 dark:text-emerald-400"
-						>{t('common.saved')}</span
-					>{:else if dirty}<span class="text-sm text-amber-600">{t('flow.dirty')}</span>{/if}
-				<button class="btn btn-primary" onclick={save} disabled={saving || !editor}
-					>{t('common.save')}</button
-				>
-			</div>
-		{/if}
-	</div>
+	{/snippet}
 	<ErrorBox {error} />
 	{#if editor}
-		<div class="card grid gap-3 sm:grid-cols-[8rem_1fr_12rem]">
+		<div class="card grid grid-cols-1 gap-3 @xl:grid-cols-[8rem_1fr_12rem]">
 			<div>
 				<label for="att-number">{t('routing.number')}</label>
 				<InternalNumberInput
@@ -126,7 +124,7 @@
 				</select>
 			</div>
 		</div>
-		<div class="grid items-start gap-4 lg:grid-cols-[1fr_24rem]">
+		<div class="grid grid-cols-1 items-start gap-4 @4xl:grid-cols-[1fr_24rem]">
 			<div
 				class="flow-canvas min-h-[28rem] overflow-auto rounded-xl border border-slate-200 p-6 dark:border-slate-700"
 			>

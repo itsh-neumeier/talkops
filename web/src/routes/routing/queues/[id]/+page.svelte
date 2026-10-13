@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import InternalNumberInput from '#lib/components/InternalNumberInput.svelte';
 	// Call queue settings like UniFi Talk: general, schedule, call handling.
 	import { beforeNavigate, goto } from '$app/navigation';
@@ -8,6 +9,7 @@
 	import AudioPicker, { type AudioMode } from '#lib/components/AudioPicker.svelte';
 	import DestinationSelect from '#lib/components/DestinationSelect.svelte';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
+	import Tabs from '#lib/components/Tabs.svelte';
 	import ExtensionPicker from '#lib/components/ExtensionPicker.svelte';
 	import MemberPicker from '#lib/components/routing/MemberPicker.svelte';
 	import { loadTargets, targets } from '#lib/destinations.svelte.ts';
@@ -139,44 +141,26 @@
 </script>
 
 <form class="space-y-4" onsubmit={save}>
-	<div class="flex flex-wrap items-center justify-between gap-2">
-		<div>
-			<a href="/routing" class="text-sm text-teal-700 hover:underline dark:text-teal-300"
-				>← {t('nav.routing')}</a
-			>
-			<h1>{form?.name || t('queues.new')}</h1>
+	<PageHeader
+		back={{ href: '/routing', label: t('nav.routing') }}
+		title={form?.name || t('queues.new')}
+		actions={hasRole('admin') ? actions : undefined}
+	/>
+	{#snippet actions()}
+		<div class="flex items-center gap-3">
+			{#if saved && !dirty}<span class="text-sm text-emerald-700 dark:text-emerald-400"
+					>{t('common.saved')}</span
+				>{:else if dirty}<span class="text-sm text-amber-600">{t('flow.dirty')}</span>{/if}
+			<button class="btn btn-primary" disabled={saving || !form}>{t('common.save')}</button>
 		</div>
-		{#if hasRole('admin')}
-			<div class="flex items-center gap-3">
-				{#if saved && !dirty}<span class="text-sm text-emerald-700 dark:text-emerald-400"
-						>{t('common.saved')}</span
-					>{:else if dirty}<span class="text-sm text-amber-600">{t('flow.dirty')}</span>{/if}
-				<button class="btn btn-primary" disabled={saving || !form}>{t('common.save')}</button>
-			</div>
-		{/if}
-	</div>
+	{/snippet}
 	<ErrorBox {error} />
 	{#if form}
-		<div
-			class="flex flex-wrap gap-1 border-b border-slate-200 dark:border-slate-800"
-			role="tablist"
-		>
-			{#each tabs as x (x.id)}
-				<button
-					type="button"
-					role="tab"
-					aria-selected={tab === x.id}
-					class="rounded-t-md px-3 py-2 text-sm {tab === x.id
-						? 'border-b-2 border-teal-600 font-medium text-teal-800 dark:text-teal-200'
-						: 'text-slate-600 hover:text-slate-900 dark:text-slate-300'}"
-					onclick={() => (tab = x.id)}>{t(x.key)}</button
-				>
-			{/each}
-		</div>
+		<Tabs tabs={tabs.map((x) => ({ id: x.id, label: t(x.key) }))} bind:value={tab} />
 
 		<!-- All tabs stay mounted (hidden) so pending audio is saved too. -->
 		<section class="card space-y-4" class:hidden={tab !== 'general'}>
-			<div class="grid gap-3 sm:grid-cols-[8rem_1fr]">
+			<div class="grid grid-cols-1 gap-3 @lg:grid-cols-[8rem_1fr]">
 				<div>
 					<label for="q-num">{t('routing.number')}</label>
 					<InternalNumberInput
@@ -261,7 +245,7 @@
 			</div>
 			<div class="card space-y-3">
 				<h2>{t('queues.distribution')}</h2>
-				<div class="grid gap-3 sm:grid-cols-3">
+				<div class="grid grid-cols-1 gap-3 @xl:grid-cols-3">
 					<div>
 						<label for="q-strat">{t('groups.strategy')}</label>
 						<select id="q-strat" class="input" bind:value={form.strategy}>
@@ -296,7 +280,7 @@
 			</div>
 			<div class="card space-y-3">
 				<h2>{t('queues.capacity')}</h2>
-				<div class="grid gap-3 sm:grid-cols-2">
+				<div class="grid grid-cols-1 gap-3 @lg:grid-cols-2">
 					<div>
 						<label for="q-max">{t('queues.maxCallers')}</label>
 						<input

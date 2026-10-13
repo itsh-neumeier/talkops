@@ -1,4 +1,6 @@
 <script lang="ts">
+	import EmptyRow from '#lib/components/EmptyRow.svelte';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import SkeletonRows from '#lib/components/SkeletonRows.svelte';
 	import { net } from '#lib/net.svelte.ts';
 	import { goto } from '$app/navigation';
@@ -144,15 +146,16 @@
 </script>
 
 <div class="space-y-4">
-	<div class="flex flex-wrap items-center justify-between gap-2">
-		<h1>{t('nav.phones')}</h1>
-		{#if hasRole('admin')}
-			<button class="btn btn-primary" onclick={() => (addOpen = true)}>{t('phones.new')}</button>
-		{/if}
-	</div>
+	<PageHeader title={t('nav.phones')}>
+		{#snippet actions()}
+			{#if hasRole('admin')}
+				<button class="btn btn-primary" onclick={() => (addOpen = true)}>{t('phones.new')}</button>
+			{/if}
+		{/snippet}
+	</PageHeader>
 	<ErrorBox {error} />
 
-	<div class="card overflow-x-auto">
+	<div class="card scroll-x">
 		{#if phones.length === 0 && net.settled}
 			<p class="text-sm text-slate-500">{t('phones.none')}</p>
 		{:else}
@@ -160,8 +163,9 @@
 				<thead>
 					<tr
 						><th>{t('common.name')}</th><th>{t('phones.extensions')}</th><th>{t('phones.model')}</th
-						><th>{t('phones.mac')}</th><th>{t('phones.lastSeen')}</th><th>{t('phones.firmware')}</th
-						></tr
+						><th class="col-opt-lg">{t('phones.mac')}</th><th class="col-opt"
+							>{t('phones.lastSeen')}</th
+						><th class="col-opt-lg">{t('phones.firmware')}</th></tr
 					>
 					<tr class="filters">
 						<th
@@ -190,7 +194,7 @@
 								{#each usedModels as m (m)}<option value={m}>{modelName(m)}</option>{/each}
 							</select></th
 						>
-						<th
+						<th class="col-opt-lg"
 							><input
 								class="input input-sm font-mono"
 								aria-label="{t('common.filter')}: {t('phones.mac')}"
@@ -198,7 +202,7 @@
 								bind:value={filter.mac}
 							/></th
 						>
-						<th
+						<th class="col-opt"
 							><input
 								class="input input-sm"
 								aria-label="{t('common.filter')}: {t('phones.lastSeen')}"
@@ -206,7 +210,7 @@
 								bind:value={filter.seen}
 							/></th
 						>
-						<th
+						<th class="col-opt-lg"
 							><input
 								class="input input-sm font-mono"
 								aria-label="{t('common.filter')}: {t('phones.firmware')}"
@@ -229,14 +233,15 @@
 									>{/each}
 							</td>
 							<td>{modelName(p.model)}</td>
-							<td class="font-mono text-xs">{p.mac}</td>
-							<td class="text-sm">{seen(p)}{p.last_ip ? ` · ${p.last_ip}` : ''}</td>
-							<td class="font-mono text-xs">{p.last_firmware ?? '—'}</td>
+							<td class="col-opt-lg font-mono text-xs">{p.mac}</td>
+							<td class="col-opt text-sm">{seen(p)}{p.last_ip ? ` · ${p.last_ip}` : ''}</td>
+							<td class="col-opt-lg font-mono text-xs">{p.last_firmware ?? '—'}</td>
 						</tr>
 					{:else}
-						{#if !net.settled}<SkeletonRows cols={6} />{:else if filtering}<tr
-								><td colspan="6" class="text-sm text-slate-500">{t('common.noMatches')}</td></tr
-							>{/if}
+						{#if !net.settled}<SkeletonRows cols={6} />{:else if filtering}<EmptyRow
+								cols={6}
+								text={t('common.noMatches')}
+							/>{/if}
 					{/each}
 				</tbody>
 			</table>
@@ -262,7 +267,7 @@
 						<dt class="text-slate-500">{t('phones.serverUrl')}</dt>
 						<dd class="font-mono">{info.url}</dd>
 					</div>
-					<div class="grid gap-2 sm:grid-cols-3">
+					<div class="grid grid-cols-1 gap-2 @xl:grid-cols-3">
 						<div>
 							<dt class="text-slate-500">{t('login.username')}</dt>
 							<dd class="font-mono">{info.username}</dd>
@@ -304,7 +309,7 @@
 				>
 			</form>
 			{#if firmware.length > 0}
-				<div class="overflow-x-auto">
+				<div class="scroll-x">
 					<table class="table">
 						<thead>
 							<tr

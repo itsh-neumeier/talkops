@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import Skeleton from '#lib/components/Skeleton.svelte';
 	import { net } from '#lib/net.svelte.ts';
 	import { onMount } from 'svelte';
@@ -12,7 +13,7 @@
 	import IdentitySettings from '#lib/components/IdentitySettings.svelte';
 	import SipGuardSettings from '#lib/components/SipGuardSettings.svelte';
 	import SystemDiagnostics from '#lib/components/SystemDiagnostics.svelte';
-	import TranscriptionApiSettings from '#lib/components/TranscriptionApiSettings.svelte';
+	import TranscriptionSettings from '#lib/components/TranscriptionSettings.svelte';
 	import TwoFactor from '#lib/components/TwoFactor.svelte';
 	import VoicemailControl from '#lib/components/VoicemailControl.svelte';
 	import SettingsNav, { sections, type Section } from '#lib/components/SettingsNav.svelte';
@@ -170,10 +171,10 @@
 </script>
 
 <div class="space-y-4">
-	<h1>{t('nav.settings')}</h1>
-	<div class="flex flex-col gap-4 md:flex-row md:items-start">
+	<PageHeader title={t('nav.settings')} />
+	<div class="flex flex-col gap-4 lg:flex-row lg:items-start">
 		<SettingsNav {section} onsection={show} />
-		<div class="min-w-0 flex-1 space-y-4">
+		<div class="@container min-w-0 flex-1 space-y-4">
 			{#if section === 'telephony'}
 				{#if settings && hasRole('admin')}
 					<form class="card space-y-4" onsubmit={save}>
@@ -182,7 +183,7 @@
 						{#if saved}<p class="text-sm text-emerald-700 dark:text-emerald-400">
 								{t('common.saved')}
 							</p>{/if}
-						<div class="grid gap-3 sm:grid-cols-2">
+						<div class="grid grid-cols-1 gap-3 @lg:grid-cols-2">
 							<div>
 								<label for="s-cc">{t('settings.countryCode')}</label><input
 									id="s-cc"
@@ -305,33 +306,6 @@
 						<p class="hint">{t('rec.transcriptionHint')}</p>
 						{#if settings.transcription_enabled}
 							<div>
-								<label for="s-tq">{t('stt.pass1')}</label>
-								<select id="s-tq" class="input" bind:value={settings.transcription_quality}>
-									<option value="fast">{t('rec.qualityFast')}</option>
-									<option value="accurate">{t('rec.qualityAccurate')}</option>
-									<option value="best">{t('rec.qualityBest')}</option>
-									<option value="german">{t('rec.qualityGerman')}</option>
-									<option value="api">{t('stt.engineApi')}</option>
-								</select>
-								<p class="hint">{t('stt.pass1Hint')}</p>
-							</div>
-							<div>
-								<label for="s-tr">{t('stt.pass2')}</label>
-								<select id="s-tr" class="input" bind:value={settings.transcription_refine}>
-									<option value="">{t('stt.pass2None')}</option>
-									<option value="accurate">{t('rec.qualityAccurate')}</option>
-									<option value="best">{t('rec.qualityBest')}</option>
-									<option value="german">{t('rec.qualityGerman')}</option>
-									<option value="fast">{t('rec.qualityFast')}</option>
-									<option value="api">{t('stt.engineApi')}</option>
-								</select>
-								<p class="hint">{t('stt.pass2Hint')}</p>
-								{#if settings.transcription_refine === settings.transcription_quality}
-									<p class="hint text-amber-700 dark:text-amber-400">{t('stt.pass2Same')}</p>
-								{/if}
-							</div>
-							<p class="hint">{t('rec.qualityHint')}</p>
-							<div>
 								<label for="s-tv">{t('rec.vocabulary')}</label>
 								<input
 									id="s-tv"
@@ -342,9 +316,7 @@
 								/>
 								<p class="hint">{t('rec.vocabularyHint')}</p>
 							</div>
-							{#if settings.transcription_quality === 'api' || settings.transcription_refine === 'api'}
-								<TranscriptionApiSettings />
-							{/if}
+							<TranscriptionSettings />
 						{/if}
 						<div class="flex justify-end">
 							<button class="btn btn-primary">{t('common.save')}</button>
@@ -419,8 +391,8 @@
 						{#if smtpInfo}<p class="text-sm text-emerald-700 dark:text-emerald-400">
 								{smtpInfo}
 							</p>{/if}
-						<div class="grid gap-3 sm:grid-cols-3">
-							<div class="sm:col-span-2">
+						<div class="grid grid-cols-1 gap-3 @xl:grid-cols-3">
+							<div class="@xl:col-span-2">
 								<label for="smtp-host">{t('smtp.host')}</label>
 								<input
 									id="smtp-host"

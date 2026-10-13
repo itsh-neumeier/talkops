@@ -118,7 +118,10 @@ rest_command:
 - **Station registriert sich nicht:** „SIP Server“ an der Station aus? Domain
   `talkops.local`, Benutzer `8001-1`? Ist der SIP-Port der Anlage erreichbar?
 - **Kein Bild am Telefon:** Das Telefon muss Video (H.264) können, z. B.
-  Yealink T58W/VP59. Audio funktioniert immer.
+  Yealink T58W/VP59. Audio funktioniert immer. Eine Warteschlange als Ziel
+  und ein WLAN-Handset mit dem Codec-Profil *HD* oder *Robust* erhalten kein
+  Video. Die Türsprechstelle sendet ihr Bild an alle angerufenen Telefone;
+  für diesen lokalen Anruf ist *Videoanrufe* an der Nebenstelle nicht nötig.
 - **Tür öffnet per Tastenton nicht:** Nur ein DTMF-Verfahren an der Station
   wählen (RFC 2833).
 - **„nicht erreichbar“ in TalkOps:** HTTP-Zugang (IP, Port, Login) prüfen –

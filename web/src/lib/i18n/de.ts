@@ -176,10 +176,10 @@ const de: Record<keyof typeof en, string> = {
 	'ext.hideCallerId': 'Rufnummer unterdrücken (CLIR)',
 	'ext.video': 'Videoanrufe',
 	'ext.videoHint':
-		'Interne Anrufe zu einer anderen Nebenstelle mit eingeschaltetem Video können Video übertragen; alles andere ist nur Audio. Türsprechstellen zeigen ihr Bild immer.',
+		'Anrufe mit einer anderen Nebenstelle mit eingeschaltetem Video (auch in Ruf-/Klingelgruppen) können Video übertragen, ebenso Anrufe über einen Trunk mit Video. Alles andere ist nur Audio. Türsprechstellen zeigen ihr Bild immer.',
 	'trunk.video': 'Videoanrufe über diesen Trunk',
 	'trunk.videoHint':
-		'Nur einschalten, wenn der Anbieter Video unterstützt (H.264/VP8). Aus: Anrufe zum Anbieter sind nur Audio, auch über die Video-Taste.',
+		'Nur einschalten, wenn der Anbieter Video unterstützt (H.264/VP8); die meisten Anbieter können das nicht. Aus: Anrufe zum und vom Anbieter sind nur Audio, und Telefone fragen nicht, ob sie mit Video annehmen sollen.',
 	'ext.ringTimeout': 'Klingeldauer bis Voicemail/Weiterleitung (Sekunden)',
 	'ext.new': 'Neue Nebenstelle',
 	'ext.devices': 'Geräte',

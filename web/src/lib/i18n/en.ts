@@ -177,10 +177,10 @@ export default {
 	'ext.hideCallerId': 'Hide caller ID (CLIR)',
 	'ext.video': 'Video calls',
 	'ext.videoHint':
-		'Internal calls to another extension with video switched on can carry video; everything else is audio-only. Door stations always show their video.',
+		'Calls with another extension with video switched on (also in ring groups) can carry video, as can calls through a trunk with video. Everything else is audio-only. Door stations always show their video.',
 	'trunk.video': 'Video calls via this trunk',
 	'trunk.videoHint':
-		'Only if the provider supports video (H.264/VP8). Off: calls to the provider are audio-only, even from the video button.',
+		'Only if the provider supports video (H.264/VP8); most providers do not. Off: calls to and from the provider are audio-only, and phones are not asked to answer with video.',
 	'ext.ringTimeout': 'Ring time before voicemail/forwarding (seconds)',
 	'ext.new': 'New extension',
 	'ext.devices': 'Devices',

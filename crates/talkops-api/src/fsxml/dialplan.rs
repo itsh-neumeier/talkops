@@ -100,6 +100,34 @@ pub struct Routing<'a> {
     pub telephony: &'a crate::telephony::Telephony,
     /// Call blocking (own list, anonymous, PhoneBlock).
     pub spam: &'a crate::spam::SpamCheck,
+    /// Which called extensions get video on this call (ADR 0025). The plan
+    /// of the call sets it; [`CallVideo::Off`] for a new lookup.
+    pub video: CallVideo,
+}
+
+/// Video policy of a call (ADR 0025). The SIP profiles offer audio only, so
+/// a called device gets video only through a per-leg codec list.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum CallVideo {
+    /// Audio only.
+    #[default]
+    Off,
+    /// Video to the called extensions that have video switched on, with
+    /// this codec list.
+    Extensions(&'static str),
+    /// Video to all called extensions (a door station rings).
+    All(&'static str),
+}
+
+impl CallVideo {
+    /// Codec list with video for the devices of `ext`, if they get video.
+    fn codecs_for(self, ext: &Extension) -> Option<&'static str> {
+        match self {
+            CallVideo::Off => None,
+            CallVideo::Extensions(codecs) => ext.video_enabled.then_some(codecs),
+            CallVideo::All(codecs) => Some(codecs),
+        }
+    }
 }
 
 /// Decides how to handle a call. Never fails open: errors become rejections.
@@ -150,6 +178,62 @@ fn with_caller_codecs(req: &CallRequest, actions: Vec<Action>) -> Vec<Action> {
         }
     }));
     pinned
+}
+
+/// The caller's device has a codec profile (ADR 0023): a Wi-Fi handset,
+/// which never gets video.
+fn has_codec_profile(req: &CallRequest) -> bool {
+    req.var("talkops_codec_profile")
+        .and_then(CodecProfile::parse)
+        .and_then(codecs::leg_media)
+        .is_some()
+}
+
+/// The caller's SDP offer has an active video stream. Without it no called
+/// phone gets a video offer (and asks to answer with video).
+fn offers_video(req: &CallRequest) -> bool {
+    req.var("switch_r_sdp").is_some_and(|sdp| {
+        sdp.lines()
+            .filter_map(|l| l.strip_prefix("m=video "))
+            .any(|rest| !rest.starts_with('0'))
+    })
+}
+
+/// A destination where a called phone can get video: an extension with
+/// video (or one of the `extra` extensions that ring with it), or a ring
+/// group, whose members get video per leg.
+async fn video_destination(
+    pool: &PgPool,
+    tenant: TenantId,
+    kind: NumberDestination,
+    id: Option<Uuid>,
+    extra: &[Uuid],
+) -> bool {
+    match (kind, id) {
+        (NumberDestination::Extension, Some(main)) => {
+            for ext in std::iter::once(main).chain(extra.iter().copied()) {
+                if extensions::get(pool, tenant, ext)
+                    .await
+                    .is_ok_and(|e| e.video_enabled)
+                {
+                    return true;
+                }
+            }
+            false
+        }
+        (NumberDestination::RingGroup, Some(_)) => true,
+        _ => false,
+    }
+}
+
+/// Media of a call that can carry video (ADR 0025): the caller's leg
+/// accepts `with_video`. The called legs get `audio`, unless their own
+/// per-leg codec list has video (see [`device_endpoint`]).
+fn video_media(audio: &str, with_video: &str) -> [Action; 2] {
+    [
+        set("absolute_codec_string", with_video),
+        ("export", format!("nolocal:absolute_codec_string={audio}")),
+    ]
 }
 
 /// Value of a variable the plan sets (`set`/`export name=value`).
@@ -260,6 +344,9 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
         return Ok(reject("403 Forbidden"));
     };
     let settings = settings::get(pool, tenant).await?;
+    // Video only from an extension with video that offers it; a device with
+    // a codec profile (a Wi-Fi handset) stays audio-only (ADR 0025).
+    let caller_video = caller.video_enabled && !has_codec_profile(req) && offers_video(req);
     // BLF keys monitoring a park slot dial `park+*51`.
     let raw_dest = req
         .destination
@@ -322,23 +409,33 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
     }
 
     // A door station rings: whatever it dials goes to its configured target.
+    // Its picture goes to all called phones; it is a local call.
     if let Some(station) = doors::for_extension(pool, caller.id).await? {
         let (kind, id) = station.route(&dest);
         actions.push(set("talkops_direction", "internal"));
         actions.push(set("talkops_door_id", station.id.to_string()));
         actions.push(set("talkops_door_dialed", dest.clone()));
+        let mut video = CallVideo::Off;
+        if !has_codec_profile(req) && offers_video(req) {
+            actions.extend(video_media(AUDIO_CODECS, AUDIO_VIDEO_CODECS));
+            video = CallVideo::All(AUDIO_VIDEO_CODECS);
+        }
+        let r = &Routing { video, ..*r };
         let name = sanitize_value(&station.name);
         actions.extend(route_to(r, tenant, kind, id, &name, 0).await?);
         return Ok(actions);
     }
 
     if let Some((user, host, hide)) = sip_address(req).filter(|_| !explicit_internal_call) {
+        if !settings.sip_uri_dialing {
+            return Ok(reject("403 Forbidden"));
+        }
         actions.extend(
             plan_sip_address(
                 r,
                 tenant,
                 &caller,
-                &settings,
+                caller_video,
                 &user,
                 &host,
                 hide_once || hide,
@@ -355,17 +452,22 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
 
     if let Some((kind, id)) = numbering::resolve(pool, tenant, &dest).await? {
         actions.push(set("talkops_direction", "internal"));
-        // Video between two extensions that both have it switched on;
-        // everything else is audio-only.
-        let video = caller.video_enabled
-            && kind == NumberDestination::Extension
-            && extensions::get(pool, tenant, id)
-                .await
-                .is_ok_and(|e| e.video_enabled);
-        if !video {
+        // Video between extensions that have it switched on: to a single
+        // extension, or to the members of a ring group that have it.
+        // Everything else is audio-only.
+        let video = caller_video && video_destination(pool, tenant, kind, Some(id), &[]).await;
+        let mut call_video = CallVideo::Off;
+        if video {
+            actions.extend(video_media(AUDIO_CODECS, AUDIO_VIDEO_CODECS));
+            call_video = CallVideo::Extensions(AUDIO_VIDEO_CODECS);
+        } else {
             // Exported: the called leg must not be offered video either.
             actions.push(("export", format!("absolute_codec_string={AUDIO_CODECS}")));
         }
+        let r = &Routing {
+            video: call_video,
+            ..*r
+        };
         let name = sanitize_value(&caller.display_name);
         actions.extend(route_to(r, tenant, kind, Some(id), &name, 0).await?);
         return Ok(actions);
@@ -429,7 +531,7 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
     // Video to the provider only when the trunk and the caller allow it.
     // Exported, so the provider leg is offered video too (the trunk
     // profile itself only lists audio codecs).
-    if caller.video_enabled && route.video_enabled {
+    if caller_video && route.video_enabled {
         for (app, data) in &mut actions {
             if *app == "set" && data.starts_with("absolute_codec_string=") {
                 *app = "export";
@@ -491,14 +593,11 @@ async fn plan_sip_address(
     r: &Routing<'_>,
     tenant: TenantId,
     caller: &Extension,
-    settings: &TenantSettings,
+    caller_video: bool,
     user: &str,
     host: &str,
     hide_once: bool,
 ) -> CoreResult<Vec<Action>> {
-    if !settings.sip_uri_dialing {
-        return Ok(reject("403 Forbidden"));
-    }
     let gateway = trunks::active_gateways(r.pool)
         .await?
         .into_iter()
@@ -521,11 +620,20 @@ async fn plan_sip_address(
         set("hangup_after_bridge", "true"),
         set("dtmf_type", "rfc2833"),
     ];
-    // Internet peers: Opus first; video only where the caller has it.
-    let mut codecs = AUDIO_CODECS.to_owned();
-    if caller.video_enabled {
-        codecs = format!("{codecs},{VIDEO_CODECS}");
-    }
+    // Internet peers: Opus first. Video only through a trunk with video
+    // and from a caller with video; a direct peer is external and gets
+    // audio only (ADR 0025).
+    let video = match &gateway {
+        Some(g) if caller_video => trunks::get(r.pool, tenant, g.trunk_id)
+            .await
+            .is_ok_and(|t| t.video_enabled),
+        _ => false,
+    };
+    let codecs = if video {
+        AUDIO_VIDEO_CODECS
+    } else {
+        AUDIO_CODECS
+    };
     a.push(("export", format!("absolute_codec_string={codecs}")));
     match gateway {
         Some(g) => {
@@ -555,11 +663,19 @@ async fn plan_sip_address(
 
 /// Audio codecs for internal calls without video (browser and phones).
 const AUDIO_CODECS: &str = "OPUS,G722,PCMA,PCMU";
+/// [`AUDIO_CODECS`] and [`VIDEO_CODECS`]: legs of internal calls with video.
+const AUDIO_VIDEO_CODECS: &str = "OPUS,G722,PCMA,PCMU,H264,VP8";
 /// Offered to phones on calls from a trunk. Without it FreeSWITCH offers
 /// only the trunk's codec (e.g. just G722), and a phone that does not take
 /// that one answers `488 Not Acceptable Here` (seen with a Yealink AX86R).
 /// The trunk's own codecs come first so most calls need no transcoding.
 const TRUNK_TO_PHONE_CODECS: &str = "G722,PCMA,PCMU,OPUS";
+/// [`TRUNK_TO_PHONE_CODECS`] and [`VIDEO_CODECS`]: legs to phones with video
+/// on calls from a trunk with video.
+const TRUNK_TO_PHONE_VIDEO_CODECS: &str = "G722,PCMA,PCMU,OPUS,H264,VP8";
+/// Codecs of the trunk leg on calls from a trunk with video: the audio
+/// codecs of the external profile and [`VIDEO_CODECS`].
+const TRUNK_VIDEO_CODECS: &str = "G722,PCMA,PCMU,H264,VP8";
 /// Video codecs added where video is allowed.
 const VIDEO_CODECS: &str = "H264,VP8";
 
@@ -815,9 +931,10 @@ async fn bridge_devices(
     if devices.is_empty() {
         return Ok(vm.unwrap_or_else(|| reject("480 Temporarily Unavailable")));
     }
+    let video = r.video.codecs_for(target);
     let endpoints: Vec<String> = devices
         .iter()
-        .map(device_endpoint)
+        .map(|d| device_endpoint(d, video))
         .chain(std::iter::once(format!("pickup/{}", pickup_group(target))))
         .collect();
     let dial = dial_string(&[endpoints], false, 0);
@@ -1123,6 +1240,28 @@ async fn plan_public(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Actio
             actions.push(set("talkops_extension_id", ext.to_string()));
         }
     }
+    // Most providers have no video: only a trunk with video switched on
+    // sends video to the called extensions that have it (ADR 0025).
+    // The trunk leg accepts video only if the provider offers it and a
+    // called phone can get it.
+    let trunk_video = offers_video(req)
+        && trunks::get(pool, tenant, trunk_id)
+            .await
+            .is_ok_and(|t| t.video_enabled)
+        && video_destination(
+            pool,
+            tenant,
+            destination_type,
+            destination_id,
+            &extra_extensions,
+        )
+        .await;
+    let mut video = CallVideo::Off;
+    if trunk_video {
+        actions.push(set("absolute_codec_string", TRUNK_VIDEO_CODECS));
+        video = CallVideo::Extensions(TRUNK_TO_PHONE_VIDEO_CODECS);
+    }
+    let r = &Routing { video, ..*r };
     let routed = match (destination_type, destination_id) {
         (NumberDestination::Extension, Some(main)) if !extra_extensions.is_empty() => {
             ring_extensions(r, tenant, main, &extra_extensions).await?
@@ -1547,10 +1686,11 @@ async fn ring_legs(
         if !ext.enabled || ext.dnd {
             continue;
         }
+        let video = r.video.codecs_for(&ext);
         let mut endpoints: Vec<String> = extensions::ring_targets(r.pool, ext.id)
             .await?
             .iter()
-            .map(device_endpoint)
+            .map(|d| device_endpoint(d, video))
             .collect();
         if endpoints.is_empty() {
             continue;
@@ -1566,11 +1706,15 @@ async fn ring_legs(
 /// the caller's exported variables on the new channel after it is created,
 /// so only `[…]` variables with `local_var_clobber` win over the exported
 /// codec list. `^^;` keeps the commas of the codec list in the variable.
-fn device_endpoint(target: &extensions::RingTarget) -> String {
+///
+/// `video` is the codec list with video if the call allows video to this
+/// device (ADR 0025). A device with a codec profile stays audio-only.
+fn device_endpoint(target: &extensions::RingTarget, video: Option<&str>) -> String {
     let user = format!("user/{}@{SIP_DOMAIN}", sanitize_value(&target.sip_username));
-    match codecs::leg_media(target.effective_codec_profile()) {
-        Some(m) => format!("[^^;{}]{user}", m.joined(";")),
-        None => user,
+    match (codecs::leg_media(target.effective_codec_profile()), video) {
+        (Some(m), _) => format!("[^^;{}]{user}", m.joined(";")),
+        (None, Some(list)) => format!("[^^;absolute_codec_string={list}]{user}"),
+        (None, None) => user,
     }
 }
 
@@ -1708,13 +1852,12 @@ mod tests {
 
     #[test]
     fn device_endpoints_carry_the_codec_profile() {
-        let desk = device_endpoint(&target("20-1", DeviceKind::Desk, None));
+        let desk = device_endpoint(&target("20-1", DeviceKind::Desk, None), None);
         assert_eq!(desk, "user/20-1@talkops.local");
-        let robust = device_endpoint(&target(
-            "21-1",
-            DeviceKind::Wifi,
-            Some(CodecProfile::Robust),
-        ));
+        let robust = device_endpoint(
+            &target("21-1", DeviceKind::Wifi, Some(CodecProfile::Robust)),
+            None,
+        );
         assert_eq!(
             robust,
             "[^^;absolute_codec_string=iLBC@20i,iLBC@30i,PCMA,PCMU;jitterbuffer_msec=60:200;\
@@ -1733,5 +1876,70 @@ mod tests {
                  [leg_timeout=15]{robust}"
             )
         );
+    }
+
+    #[test]
+    fn video_goes_only_to_legs_that_allow_it() {
+        let desk = target("20-1", DeviceKind::Desk, None);
+        assert_eq!(
+            device_endpoint(&desk, Some(AUDIO_VIDEO_CODECS)),
+            "[^^;absolute_codec_string=OPUS,G722,PCMA,PCMU,H264,VP8]user/20-1@talkops.local"
+        );
+        // A Wi-Fi handset keeps its audio-only codec profile.
+        let handset = target("21-1", DeviceKind::Wifi, None);
+        let endpoint = device_endpoint(&handset, Some(AUDIO_VIDEO_CODECS));
+        assert!(endpoint.starts_with("[^^;absolute_codec_string=G722,PCMA,PCMU;"));
+        // The per-leg list must win over the exported audio list.
+        let legs = vec![vec![device_endpoint(&desk, Some(AUDIO_VIDEO_CODECS))]];
+        assert!(dial_string(&legs, false, 20).starts_with("{local_var_clobber=true}"));
+    }
+
+    #[test]
+    fn call_video_selects_the_extensions() {
+        let mut ext = Extension {
+            id: Uuid::nil(),
+            number: "20".into(),
+            display_name: String::new(),
+            user_id: None,
+            outbound_number_id: None,
+            hide_caller_id: false,
+            ring_timeout_secs: 20,
+            enabled: true,
+            dnd: false,
+            forward_all: None,
+            record_calls: "inherit".into(),
+            video_enabled: false,
+        };
+        let codecs = AUDIO_VIDEO_CODECS;
+        assert_eq!(CallVideo::Off.codecs_for(&ext), None);
+        assert_eq!(CallVideo::Extensions(codecs).codecs_for(&ext), None);
+        assert_eq!(CallVideo::All(codecs).codecs_for(&ext), Some(codecs));
+        ext.video_enabled = true;
+        assert_eq!(CallVideo::Off.codecs_for(&ext), None);
+        assert_eq!(CallVideo::Extensions(codecs).codecs_for(&ext), Some(codecs));
+    }
+
+    #[test]
+    fn only_an_active_video_stream_is_a_video_offer() {
+        let req = |sdp: &str| CallRequest::default().with_var("switch_r_sdp", sdp);
+        let audio = "v=0\r\nm=audio 4000 RTP/AVP 0\r\n";
+        assert!(!offers_video(&CallRequest::default()));
+        assert!(!offers_video(&req(audio)));
+        assert!(offers_video(&req(&format!(
+            "{audio}m=video 4002 RTP/AVP 96\r\n"
+        ))));
+        assert!(!offers_video(&req(&format!(
+            "{audio}m=video 0 RTP/AVP 96\r\n"
+        ))));
+    }
+
+    #[test]
+    fn video_codec_lists_add_video_to_the_audio_lists() {
+        assert_eq!(AUDIO_VIDEO_CODECS, format!("{AUDIO_CODECS},{VIDEO_CODECS}"));
+        assert_eq!(
+            TRUNK_TO_PHONE_VIDEO_CODECS,
+            format!("{TRUNK_TO_PHONE_CODECS},{VIDEO_CODECS}")
+        );
+        assert_eq!(TRUNK_VIDEO_CODECS, "G722,PCMA,PCMU,H264,VP8");
     }
 }

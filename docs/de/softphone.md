@@ -155,11 +155,24 @@ Dauerhaft unterdrücken lässt sie sich an der Nebenstelle.
 ## Video
 
 Video ist pro Nebenstelle freizuschalten (Nebenstelle → *Videoanrufe*, Standard
-aus). Interne Anrufe übertragen Video nur, wenn beide Nebenstellen es
-eingeschaltet haben; Anrufe über einen Trunk nur, wenn zusätzlich am Trunk
-*Videoanrufe über diesen Trunk* an ist (nur bei Anbietern mit Video). Sonst wird
-nur Audio übertragen – auch über die Video-Taste, die das Softphone ohne
-Freischaltung gar nicht erst anzeigt. Türsprechstellen senden ihr Bild immer.
+aus). Ein Anruf kann nur Video nutzen, wenn der Anrufer Video sendet. TalkOps
+bietet Video dann nur den Telefonen an, die der Anruf erlaubt:
+
+| Anruf | Video |
+| --- | --- |
+| Nebenstelle zu Nebenstelle | wenn beide Nebenstellen Video haben |
+| Nebenstelle zu Ruf-/Klingelgruppe | an die Mitglieder mit Video |
+| Türsprechstelle | an alle angerufenen Telefone (lokaler Anruf) |
+| Von oder zu einem Trunk | nur wenn der Trunk *Videoanrufe über diesen Trunk* hat und die Nebenstelle Video hat |
+| Warteschlangen, Voicemail, Sprachmenüs, Konferenzen, SIP-Adressen ohne Trunk | nie |
+
+Die meisten Anbieter unterstützen kein Video. Dort *Videoanrufe über diesen
+Trunk* ausgeschaltet lassen. Dann fragt ein Videotelefon bei Anrufen von
+außen nie, ob es mit Video annehmen soll. Ein WLAN-Handset mit dem
+Codec-Profil *HD* oder *Robust* erhält kein Video.
+
+Das Softphone zeigt die Video-Taste nur bei einer Nebenstelle mit Video und
+*Mit Video annehmen* nur, wenn der eingehende Anruf Video enthält.
 
 
 Video zu Tischtelefonen (z. B. Yealink T58W, VP59) und Türsprechstellen

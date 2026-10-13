@@ -155,11 +155,23 @@ extension's setting.
 ## Video
 
 Video is switched on per extension (extension → *Video calls*, off by
-default). Internal calls carry video only when both extensions have it on;
-calls via a trunk only if the trunk's *Video calls via this trunk* is on as
-well (only for providers with video). Otherwise calls are audio-only – also
-from the video button, which the softphone hides without video. Door stations
-always send their picture.
+default). A call can use video only if the caller sends video. TalkOps then
+offers video only to the phones that the call allows:
+
+| Call | Video |
+| --- | --- |
+| Extension to extension | when both extensions have video |
+| Extension to ring group | to the members with video |
+| Door station | to all called phones (local call) |
+| From or to a trunk | only if the trunk has *Video calls via this trunk* and the extension has video |
+| Queues, voicemail, menus, conferences, SIP addresses without a trunk | never |
+
+Most providers have no video. Keep *Video calls via this trunk* off for them.
+Then a call from outside never asks a video phone to answer with video.
+A Wi-Fi handset with the codec profile *HD* or *Robust* gets no video.
+
+The softphone shows the video button only for an extension with video, and
+*Answer with video* only when the incoming call has video.
 
 
 Video to desk phones (e.g. Yealink T58W, VP59) and door stations uses H.264;

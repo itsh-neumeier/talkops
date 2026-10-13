@@ -5,7 +5,7 @@
 - Task ID: 20261013-codex-release-1.7.8
 - Date: 2026-10-13, Europe/Berlin
 - Tool: Codex
-- Status: In progress. Integrated; final target verification pending.
+- Status: In progress. Target verified; publication workflow running.
 - Branch: codex/release-1.7.8
 - Base commit: 21f5a5158978bfdddb86c293cdf4688c73223e5b (remote main, 1.7.7)
 - Integration PR: https://github.com/itsh-neumeier/talkops/pull/15
@@ -58,8 +58,11 @@ this batch. The API replacement is stated in the release upgrade notes.
 - Integration PR #15 merged as `8fe0192a8067d0dcecb005075b876ea0f24bd7b3`.
   Its tree exactly matches candidate `eceed00f5726fcf1c7cb336291e208b5925bfed7`.
   All three source heads are ancestors. No open PR remains at this checkpoint.
-- Pending: resulting target CI/E2E (38394131797, 38394131652),
-  publication workflow and registry verification.
+- Passed: resulting target CI/E2E (38394131797, 38394131652).
+  Both binaries report 1.7.8. The target remained unchanged before tagging.
+- Tag v1.7.8 was created and pushed once on the checked commit
+  `8fe0192a8067d0dcecb005075b876ea0f24bd7b3`. No open PR remained.
+- Pending: publication workflow 38396318948 and registry verification.
 - Local Linux Docker/DB/LDAP services unavailable; full runtime checks use CI.
 - Manual integration review. CodeRabbit CLI unavailable.
 - STE review: full official standard unavailable; full language review pending.
@@ -74,9 +77,8 @@ directly verified. Existing transcripts do not change.
 
 ## Next action
 
-Verify the resulting main commit and tag it only after successful CI/E2E.
-Verify the
-release and all three amd64/arm64 manifests, labels and stable moving tags.
+Verify workflow 38396318948, the GitHub release and all three amd64/arm64
+manifests, labels and stable moving tags.
 Save final publication and cleanup results in the PR and task summary.
 
 ## References

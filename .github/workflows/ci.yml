@@ -92,6 +92,7 @@ jobs:
           npm run preview -- --host 127.0.0.1 --port 5184 > "$RUNNER_TEMP/talkops-preview.log" 2>&1 &
           for i in $(seq 1 30); do curl -fsS http://127.0.0.1:5184/ >/dev/null && break; sleep 1; done
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/active-calls.mjs
+          PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/transcription-settings.mjs
 
   compose:
     name: Compose files

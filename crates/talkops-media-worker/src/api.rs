@@ -2,9 +2,11 @@
 //! OpenAI, Groq, Mistral or a self-hosted server.
 //!
 //! Each channel of a recording is sent on its own (speaker labels as with
-//! local Whisper), as 16 kHz mono WAV. Models with segment timestamps
+//! local Whisper), as 16 kHz mono WAV. Models with timestamps
 //! (`verbose_json`, e.g. `whisper-1`) get the channel in chunks of up to
-//! ten minutes (upload limits are around 25 MB). Models without timestamps
+//! ten minutes (upload limits are around 25 MB); word timestamps are asked
+//! for too, and give short lines in the correct order of both parties
+//! ([crate::utterances]). Models without timestamps
 //! (e.g. `gpt-4o-transcribe`) get each stretch of speech on its own, so the
 //! conversation can still be put in order; servers that reject the OpenAI
 //! options (`prompt`, `response_format`) get only file, model and language. Requests run through curl like
@@ -21,7 +23,8 @@ use talkops_core::transcription_api::ApiConfig;
 use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
 
-use crate::transcribe::{SAMPLE_RATE, initial_prompt, prepare, tempdir, write_wav};
+use crate::transcribe::{SAMPLE_RATE, initial_prompt, prepare, tempdir, to_lines, write_wav};
+use crate::utterances::Word;
 
 /// Longest chunk sent at once (10 min of 16 kHz 16-bit mono ≈ 19 MB).
 const MAX_CHUNK_SECS: usize = 600;
@@ -44,27 +47,24 @@ pub async fn transcribe(
         tokio::task::spawn_blocking(move || prepare(&wav, &dir)).await??
     };
     let prompt = initial_prompt(language, vocabulary);
-    let mut segments = Vec::new();
+    let request = Request {
+        cfg,
+        language,
+        prompt: &prompt,
+        dir: &work.path,
+        minimal: AtomicBool::new(false),
+        no_words: AtomicBool::new(false),
+    };
+    let mut parties = Vec::new();
     for (i, (speaker, _, samples)) in channels.into_iter().enumerate() {
-        let request = Request {
-            cfg,
-            language,
-            prompt: &prompt,
-            dir: &work.path,
-            minimal: AtomicBool::new(false),
-        };
-        let mut parsed = match request.timed(&samples, i).await? {
-            Some(segs) => segs,
+        let words = match request.timed(&samples, i).await? {
+            Some(words) => words,
             // No timestamps from this model: send each stretch of speech.
             None => request.by_utterance(&samples, i).await?,
         };
-        for seg in &mut parsed {
-            seg.speaker = speaker.to_owned();
-        }
-        segments.extend(parsed.into_iter().filter(|s| !s.text.trim().is_empty()));
+        parties.push((speaker, words, samples));
     }
-    segments.sort_by(|a, b| a.start.total_cmp(&b.start));
-    Ok(segments)
+    Ok(to_lines(&parties))
 }
 
 struct Request<'a> {
@@ -74,11 +74,15 @@ struct Request<'a> {
     dir: &'a Path,
     /// The server rejects `prompt`/`response_format`: send only the basics.
     minimal: AtomicBool,
+    /// The server rejects word timestamps: ask for segments only.
+    no_words: AtomicBool,
 }
 
 /// Which form fields a request carries.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Form {
+    /// Segment and word timestamps (`verbose_json`), with the vocabulary prompt.
+    Words,
     /// Segment timestamps (`verbose_json`), with the vocabulary prompt.
     Verbose,
     /// Plain text (`json`), with the vocabulary prompt.
@@ -93,6 +97,9 @@ struct Answer {
     #[serde(default)]
     text: String,
     segments: Option<Vec<ApiSegment>>,
+    /// With `timestamp_granularities[]=word`; without punctuation.
+    #[serde(default)]
+    words: Vec<ApiWord>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -102,6 +109,40 @@ struct ApiSegment {
     text: String,
 }
 
+#[derive(Debug, Deserialize)]
+struct ApiWord {
+    start: f32,
+    end: f32,
+}
+
+/// Words with times and punctuation: each segment's words get the times of
+/// the timed words inside it. If the counts differ, the segment stays one
+/// piece with its own times.
+fn timed_words(segments: Vec<ApiSegment>, words: &[ApiWord], offset: f32) -> Vec<Word> {
+    let mut out = Vec::new();
+    for seg in segments {
+        let texts: Vec<&str> = seg.text.split_whitespace().collect();
+        let inside: Vec<&ApiWord> = words
+            .iter()
+            .filter(|w| (w.start + w.end) / 2.0 >= seg.start && (w.start + w.end) / 2.0 <= seg.end)
+            .collect();
+        if !texts.is_empty() && texts.len() == inside.len() {
+            out.extend(texts.iter().zip(inside).map(|(text, w)| Word {
+                start: offset + w.start,
+                end: offset + w.end,
+                text: (*text).to_owned(),
+            }));
+        } else {
+            out.push(Word {
+                start: offset + seg.start,
+                end: offset + seg.end,
+                text: seg.text.trim().to_owned(),
+            });
+        }
+    }
+    out
+}
+
 enum Outcome {
     Ok(Answer),
     /// The server rejected the request (HTTP 400/422), e.g. `verbose_json`.
@@ -109,34 +150,45 @@ enum Outcome {
 }
 
 impl Request<'_> {
-    /// With segment timestamps, in chunks. `None` if the model has none.
-    async fn timed(&self, samples: &[f32], channel: usize) -> anyhow::Result<Option<Vec<Segment>>> {
+    /// With timestamps, in chunks. `None` if the model has none.
+    async fn timed(&self, samples: &[f32], channel: usize) -> anyhow::Result<Option<Vec<Word>>> {
         let chunk = MAX_CHUNK_SECS * SAMPLE_RATE as usize;
         let mut out = Vec::new();
         for (n, part) in samples.chunks(chunk).enumerate() {
             let offset = (n * MAX_CHUNK_SECS) as f32;
             let file = self.dir.join(format!("api-{channel}-{n}.wav"));
             write_wav(&file, part)?;
-            let answer = match self.send(&file, Form::Verbose).await? {
-                Outcome::Ok(a) => a,
-                Outcome::Rejected(_) => return Ok(None),
+            let mut answer = None;
+            for form in [Form::Words, Form::Verbose] {
+                // Once a server rejected word timestamps, skip them.
+                if form == Form::Words && self.no_words.load(Ordering::Relaxed) {
+                    continue;
+                }
+                match self.send(&file, form).await? {
+                    Outcome::Ok(a) => {
+                        answer = Some(a);
+                        break;
+                    }
+                    Outcome::Rejected(_) if form == Form::Words => {
+                        self.no_words.store(true, Ordering::Relaxed)
+                    }
+                    Outcome::Rejected(_) => return Ok(None),
+                }
+            }
+            let Some(answer) = answer else {
+                return Ok(None);
             };
             let Some(segs) = answer.segments else {
                 // Accepted, but without timestamps.
                 return Ok(None);
             };
-            out.extend(segs.into_iter().map(|s| Segment {
-                start: offset + s.start,
-                end: offset + s.end,
-                speaker: String::new(),
-                text: s.text.trim().to_owned(),
-            }));
+            out.extend(timed_words(segs, &answer.words, offset));
         }
         Ok(Some(out))
     }
 
     /// One request per stretch of speech; the stretch gives the time.
-    async fn by_utterance(&self, samples: &[f32], channel: usize) -> anyhow::Result<Vec<Segment>> {
+    async fn by_utterance(&self, samples: &[f32], channel: usize) -> anyhow::Result<Vec<Word>> {
         let mut out = Vec::new();
         for (n, (start, end)) in speech_regions(samples).into_iter().enumerate() {
             let from = (start * SAMPLE_RATE as f32) as usize;
@@ -161,10 +213,9 @@ impl Request<'_> {
                 }
             }
             let answer = answer.context("no answer from transcription API")?;
-            out.push(Segment {
+            out.push(Word {
                 start,
                 end,
-                speaker: String::new(),
                 text: answer.text.trim().to_owned(),
             });
         }
@@ -188,6 +239,12 @@ impl Request<'_> {
         .args(["--form-string", &format!("model={}", self.cfg.model)])
         .args(["--form-string", &format!("language={}", self.language)]);
         match form {
+            Form::Words => {
+                cmd.args(["--form-string", &format!("prompt={}", self.prompt)])
+                    .args(["--form-string", "response_format=verbose_json"])
+                    .args(["--form-string", "timestamp_granularities[]=segment"])
+                    .args(["--form-string", "timestamp_granularities[]=word"]);
+            }
             Form::Verbose => {
                 cmd.args(["--form-string", &format!("prompt={}", self.prompt)])
                     .args(["--form-string", "response_format=verbose_json"])
@@ -347,5 +404,25 @@ mod tests {
         assert_eq!(a.segments.unwrap()[0].end, 1.5);
         let a: Answer = serde_json::from_str(r#"{"text":"Hallo"}"#).unwrap();
         assert!(a.segments.is_none());
+    }
+
+    #[test]
+    fn word_times_get_the_segment_punctuation() {
+        let a: Answer = serde_json::from_str(
+            r#"{"text":"Hallo, Anna. Ja.","segments":[
+                {"start":0.0,"end":2.0,"text":" Hallo, Anna."},
+                {"start":2.0,"end":4.0,"text":" Ja so."}],
+              "words":[{"word":"Hallo","start":0.25,"end":0.5},
+                {"word":"Anna","start":0.75,"end":1.25},
+                {"word":"Ja","start":3.0,"end":3.3}]}"#,
+        )
+        .unwrap();
+        let w = timed_words(a.segments.unwrap(), &a.words, 600.0);
+        let got: Vec<_> = w.iter().map(|w| (w.start, w.text.as_str())).collect();
+        // The second segment has two words but one timed word: one piece.
+        assert_eq!(
+            got,
+            [(600.25, "Hallo,"), (600.75, "Anna."), (602.0, "Ja so.")]
+        );
     }
 }

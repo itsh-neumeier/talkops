@@ -62,6 +62,11 @@ Aufnahme und jede neue Sprachnachricht in Text um:
 
 - Zwei Gesprächsseiten werden getrennt erkannt, daher steht im Transkript,
   wer was gesagt hat (*Anrufer* / *Angerufener*).
+- Jede Zeile des Transkripts ist ein kurzer Teil eines Redebeitrags. Whisper
+  liefert für jedes Wort eine Zeit. TalkOps beginnt eine neue Zeile am
+  Satzende, bei einer Pause, wenn die andere Seite spricht, und spätestens
+  nach 10 Sekunden. Danach ordnet es die Zeilen beider Seiten nach der Zeit.
+  Vorhandene Transkripte ändern sich nicht.
 - Sprache: die Sprache der Mailbox bzw. die Standardsprache aus den
   Einstellungen.
 - Die Voicemail-Mail wartet auf das Transkript und enthält den Text
@@ -137,7 +142,8 @@ testen* (listet die Sprachmodelle des Servers, ohne Audio zu senden):
   die Daten im Haus.
 - Jede Gesprächsseite wird getrennt geschickt (16 kHz mono WAV), lange
   Gespräche in Stücken bis 10 Minuten. Modelle mit Zeitstempeln
-  (`whisper-1`, Groq) liefern die Sätze mit Zeit; bei Modellen ohne (z. B.
+  (`whisper-1`, Groq) liefern die Sätze mit Zeit; TalkOps fragt dazu die
+  Zeit jedes Worts ab und bildet daraus kurze Zeilen in richtiger Reihenfolge; bei Modellen ohne (z. B.
   `gpt-4o-transcribe`) schickt TalkOps jeden Gesprächsabschnitt einzeln,
   damit die Reihenfolge stimmt. Server, die die OpenAI-Optionen nicht
   kennen, bekommen nur Datei, Modell und Sprache.

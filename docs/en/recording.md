@@ -57,6 +57,11 @@ voicemail into text:
 
 - Both sides of a call are recognised separately, so the transcript shows who
   said what (*Caller* / *Called party*).
+- Each line of the transcript is one short part of a turn. Whisper gives a
+  time for each word. TalkOps starts a new line at the end of a sentence, at
+  a pause, when the other party speaks, and after 10 seconds at the latest.
+  Then it puts the lines of both parties in the order of their times.
+  Existing transcripts do not change.
 - Language: the voicemail box language or the default language from the
   settings.
 - The voicemail e-mail waits for the transcript and contains the text
@@ -129,7 +134,8 @@ models without sending audio):
   own server in the LAN keeps the data in-house.
 - Each side of a call is sent separately (16 kHz mono WAV), long calls in
   chunks of up to 10 minutes. Models with timestamps (`whisper-1`, Groq)
-  return sentences with times; for models without (e.g. `gpt-4o-transcribe`)
+  return sentences with times, and TalkOps also asks for the time of each
+  word to make short lines in the correct order; for models without (e.g. `gpt-4o-transcribe`)
   TalkOps sends each part of the conversation on its own so the order is
   right. Servers that do not know the OpenAI options get only file, model and
   language.

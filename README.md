@@ -66,6 +66,7 @@ first steps [EN](docs/en/first-steps.md) / [DE](docs/de/erste-schritte.md) ·
 Portainer [EN](docs/en/portainer.md) / [DE](docs/de/portainer.md) ·
 LEONET [EN](docs/en/leonet.md) / [DE](docs/de/leonet.md) ·
 Yealink phones [EN](docs/en/yealink.md) / [DE](docs/de/yealink.md) ·
+codec profiles for Wi-Fi handsets [EN](docs/en/codec-profiles.md) / [DE](docs/de/codec-profile.md) ·
 voicemail [EN](docs/en/voicemail.md) / [DE](docs/de/voicemail.md) ·
 call routing [EN](docs/en/call-routing.md) / [DE](docs/de/anrufsteuerung.md) ·
 recording & transcription [EN](docs/en/recording.md) / [DE](docs/de/aufzeichnung.md) ·

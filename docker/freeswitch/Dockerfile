@@ -14,6 +14,10 @@ ARG SOFIA_SIP_VERSION=v1.13.17
 # spandsp has no releases that match FreeSWITCH 1.10.x; this is the commit the
 # FreeSWITCH build documentation uses (master has since bumped its ABI to 4.0).
 ARG SPANDSP_COMMIT=0d2e6ac65e0e8f53d652665a743015a88bf048d4
+# iLBC (RFC 3951) for mod_ilbc, the robust codec profile (ADR 0023). Debian
+# has no package; this is the iLBC library of the FreeSWITCH project.
+ARG LIBILBC_VERSION=v0.0.1
+ARG LIBILBC_COMMIT=7cee47f9b990e0c57d5c53c131048b356b2042b8
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -41,6 +45,15 @@ RUN git clone --depth 1 --branch "${SOFIA_SIP_VERSION}" https://github.com/frees
 RUN git clone https://github.com/freeswitch/spandsp.git \
     && cd spandsp \
     && git checkout "${SPANDSP_COMMIT}" \
+    && ./bootstrap.sh \
+    && ./configure --prefix=/usr/local --disable-static \
+    && make -j"$(nproc)" \
+    && make install \
+    && ldconfig
+
+RUN git clone --depth 1 --branch "${LIBILBC_VERSION}" https://github.com/freeswitch/libilbc.git \
+    && cd libilbc \
+    && test "$(git rev-parse HEAD)" = "${LIBILBC_COMMIT}" \
     && ./bootstrap.sh \
     && ./configure --prefix=/usr/local --disable-static \
     && make -j"$(nproc)" \

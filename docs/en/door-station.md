@@ -115,7 +115,10 @@ rest_command:
 - **Station does not register:** "SIP Server" on the station off? Domain
   `talkops.local`, user `8001-1`? Is the PBX's SIP port reachable?
 - **No picture on the phone:** the phone must support video (H.264), e.g.
-  Yealink T58W/VP59. Audio always works.
+  Yealink T58W/VP59. Audio always works. A queue as the target and a Wi-Fi
+  handset with the codec profile *HD* or *Robust* get no video. Calls from
+  the door station send video to all called phones; the extension flag
+  *Video calls* is not necessary for this local call.
 - **Key tone does not open the door:** select only one DTMF method on the
   station (RFC 2833).
 - **"not reachable" in TalkOps:** check the HTTP access (IP, port, login)

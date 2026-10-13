@@ -29,6 +29,7 @@ nächste freie Nummer; überholte ADRs werden nicht gelöscht, sondern auf
 | [0021](0021-guided-recovery-and-encrypted-deployment-backups.md) | Guided recovery and encrypted deployment backups | Accepted |
 | [0022](0022-active-call-identities-and-live-previews.md) | Active call identities and local transcript previews | Accepted |
 | [0023](0023-device-codec-profiles.md) | Codec profiles per device and transcoding in FreeSWITCH | Accepted |
+| [0024](0024-video-policy.md) | Video only on local calls and trunks with video | Accepted |
 
 Vorlage: [`template.md`](template.md)
 

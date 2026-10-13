@@ -90,6 +90,13 @@ fn has(actions: &[(String, String)], app: &str, data: &str) -> bool {
     actions.iter().any(|(a, d)| a == app && d == data)
 }
 
+/// The caller's SDP offer with audio and video.
+const VIDEO_SDP: &str = "v=0\r\nm=audio 4000 RTP/AVP 0 8\r\nm=video 4002 RTP/AVP 96\r\n\
+                         a=rtpmap:96 H264/90000\r\n";
+/// The caller's SDP offer with audio only.
+const AUDIO_SDP: &str = "v=0\r\nm=audio 4000 RTP/AVP 0 8\r\n";
+const VIDEO_OFFER: [(&str, &str); 1] = [("variable_switch_r_sdp", VIDEO_SDP)];
+
 async fn internal_call(router: &axum::Router, ext: &Value, dest: &str) -> Vec<(String, String)> {
     internal_call_with(router, ext, dest, &[]).await
 }
@@ -1626,15 +1633,58 @@ async fn call_blocking(db: PgPool) {
 async fn video_only_where_enabled(db: PgPool) {
     let router = router(db);
     let f = fixture(&router).await;
+    let id = |e: &Value| e["id"].as_str().unwrap().to_owned();
     let codecs = |a: &[(String, String)]| {
         a.iter()
             .filter(|(app, d)| {
-                (app == "set" || app == "export") && d.starts_with("absolute_codec_string=")
+                (app == "set" || app == "export")
+                    && (d.starts_with("absolute_codec_string=")
+                        || d.starts_with("nolocal:absolute_codec_string="))
             })
             .map(|(app, d)| format!("{app} {d}"))
             .collect::<Vec<_>>()
     };
+    let bridge = |a: &[(String, String)]| {
+        a.iter()
+            .find(|(app, _)| app == "bridge")
+            .map(|(_, d)| d.clone())
+            .unwrap_or_default()
+    };
     let audio = "export absolute_codec_string=OPUS,G722,PCMA,PCMU".to_owned();
+    // The caller's leg accepts video; the called legs get audio by default.
+    let video_call = [
+        "set absolute_codec_string=OPUS,G722,PCMA,PCMU,H264,VP8".to_owned(),
+        "export nolocal:absolute_codec_string=OPUS,G722,PCMA,PCMU".to_owned(),
+    ];
+    let video_leg = |list: &str, user: &str| {
+        format!("[^^;absolute_codec_string={list}]user/{user}@talkops.local")
+    };
+    let internal_video = "OPUS,G722,PCMA,PCMU,H264,VP8";
+    let set_video = |e: &Value, on: bool| {
+        let mut e = e.clone();
+        e["video_enabled"] = json!(on);
+        let admin = &f.admin;
+        async move {
+            let (s, body) = admin
+                .put(&format!("/api/v1/extensions/{}", id(&e)), e.clone())
+                .await;
+            assert_eq!(s, StatusCode::OK, "{body}");
+            assert_eq!(body["video_enabled"], on);
+            e
+        }
+    };
+
+    // The SIP profile offers no video: calls without a codec list from the
+    // dialplan (queues, ESL) are audio-only. Trunk calls are negotiated
+    // late, so the dialplan decides about video.
+    let (_, conf) = fs_post(
+        &router,
+        "/fs/xml",
+        &[("section", "configuration"), ("key_value", "sofia.conf")],
+    )
+    .await;
+    assert!(!conf.contains("H264"), "{conf}");
+    assert_eq!(conf.matches("inbound-late-negotiation").count(), 2);
 
     // Default: internal calls are audio-only, trunk calls too.
     assert_eq!(
@@ -1646,26 +1696,43 @@ async fn video_only_where_enabled(db: PgPool) {
         ["set absolute_codec_string=G722,PCMA,PCMU"]
     );
 
-    let enable = |e: &Value| {
-        let mut e = e.clone();
-        e["video_enabled"] = json!(true);
-        e
-    };
-    for e in [&f.ext20, &f.ext21] {
-        let (s, body) = f
-            .admin
-            .put(
-                &format!("/api/v1/extensions/{}", e["id"].as_str().unwrap()),
-                enable(e),
-            )
-            .await;
-        assert_eq!(s, StatusCode::OK, "{body}");
-        assert_eq!(body["video_enabled"], true);
-    }
-    let ext21 = enable(&f.ext21);
-    // Both sides allow video: the browser's offer passes unchanged.
-    assert!(codecs(&internal_call(&router, &ext21, "200").await).is_empty());
-    // Not a single extension (voicemail, groups, ...): audio-only.
+    let ext20 = set_video(&f.ext20, true).await;
+    let ext21 = set_video(&f.ext21, true).await;
+    // Both sides allow video, but the caller offers none: audio only.
+    assert_eq!(
+        codecs(&internal_call(&router, &ext21, "200").await),
+        std::slice::from_ref(&audio)
+    );
+    // The caller offers video: its leg accepts it, each device of the
+    // called extension gets it.
+    let a = internal_call_with(&router, &ext21, "200", &VIDEO_OFFER).await;
+    assert_eq!(codecs(&a), video_call);
+    assert!(
+        bridge(&a).starts_with(&format!(
+            "{{local_var_clobber=true}}{},{}",
+            video_leg(internal_video, "200-1"),
+            video_leg(internal_video, "200-2")
+        )),
+        "{a:?}"
+    );
+    // A Wi-Fi handset with a codec profile stays audio-only as a caller.
+    let a = internal_call_with(
+        &router,
+        &ext21,
+        "200",
+        &[
+            ("variable_talkops_codec_profile", "hd"),
+            ("variable_switch_r_sdp", VIDEO_SDP),
+        ],
+    )
+    .await;
+    assert!(!bridge(&a).contains("H264"), "{a:?}");
+    assert!(!has(
+        &a,
+        "set",
+        &format!("absolute_codec_string={internal_video}")
+    ));
+    // Not an extension or a ring group (feature codes, voicemail): audio-only.
     assert_eq!(
         codecs(&internal_call(&router, &ext21, "*97").await).len(),
         0
@@ -1675,35 +1742,179 @@ async fn video_only_where_enabled(db: PgPool) {
         codecs(&internal_call(&router, &ext21, "030123456").await),
         ["set absolute_codec_string=G722,PCMA,PCMU"]
     );
+
+    // Ring group: video only to the members that have it.
+    let (_, ext22) = f
+        .admin
+        .post(
+            "/api/v1/extensions",
+            json!({"number": "220", "display_name": "Hall"}),
+        )
+        .await;
+    f.admin
+        .post(
+            &format!("/api/v1/extensions/{}/devices", id(&ext22)),
+            json!({"name": "Desk", "kind": "desk"}),
+        )
+        .await;
+    let (s, g) = f
+        .admin
+        .post(
+            "/api/v1/ring-groups",
+            json!({"number": "500", "name": "All", "members": [id(&ext20), id(&ext22)]}),
+        )
+        .await;
+    assert_eq!(s, StatusCode::OK, "{g}");
+    let a = internal_call_with(&router, &ext21, "500", &VIDEO_OFFER).await;
+    assert_eq!(codecs(&a), video_call);
+    let dial = bridge(&a);
+    assert!(dial.contains(&video_leg(internal_video, "200-1")), "{dial}");
+    assert!(dial.contains(",user/220-1@talkops.local"), "{dial}");
+    assert!(!dial.contains("]user/220-1"), "{dial}");
+
     // Trunk with video enabled.
     let (_, trunks) = f.admin.get("/api/v1/trunks").await;
     let mut t = trunks[0].clone();
     t["video_enabled"] = json!(true);
-    let (s, body) = f
-        .admin
-        .put(&format!("/api/v1/trunks/{}", t["id"].as_str().unwrap()), t)
-        .await;
+    let (s, body) = f.admin.put(&format!("/api/v1/trunks/{}", id(&t)), t).await;
     assert_eq!(s, StatusCode::OK, "{body}");
     assert_eq!(
-        codecs(&internal_call(&router, &ext21, "030123456").await),
+        codecs(&internal_call_with(&router, &ext21, "030123456", &VIDEO_OFFER).await),
         ["export absolute_codec_string=G722,PCMA,PCMU,H264,VP8"]
     );
     // ... but not for an extension without video.
-    let mut e20 = f.ext20.clone();
-    e20["video_enabled"] = json!(false);
-    f.admin
-        .put(
-            &format!("/api/v1/extensions/{}", e20["id"].as_str().unwrap()),
-            e20.clone(),
-        )
-        .await;
+    let ext20 = set_video(&ext20, false).await;
     assert_eq!(
-        codecs(&internal_call(&router, &e20, "030123456").await),
+        codecs(&internal_call_with(&router, &ext20, "030123456", &VIDEO_OFFER).await),
         ["set absolute_codec_string=G722,PCMA,PCMU"]
     );
     assert_eq!(
-        codecs(&internal_call(&router, &ext21, "200").await),
-        [audio]
+        codecs(&internal_call_with(&router, &ext21, "200", &VIDEO_OFFER).await),
+        std::slice::from_ref(&audio)
+    );
+}
+
+/// The policy for calls from trunks and door stations (ADR 0024).
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn video_from_trunks_and_door_stations(db: PgPool) {
+    let router = router(db);
+    let f = fixture(&router).await;
+    let id = |e: &Value| e["id"].as_str().unwrap().to_owned();
+    let inbound = |sdp: &'static str| {
+        let router = router.clone();
+        async move {
+            let (_, xml) = fs_post(
+                &router,
+                "/fs/xml",
+                &[
+                    ("section", "dialplan"),
+                    ("Caller-Context", "public"),
+                    ("Caller-Destination-Number", "+49891234567"),
+                    ("Caller-Caller-ID-Number", "+4930999888"),
+                    ("variable_switch_r_sdp", sdp),
+                ],
+            )
+            .await;
+            actions(&xml)
+        }
+    };
+    let video_leg = |list: &str, user: &str| {
+        format!("[^^;absolute_codec_string={list}]user/{user}@talkops.local")
+    };
+    let trunk_video = "G722,PCMA,PCMU,OPUS,H264,VP8";
+    let to_phones = "nolocal:absolute_codec_string=G722,PCMA,PCMU,OPUS";
+
+    // The number rings extension 200. Its trunk has no video: the trunk leg
+    // keeps the audio codecs of the profile, the phones get audio only,
+    // also when the extension has video.
+    let mut ext20 = f.ext20.clone();
+    ext20["video_enabled"] = json!(true);
+    let (s, _) = f
+        .admin
+        .put(&format!("/api/v1/extensions/{}", id(&ext20)), ext20.clone())
+        .await;
+    assert_eq!(s, StatusCode::OK);
+    let a = inbound(VIDEO_SDP).await;
+    assert!(has(&a, "export", to_phones), "{a:?}");
+    assert!(has(&a, "bridge", &ring20(&f)), "{a:?}");
+    assert!(!a.iter().any(|(_, d)| d.contains("H264")), "{a:?}");
+
+    // A trunk with video: the trunk leg accepts video, the phones of an
+    // extension with video get it.
+    let (_, trunks) = f.admin.get("/api/v1/trunks").await;
+    let mut t = trunks[0].clone();
+    t["video_enabled"] = json!(true);
+    let (s, body) = f.admin.put(&format!("/api/v1/trunks/{}", id(&t)), t).await;
+    assert_eq!(s, StatusCode::OK, "{body}");
+    // Most calls offer no video: the phones are not asked about video.
+    let a = inbound(AUDIO_SDP).await;
+    assert!(has(&a, "bridge", &ring20(&f)), "{a:?}");
+    assert!(!a.iter().any(|(_, d)| d.contains("H264")), "{a:?}");
+    let a = inbound(VIDEO_SDP).await;
+    assert!(has(&a, "export", to_phones), "{a:?}");
+    assert!(
+        has(&a, "set", "absolute_codec_string=G722,PCMA,PCMU,H264,VP8"),
+        "{a:?}"
+    );
+    let bridge = a.iter().find(|(app, _)| app == "bridge").unwrap().1.clone();
+    assert!(
+        bridge.starts_with(&format!(
+            "{{local_var_clobber=true}}{},{}",
+            video_leg(trunk_video, "200-1"),
+            video_leg(trunk_video, "200-2")
+        )),
+        "{bridge}"
+    );
+    // ... but not if the called extension has no video.
+    ext20["video_enabled"] = json!(false);
+    f.admin
+        .put(&format!("/api/v1/extensions/{}", id(&ext20)), ext20)
+        .await;
+    let a = inbound(VIDEO_SDP).await;
+    assert!(has(&a, "bridge", &ring20(&f)), "{a:?}");
+    assert!(!a.iter().any(|(_, d)| d.contains("H264")), "{a:?}");
+
+    // A door station: its picture goes to the called phones, also to an
+    // extension without video. It is a local call.
+    let (_, door) = f
+        .admin
+        .post(
+            "/api/v1/extensions",
+            json!({"number": "8001", "display_name": "Door"}),
+        )
+        .await;
+    let (s, station) = f
+        .admin
+        .post(
+            "/api/v1/door-stations",
+            json!({"name": "Door", "extension_id": id(&door),
+                   "destination_type": "extension", "destination_id": id(&f.ext20)}),
+        )
+        .await;
+    assert_eq!(s, StatusCode::OK, "{station}");
+    let a = internal_call(&router, &door, "9901").await;
+    assert!(!a.iter().any(|(_, d)| d.contains("H264")), "{a:?}");
+    let a = internal_call_with(&router, &door, "9901", &VIDEO_OFFER).await;
+    assert!(
+        has(
+            &a,
+            "set",
+            "absolute_codec_string=OPUS,G722,PCMA,PCMU,H264,VP8"
+        ),
+        "{a:?}"
+    );
+    assert!(
+        has(
+            &a,
+            "export",
+            "nolocal:absolute_codec_string=OPUS,G722,PCMA,PCMU"
+        ),
+        "{a:?}"
+    );
+    let bridge = a.iter().find(|(app, _)| app == "bridge").unwrap().1.clone();
+    assert!(
+        bridge.contains(&video_leg("OPUS,G722,PCMA,PCMU,H264,VP8", "200-1")),
+        "{bridge}"
     );
 }
 
@@ -1898,6 +2109,8 @@ async fn uri_call(
             ("Caller-Destination-Number", user),
             ("Caller-Caller-ID-Number", "200"),
             ("variable_sip_req_host", host),
+            // The phone offers video.
+            ("variable_switch_r_sdp", VIDEO_SDP),
             ("variable_talkops_tenant_id", TENANT),
             ("variable_talkops_extension_id", ext["id"].as_str().unwrap()),
         ],
@@ -1998,6 +2211,32 @@ async fn sip_addresses(db: PgPool) {
         "set",
         &format!("talkops_trunk_id={}", trunk["id"].as_str().unwrap())
     ));
+
+    // Video (ADR 0024): a direct peer is external and gets audio only; a
+    // gateway only with a trunk that has video.
+    let mut ext21 = f.ext21.clone();
+    ext21["video_enabled"] = json!(true);
+    f.admin
+        .put(
+            &format!("/api/v1/extensions/{}", ext21["id"].as_str().unwrap()),
+            ext21.clone(),
+        )
+        .await;
+    let audio = "absolute_codec_string=OPUS,G722,PCMA,PCMU";
+    let video = "absolute_codec_string=OPUS,G722,PCMA,PCMU,H264,VP8";
+    let a = uri_call(&router, &ext21, "test.echo", "sip5060.net").await;
+    assert!(has(&a, "export", audio), "{a:?}");
+    let a = uri_call(&router, &ext21, "anna", "sip2sip.info").await;
+    assert!(has(&a, "export", audio), "{a:?}");
+    let mut t = trunk.clone();
+    t["video_enabled"] = json!(true);
+    f.admin
+        .put(&format!("/api/v1/trunks/{}", t["id"].as_str().unwrap()), t)
+        .await;
+    let a = uri_call(&router, &ext21, "anna", "sip2sip.info").await;
+    assert!(has(&a, "export", video), "{a:?}");
+    let a = uri_call(&router, &f.ext20, "anna", "sip2sip.info").await;
+    assert!(has(&a, "export", audio), "{a:?}");
 
     // Inbound to the account: its own destination.
     let inbound = |account: Option<&str>| {

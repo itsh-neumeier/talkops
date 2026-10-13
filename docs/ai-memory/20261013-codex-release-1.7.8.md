@@ -5,7 +5,7 @@
 - Task ID: 20261013-codex-release-1.7.8
 - Date: 2026-10-13, Europe/Berlin
 - Tool: Codex
-- Status: In progress
+- Status: In progress. Integrated; final target verification pending.
 - Branch: codex/release-1.7.8
 - Base commit: 21f5a5158978bfdddb86c293cdf4688c73223e5b (remote main, 1.7.7)
 - Integration PR: https://github.com/itsh-neumeier/talkops/pull/15
@@ -53,7 +53,12 @@ this batch. The API replacement is stated in the release upgrade notes.
   prices match the implementation. No real API key or live request was used.
 - Passed: local npm ci/lint/check (0 errors/warnings), both Node tests and build.
   Initial lint failed on CRLF; LF normalization changed no unrelated content.
-- Pending: final candidate CI/E2E, resulting target checks,
+- Passed final candidate PR CI/E2E: 38392035664, 38392035782. Push CI/E2E:
+  38392027595, 38392027592. All relevant rollup checks passed on eceed00.
+- Integration PR #15 merged as `8fe0192a8067d0dcecb005075b876ea0f24bd7b3`.
+  Its tree exactly matches candidate `eceed00f5726fcf1c7cb336291e208b5925bfed7`.
+  All three source heads are ancestors. No open PR remains at this checkpoint.
+- Pending: resulting target CI/E2E (38394131797, 38394131652),
   publication workflow and registry verification.
 - Local Linux Docker/DB/LDAP services unavailable; full runtime checks use CI.
 - Manual integration review. CodeRabbit CLI unavailable.
@@ -69,8 +74,8 @@ directly verified. Existing transcripts do not change.
 
 ## Next action
 
-Publish the integration PR and wait for its final checks. Merge, verify the
-resulting main commit and tag it only after successful CI/E2E. Verify the
+Verify the resulting main commit and tag it only after successful CI/E2E.
+Verify the
 release and all three amd64/arm64 manifests, labels and stable moving tags.
 Save final publication and cleanup results in the PR and task summary.
 

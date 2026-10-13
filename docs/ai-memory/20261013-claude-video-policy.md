@@ -9,7 +9,7 @@
 - Branch: `claude/dreamy-dirac-1djvf7`
 - Base commit: `21f5a51` (release 1.7.7 on `main`); release 1.7.8
   (`8fe0192`) merged into the branch
-- Related commits or PR: Pending
+- Related commits or PR: https://github.com/itsh-neumeier/talkops/pull/16
 
 ## Goal
 

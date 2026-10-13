@@ -10,6 +10,14 @@ export function callTarget(input: string): { display: string; uri: string | null
 	return digits && digits.length <= 64 ? { display: digits, uri: null } : null;
 }
 
+/**
+ * Whether an SDP offer has an active video stream. TalkOps offers video only
+ * where the call allows it, so an audio-only offer gets no video button.
+ */
+export function offersVideo(sdp: string | undefined): boolean {
+	return /^m=video +[1-9][0-9]* /m.test(sdp ?? '');
+}
+
 /** Inbound CDRs can identify the destination in either extension field. */
 export function callbackNumber(call: Call, extensionId: string): string {
 	return call.direction !== 'inbound' && call.extension_id === extensionId

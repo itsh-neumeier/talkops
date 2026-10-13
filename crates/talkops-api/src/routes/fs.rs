@@ -102,6 +102,7 @@ pub async fn xml_curl(
                 sounds: &state.media.sounds,
                 telephony: &state.telephony,
                 spam: &state.spam,
+                video: dialplan::CallVideo::Off,
             };
             let actions = dialplan::plan(&routing, &req).await;
             if let (Some(station), Some(tenant)) = (

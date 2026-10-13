@@ -28,7 +28,8 @@ pub struct Extension {
     pub forward_all: Option<String>,
     /// Call recording: `inherit` (tenant defaults), `always` or `never`.
     pub record_calls: String,
-    /// Internal video calls (both sides need it); otherwise audio only.
+    /// Video calls (ADR 0025): internal calls with another extension with
+    /// video, door stations, trunks with video. Otherwise audio only.
     pub video_enabled: bool,
 }
 
@@ -381,7 +382,10 @@ pub struct Device {
 pub struct DeviceInput {
     pub name: String,
     pub kind: DeviceKind,
-    /// SIP username; generated (`<extension>-<n>`) when empty.
+    /// SIP username: the extension number plus an optional suffix that does
+    /// not start with a digit (`8000vto`, `8001-2`). Generated when empty:
+    /// `<extension>vto` for door stations, else `<extension>-<n>`. On update,
+    /// a different value renames the device; empty keeps the current name.
     #[serde(default)]
     pub sip_username: Option<String>,
     /// Place the device on a provisioned phone as account `account_index`
@@ -406,6 +410,66 @@ impl DeviceInput {
     fn phone_texts(&self) -> CoreResult<(&str, &str)> {
         phone_texts(&self.phone_label, &self.phone_display_name)
     }
+
+    /// The requested SIP username, trimmed; `None` when empty.
+    fn requested_username(&self) -> Option<&str> {
+        self.sip_username
+            .as_deref()
+            .map(str::trim)
+            .filter(|u| !u.is_empty())
+    }
+}
+
+/// Checks a chosen SIP username: the extension number followed by an optional
+/// suffix (`8000`, `8000vto`, `8001vth`, `8000-1`). The suffix must not start
+/// with a digit, so `800` + `0vto` cannot take the name of extension `8000`.
+/// Some devices (e.g. Dahua VTO/VTH) do not accept `-`; a letter suffix works.
+pub fn validate_sip_username(extension_number: &str, username: &str) -> CoreResult<()> {
+    let invalid = |msg: &str| Err(CoreError::Validation(format!("SIP username: {msg}")));
+    if !(3..=64).contains(&username.len()) {
+        return invalid("3 to 64 characters");
+    }
+    if !username
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'))
+    {
+        return invalid("only letters, digits, '.', '_' and '-'");
+    }
+    let Some(suffix) = username.strip_prefix(extension_number) else {
+        return invalid(&format!(
+            "must start with the extension number {extension_number}"
+        ));
+    };
+    if suffix.starts_with(|c: char| c.is_ascii_digit()) {
+        return invalid("the part after the extension number must not start with a digit");
+    }
+    Ok(())
+}
+
+/// Generated SIP username: `<extension>vto` (then `vto2`, `vto3`, …) for door
+/// stations, which do not accept `-`, else `<extension>-<n>` with the lowest
+/// free `n`. User names are unique across all tenants, case-insensitively.
+async fn default_username(
+    pool: &sqlx::PgPool,
+    extension: &Extension,
+    kind: DeviceKind,
+) -> CoreResult<String> {
+    let taken: Vec<String> = sqlx::query_scalar(
+        "SELECT lower(sip_username) FROM devices WHERE starts_with(lower(sip_username), $1)",
+    )
+    .bind(&extension.number)
+    .fetch_all(pool)
+    .await?;
+    let number = &extension.number;
+    let candidate = |n: usize| match (kind, n) {
+        (DeviceKind::Door, 1) => format!("{number}vto"),
+        (DeviceKind::Door, n) => format!("{number}vto{n}"),
+        (_, n) => format!("{number}-{n}"),
+    };
+    Ok((1..)
+        .map(candidate)
+        .find(|name| !taken.contains(name))
+        .expect("an unbounded range has a free name"))
 }
 
 fn phone_texts<'a>(label: &'a str, display: &'a str) -> CoreResult<(&'a str, &'a str)> {
@@ -681,21 +745,12 @@ pub async fn create_device(
 ) -> CoreResult<(Device, String)> {
     let (label, display) = input.phone_texts()?;
     let slot = phone_slot(pool, tenant, input.phone_id, input.account_index, None).await?;
-    let username = match input
-        .sip_username
-        .as_deref()
-        .map(str::trim)
-        .filter(|u| !u.is_empty())
-    {
-        Some(u) => u.to_owned(),
-        None => {
-            let existing: i64 =
-                sqlx::query_scalar("SELECT count(*) FROM devices WHERE extension_id = $1")
-                    .bind(extension.id)
-                    .fetch_one(pool)
-                    .await?;
-            format!("{}-{}", extension.number, existing + 1)
+    let username = match input.requested_username() {
+        Some(u) => {
+            validate_sip_username(&extension.number, u)?;
+            u.to_owned()
         }
+        None => default_username(pool, extension, input.kind).await?,
     };
     let password = crypto::random_password(20)?;
     let sql = format!(
@@ -729,10 +784,28 @@ pub async fn update_device(
     input: &DeviceInput,
 ) -> CoreResult<Device> {
     let (label, display) = input.phone_texts()?;
+    let current = get_device(pool, tenant, id).await?;
+    let rename = input
+        .requested_username()
+        .filter(|u| *u != current.sip_username);
+    if let Some(username) = rename {
+        // Browser identities belong to a user and are generated (`web-…`).
+        if current.kind == DeviceKind::Browser || current.browser_user_id.is_some() {
+            return Err(CoreError::Validation(
+                "SIP username: browser devices cannot be renamed".into(),
+            ));
+        }
+        let number: String = sqlx::query_scalar("SELECT number FROM extensions WHERE id = $1")
+            .bind(current.extension_id)
+            .fetch_one(pool)
+            .await?;
+        validate_sip_username(&number, username)?;
+    }
     let slot = phone_slot(pool, tenant, input.phone_id, input.account_index, Some(id)).await?;
     let sql = format!(
         "UPDATE devices SET name = $3, kind = $4, phone_id = $5, account_index = $6, enabled = $7,
-             phone_label = $8, phone_display_name = $9, codec_profile = $10, updated_at = now()
+             phone_label = $8, phone_display_name = $9, codec_profile = $10,
+             sip_username = COALESCE($11, sip_username), updated_at = now()
          WHERE tenant_id = $1 AND id = $2 RETURNING {DEV_COLUMNS}"
     );
     Ok(sqlx::query_as(&sql)
@@ -746,6 +819,7 @@ pub async fn update_device(
         .bind(label)
         .bind(display)
         .bind(input.codec_profile)
+        .bind(rename)
         .fetch_one(pool)
         .await?)
 }
@@ -807,6 +881,32 @@ mod tests {
             assert_eq!(CodecProfile::parse(p.as_str()), Some(p));
         }
         assert_eq!(CodecProfile::parse("opus"), None);
+    }
+
+    #[test]
+    fn sip_username_validation() {
+        for ok in ["8000", "8000vto", "8001vth", "8000-1", "8000VTO.2", "20_a"] {
+            let number = if ok.starts_with("20") { "20" } else { &ok[..4] };
+            assert!(validate_sip_username(number, ok).is_ok(), "{ok}");
+        }
+        for bad in [
+            "80",       // too short (extension 80)
+            "8000 vto", // space
+            "8000vtö",  // non-ASCII
+            "8001vto",  // other extension
+            "80001vto", // suffix starts with a digit
+            "web-8000", // not the extension prefix
+        ] {
+            let number = if bad == "80" { "80" } else { "8000" };
+            assert!(
+                matches!(
+                    validate_sip_username(number, bad),
+                    Err(CoreError::Validation(_))
+                ),
+                "{bad}"
+            );
+        }
+        assert!(validate_sip_username("8000", &format!("8000{}", "a".repeat(61))).is_err());
     }
 
     #[test]

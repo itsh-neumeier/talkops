@@ -102,6 +102,15 @@ fn actions(xml: &str) -> Vec<(String, String)> {
 }
 
 async fn call(router: &Router, ext: &Value, dest: &str) -> Vec<(String, String)> {
+    call_with_offer(router, ext, dest, "").await
+}
+
+async fn call_with_offer(
+    router: &Router,
+    ext: &Value,
+    dest: &str,
+    sdp: &str,
+) -> Vec<(String, String)> {
     let (status, xml) = fs_post(
         router,
         "/fs/xml",
@@ -111,6 +120,7 @@ async fn call(router: &Router, ext: &Value, dest: &str) -> Vec<(String, String)>
             ("Caller-Destination-Number", dest),
             ("variable_talkops_tenant_id", TENANT),
             ("variable_talkops_extension_id", ext["id"].as_str().unwrap()),
+            ("variable_switch_r_sdp", sdp),
         ],
     )
     .await;
@@ -137,6 +147,7 @@ async fn wait_for<F: Fn(&Value) -> bool>(client: &Client, path: &str, f: F) -> V
 async fn door_station(db: PgPool) {
     let state = state(db.clone());
     let snapshots = state.media.snapshots.clone();
+    let door_ctx = talkops_api::doors::DoorCtx::from(&state);
     let router = talkops_api::app(state, None);
     let admin = setup_admin(&router).await;
     let (host, port, fake) = fake_vto().await;
@@ -323,6 +334,224 @@ async fn door_station(db: PgPool) {
     assert!(has(&a, "respond", "404 Not Found"), "{a:?}");
     let a = call(&router, &ext20, "*859999").await;
     assert!(has(&a, "respond", "404 Not Found"), "{a:?}");
+
+    // DTMF unlock codes: stored encrypted, never returned.
+    let (status, _) = admin
+        .put(
+            &format!("/api/v1/door-stations/{sid}"),
+            json!({"name": "Front door", "extension_id": id(&door_ext),
+                   "host": host, "port": port, "doors": 2,
+                   "destination_type": "extension", "destination_id": id(&ext20),
+                   "unlock_code_1": "12", "unlock_code_2": "x"}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    let (status, station) = admin
+        .put(
+            &format!("/api/v1/door-stations/{sid}"),
+            json!({"name": "Front door", "extension_id": id(&door_ext),
+                   "host": host, "port": port, "doors": 2,
+                   "destination_type": "extension", "destination_id": id(&ext20),
+                   "buttons": [{"number": "9902", "type": "extension", "id": id(&ext21)}],
+                   "events_enabled": false,
+                   "unlock_code_1": "*1", "unlock_code_2": "#2"}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{station}");
+    assert_eq!(station["has_unlock_code_1"], true);
+    assert_eq!(station["has_unlock_code_2"], true);
+    assert!(!station.to_string().contains("*1"), "{station}");
+    let (_, audit) = admin.get("/api/v1/audit").await;
+    assert!(!audit.to_string().contains("#2"), "codes are not audited");
+    // The answering leg of a ring and the caller's leg of a direct call to
+    // the station listen for the codes; the station's own leg does not.
+    // The combined video policy must keep video on the same door call.
+    let a = call_with_offer(
+        &router,
+        &door_ext,
+        "9901",
+        "v=0\r\nm=video 1234 RTP/AVP 99\r\na=rtpmap:99 H264/90000\r\n",
+    )
+    .await;
+    assert!(
+        has(&a, "export", &format!("nolocal:talkops_door_dtmf={sid}")),
+        "{a:?}"
+    );
+    assert!(
+        a.iter().any(|(app, data)| app == "set"
+            && data.starts_with("absolute_codec_string=")
+            && data.contains("H264")),
+        "{a:?}"
+    );
+    assert!(
+        a.iter().any(|(app, data)| app == "bridge"
+            && data.contains("user/200-1@")
+            && data.contains("H264")),
+        "{a:?}"
+    );
+    let a = call(&router, &ext20, "8001").await;
+    assert!(has(&a, "set", &format!("talkops_door_dtmf={sid}")), "{a:?}");
+    let a = call(&router, &ext20, "210").await;
+    assert!(
+        !a.iter().any(|(_, d)| d.contains("talkops_door_dtmf")),
+        "{a:?}"
+    );
+    // ESL events of the answering phone: the code opens door 2.
+    let event = |pairs: &[(&str, &str)]| {
+        let mut h = talkops_esl::Headers::default();
+        for (k, v) in pairs {
+            h.push((*k).into(), (*v).into());
+        }
+        talkops_esl::Event {
+            headers: h,
+            body: None,
+        }
+    };
+    let leg = "6f1c2c1e-0000-4000-8000-000000000001";
+    let mut matcher = talkops_api::door_dtmf::Matcher::default();
+    let answer = event(&[
+        ("Event-Name", "CHANNEL_ANSWER"),
+        ("Unique-ID", leg),
+        ("Channel-Name", "sofia/internal/200-1@192.0.2.10:5060"),
+        ("variable_talkops_door_dtmf", &sid),
+        ("variable_talkops_tenant_id", TENANT),
+        ("variable_talkops_extension_id", &id(&ext20)),
+    ]);
+    assert!(
+        talkops_api::door_dtmf::handle(&door_ctx, &mut matcher, &answer)
+            .await
+            .is_none()
+    );
+    let mut unlock = None;
+    for d in ["5", "#", "2"] {
+        let dtmf = event(&[
+            ("Event-Name", "DTMF"),
+            ("Unique-ID", leg),
+            ("DTMF-Digit", d),
+        ]);
+        unlock = talkops_api::door_dtmf::handle(&door_ctx, &mut matcher, &dtmf).await;
+    }
+    let unlock = unlock.expect("code detected");
+    assert_eq!(unlock.door, 2);
+    let st = talkops_core::doors::get(&db, unlock.tenant, unlock.station)
+        .await
+        .unwrap();
+    door_ctx
+        .open(unlock.tenant, &st, unlock.door, unlock.by)
+        .await
+        .unwrap();
+    assert_eq!(fake.opened.lock().unwrap().last().unwrap(), "2");
+    let events = wait_for(&admin, "/api/v1/door-events", |v| {
+        v[0]["kind"] == "open_command"
+    })
+    .await;
+    assert_eq!(events[0]["detail"]["by"]["dtmf"], true);
+    assert_eq!(events[0]["detail"]["by"]["device"], "200-1");
+    assert_eq!(events[0]["detail"]["door"], 2);
+    fake.opened.lock().unwrap().pop();
+
+    // External legs: only numbers in the allow list may use the codes.
+    let (status, station) = admin
+        .put(
+            &format!("/api/v1/door-stations/{sid}"),
+            json!({"name": "Front door", "extension_id": id(&door_ext),
+                   "host": host, "port": port, "doors": 2,
+                   "destination_type": "extension", "destination_id": id(&ext20),
+                   "buttons": [{"number": "9902", "type": "extension", "id": id(&ext21)}],
+                   "events_enabled": false,
+                   "dtmf_allowed_numbers": ["0170 1234567", "+491701234567", ""]}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{station}");
+    assert_eq!(station["dtmf_allowed_numbers"], json!(["+491701234567"]));
+    assert_eq!(station["has_unlock_code_1"], true, "codes kept");
+    let (_, list) = kim.get("/api/v1/door-stations").await;
+    assert_eq!(list[0]["dtmf_allowed_numbers"], json!([]), "admins only");
+    let (status, _) = admin
+        .put(
+            &format!("/api/v1/door-stations/{sid}"),
+            json!({"name": "Front door", "extension_id": id(&door_ext),
+                   "dtmf_allowed_numbers": ["abc"]}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    // An inbound call from an allowed number to the door station's line.
+    let (_, trunk) = admin
+        .post(
+            "/api/v1/trunks",
+            json!({"name": "LEONET", "preset": "leonet"}),
+        )
+        .await;
+    let (status, line) = admin
+        .post(
+            &format!("/api/v1/trunks/{}/lines", id(&trunk)),
+            json!({"e164": "+49891234567", "password": "leo-secret",
+                   "destination_extension_id": id(&door_ext)}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{line}");
+    let inbound = |caller: &'static str| {
+        let router = router.clone();
+        async move {
+            let (_, xml) = fs_post(
+                &router,
+                "/fs/xml",
+                &[
+                    ("section", "dialplan"),
+                    ("Caller-Context", "public"),
+                    ("Caller-Destination-Number", "+49891234567"),
+                    ("Caller-Caller-ID-Number", caller),
+                ],
+            )
+            .await;
+            actions(&xml)
+        }
+    };
+    let a = inbound("+491701234567").await;
+    assert!(has(&a, "set", &format!("talkops_door_dtmf={sid}")), "{a:?}");
+    let a = inbound("+491709999999").await;
+    assert!(
+        !a.iter().any(|(_, d)| d.contains("talkops_door_dtmf")),
+        "{a:?}"
+    );
+    // A ring forwarded to a mobile phone: the allowed number may open.
+    let answer_ext = |leg: &str, dialed: &str| {
+        event(&[
+            ("Event-Name", "CHANNEL_ANSWER"),
+            ("Unique-ID", leg),
+            ("Call-Direction", "outbound"),
+            ("Channel-Name", "sofia/external/01701234567"),
+            ("Caller-Destination-Number", dialed),
+            ("variable_talkops_door_dtmf", &sid),
+            ("variable_talkops_tenant_id", TENANT),
+        ])
+    };
+    let press = |leg: &str, d: &str| {
+        event(&[
+            ("Event-Name", "DTMF"),
+            ("Unique-ID", leg),
+            ("DTMF-Digit", d),
+        ])
+    };
+    let mobile = "6f1c2c1e-0000-4000-8000-000000000002";
+    let stranger = "6f1c2c1e-0000-4000-8000-000000000003";
+    for (leg, dialed) in [(mobile, "01701234567"), (stranger, "01709999999")] {
+        talkops_api::door_dtmf::handle(&door_ctx, &mut matcher, &answer_ext(leg, dialed)).await;
+    }
+    let mut opened = Vec::new();
+    for leg in [mobile, stranger] {
+        for d in ["*", "1"] {
+            if let Some(u) =
+                talkops_api::door_dtmf::handle(&door_ctx, &mut matcher, &press(leg, d)).await
+            {
+                opened.push((leg, u));
+            }
+        }
+    }
+    assert_eq!(opened.len(), 1, "{opened:?}");
+    assert_eq!(opened[0].0, mobile);
+    assert_eq!(opened[0].1.door, 1);
+    assert_eq!(opened[0].1.by["number"], "+491701234567");
 
     // Token hook for Home Assistant.
     let hook = |token: Option<String>| {

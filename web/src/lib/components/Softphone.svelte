@@ -10,6 +10,7 @@
 		callTarget,
 		callbackNumber,
 		missedIncoming,
+		offersVideo,
 		setAudioOutput,
 		toneUrl
 	} from '#lib/softphone.ts';
@@ -86,6 +87,8 @@
 	let registered = false;
 	let number = $state('');
 	let video = $state(false);
+	/** The ringing call offers video (TalkOps allows video for it). */
+	let videoOffered = $state(false);
 	let muted = $state(false);
 	let held = $state(false);
 	let error = $state('');
@@ -354,6 +357,10 @@
 				onCallReceived: () => {
 					status = 'ringing';
 					readPeer();
+					videoOffered = offersVideo(
+						(user as unknown as { session?: { request?: { body?: string } } } | null)?.session
+							?.request?.body
+					);
 					if (notifications && notificationSupported && Notification.permission === 'granted') {
 						try {
 							incomingNotification = new Notification(t('phone.incoming'), {
@@ -748,7 +755,7 @@
 						<button class="btn btn-primary" onclick={() => answer(false)}
 							>{t('phone.answer')}</button
 						>
-						{#if account?.video_enabled}
+						{#if account?.video_enabled && videoOffered}
 							<button class="btn btn-primary" onclick={() => answer(true)}
 								>{t('phone.answerVideo')}</button
 							>

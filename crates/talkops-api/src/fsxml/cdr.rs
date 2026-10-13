@@ -1,5 +1,7 @@
 //! Parses CDRs posted by `mod_xml_cdr`.
 
+use std::borrow::Cow;
+
 use chrono::{DateTime, TimeZone, Utc};
 use talkops_core::cdr::{Cdr, Direction};
 use talkops_core::tenant::TenantId;
@@ -9,7 +11,8 @@ use uuid::Uuid;
 /// not route (no `talkops_direction` variable), e.g. rejected scanner INVITEs.
 /// Parses a CDR; also returns the call's recording file (`talkops_recording`).
 pub fn parse(xml: &str) -> Result<Option<(TenantId, Cdr, Option<String>)>, String> {
-    let doc = roxmltree::Document::parse(xml).map_err(|e| e.to_string())?;
+    let xml = without_name_prefixes(xml);
+    let doc = roxmltree::Document::parse(&xml).map_err(|e| e.to_string())?;
     let vars = doc
         .descendants()
         .find(|n| n.has_tag_name("variables"))
@@ -63,6 +66,34 @@ pub fn parse(xml: &str) -> Result<Option<(TenantId, Cdr, Option<String>)>, Strin
         recording_id: None,
     };
     Ok(Some((tenant, cdr, var("talkops_recording"))))
+}
+
+/// mod_xml_cdr writes each channel variable as an element with the
+/// variable's name. A variable from `export nolocal:name=value` has the name
+/// `nolocal:name`, which XML reads as an undeclared namespace prefix: the
+/// whole record would be rejected. This replaces `:` in element names
+/// with `_`. Values are URL-encoded, so a `<` always starts markup.
+fn without_name_prefixes(xml: &str) -> Cow<'_, str> {
+    if !xml.contains(':') {
+        return Cow::Borrowed(xml);
+    }
+    let mut out = String::with_capacity(xml.len());
+    let mut in_name = false;
+    for c in xml.chars() {
+        match c {
+            '<' => in_name = true,
+            // Processing instructions and comments keep their text.
+            '?' | '!' if out.ends_with('<') => in_name = false,
+            ':' if in_name => {
+                out.push('_');
+                continue;
+            }
+            c if c.is_whitespace() || c == '>' => in_name = false,
+            _ => {}
+        }
+        out.push(c);
+    }
+    Cow::Owned(out)
 }
 
 /// mod_xml_cdr URL-encodes variable values.
@@ -123,6 +154,23 @@ mod tests {
         assert_eq!(cdr.billsec, 60);
         assert_eq!((cdr.ended_at - cdr.started_at).num_seconds(), 65);
         assert!(cdr.answered_at.is_some());
+    }
+
+    #[test]
+    fn accepts_variables_with_a_prefix() {
+        // `export nolocal:absolute_codec_string=…` (calls from trunks, ADR
+        // 0023 and 0025) gives an element name with a colon.
+        let xml = SAMPLE.replace(
+            "<uuid>",
+            "<nolocal:absolute_codec_string>G722%2CPCMA</nolocal:absolute_codec_string>\n    <nolocal:talkops_door_dtmf>00000000-0000-4000-8000-000000000002</nolocal:talkops_door_dtmf>\n    <uuid>",
+        );
+        let (_, cdr, _) = parse(&xml).unwrap().unwrap();
+        assert_eq!(cdr.destination, "+49301234567");
+        // Attribute values and text keep their colons.
+        assert_eq!(
+            without_name_prefixes(r#"<?xml version="1.0"?><a b="c:d"><e:f>g:h</e:f></a>"#),
+            r#"<?xml version="1.0"?><a b="c:d"><e_f>g:h</e_f></a>"#
+        );
     }
 
     #[test]

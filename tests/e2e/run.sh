@@ -8,8 +8,9 @@
 # unreachable extension's voicemail answers and stores the message, that a
 # ring group falls back, an IVR menu routes a pressed key and a queue
 # offers its caller to a registered agent, that answered calls are
-# recorded, that a door station's ring reaches a phone with video and
-# (WEBRTC_E2E=1, needs Node.js with Playwright) that the browser softphone
+# recorded, that a door station's ring reaches a phone with video, that
+# video goes only to extensions with video and only from trunks with video
+# and (WEBRTC_E2E=1, needs Node.js with Playwright) that the browser softphone
 # can call an extension, that TalkOps transcodes to iLBC for a Wi-Fi handset
 # with the robust codec profile, and that repeated wrong passwords ban the
 # address.
@@ -20,6 +21,7 @@ set -euo pipefail
 BASE=${BASE:-http://127.0.0.1:8080}
 SIP_HOST=${SIP_HOST:-$(hostname -I | awk '{print $1}')}
 SIP_PORT=${SIP_PORT:-5060}
+SIP_TRUNK_PORT=${SIP_TRUNK_PORT:-5080}
 DIR=$(cd "$(dirname "$0")/../sipp" && pwd)
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"; kill $(jobs -p) 2>/dev/null || true' EXIT
@@ -290,6 +292,46 @@ sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/call_video.xml" -inf "$WORK/door.csv" -s "$
 wait "$DOOR_PID" || { cat "$WORK/door-callee.log" 2>/dev/null; fail "the door call did not reach the phone with video"; }
 api GET /api/v1/door-events | jq -e '.[] | select(.kind == "ring" and .detail.dialed == "9901")' >/dev/null \
     || fail "door ring not logged"
+
+log "video only where the call allows it"
+video_call() { # name uas-scenario caller-scenario sipp-target [caller auth args...]
+    local name=$1 uas=$2 scenario=$3 target=$4 pid
+    shift 4
+    sipp -sf "$DIR/$uas" -p 5094 -i "$SIP_HOST" -m 1 -min_rtp_port 17800 -max_rtp_port 17850 -timeout 60 -timeout_error \
+        -trace_err -error_file "$WORK/$name-callee.log" >"$WORK/$name-callee.out" 2>&1 &
+    pid=$!
+    sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/register.xml" -set contact_port 5094 -s "$CALLEE" -au "$CALLEE" -ap "$CALLEE_PW" \
+        -m 1 -p 5092 -i "$SIP_HOST" -timeout 20 -timeout_error -trace_err -error_file "$WORK/$name-register.log" >/dev/null \
+        || { cat "$WORK/$name-register.log" 2>/dev/null; fail "$name: registration failed"; }
+    sipp "$target" -sf "$DIR/$scenario" -inf "$WORK/video.csv" "$@" \
+        -m 1 -p 5096 -min_rtp_port 17900 -max_rtp_port 17950 -i "$SIP_HOST" -timeout 30 -timeout_error -trace_err \
+        -error_file "$WORK/$name.log" >/dev/null \
+        || { cat "$WORK/$name.log" 2>/dev/null; fail "$name: call failed"; }
+    wait "$pid" || { cat "$WORK/$name-callee.log" 2>/dev/null; fail "$name: wrong video offer to the phone"; }
+}
+set_video() { # extension-id|trunk path, true|false
+    local body
+    body=$(api GET "$1" | jq -c --argjson on "$2" '.video_enabled = $on') || fail "read $1"
+    api PUT "$1" "$body" >/dev/null || fail "set video of $1"
+}
+# Extension 210 has no video: a caller's video offer does not reach it.
+printf 'SEQUENTIAL\n210;\n' > "$WORK/video.csv"
+video_call internal-audio uas_audio_only.xml call_video.xml "$SIP_HOST:$SIP_PORT" -s "$CALLER" -au "$CALLER" -ap "$CALLER_PW"
+# Calls from a trunk. Most providers have no video: a trunk without video
+# never sends a video offer to a phone, also not to an extension with video.
+set_video "/api/v1/extensions/$EXT21" true
+TRUNK=$(api POST /api/v1/trunks '{"name":"E2E trunk","preset":"generic","overrides":{"registrar":"127.0.0.1:5999","register":false}}' \
+    | jq -r .id) || fail "create trunk"
+api POST "/api/v1/trunks/$TRUNK/accounts" '{"username":"e2e","password":"e2e-trunk"}' >/dev/null \
+    || fail "create trunk account"
+api POST /api/v1/numbers "{\"trunk_id\":\"$TRUNK\",\"e164\":\"+49891234567\",\"destination_type\":\"extension\",\"destination_id\":\"$EXT21\"}" \
+    >/dev/null || fail "create trunk number"
+printf 'SEQUENTIAL\n+49891234567;\n' > "$WORK/video.csv"
+video_call trunk-audio uas_audio_only.xml trunk_call_video.xml "$SIP_HOST:$SIP_TRUNK_PORT"
+# A trunk with video passes the provider's video to an extension with video.
+set_video "/api/v1/trunks/$TRUNK" true
+video_call trunk-video uas_video.xml trunk_call_video.xml "$SIP_HOST:$SIP_TRUNK_PORT"
+set_video "/api/v1/extensions/$EXT21" false
 
 if [ "${WEBRTC_E2E:-0}" = 1 ]; then
     node "$DIR/../e2e/softphone-ui.mjs" "$BASE" || fail "softphone UI"

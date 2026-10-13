@@ -6,6 +6,51 @@ All notable changes to TalkOps. The format follows
 
 ## [Unreleased]
 
+## [1.7.9] – 2026-10-13
+
+### Added
+
+- Set a SIP user name ending for each device, for example `8000vto`.
+  New door devices use a `vto` ending. Administrators can rename devices;
+  browser devices keep their managed names.
+- Set an encrypted DTMF unlock code for each door lock. TalkOps detects codes
+  on the answering phone of a ring call or the caller of a direct door call.
+  External calls require a number on the station's allow list.
+
+### Changed
+
+- Offer video on local calls and on trunks that allow video. The caller must
+  offer an active video stream. Ring groups select video per member.
+  Queues, voicemail, menus and direct SIP addresses use audio only.
+  Door station ring calls retain local video; HD and Robust device profiles stay
+  audio only. The softphone offers a video answer only when video was offered.
+
+### Fixed
+
+- Accept CDR variable names with a colon, including exported codec and door
+  DTMF variables. Trunk records submitted over HTTP are stored again.
+- Choose the lowest free device name number after a device deletion.
+
+### Upgrade notes
+
+- Migration `20261029000001_door_unlock_codes` adds encrypted codes and the
+  external-number allow list. Update the server before using these controls.
+- Restart FreeSWITCH to load the internal audio-only profile and external
+  late negotiation. This ends active calls. Enable video on trunks that need it.
+- Existing SIP names remain unchanged until renamed. After a rename, update
+  the phone's credentials and register it again. For Dahua VTO, SIP Server
+  Username/Password must match the device Username/Password.
+- External caller ID can be falsified. Use the documented allow-list and code
+  guidance. DTMF on real Dahua hardware is not directly verified. Queue/menu
+  loopback legs may not receive the unlock marker.
+
+### Known limitations
+
+- Import of percent-encoded FreeSWITCH spool files remains a separate task.
+  Records already moved to `cdr-spool/rejected/` are not imported again.
+  Keep these files for a later recovery. The direct HTTP CDR fix above does
+  not repair this separate spool format issue.
+
 ## [1.7.8] – 2026-10-13
 
 ### Added

@@ -177,10 +177,10 @@ export default {
 	'ext.hideCallerId': 'Hide caller ID (CLIR)',
 	'ext.video': 'Video calls',
 	'ext.videoHint':
-		'Internal calls to another extension with video switched on can carry video; everything else is audio-only. Door stations always show their video.',
+		'Calls with another extension with video switched on (also in ring groups) can carry video, as can calls through a trunk with video. Everything else is audio-only. Door stations always show their video.',
 	'trunk.video': 'Video calls via this trunk',
 	'trunk.videoHint':
-		'Only if the provider supports video (H.264/VP8). Off: calls to the provider are audio-only, even from the video button.',
+		'Only if the provider supports video (H.264/VP8); most providers do not. Off: calls to and from the provider are audio-only, and phones are not asked to answer with video.',
 	'ext.ringTimeout': 'Ring time before voicemail/forwarding (seconds)',
 	'ext.new': 'New extension',
 	'ext.devices': 'Devices',
@@ -188,6 +188,10 @@ export default {
 	'ext.addDevice': 'Add device',
 	'ext.kind': 'Type',
 	'ext.sipUsername': 'SIP username',
+	'ext.sipSuffixAuto': 'automatic',
+	'ext.sipSuffixHint':
+		"The extension number plus a free ending, e.g. vto, vth or -2 (letters, digits, '.', '_', '-'; not a digit first). Empty: generated (door stations: vto, without '-').",
+	'ext.sipRenameHint': 'After a change the device must register again with the new username.',
 	'ext.sipPassword': 'SIP password',
 	'ext.sipServer': 'SIP server',
 	'ext.sipServerHint': 'IP address or host name of this TalkOps server, port 5060.',
@@ -890,6 +894,13 @@ export default {
 	'door.passwordKeep': 'unchanged',
 	'door.doors': 'Locks',
 	'door.doorsHint': 'Second lock: via an RS-485 extension module of the station.',
+	'door.unlockCode': 'Unlock code door {door}',
+	'door.unlockCodeRemove': 'Remove unlock codes',
+	'door.unlockCodeHint':
+		'2-8 keys (0-9, *, #). When pressed on the phone during a ring or a call to the station, TalkOps opens the door through the HTTP access (required). Use a different code than the one stored in the station.',
+	'door.allowedNumbers': 'External numbers for unlock codes',
+	'door.allowedNumbersHint':
+		'One number per line. Internal phones can always use the codes. An external call (e.g. a ring forwarded to a mobile phone, or a call from outside to the door station) can use them only from these numbers. Empty: no external opening.',
 	'door.snapshots': 'Save a picture with every ring',
 	'door.events': 'Event log',
 	'door.webhook': 'Webhook (Home Assistant)',

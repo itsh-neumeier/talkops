@@ -257,6 +257,10 @@ async fn serve(config: Config) -> anyhow::Result<()> {
     }
     talkops_api::ldap::spawn_sync(state.db.clone(), state.secrets.clone());
     talkops_api::doors::spawn_listeners(talkops_api::doors::DoorCtx::from(&state));
+    talkops_api::door_dtmf::spawn(
+        talkops_api::doors::DoorCtx::from(&state),
+        state.telephony.esl.clone(),
+    );
     spawn_session_cleanup(db);
     let router = app(state, Some(&config.web_dir));
 

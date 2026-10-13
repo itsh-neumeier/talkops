@@ -37,7 +37,9 @@
 			const previous = new Map(rows.map((row) => [row.key, row]));
 			rows = result.segments.map((segment) => {
 				const key = `${segment.speaker}:${segment.start}:${segment.end}`;
-				return previous.get(key) ?? { ...segment, key, animate: !first };
+				// Streamed text grows while times stay the same.
+				const old = previous.get(key);
+				return old ? { ...old, text: segment.text } : { ...segment, key, animate: !first };
 			});
 			preview = result;
 			first = false;

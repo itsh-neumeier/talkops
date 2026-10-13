@@ -14,7 +14,7 @@
 //! line.
 
 use std::path::Path;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 use anyhow::{Context, bail};
 use serde::Deserialize;
@@ -34,13 +34,14 @@ const MAX_UTTERANCE_SECS: f32 = 30.0;
 const TIMEOUT_SECS: &str = "900";
 
 /// Transcribes a WAV file with the API. Stereo files are split into
-/// `caller` and `called`, as with local Whisper.
+/// `caller` and `called`, as with local Whisper. Also returns the seconds
+/// of audio the provider accepted (for the usage estimate).
 pub async fn transcribe(
     cfg: &ApiConfig,
     wav: &Path,
     language: &str,
     vocabulary: &str,
-) -> anyhow::Result<Vec<Segment>> {
+) -> anyhow::Result<(Vec<Segment>, f64)> {
     let work = tempdir()?;
     let channels = {
         let (wav, dir) = (wav.to_owned(), work.path.clone());
@@ -54,6 +55,7 @@ pub async fn transcribe(
         dir: &work.path,
         minimal: AtomicBool::new(false),
         no_words: AtomicBool::new(false),
+        sent: AtomicUsize::new(0),
     };
     let mut parties = Vec::new();
     for (i, (speaker, _, samples)) in channels.into_iter().enumerate() {
@@ -64,7 +66,10 @@ pub async fn transcribe(
         };
         parties.push((speaker, words, samples));
     }
-    Ok(to_lines(&parties))
+    Ok((
+        to_lines(&parties),
+        request.sent.load(Ordering::Relaxed) as f64 / f64::from(SAMPLE_RATE),
+    ))
 }
 
 struct Request<'a> {
@@ -76,6 +81,8 @@ struct Request<'a> {
     minimal: AtomicBool,
     /// The server rejects word timestamps: ask for segments only.
     no_words: AtomicBool,
+    /// Samples the server accepted.
+    sent: AtomicUsize,
 }
 
 /// Which form fields a request carries.
@@ -178,6 +185,7 @@ impl Request<'_> {
             let Some(answer) = answer else {
                 return Ok(None);
             };
+            self.sent.fetch_add(part.len(), Ordering::Relaxed);
             let Some(segs) = answer.segments else {
                 // Accepted, but without timestamps.
                 return Ok(None);
@@ -346,6 +354,116 @@ pub fn speech_regions(samples: &[f32]) -> Vec<(f32, f32)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn cloud_line_timing_and_usage_survive_timestamp_fallback() {
+        use tokio::io::AsyncReadExt;
+
+        for reject_words in [false, true] {
+            let work = tempdir().unwrap();
+            let wav = work.path.join("stereo.wav");
+            let mut writer = hound::WavWriter::create(
+                &wav,
+                hound::WavSpec {
+                    channels: 2,
+                    sample_rate: SAMPLE_RATE,
+                    bits_per_sample: 16,
+                    sample_format: hound::SampleFormat::Int,
+                },
+            )
+            .unwrap();
+            for sample in tone(4.0) {
+                writer.write_sample((sample * 32767.0) as i16).unwrap();
+                writer.write_sample((sample * 32767.0) as i16).unwrap();
+            }
+            writer.finalize().unwrap();
+            let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let cfg = ApiConfig {
+                name: "test".into(),
+                url: format!("http://{}/v1", listener.local_addr().unwrap()),
+                model: "whisper-1".into(),
+                key: None,
+            };
+            let server = tokio::spawn(async move {
+                let requests = if reject_words { 3 } else { 2 };
+                for request in 0..requests {
+                    let (mut socket, _) = listener.accept().await.unwrap();
+                    let mut bytes = Vec::new();
+                    let mut buffer = [0; 8192];
+                    let (header_end, length) = loop {
+                        let n = socket.read(&mut buffer).await.unwrap();
+                        assert!(n > 0);
+                        bytes.extend_from_slice(&buffer[..n]);
+                        if let Some(end) = bytes.windows(4).position(|b| b == b"\r\n\r\n") {
+                            let headers = String::from_utf8_lossy(&bytes[..end]);
+                            let length = headers
+                                .lines()
+                                .find_map(|line| {
+                                    let (name, value) = line.split_once(':')?;
+                                    name.eq_ignore_ascii_case("content-length")
+                                        .then(|| value.trim().parse::<usize>().unwrap())
+                                })
+                                .unwrap();
+                            break (end + 4, length);
+                        }
+                    };
+                    while bytes.len() < header_end + length {
+                        let n = socket.read(&mut buffer).await.unwrap();
+                        assert!(n > 0);
+                        bytes.extend_from_slice(&buffer[..n]);
+                    }
+                    let form = String::from_utf8_lossy(&bytes[header_end..]);
+                    let words = !reject_words || request == 0;
+                    assert_eq!(form.contains("timestamp_granularities[]"), words);
+                    let rejected = reject_words && request == 0;
+                    let caller = request == usize::from(reject_words);
+                    let body = if rejected {
+                        serde_json::json!({"error":{"message":"word timestamps unsupported"}})
+                    } else if caller {
+                        serde_json::json!({"segments":[
+                            {"start":0.2,"end":0.7,"text":"Hallo."},
+                            {"start":2.2,"end":2.8,"text":"Weiter."}],
+                            "words":[{"start":0.2,"end":0.7},{"start":2.2,"end":2.8}]})
+                    } else {
+                        serde_json::json!({"segments":[{"start":1.4,"end":2.0,"text":"Ja."}],
+                            "words":[{"start":1.4,"end":2.0}]})
+                    };
+                    let body = body.to_string();
+                    let code = if rejected {
+                        "400 Bad Request"
+                    } else {
+                        "200 OK"
+                    };
+                    let response = format!(
+                        "HTTP/1.1 {code}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                        body.len()
+                    );
+                    socket.write_all(response.as_bytes()).await.unwrap();
+                }
+            });
+            let (lines, seconds) = tokio::time::timeout(
+                std::time::Duration::from_secs(20),
+                transcribe(&cfg, &wav, "de", ""),
+            )
+            .await
+            .unwrap()
+            .unwrap();
+            server.await.unwrap();
+            assert_eq!(seconds, 8.0);
+            assert_eq!(
+                lines.iter().map(|s| s.speaker.as_str()).collect::<Vec<_>>(),
+                ["caller", "called", "caller"]
+            );
+            assert_eq!(
+                lines.iter().map(|s| s.text.as_str()).collect::<Vec<_>>(),
+                ["Hallo.", "Ja.", "Weiter."]
+            );
+            assert_eq!(
+                lines.iter().map(|s| s.start).collect::<Vec<_>>(),
+                [0.2, 1.4, 2.2]
+            );
+        }
+    }
 
     fn tone(secs: f32) -> Vec<f32> {
         (0..(secs * SAMPLE_RATE as f32) as usize)

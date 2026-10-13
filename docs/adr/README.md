@@ -29,6 +29,7 @@ nächste freie Nummer; überholte ADRs werden nicht gelöscht, sondern auf
 | [0021](0021-guided-recovery-and-encrypted-deployment-backups.md) | Guided recovery and encrypted deployment backups | Accepted |
 | [0022](0022-active-call-identities-and-live-previews.md) | Active call identities and local transcript previews | Accepted |
 | [0023](0023-device-codec-profiles.md) | Codec profiles per device and transcoding in FreeSWITCH | Accepted |
+| [0024](0024-transcription-engines-per-purpose.md) | Transcription engines per purpose, cloud connections and realtime previews | Accepted |
 
 Vorlage: [`template.md`](template.md)
 

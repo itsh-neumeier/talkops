@@ -7,6 +7,7 @@
 
 mod api;
 mod live;
+mod realtime;
 mod transcribe;
 mod tts;
 mod utterances;
@@ -21,8 +22,8 @@ use sqlx::postgres::PgListener;
 use talkops_core::crypto::SecretBox;
 use talkops_core::jobs::{self, Job};
 use talkops_core::recordings::{self, Source};
-use talkops_core::settings::TranscriptionEngine;
 use talkops_core::telemetry::{self, LogFormat};
+use talkops_core::transcription_profiles::{self as profiles, Engine, Purpose};
 use talkops_core::voicemail_config as vmc;
 use talkops_core::{audio, settings, transcription_api, voicemail};
 use tokio::sync::Notify;
@@ -248,6 +249,8 @@ async fn main() -> anyhow::Result<()> {
         voicemail_dir: args.voicemail_dir.clone(),
         sounds_dir: args.sounds_dir.clone(),
         recordings_dir: args.recordings_dir.clone(),
+        worker_id: args.worker_id.clone(),
+        streams: realtime::Streams::default(),
     });
     match tts::ensure_prompts(&ctx.piper, &args.sounds_dir).await {
         Ok(0) => {}
@@ -319,6 +322,10 @@ struct Ctx {
     voicemail_dir: PathBuf,
     sounds_dir: PathBuf,
     recordings_dir: PathBuf,
+    /// Holds realtime stream leases (`TALKOPS_WORKER_ID`).
+    worker_id: String,
+    /// Realtime live previews this worker streams.
+    streams: realtime::Streams,
 }
 
 async fn drain_queue(ctx: &Ctx, worker_id: &str, kinds: &[&str]) -> anyhow::Result<()> {
@@ -582,7 +589,14 @@ async fn transcribe(ctx: &Ctx, job: &Job) -> anyhow::Result<()> {
         serde_json::from_value(job.payload.clone()).context("invalid payload")?;
     let tenant = job.tenant_id;
     let tenant_settings = settings::get(&ctx.pool, tenant).await?;
-    let refine = TranscriptionEngine::refine(&tenant_settings);
+    let voicemail = p.voicemail_id.is_some();
+    let first = profiles::engine(&ctx.pool, tenant, Purpose::for_pass(voicemail, 1))
+        .await?
+        .unwrap_or(Engine::Local(settings::TranscriptionQuality::Fast));
+    // A second pass equal to the first adds nothing.
+    let refine = profiles::engine(&ctx.pool, tenant, Purpose::for_pass(voicemail, 2))
+        .await?
+        .filter(|e| *e != first);
     let (source, file, language) = match (p.recording_id, p.voicemail_id) {
         (Some(id), None) => {
             let rec = recordings::get(&ctx.pool, tenant, id).await?;
@@ -611,19 +625,27 @@ async fn transcribe(ctx: &Ctx, job: &Job) -> anyhow::Result<()> {
         _ => anyhow::bail!("payload needs recording_id or voicemail_id"),
     };
     let engine = if p.pass >= 2 {
-        match refine {
+        match refine.clone() {
             Some(engine) => engine,
             // Switched off since the first pass.
             None => return Ok(recordings::finalize_transcript(&ctx.pool, source).await?),
         }
     } else {
-        TranscriptionEngine::parse(&tenant_settings.transcription_quality).unwrap_or(
-            TranscriptionEngine::Local(settings::TranscriptionQuality::Fast),
-        )
+        first
     };
+    let purpose = Purpose::for_pass(voicemail, p.pass);
     let language = talkops_core::prompts::language(&language);
     let started = std::time::Instant::now();
-    let result = run_engine(ctx, tenant, engine, &file, language, &tenant_settings).await;
+    let result = run_engine(
+        ctx,
+        tenant,
+        purpose,
+        engine,
+        &file,
+        language,
+        &tenant_settings.transcription_vocabulary,
+    )
+    .await;
     let last_attempt = job.attempts >= job.max_attempts;
     let finished = match &result {
         Ok((segments, label)) => {
@@ -673,36 +695,61 @@ async fn transcribe(ctx: &Ctx, job: &Job) -> anyhow::Result<()> {
 }
 
 /// Runs one transcription; returns the segments and an engine label.
-async fn run_engine(
+/// Audio sent to a cloud provider is added to the usage.
+pub(crate) async fn run_engine(
     ctx: &Ctx,
     tenant: talkops_core::tenant::TenantId,
-    engine: TranscriptionEngine,
+    purpose: Purpose,
+    engine: Engine,
     file: &Path,
     language: &str,
-    s: &settings::TenantSettings,
+    vocabulary: &str,
 ) -> anyhow::Result<(Vec<recordings::Segment>, String)> {
     match engine {
-        TranscriptionEngine::Local(quality) => {
+        Engine::Local(quality) => {
             let opts = transcribe::Options {
                 quality,
-                vocabulary: s.transcription_vocabulary.clone(),
+                vocabulary: vocabulary.to_owned(),
             };
-            let segments = ctx.whisper.transcribe(file, language, &opts).await?;
-            Ok((
-                segments,
-                format!("whisper:{}", ctx.whisper.model_name(quality)),
-            ))
+            let whisper = if purpose == Purpose::Live {
+                // Previews leave CPU for calls and the other transcriptions.
+                Whisper {
+                    threads: ctx.whisper.threads.clamp(1, 2),
+                    ..ctx.whisper.clone()
+                }
+            } else {
+                ctx.whisper.clone()
+            };
+            let segments = whisper.transcribe(file, language, &opts).await?;
+            Ok((segments, format!("whisper:{}", whisper.model_name(quality))))
         }
-        TranscriptionEngine::Api => {
-            let secrets = ctx.secrets.as_ref().context(
-                "TALKOPS_SECRET_KEY is not set for the media worker (needed for the API key)",
-            )?;
-            let cfg = transcription_api::config(&ctx.pool, tenant, secrets).await?;
-            let segments =
-                api::transcribe(&cfg, file, language, &s.transcription_vocabulary).await?;
-            Ok((segments, format!("api:{}", cfg.model)))
+        Engine::Cloud {
+            provider_id,
+            model,
+            price,
+            ..
+        } => {
+            let cfg = cloud_config(ctx, tenant, provider_id, &model).await?;
+            let (segments, seconds) = api::transcribe(&cfg, file, language, vocabulary).await?;
+            profiles::record_usage(&ctx.pool, tenant, purpose, &cfg.label(), seconds, price)
+                .await?;
+            Ok((segments, format!("api:{}", cfg.label())))
         }
     }
+}
+
+/// A cloud connection with its decrypted key.
+pub(crate) async fn cloud_config(
+    ctx: &Ctx,
+    tenant: talkops_core::tenant::TenantId,
+    provider_id: uuid::Uuid,
+    model: &str,
+) -> anyhow::Result<transcription_api::ApiConfig> {
+    let secrets = ctx
+        .secrets
+        .as_ref()
+        .context("TALKOPS_SECRET_KEY is not set for the media worker (needed for the API key)")?;
+    Ok(transcription_api::config(&ctx.pool, tenant, secrets, provider_id, model).await?)
 }
 
 #[cfg(all(test, unix))]

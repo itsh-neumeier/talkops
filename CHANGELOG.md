@@ -6,10 +6,13 @@ All notable changes to TalkOps. The format follows
 
 ## [Unreleased]
 
-## [1.7.7] – 2026-10-12
+## [1.7.7] – 2026-10-13
 
 ### Added
 
+- Select Standard, HD or Robust audio profiles per device. HD uses G.722;
+  Robust uses iLBC with G.711 fallback. FreeSWITCH transcodes between parties.
+  Profiled device legs use a jitter buffer during bridged calls.
 - Select a browser softphone identity. Administrators can select any enabled
   extension in their tenant. Other users select from their assigned extensions.
   The softphone stays connected during navigation and adds audio device tests,
@@ -36,6 +39,10 @@ All notable changes to TalkOps. The format follows
 
 ### Upgrade notes
 
+- Wi-Fi handsets now default to HD. Resync Yealink AX83H/AX86R phones to enable
+  G.722 and iLBC. Update FreeSWITCH together with the server for `mod_ilbc`.
+  HD and Robust profiles offer audio codecs only. Omitting `codec_profile`
+  from a device update resets it to the automatic profile.
 - **Call pickup changes:** `**<number>` now makes an internal call. Directed
   pickup uses `*8*<extension>`. Resync provisioned phones and reload phonebooks.
   Update manually configured BLF, pickup keys and saved pickup speed dials.
@@ -49,6 +56,7 @@ All notable changes to TalkOps. The format follows
   (`20261026000002_browser_account_owners`) and live preview state
   (`20261026000003_live_transcript_previews`). Admin API clients must send
   `extension_id` to `POST /api/v1/me/webrtc`.
+- Migration `20261027000001_device_codec_profile` adds device codec profiles.
 - Complete recovery backups require a separate backup password and captured
   deployment files or an encrypted Portainer import. Older binaries cannot
   read encrypted format-2 archives. Keep the password outside captured files.

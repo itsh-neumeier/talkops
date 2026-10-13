@@ -46,7 +46,8 @@ head; the later commit only links the summary. Use the actual checked head.
   Reviewed the pinned upstream mod_event_socket.c source.
 - Passed: local npm ci/lint/check (zero errors/warnings), three Node tests/build.
 - Passed: Rust format, whitespace, source ancestry and unchanged dependency locks.
-- Pending: final integration CI/E2E, target checks, release
+- Passed: final candidate a999b24d7aed42679daf33008230b66d304952b4 PR/push CI (38434186111, 38434177379) and E2E (38434186011, 38434177610).
+- Pending: target checks and release
   workflow and amd64/arm64 manifest, label and stable tag verification.
 - Full Linux DB/LDAP/stack checks use CI. Real Dahua DTMF and deployed UI
   observation are unavailable. No actual door was operated.
@@ -67,7 +68,8 @@ No automation or message to a development chat is authorized or needed.
 
 ## Next action
 
-Open the integration PR, wait for final candidate checks and merge. Verify the
+PR #18 merged as bfc46429f0889ceec79e72f45b49c6ec79dc9f26. Its tree equals the checked candidate; both source histories are ancestors. No open PR remains.
+Target CI 38436597176 and E2E 38436597299 are queued. Verify the
 resulting main CI/E2E before pushing unused v1.7.9. Verify publication and all
 three manifests and moving tags, then delete only integrated unchanged branches.
 Save the final result in the PR and task summary.

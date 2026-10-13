@@ -27,6 +27,7 @@
 
     <load module="mod_opus"/>
     <load module="mod_h26x"/>
+    <load module="mod_ilbc"/>
 
     <load module="mod_sndfile"/>
     <load module="mod_native_file"/>

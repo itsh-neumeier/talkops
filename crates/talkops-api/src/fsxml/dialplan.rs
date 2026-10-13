@@ -12,7 +12,7 @@ use talkops_core::attendant::{self, Node, RingStrategy};
 use talkops_core::cdr::Direction;
 use talkops_core::dialing::{DialPlanSettings, Dialed, NumberFormat};
 use talkops_core::error::CoreResult;
-use talkops_core::extensions::{self, Extension};
+use talkops_core::extensions::{self, CodecProfile, Extension};
 use talkops_core::presets::{CallerIdHeader, Dtmf, PresetCatalog, Srtp};
 use talkops_core::ring_groups::{self, RingGroup};
 use talkops_core::settings::{self, TenantSettings};
@@ -24,7 +24,8 @@ use talkops_core::{queues, time_conditions};
 use uuid::Uuid;
 
 use super::{
-    CONTEXT_INTERNAL, CONTEXT_PUBLIC, CONTEXT_TRANSFER, SIP_DOMAIN, XmlWriter, sanitize_value,
+    CONTEXT_INTERNAL, CONTEXT_PUBLIC, CONTEXT_TRANSFER, SIP_DOMAIN, XmlWriter, codecs,
+    sanitize_value,
 };
 
 /// The relevant parts of a dialplan lookup request.
@@ -104,7 +105,9 @@ pub struct Routing<'a> {
 /// Decides how to handle a call. Never fails open: errors become rejections.
 pub async fn plan(r: &Routing<'_>, req: &CallRequest) -> Vec<Action> {
     let result = match req.context.as_str() {
-        CONTEXT_INTERNAL => plan_internal(r, req).await,
+        CONTEXT_INTERNAL => plan_internal(r, req)
+            .await
+            .map(|actions| with_caller_codecs(req, actions)),
         CONTEXT_PUBLIC => plan_public(r, req).await,
         CONTEXT_TRANSFER => plan_transfer(r, req).await,
         other => {
@@ -120,6 +123,33 @@ pub async fn plan(r: &Routing<'_>, req: &CallRequest) -> Vec<Action> {
         tracing::error!(error = %err, "dialplan routing failed");
         reject("500 Server Internal Error")
     })
+}
+
+/// Pins the caller's leg to the codec profile of its device (ADR 0023). The
+/// codec lists the plan sets for the call then apply to the called legs only;
+/// FreeSWITCH transcodes between the two.
+fn with_caller_codecs(req: &CallRequest, actions: Vec<Action>) -> Vec<Action> {
+    let Some(media) = req
+        .var("talkops_codec_profile")
+        .and_then(CodecProfile::parse)
+        .and_then(codecs::leg_media)
+    else {
+        return actions;
+    };
+    let mut pinned: Vec<Action> = media
+        .vars()
+        .iter()
+        .map(|(name, value)| set(name, *value))
+        .collect();
+    pinned.extend(actions.into_iter().map(|(app, data)| {
+        match data.strip_prefix("absolute_codec_string=") {
+            Some(list) if app == "set" || app == "export" => {
+                ("export", format!("nolocal:absolute_codec_string={list}"))
+            }
+            _ => (app, data),
+        }
+    }));
+    pinned
 }
 
 /// Value of a variable the plan sets (`set`/`export name=value`).
@@ -239,7 +269,7 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
         .chars()
         .filter(|c| c.is_ascii_digit() || *c == '+' || *c == '*' || *c == '#')
         .collect();
-    // `*<internal number>` (e.g. `*610`): the same as dialing `610`. Checked
+    // Legacy `*<internal number>` (e.g. `*610`): the same as dialing `610`. Checked
     // before the star codes, so `*310` reaches 310 if it exists.
     let star_internal = match dest.strip_prefix('*') {
         Some(rest) if (3..=4).contains(&rest.len()) && rest.bytes().all(|b| b.is_ascii_digit()) => {
@@ -254,6 +284,17 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
     let (dest, hide_once) = match dest.strip_prefix("#31#").or(dest.strip_prefix("*31")) {
         Some(rest) if !rest.is_empty() => (rest.to_owned(), true),
         _ => (dest, false),
+    };
+    // Explicit internal calls never fall through to external number formatting,
+    // including calls preceded by a caller-ID hiding prefix.
+    let explicit_internal_call = dest.starts_with("**");
+    let dest = if explicit_internal_call {
+        let Some(number) = numbering::explicit_internal_number(&dest) else {
+            return Ok(reject("404 Not Found"));
+        };
+        number.to_owned()
+    } else {
+        dest
     };
 
     let mut actions = vec![
@@ -291,7 +332,7 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
         return Ok(actions);
     }
 
-    if let Some((user, host, hide)) = sip_address(req) {
+    if let Some((user, host, hide)) = sip_address(req).filter(|_| !explicit_internal_call) {
         actions.extend(
             plan_sip_address(
                 r,
@@ -330,6 +371,9 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
         return Ok(actions);
     }
 
+    if explicit_internal_call {
+        return Ok(reject("404 Not Found"));
+    }
     let dial_plan = settings.dial_plan();
     let (route_number, dialed_e164, raw_dial, emergency) = match dial_plan.classify(&dest) {
         Dialed::Emergency(n) => (settings.default_number_id, None, n, true),
@@ -557,7 +601,7 @@ fn confirm() -> Vec<Action> {
 }
 
 /// Name of the pickup group every extension's calls are registered in, so
-/// `**<ext>` and BLF keys can grab them.
+/// `*8*<ext>` and BLF keys can grab them.
 fn pickup_group(ext: &Extension) -> String {
     format!("ext-{}", ext.id.simple())
 }
@@ -568,7 +612,7 @@ fn pickup_group(ext: &Extension) -> String {
 ///
 /// - `*78` / `*79`: do not disturb on / off
 /// - `*72<number>` / `*73`: unconditional call forwarding on / off
-/// - `**<ext>`: pick up a call ringing at `<ext>`
+/// - `*8*<ext>`: pick up a call ringing at `<ext>`
 /// - `*97` / `*98`: own voicemail / any voicemail with PIN
 /// - `*30<number>`: toggle a time condition between schedule and closed
 /// - `*51` … `*59`: park in / pick up from a park slot
@@ -672,7 +716,7 @@ async fn feature_code(
         a.extend(confirm());
         return Ok(Some(a));
     }
-    if let Some(number) = dest.strip_prefix("**") {
+    if let Some(number) = dest.strip_prefix("*8*") {
         let Some(target) = extensions::find_by_number(pool, tenant, number).await? else {
             return Ok(Some(reject("404 Not Found")));
         };
@@ -771,12 +815,12 @@ async fn bridge_devices(
     if devices.is_empty() {
         return Ok(vm.unwrap_or_else(|| reject("480 Temporarily Unavailable")));
     }
-    let dial = devices
+    let endpoints: Vec<String> = devices
         .iter()
-        .map(|d| format!("user/{}@{SIP_DOMAIN}", sanitize_value(d)))
+        .map(device_endpoint)
         .chain(std::iter::once(format!("pickup/{}", pickup_group(target))))
-        .collect::<Vec<_>>()
-        .join(",");
+        .collect();
+    let dial = dial_string(&[endpoints], false, 0);
     Ok([
         set("talkops_destination", target.number.clone()),
         set("talkops_dest_extension_id", target.id.to_string()),
@@ -1123,6 +1167,12 @@ async fn plan_transfer(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
         let kind: Option<NumberDestination> = serde_json::from_value(serde_json::json!(kind)).ok();
         kind.zip(id.parse::<Uuid>().ok())
     } else if let Some(number) = req.destination.strip_prefix("dial:") {
+        numbering::resolve(r.pool, tenant, number).await?
+    } else if req.destination.starts_with("**") {
+        let Some(number) = numbering::explicit_internal_number(&req.destination) else {
+            return Ok(reject("404 Not Found"));
+        };
+        // An explicit internal REFER target must not become an external call.
         numbering::resolve(r.pool, tenant, number).await?
     } else if let Some(slot) = park_slot(
         req.destination
@@ -1500,7 +1550,7 @@ async fn ring_legs(
         let mut endpoints: Vec<String> = extensions::ring_targets(r.pool, ext.id)
             .await?
             .iter()
-            .map(|d| format!("user/{}@{SIP_DOMAIN}", sanitize_value(d)))
+            .map(device_endpoint)
             .collect();
         if endpoints.is_empty() {
             continue;
@@ -1511,8 +1561,36 @@ async fn ring_legs(
     Ok(legs)
 }
 
+/// Bridge endpoint of a device. A device with a codec profile gets its codec
+/// list and jitter buffer as per-leg variables (ADR 0023): the bridge sets
+/// the caller's exported variables on the new channel after it is created,
+/// so only `[…]` variables with `local_var_clobber` win over the exported
+/// codec list. `^^;` keeps the commas of the codec list in the variable.
+fn device_endpoint(target: &extensions::RingTarget) -> String {
+    let user = format!("user/{}@{SIP_DOMAIN}", sanitize_value(&target.sip_username));
+    match codecs::leg_media(target.effective_codec_profile()) {
+        Some(m) => format!("[^^;{}]{user}", m.joined(";")),
+        None => user,
+    }
+}
+
 /// All legs at once, or one after the other with `timeout` seconds each.
+/// With per-leg codec variables (see [`device_endpoint`]) the per-leg
+/// variables must win over the exported ones (`local_var_clobber`).
 fn dial_string(legs: &[Vec<String>], sequential: bool, timeout: i32) -> String {
+    let dial = dial_endpoints(legs, sequential, timeout);
+    if legs
+        .iter()
+        .flatten()
+        .any(|e| e.contains("absolute_codec_string="))
+    {
+        format!("{{local_var_clobber=true}}{dial}")
+    } else {
+        dial
+    }
+}
+
+fn dial_endpoints(legs: &[Vec<String>], sequential: bool, timeout: i32) -> String {
     if sequential {
         legs.iter()
             .map(|eps| {
@@ -1613,4 +1691,47 @@ pub fn render(context: &str, actions: &[Action]) -> String {
 /// Helper for tests and the API: format a number the way a trunk expects it.
 pub fn format_for(dial_plan: &DialPlanSettings, e164: &str, format: NumberFormat) -> String {
     dial_plan.format(e164, format)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use talkops_core::extensions::{DeviceKind, RingTarget};
+
+    fn target(user: &str, kind: DeviceKind, profile: Option<CodecProfile>) -> RingTarget {
+        RingTarget {
+            sip_username: user.into(),
+            kind,
+            codec_profile: profile,
+        }
+    }
+
+    #[test]
+    fn device_endpoints_carry_the_codec_profile() {
+        let desk = device_endpoint(&target("20-1", DeviceKind::Desk, None));
+        assert_eq!(desk, "user/20-1@talkops.local");
+        let robust = device_endpoint(&target(
+            "21-1",
+            DeviceKind::Wifi,
+            Some(CodecProfile::Robust),
+        ));
+        assert_eq!(
+            robust,
+            "[^^;absolute_codec_string=iLBC@20i,iLBC@30i,PCMA,PCMU;jitterbuffer_msec=60:200;\
+             rtp_jitter_buffer_during_bridge=true]user/21-1@talkops.local"
+        );
+
+        // Without a profile the dial string stays as before.
+        let plain = vec![vec![desk.clone()]];
+        assert_eq!(dial_string(&plain, false, 20), "user/20-1@talkops.local");
+        // Sequential groups keep the leg timeout as a second `[…]` block.
+        let legs = vec![vec![desk], vec![robust.clone()]];
+        assert_eq!(
+            dial_string(&legs, true, 15),
+            format!(
+                "{{local_var_clobber=true}}[leg_timeout=15]user/20-1@talkops.local|\
+                 [leg_timeout=15]{robust}"
+            )
+        );
+    }
 }

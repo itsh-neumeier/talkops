@@ -306,10 +306,58 @@ pub enum DeviceKind {
     Wifi,
 }
 
+/// Audio codecs TalkOps uses with a device (ADR 0023). FreeSWITCH transcodes
+/// between this codec and the codec of the other party.
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, utoipa::ToSchema,
+)]
+#[sqlx(type_name = "codec_profile", rename_all = "lowercase")]
+#[serde(rename_all = "lowercase")]
+pub enum CodecProfile {
+    /// The system codecs (Opus, G.722, G.711, video where allowed).
+    Standard,
+    /// G.722 wideband audio with G.711 as fallback, plus a jitter buffer.
+    Hd,
+    /// iLBC for networks with packet loss, G.711 as fallback, plus a jitter
+    /// buffer.
+    Robust,
+}
+
+impl CodecProfile {
+    /// The profile in use: the configured one, else the default of the
+    /// device kind (Wi-Fi handsets: `Hd`, all others: `Standard`).
+    pub fn effective(kind: DeviceKind, configured: Option<CodecProfile>) -> CodecProfile {
+        configured.unwrap_or(match kind {
+            DeviceKind::Wifi => CodecProfile::Hd,
+            _ => CodecProfile::Standard,
+        })
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            CodecProfile::Standard => "standard",
+            CodecProfile::Hd => "hd",
+            CodecProfile::Robust => "robust",
+        }
+    }
+
+    pub fn parse(value: &str) -> Option<CodecProfile> {
+        [
+            CodecProfile::Standard,
+            CodecProfile::Hd,
+            CodecProfile::Robust,
+        ]
+        .into_iter()
+        .find(|p| p.as_str() == value)
+    }
+}
+
 #[derive(Debug, Clone, FromRow, Serialize, utoipa::ToSchema)]
 pub struct Device {
     pub id: Uuid,
     pub extension_id: Uuid,
+    /// Owner of a separate browser SIP identity; null for other devices.
+    pub browser_user_id: Option<Uuid>,
     pub name: String,
     pub kind: DeviceKind,
     pub sip_username: String,
@@ -324,6 +372,8 @@ pub struct Device {
     pub phone_label: String,
     /// Caller name the phone sends; empty = the extension's display name.
     pub phone_display_name: String,
+    /// Configured codec profile; `None` = automatic from the device kind.
+    pub codec_profile: Option<CodecProfile>,
     pub enabled: bool,
 }
 
@@ -344,6 +394,9 @@ pub struct DeviceInput {
     pub phone_label: String,
     #[serde(default)]
     pub phone_display_name: String,
+    /// Codec profile; omitted or `null` = automatic from the device kind.
+    #[serde(default)]
+    pub codec_profile: Option<CodecProfile>,
     #[serde(default = "yes")]
     pub enabled: bool,
 }
@@ -393,7 +446,7 @@ pub async fn set_phone_texts(
         .await?)
 }
 
-const DEV_COLUMNS: &str = "id, extension_id, name, kind, sip_username, sip_password_enc, phone_id, account_index, phone_label, phone_display_name, enabled";
+const DEV_COLUMNS: &str = "id, extension_id, browser_user_id, name, kind, sip_username, sip_password_enc, phone_id, account_index, phone_label, phone_display_name, codec_profile, enabled";
 
 /// Resolves the account slot for a device on a phone: the requested one, or
 /// the lowest free slot. Checks that the phone exists.
@@ -480,6 +533,15 @@ pub struct DeviceAuth {
     pub extension_id: Uuid,
     pub extension_number: String,
     pub display_name: String,
+    pub kind: DeviceKind,
+    pub codec_profile: Option<CodecProfile>,
+}
+
+impl DeviceAuth {
+    /// The codec profile in use for this device.
+    pub fn effective_codec_profile(&self) -> CodecProfile {
+        CodecProfile::effective(self.kind, self.codec_profile)
+    }
 }
 
 /// Looks up an enabled device of an enabled extension by SIP username (any tenant).
@@ -489,21 +551,123 @@ pub async fn device_auth<'e>(
 ) -> CoreResult<Option<DeviceAuth>> {
     Ok(sqlx::query_as(
         "SELECT d.id AS device_id, d.tenant_id, d.sip_username, d.sip_password_enc,
-                e.id AS extension_id, e.number AS extension_number, e.display_name
+                e.id AS extension_id, e.number AS extension_number, e.display_name,
+                d.kind, d.codec_profile
          FROM devices d JOIN extensions e ON e.id = d.extension_id
-         WHERE lower(d.sip_username) = lower($1) AND d.enabled AND e.enabled",
+         WHERE lower(d.sip_username) = lower($1) AND d.enabled AND e.enabled
+           AND (d.browser_user_id IS NULL OR EXISTS (
+               SELECT 1 FROM users u WHERE u.id = d.browser_user_id
+                 AND u.tenant_id = d.tenant_id AND u.enabled
+                 AND (u.role = 'admin' OR e.user_id = u.id)))",
     )
     .bind(sip_username)
     .fetch_optional(db)
     .await?)
 }
 
-/// SIP usernames of the enabled devices of an extension (the ring targets).
-pub async fn ring_targets<'e>(db: impl PgExecutor<'e>, extension: Uuid) -> CoreResult<Vec<String>> {
-    Ok(sqlx::query_scalar("SELECT sip_username FROM devices WHERE extension_id = $1 AND enabled ORDER BY sip_username")
-        .bind(extension)
-        .fetch_all(db)
-        .await?)
+/// An enabled device of an extension that a call rings.
+#[derive(Debug, Clone, PartialEq, Eq, FromRow)]
+pub struct RingTarget {
+    pub sip_username: String,
+    pub kind: DeviceKind,
+    pub codec_profile: Option<CodecProfile>,
+}
+
+impl RingTarget {
+    /// The codec profile in use for the device.
+    pub fn effective_codec_profile(&self) -> CodecProfile {
+        CodecProfile::effective(self.kind, self.codec_profile)
+    }
+}
+
+/// The enabled devices of an extension (the ring targets).
+pub async fn ring_targets<'e>(
+    db: impl PgExecutor<'e>,
+    extension: Uuid,
+) -> CoreResult<Vec<RingTarget>> {
+    Ok(sqlx::query_as(
+        "SELECT d.sip_username, d.kind, d.codec_profile
+         FROM devices d JOIN extensions e ON e.id = d.extension_id
+         WHERE d.extension_id = $1 AND d.enabled
+           AND (d.browser_user_id IS NULL OR EXISTS (
+               SELECT 1 FROM users u WHERE u.id = d.browser_user_id
+                 AND u.tenant_id = d.tenant_id AND u.enabled
+                 AND (u.role = 'admin' OR e.user_id = u.id))) ORDER BY d.sip_username",
+    )
+    .bind(extension)
+    .fetch_all(db)
+    .await?)
+}
+
+/// Gets a user's browser device without sharing another user's SIP credentials.
+/// Lock the extension so concurrent requests cannot create duplicate accounts.
+pub async fn browser_device(
+    pool: &sqlx::PgPool,
+    secrets: &SecretBox,
+    extension: &Extension,
+    actor: &crate::audit::Actor,
+    display_name: &str,
+) -> CoreResult<(Device, String)> {
+    let user = actor.user_id.ok_or(CoreError::NotFound)?;
+    let mut tx = pool.begin().await?;
+    // Recheck authorization under the lock before credentials are returned.
+    let authorized: Option<Uuid> = sqlx::query_scalar(
+        "SELECT e.id FROM extensions e JOIN users u ON u.id = $3 AND u.tenant_id = e.tenant_id
+         WHERE e.id = $2 AND e.tenant_id = $1 AND e.enabled AND u.enabled
+           AND (u.role = 'admin' OR e.user_id = u.id) FOR UPDATE OF e",
+    )
+    .bind(actor.tenant)
+    .bind(extension.id)
+    .bind(user)
+    .fetch_optional(&mut *tx)
+    .await?;
+    if authorized.is_none() {
+        return Err(CoreError::NotFound);
+    }
+    let sql = format!(
+        "SELECT {DEV_COLUMNS} FROM devices WHERE tenant_id = $1
+                       AND extension_id = $2 AND browser_user_id = $3 AND kind = 'browser'"
+    );
+    let existing: Option<Device> = sqlx::query_as(&sql)
+        .bind(actor.tenant)
+        .bind(extension.id)
+        .bind(user)
+        .fetch_optional(&mut *tx)
+        .await?;
+    let (device, password, action) = if let Some(device) = existing {
+        let password = secrets.decrypt(&device.sip_password_enc)?;
+        (device, password, "view_credentials")
+    } else {
+        let password = crypto::random_password(20)?;
+        let sql = format!(
+            "INSERT INTO devices
+            (tenant_id, extension_id, browser_user_id, name, kind, sip_username, sip_password_enc)
+            VALUES ($1, $2, $3, $4, 'browser', $5, $6) RETURNING {DEV_COLUMNS}"
+        );
+        let device: Device = sqlx::query_as(&sql)
+            .bind(actor.tenant)
+            .bind(extension.id)
+            .bind(user)
+            .bind(format!("Browser ({display_name})"))
+            .bind(format!("web-{}", Uuid::new_v4()))
+            .bind(secrets.encrypt(&password)?)
+            .fetch_one(&mut *tx)
+            .await?;
+        (device, password, "create")
+    };
+    if device.enabled {
+        crate::audit::record(
+            &mut *tx,
+            actor,
+            action,
+            "device",
+            Some(device.id.to_string()),
+            serde_json::json!({"extension": extension.number, "kind": "browser"}),
+        )
+        .await?;
+    }
+    tx.commit().await?;
+    Ok((device, password))
 }
 
 /// Creates a device with a generated SIP password. Returns the device and the
@@ -536,8 +700,9 @@ pub async fn create_device(
     let password = crypto::random_password(20)?;
     let sql = format!(
         "INSERT INTO devices (tenant_id, extension_id, name, kind, sip_username, sip_password_enc,
-                              phone_id, account_index, enabled, phone_label, phone_display_name)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING {DEV_COLUMNS}"
+                              phone_id, account_index, enabled, phone_label, phone_display_name,
+                              codec_profile)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING {DEV_COLUMNS}"
     );
     let device = sqlx::query_as(&sql)
         .bind(tenant)
@@ -551,6 +716,7 @@ pub async fn create_device(
         .bind(input.enabled)
         .bind(label)
         .bind(display)
+        .bind(input.codec_profile)
         .fetch_one(pool)
         .await?;
     Ok((device, password))
@@ -566,7 +732,7 @@ pub async fn update_device(
     let slot = phone_slot(pool, tenant, input.phone_id, input.account_index, Some(id)).await?;
     let sql = format!(
         "UPDATE devices SET name = $3, kind = $4, phone_id = $5, account_index = $6, enabled = $7,
-             phone_label = $8, phone_display_name = $9, updated_at = now()
+             phone_label = $8, phone_display_name = $9, codec_profile = $10, updated_at = now()
          WHERE tenant_id = $1 AND id = $2 RETURNING {DEV_COLUMNS}"
     );
     Ok(sqlx::query_as(&sql)
@@ -579,6 +745,7 @@ pub async fn update_device(
         .bind(input.enabled)
         .bind(label)
         .bind(display)
+        .bind(input.codec_profile)
         .fetch_one(pool)
         .await?)
 }
@@ -622,6 +789,25 @@ pub async fn delete_device<'e>(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn codec_profile_defaults_by_kind() {
+        use CodecProfile::*;
+        assert_eq!(CodecProfile::effective(DeviceKind::Wifi, None), Hd);
+        assert_eq!(CodecProfile::effective(DeviceKind::Desk, None), Standard);
+        assert_eq!(
+            CodecProfile::effective(DeviceKind::Wifi, Some(Robust)),
+            Robust
+        );
+        assert_eq!(
+            CodecProfile::effective(DeviceKind::Wifi, Some(Standard)),
+            Standard
+        );
+        for p in [Standard, Hd, Robust] {
+            assert_eq!(CodecProfile::parse(p.as_str()), Some(p));
+        }
+        assert_eq!(CodecProfile::parse("opus"), None);
+    }
 
     #[test]
     fn extension_validation() {

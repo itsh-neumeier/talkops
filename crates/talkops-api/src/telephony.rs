@@ -47,6 +47,8 @@ pub struct LiveStatus {
 #[derive(Debug, Clone, PartialEq, Serialize, utoipa::ToSchema)]
 pub struct ActiveCall {
     pub uuid: String,
+    #[serde(skip)]
+    pub bridge_uuid: String,
     pub caller_number: String,
     pub caller_name: String,
     /// Dialed number.
@@ -226,8 +228,13 @@ impl Telephony {
     /// Calls in progress; `None` if FreeSWITCH is unreachable.
     pub async fn active_calls(&self) -> Option<Vec<ActiveCall>> {
         let client = self.esl.get().await?;
-        let out = client.api("show calls as json").await.ok()?;
-        Some(parse_calls(&out))
+        match client.api("show calls as json").await {
+            Ok(out) => Some(parse_calls(&out)),
+            Err(err) => {
+                tracing::warn!(error = %err, "show calls failed");
+                None
+            }
+        }
     }
 
     /// Callers waiting in a mod_callcenter queue; `None` if unknown.
@@ -326,6 +333,7 @@ fn parse_calls(json: &str) -> Vec<ActiveCall> {
                 .unwrap_or_default();
             ActiveCall {
                 uuid: f("uuid"),
+                bridge_uuid: f("b_uuid"),
                 caller_number,
                 caller_name,
                 destination: f("dest").trim_start_matches("park+").to_owned(),

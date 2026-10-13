@@ -49,6 +49,9 @@ Who may access what?
 
 ## Transcription
 
+The dashboard has an optional [live preview](active-calls.md) for calls that
+are already recorded. Final transcription remains separate.
+
 With transcription enabled, the media worker turns every new recording and
 voicemail into text:
 

@@ -1,5 +1,9 @@
 # Running with Portainer
 
+For complete recovery backups, import the actual stack YAML and environment
+files in **Settings → Backups**. Supply the backup password separately.
+See [Backup and restore](backup.md) for imports and new-host recovery.
+
 `docker-compose.yml` only uses prebuilt images from GHCR and can therefore be
 used directly as a Portainer stack.
 

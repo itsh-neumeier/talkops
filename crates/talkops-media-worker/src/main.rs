@@ -6,6 +6,7 @@
 //! claimed.
 
 mod api;
+mod live;
 mod transcribe;
 mod tts;
 mod utterances;
@@ -38,6 +39,7 @@ const LANES: &[&[&str]] = &[
         vmc::JOB_TTS_PROMPTS,
     ],
     &[recordings::JOB_TRANSCRIBE],
+    &[talkops_core::live_transcripts::JOB],
 ];
 
 /// Running jobs without a heartbeat for this long are handed to another worker.
@@ -215,6 +217,7 @@ async fn main() -> anyhow::Result<()> {
     }
     tracing::info!(version = talkops_core::VERSION, worker_id = %args.worker_id, "media worker starting");
 
+    let _writer_guard = talkops_core::db::operation_guard(&args.database_url, false).await?;
     let pool = talkops_core::db::connect_lazy(&args.database_url, 4)?;
     let mut listener = loop {
         match PgListener::connect_with(&pool).await {
@@ -344,6 +347,7 @@ async fn run(ctx: &Ctx, job: &Job) -> anyhow::Result<()> {
         vmc::JOB_TTS_MESSAGE_INFO => tts_message_info(ctx, job).await,
         vmc::JOB_TTS_PROMPTS => tenant_prompts(ctx, Some(job.tenant_id)).await.map(|_| ()),
         recordings::JOB_TRANSCRIBE => transcribe(ctx, job).await,
+        talkops_core::live_transcripts::JOB => live::run(ctx, job).await,
         other => anyhow::bail!("no handler for job kind `{other}`"),
     }
 }

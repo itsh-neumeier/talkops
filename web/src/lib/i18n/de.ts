@@ -1,6 +1,74 @@
 import type en from './en';
 
 const de: Record<keyof typeof en, string> = {
+	'setup.choose':
+		'Neue Instanz einrichten oder eine bestehende Instanz aus einem Backup wiederherstellen.',
+	'setup.new': 'Neue Instanz einrichten',
+	'setup.restore': 'Aus Backup wiederherstellen',
+	'restore.title': 'Bestehende Instanz wiederherstellen',
+	'restore.intro':
+		'Dieser Assistent prüft das Backup und bereitet Deployment-Dateien vor. Das Host-Werkzeug führt die Wiederherstellung offline aus.',
+	'restore.hostFirst':
+		'Falls der Server noch nicht starten kann, nutze die Host-Schritte unten, um zuerst die ursprüngliche Konfiguration zu exportieren.',
+	'restore.limits':
+		'Browser-Prüfung: bis 512 MiB Upload und 8 GiB entpackte Daten. Für größere Backups das Host-Werkzeug verwenden.',
+	'restore.inspect': '1. Backup auswählen und prüfen',
+	'restore.token': 'Lokales Setup-Token',
+	'restore.tokenHint':
+		'TALKOPS_SETUP_TOKEN auf dem Host auf einen zufälligen Wert mit mindestens 32 Zeichen setzen, TalkOps neu starten und den Wert hier eingeben. Sobald ein Konto existiert, wird dieser Zugang geschlossen.',
+	'restore.archive': 'Backup-Archiv',
+	'restore.password': 'Backup-Passwort (bei alten unverschlüsselten Archiven leer lassen)',
+	'restore.inspectButton': 'Backup prüfen',
+	'restore.review': '2. Wiederherstellungsdaten prüfen',
+	'restore.date': 'Backup-Datum',
+	'restore.schema': 'Datenbankschema',
+	'restore.volumes': 'Enthaltene Daten-Volumes',
+	'restore.noRecordings':
+		'Dieses Backup enthält keine Gesprächsaufzeichnungen. Diese werden nicht wiederhergestellt.',
+	'restore.complete': 'Die benötigten Deployment-Dateien und Zugangsdaten sind enthalten.',
+	'restore.incomplete':
+		'Die Wiederherstellungskonfiguration ist unvollständig. Fehlende Dateien oder Werte vor dem Restore ergänzen.',
+	'restore.project': 'Compose-Projekt',
+	'restore.profiles': 'Profile',
+	'restore.configDate': 'Konfiguration erfasst',
+	'restore.imported':
+		'Diese Konfiguration wurde manuell importiert. Prüfe, ob sie dem ursprünglichen Stack entspricht.',
+	'restore.legacy':
+		'Dieses alte Backup enthält keine Deployment-Konfiguration. Ursprüngliche Compose-Dateien, .env und TALKOPS_SECRET_KEY bereitstellen.',
+	'restore.downloadConsent':
+		'Der Download enthält unverschlüsselte Passwörter und den Anwendungsschlüssel. Ich werde ihn sicher aufbewahren.',
+	'restore.download': 'Deployment-Dateien herunterladen',
+	'restore.hostSteps': '3. Wiederherstellung auf dem Linux-Host abschließen',
+	'restore.getTool':
+		'Host-Werkzeug aus einem TalkOps-Image exportieren, das dieses Backup-Format unterstützt. Im Produktivbetrieb eine passende Image-Version festlegen.',
+	'restore.prepareHint':
+		'Archiv als backup.archive speichern. Backup-Passwort in einer privaten Datei namens backup-password ablegen. Dieser Befehl exportiert Dateien in ein neues Verzeichnis. Bei alten Archiven --password-file weglassen.',
+	'restore.checkHost':
+		'Exportierte .env und Compose-Dateien prüfen. TALKOPS_SECRET_KEY beibehalten. IP-Adressen, Domain, Ports, Volume-Speicher, Image-Versionen, Projektname und Profile kontrollieren. Fehlende Konfiguration ergänzen.',
+	'restore.runHint':
+		'Im geprüften Deployment-Verzeichnis ausführen. Beispielpfade, Projektname und alle -f-, --env-file- und --profile-Optionen anpassen. Das Werkzeug fragt nach Bestätigung, stoppt schreibende Dienste, stellt Daten wieder her und startet den Stack.',
+	'restore.portainer':
+		'In Portainer den geprüften Stack und die Umgebungswerte importieren. TalkOps, Media-Worker und FreeSWITCH stoppen; PostgreSQL laufen lassen. talkops restore --yes in einem temporären Container mit denselben Volumes und Umgebungswerten ausführen; danach den geprüften Stack neu bereitstellen.',
+	'restore.verify':
+		'Nach dem Neustart mit einem wiederhergestellten Konto einschließlich MFA anmelden. Dienstzustand, Telefonregistrierung und einen Testanruf prüfen.',
+	'restore.failure':
+		'Bei einem Fehler bleiben schreibende Dienste gestoppt. restore-state.json im Backups-Volume prüfen, die Ursache beheben und mit dem Originalarchiv erneut versuchen. Datenbank und Volumes werden nicht in einer gemeinsamen Transaktion ersetzt.',
+	'restore.login': 'Abschluss prüfen und zur Anmeldung',
+	'restore.notFinished':
+		'Noch kein wiederhergestelltes Konto vorhanden. Zuerst den Restore auf dem Host abschließen.',
+	'backup.configTitle': 'Wiederherstellungskonfiguration',
+	'backup.configComplete': 'Benötigte Deployment-Dateien sind enthalten.',
+	'backup.configMissing': 'Wiederherstellungskonfiguration unvollständig. Es fehlt:',
+	'backup.configImported': 'Importierte Konfiguration nach jeder Stack-Änderung aktualisieren.',
+	'backup.encryptionMissing':
+		'Kein Backup-Passwort konfiguriert. Vollständige Backups mit Deployment-Zugangsdaten benötigen TALKOPS_BACKUP_PASSWORD oder TALKOPS_BACKUP_PASSWORD_FILE.',
+	'backup.importTitle': 'Portainer-Deployment-Konfiguration importieren',
+	'backup.importHint':
+		'Dateien .env und docker-compose*.yml/yaml auswählen. Portainer-Umgebungswerte zuvor in eine lokale .env kopieren. Backup-Passwort separat speichern. Importierte Dateien werden verschlüsselt abgelegt.',
+	'backup.importFiles': 'Deployment-Dateien',
+	'backup.importButton': 'Konfiguration speichern',
+	'backup.project': 'Compose-Projektname',
+	'backup.profiles': 'Aktive Profile (kommagetrennt)',
 	'audio.speechSpeed': 'Sprechgeschwindigkeit',
 	'audio.speedHint':
 		'0,5× bis 2,0×. 1,0× entspricht dem bisherigen Tempo; kleinere Werte sind langsamer.',
@@ -122,6 +190,13 @@ const de: Record<keyof typeof en, string> = {
 		'Neues SIP-Passwort erzeugen? Das Telefon muss danach neu eingerichtet werden.',
 	'ext.online': 'online',
 	'ext.offline': 'offline',
+	'ext.codecProfile': 'Codec-Profil',
+	'ext.codecAuto': 'Automatisch ({profile})',
+	'ext.codecHint':
+		'TalkOps nutzt diesen Codec mit dem Gerät und wandelt ihn für die Gegenseite um. Robust (iLBC) hilft bei WLAN mit Paketverlust, klingt aber schmalbandig. Ein provisioniertes Telefon erhält neue Codec-Einstellungen nach einem Resync.',
+	'codecProfiles.standard': 'Standard',
+	'codecProfiles.hd': 'HD (G.722)',
+	'codecProfiles.robust': 'Robust (iLBC)',
 	'kinds.desk': 'Tischtelefon',
 	'kinds.dect': 'DECT-Mobilteil',
 	'kinds.softphone': 'Softphone',
@@ -420,7 +495,7 @@ const de: Record<keyof typeof en, string> = {
 	'calls.forwardAll': 'Alle Anrufe umleiten an',
 	'calls.forwardPlaceholder': 'Nebenstelle oder Rufnummer',
 	'calls.featureCodes':
-		'Am Telefon: *78 / *79 Nicht stören an/aus, *72<Nummer> / *73 Umleitung an/aus, **<Nebenstelle> Heranholen.',
+		'Am Telefon: **<Nebenstelle> intern anrufen, *78 / *79 Nicht stören an/aus, *72<Nummer> / *73 Umleitung an/aus, *8*<Nebenstelle> Heranholen.',
 	'contacts.new': 'Neuer Kontakt',
 	'contacts.none': 'Das Telefonbuch ist leer.',
 	'contacts.hint':
@@ -429,7 +504,8 @@ const de: Record<keyof typeof en, string> = {
 	'contacts.work': 'Geschäftlich',
 	'contacts.mobile': 'Mobil',
 	'contacts.other': 'Sonstige',
-	'contacts.numberHint': 'Nationales (089 123456) oder internationales Format (+49 89 123456).',
+	'contacts.numberHint':
+		'Interne Nebenstelle: **101. Externe Nummer: nationales (089 123456) oder internationales Format (+49 89 123456).',
 	'kinds.wifi': 'WLAN-Mobilteil',
 	'phones.accountLabel': 'Label am Telefon',
 	'phones.accountDisplayName': 'Anzeigename',
@@ -925,7 +1001,7 @@ const de: Record<keyof typeof en, string> = {
 	'phone.hold': 'Halten',
 	'phone.resume': 'Fortsetzen',
 	'phone.hint':
-		'Das Browser-Softphone klingelt mit Ihren anderen Telefonen, solange diese Seite geöffnet ist. Mikrofon (und für Video die Kamera) erlauben, wenn der Browser fragt.',
+		'Diesen Tab geöffnet lassen, um beim Navigieren in TalkOps Anrufe zu empfangen. Mikrofon (und für Video die Kamera) erlauben, wenn der Browser fragt.',
 	'kinds.browser': 'Browser',
 	'backup.title': 'Datensicherung',
 	'backup.hint':
@@ -1128,6 +1204,27 @@ const de: Record<keyof typeof en, string> = {
 	'dash.chart.summary': '{inbound} eingehend · {outbound} ausgehend · {internal} intern',
 	'dash.lastBackup': 'Letzte Datensicherung',
 	'dash.active': 'Laufende Gespräche',
+	'dash.call.inbound': 'Eingehender Anruf an Nst:',
+	'dash.call.outbound': 'Ausgehender Anruf von Nst:',
+	'dash.call.internal': 'Interner Anruf von Nst:',
+	'dash.call.unknown': 'Anruf von:',
+	'dash.call.from': 'von',
+	'dash.call.to': 'an',
+	'dash.call.talkTime': 'Gesprächsdauer seit Annahme',
+	'dash.call.waitTime': 'Wartezeit seit Anrufbeginn',
+	'dash.party.anonymous': 'Unbekannt / anonym',
+	'dash.party.multiple': 'Mehrere Telefonbucheinträge',
+	'dash.live.open': 'Live-Transkript',
+	'dash.live.title': 'Live-Transkript',
+	'dash.live.provisional':
+		'Vorläufige lokale Erkennung mit Verzögerung. Die Uhrzeiten beziehen sich auf die Sprache. Die Vorschau beginnt mit den letzten Sekunden beim Öffnen.',
+	'dash.live.waiting': 'Warte auf Sprache und Erkennung …',
+	'dash.live.updating': 'Neue Beiträge werden automatisch ergänzt.',
+	'dash.live.ended': 'Das Gespräch oder die Live-Vorschau ist beendet.',
+	'dash.live.error':
+		'Live-Vorschau derzeit nicht verfügbar. Aufnahme, Transkription, Media-Worker und freie Kapazität prüfen.',
+	'dash.live.caller': 'Anrufer',
+	'dash.live.called': 'Angerufene',
 	'dash.noActive': 'Gerade keine Gespräche.',
 	'dash.state.ringing': 'Klingelt',
 	'dash.state.talking': 'Im Gespräch',
@@ -1151,7 +1248,45 @@ const de: Record<keyof typeof en, string> = {
 	'flow.menu.removeKey': 'Zweig „{key}“ entfernen',
 	'flow.menu.confirmRemove': '{n} Schritte löschen?',
 	'flow.menu.confirmBranches': 'Die {n} Schritte darunter werden gelöscht. Fortfahren?',
-	'flow.rightClickHint': 'Tipp: Rechtsklick auf einen Schritt oder eine Taste für weitere Aktionen.'
+	'flow.rightClickHint':
+		'Tipp: Rechtsklick auf einen Schritt oder eine Taste für weitere Aktionen.',
+	'phone.identity': 'Telefonie-Identität',
+	'phone.selectIdentity': 'Nebenstelle auswählen',
+	'phone.noOutbound': 'Keine ausgehende Route',
+	'phone.outbound': 'Ausgehende Rufnummer',
+	'phone.identityHelp':
+		'Eingehende Anrufe und Anrufeinstellungen folgen der ausgewählten Nebenstelle. Das Softphone bleibt beim Navigieren in TalkOps verbunden. Tab schließen oder abmelden trennt die Verbindung.',
+	'phone.reconnect': 'Neu verbinden',
+	'phone.audioSettings': 'Audiogeräte und Tests',
+	'phone.microphone': 'Mikrofon',
+	'phone.output': 'Headset / Lautsprecher',
+	'phone.systemDefault': 'Systemstandard',
+	'phone.outputUnsupported':
+		'Dieser Browser verwendet die Systemausgabe. Wähle den Lautsprecher im Betriebssystem.',
+	'phone.deviceLost':
+		'Ein Audiogerät wurde getrennt. Der Systemstandard ist ausgewählt. Prüfe den Ton vor dem nächsten Anruf.',
+	'phone.testMicrophone': 'Mikrofon testen',
+	'phone.stopTest': 'Test beenden',
+	'phone.testSound': 'Ton testen',
+	'phone.microphoneLevel': 'Mikrofonpegel',
+	'phone.microphoneHelp':
+		'Mikrofonzugriff erlauben, um Gerätenamen zu sehen. Mikrofonänderungen gelten für den nächsten Anruf.',
+	'phone.ringtone': 'Hörbarer Klingelton',
+	'phone.enableSound': 'Klingelton aktivieren / Ton testen',
+	'phone.enableNotifications': 'Anrufbenachrichtigungen aktivieren',
+	'phone.disableNotifications': 'Anrufbenachrichtigungen deaktivieren',
+	'phone.refresh': 'Aktualisieren',
+	'phone.searchContacts': 'Kontakte suchen',
+	'phone.favorite': 'Favorit: {name}',
+	'phone.recentCalls': 'Letzte Anrufe',
+	'phone.callFilter': 'Anrufe filtern',
+	'phone.allCalls': 'Alle Anrufe',
+	'phone.missedCalls': 'Verpasste eingehende Anrufe',
+	'phone.unanswered': 'Nicht beantwortet',
+	'phone.callNumber': '{number} anrufen',
+	'phone.noIdentity': 'Für dieses Konto ist keine aktive Nebenstelle verfügbar.',
+	'phone.identityUnavailable':
+		'Diese Nebenstelle ist nicht mehr verfügbar. Liste aktualisieren und eine verfügbare Nebenstelle auswählen.'
 };
 
 export default de;

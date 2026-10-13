@@ -251,7 +251,7 @@ pub async fn update_device(
         "update",
         "device",
         Some(id.to_string()),
-        json!({"enabled": device.enabled}),
+        json!({"enabled": device.enabled, "codec_profile": device.codec_profile}),
     )
     .await?;
     Ok(Json(device))
@@ -279,6 +279,14 @@ pub async fn delete_device(
     Ok(StatusCode::NO_CONTENT)
 }
 
+/// Browser credentials belong to the browser user, not the extension owner.
+fn check_browser_owner(auth: &AuthUser, device: &Device) -> ApiResult<()> {
+    if auth.role != Role::Admin && device.browser_user_id.is_some_and(|id| id != auth.id) {
+        return Err(ApiError::Forbidden);
+    }
+    Ok(())
+}
+
 /// Shows the SIP credentials of a device (admin or the owning user). Audited.
 #[utoipa::path(get, path = "/api/v1/devices/{id}/credentials", tag = "extensions", params(("id" = Uuid, Path)), responses((status = 200, body = DeviceCredentials)))]
 pub async fn device_credentials(
@@ -287,6 +295,7 @@ pub async fn device_credentials(
     Path(id): Path<Uuid>,
 ) -> ApiResult<Json<DeviceCredentials>> {
     let device = extensions::get_device(&state.db, auth.tenant, id).await?;
+    check_browser_owner(&auth, &device)?;
     let ext = extensions::get(&state.db, auth.tenant, device.extension_id).await?;
     check_owner(&state, &auth, &ext, true).await?;
     let password = state
@@ -318,6 +327,7 @@ pub async fn reset_device_password(
     Path(id): Path<Uuid>,
 ) -> ApiResult<Json<DeviceCredentials>> {
     let device = extensions::get_device(&state.db, auth.tenant, id).await?;
+    check_browser_owner(&auth, &device)?;
     let ext = extensions::get(&state.db, auth.tenant, device.extension_id).await?;
     check_owner(&state, &auth, &ext, true).await?;
     let password =

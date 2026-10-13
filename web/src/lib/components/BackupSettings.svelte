@@ -15,7 +15,43 @@
 		last_error: string | null;
 	};
 	type BackupFile = { name: string; size: number; created_at: string };
-	type Overview = { settings: Settings; files: BackupFile[]; running: boolean };
+	type Deployment = {
+		complete: boolean;
+		missing: string[];
+		source: string;
+		captured_at: string;
+		project_name: string;
+		profiles: string;
+		files: string[];
+	};
+	type Overview = {
+		settings: Settings;
+		files: BackupFile[];
+		running: boolean;
+		configuration: Deployment | null;
+		configuration_error: string | null;
+		encryption_configured: boolean;
+	};
+	let sourceFiles = $state<File[]>([]);
+	let project = $state('talkops');
+	let profiles = $state('');
+	async function importConfig() {
+		error = '';
+		info = '';
+		try {
+			const files: Record<string, string> = {};
+			for (const file of sourceFiles) {
+				if (file.size > 1048576) throw new Error(t('backup.importHint'));
+				files[file.name] = await file.text();
+			}
+			await api.put('/backups/deployment', { files, project_name: project, profiles });
+			sourceFiles = [];
+			await load();
+			info = t('common.saved');
+		} catch (err) {
+			error = errorMessage(err);
+		}
+	}
 
 	let data = $state<Overview | null>(null);
 	let error = $state('');
@@ -88,6 +124,46 @@
 		<h2>{t('backup.title')}</h2>
 		<p class="text-sm text-slate-600 dark:text-slate-300">{t('backup.hint')}</p>
 		<ErrorBox {error} />
+		<div class="space-y-2 rounded border border-slate-300 p-3 dark:border-slate-700">
+			<h3>{t('backup.configTitle')}</h3>
+			{#if data.configuration_error}<p class="hint">{data.configuration_error}</p>{/if}
+			{#if data.configuration}
+				<p class="hint">
+					{data.configuration.complete ? t('backup.configComplete') : t('backup.configMissing')}
+					{data.configuration.missing.join(', ')}
+				</p>
+				{#if data.configuration.source === 'imported'}<p class="hint">
+						{t('backup.configImported')}
+						{formatDateTime(data.configuration.captured_at)}
+					</p>{/if}
+			{/if}
+			{#if !data.encryption_configured}<p class="hint">{t('backup.encryptionMissing')}</p>{/if}
+			{#if data.configuration?.source !== 'mounted'}
+				<h3>{t('backup.importTitle')}</h3>
+				<p class="hint">{t('backup.importHint')}</p>
+				<label for="bk-config">{t('backup.importFiles')}</label>
+				<input
+					id="bk-config"
+					class="input"
+					type="file"
+					multiple
+					onchange={(e) => (sourceFiles = Array.from(e.currentTarget.files ?? []))}
+				/>
+				<label for="bk-project">{t('backup.project')}</label><input
+					id="bk-project"
+					class="input"
+					bind:value={project}
+				/>
+				<label for="bk-profiles">{t('backup.profiles')}</label><input
+					id="bk-profiles"
+					class="input"
+					bind:value={profiles}
+				/>
+				<button class="btn" type="button" onclick={importConfig} disabled={!sourceFiles.length}
+					>{t('backup.importButton')}</button
+				>
+			{/if}
+		</div>
 		{#if info}<p class="text-sm text-emerald-700 dark:text-emerald-400">{info}</p>{/if}
 		<label class="flex items-center gap-2 font-medium"
 			><input type="checkbox" bind:checked={data.settings.enabled} /> {t('backup.daily')}</label

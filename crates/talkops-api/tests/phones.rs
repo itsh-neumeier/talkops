@@ -175,7 +175,7 @@ async fn phones_and_provisioning(db: PgPool) {
         cred["sip_password"].as_str().unwrap()
     )));
     assert!(cfg.contains("linekey.3.type = 16"), "{cfg}");
-    assert!(cfg.contains("linekey.3.pickup_value = **210"), "{cfg}");
+    assert!(cfg.contains("linekey.3.pickup_value = *8*210"), "{cfg}");
     // Dial now: emergency numbers, fixed feature codes, internal 200/210.
     assert!(cfg.contains("dialplan.dialnow.rule.1 = 11[0,2]"), "{cfg}");
     assert!(cfg.contains("= *9[7,8]"), "{cfg}");
@@ -203,7 +203,7 @@ async fn phones_and_provisioning(db: PgPool) {
     )
     .await;
     assert_eq!(status, StatusCode::OK);
-    assert!(xml.contains("<Name>Office</Name>") && xml.contains(">200</Telephone>"));
+    assert!(xml.contains("<Name>Office</Name>") && xml.contains(">**200</Telephone>"));
     let (status, contact) = admin
         .post(
             "/api/v1/contacts",
@@ -670,6 +670,106 @@ async fn ringtones_wallpapers_labels_and_phonebook_sections(db: PgPool) {
 }
 
 #[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn internal_phonebook_and_contacts_preserve_explicit_dialing(db: PgPool) {
+    let router = router(db);
+    let admin = setup_admin(&router).await;
+    for (number, enabled) in [("101", true), ("102", false)] {
+        let (status, ext) = admin
+            .post(
+                "/api/v1/extensions",
+                json!({
+                    "number": number, "display_name": format!("Office {number}"), "enabled": enabled
+                }),
+            )
+            .await;
+        assert_eq!(status, StatusCode::OK, "{ext}");
+    }
+    let (_, mut settings) = admin.get("/api/v1/settings").await;
+    settings["area_code"] = json!("9543");
+    let (status, _) = admin.put("/api/v1/settings", settings).await;
+    assert_eq!(status, StatusCode::OK);
+    let (status, credentials) = admin.get("/api/v1/provisioning").await;
+    assert_eq!(status, StatusCode::OK);
+    let creds = Some((
+        credentials["username"].as_str().unwrap(),
+        credentials["password"].as_str().unwrap(),
+    ));
+    for path in [
+        "/provisioning/phonebook/internal.xml",
+        "/provisioning/phonebook/internal.xml?search=101",
+        "/provisioning/phonebook/internal.xml?search=%2A%2A101",
+    ] {
+        let (status, xml) = prov_get(&router, path, creds).await;
+        assert_eq!(status, StatusCode::OK, "{xml}");
+        assert!(xml.contains(">**101</Telephone>"), "{xml}");
+        assert!(
+            !xml.contains("**102") && !xml.contains("+499543101"),
+            "{xml}"
+        );
+    }
+    let (status, contact) = admin
+        .post(
+            "/api/v1/contacts",
+            json!({
+                "name": "Reception", "phone_work": " ** 101 ", "phone_mobile": "+49 171 2345678"
+            }),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{contact}");
+    assert_eq!(contact["phone_work"], "**101");
+    assert_eq!(contact["phone_mobile"], "+491712345678");
+    let contact_path = format!("/api/v1/contacts/{}", contact["id"].as_str().unwrap());
+    let (status, contact) = admin.put(&contact_path, json!({
+        "name": "Reception", "phone_work": "**101", "phone_mobile": "+491712345678", "phone_other": "**12345678"
+    })).await;
+    assert_eq!(status, StatusCode::OK, "{contact}");
+    assert_eq!(contact["phone_other"], "**12345678");
+    let (status, report) = admin
+        .post(
+            "/api/v1/contacts/import",
+            json!({
+                "csv": "Name,Work,Section\nInternal office,**101,Office\nBroken,***101,\n"
+            }),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{report}");
+    assert_eq!(report["created"], 1, "{report}");
+    assert_eq!(report["failed"], 1, "{report}");
+    let (_, sections) = admin.get("/api/v1/phonebook-sections").await;
+    let section_id = sections[0]["id"].as_str().unwrap();
+    for path in [
+        "/provisioning/phonebook/contacts.xml".to_owned(),
+        format!("/provisioning/phonebook/section/{section_id}.xml"),
+    ] {
+        let (status, xml) = prov_get(&router, &path, creds).await;
+        assert_eq!(status, StatusCode::OK, "{xml}");
+        assert!(xml.contains(">**101</Telephone>"), "{xml}");
+        assert!(!xml.contains("+499543101"), "{xml}");
+        if path.ends_with("contacts.xml") {
+            assert!(xml.contains(">01712345678</Telephone>"), "{xml}");
+        }
+    }
+    for number in [
+        "**",
+        "**1",
+        "**0101",
+        "***101",
+        "**+101",
+        "**123456789",
+        "*8*101",
+        "*78",
+    ] {
+        let (status, _) = admin
+            .post(
+                "/api/v1/contacts",
+                json!({"name": "Invalid", "phone_work": number}),
+            )
+            .await;
+        assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{number}");
+    }
+}
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
 async fn phonebook_csv_import(db: PgPool) {
     let router = router(db);
     let admin = setup_admin(&router).await;
@@ -847,4 +947,88 @@ async fn comfort_settings(db: PgPool) {
     assert!(!cfg.contains("features.charging_tone"), "unset: {cfg}");
     let (_, cfg) = prov_get(&router, "/provisioning/805ec0000099.cfg", Some(creds)).await;
     assert!(!cfg.contains("features.send_key_tone"), "{cfg}");
+}
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn codec_profiles_set_the_phone_codecs(db: PgPool) {
+    let router = router(db);
+    let admin = setup_admin(&router).await;
+    let (_, ext) = admin
+        .post(
+            "/api/v1/extensions",
+            json!({"number": "300", "display_name": "Lager"}),
+        )
+        .await;
+    let ext = ext["id"].as_str().unwrap();
+    let mut phones = Vec::new();
+    for (mac, model) in [("249ad8000077", "ax86r"), ("805ec0000077", "t54w")] {
+        let (status, phone) = admin
+            .post(
+                "/api/v1/phones",
+                json!({"mac": mac, "model": model, "name": model}),
+            )
+            .await;
+        assert_eq!(status, StatusCode::OK, "{phone}");
+        phones.push(phone["id"].as_str().unwrap().to_owned());
+    }
+    let mut devices = Vec::new();
+    for (name, kind, phone) in [
+        ("Handset", "wifi", &phones[0]),
+        ("Desk", "desk", &phones[1]),
+    ] {
+        let (status, d) = admin
+            .post(
+                &format!("/api/v1/extensions/{ext}/devices"),
+                json!({"name": name, "kind": kind, "phone_id": phone}),
+            )
+            .await;
+        assert_eq!(status, StatusCode::OK, "{d}");
+        devices.push(d["device_id"].as_str().unwrap().to_owned());
+    }
+    let (_, info) = admin.get("/api/v1/provisioning").await;
+    let creds = (
+        info["username"].as_str().unwrap(),
+        info["password"].as_str().unwrap(),
+    );
+
+    // The Wi-Fi handset (automatic: HD) gets G.722, iLBC and G.711.
+    let (status, cfg) = prov_get(&router, "/provisioning/249ad8000077.cfg", Some(creds)).await;
+    assert_eq!(status, StatusCode::OK, "{cfg}");
+    for line in [
+        "account.1.codec.g722.enable = 1\n",
+        "account.1.codec.g722.priority = 1\n",
+        "account.1.codec.ilbc.enable = 1\n",
+        "account.1.codec.ilbc_15_2kpbs.enable = 1\n",
+        "account.1.codec.ilbc_13_33kpbs.enable = 1\n",
+        "account.1.codec.pcma.enable = 1\n",
+        "account.1.codec.pcmu.enable = 1\n",
+        "account.1.codec.g729.enable = 0\n",
+    ] {
+        assert!(cfg.contains(line), "{line}: {cfg}");
+    }
+    // The desk phone (standard) keeps its own codec settings.
+    let (_, cfg) = prov_get(&router, "/provisioning/805ec0000077.cfg", Some(creds)).await;
+    assert!(!cfg.contains(".codec."), "{cfg}");
+
+    // Robust or HD: the phone has the same codecs, TalkOps selects per call.
+    // A desk phone set to a profile gets them too.
+    let (status, d) = admin
+        .put(
+            &format!("/api/v1/devices/{}", devices[1]),
+            json!({"name": "Desk", "kind": "desk", "phone_id": phones[1], "codec_profile": "robust"}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{d}");
+    let (_, cfg) = prov_get(&router, "/provisioning/805ec0000077.cfg", Some(creds)).await;
+    assert!(cfg.contains("account.1.codec.ilbc.enable = 1\n"), "{cfg}");
+
+    // Standard on the handset: the phone's codec settings stay unchanged.
+    admin
+        .put(
+            &format!("/api/v1/devices/{}", devices[0]),
+            json!({"name": "Handset", "kind": "wifi", "phone_id": phones[0], "codec_profile": "standard"}),
+        )
+        .await;
+    let (_, cfg) = prov_get(&router, "/provisioning/249ad8000077.cfg", Some(creds)).await;
+    assert!(!cfg.contains(".codec."), "{cfg}");
 }

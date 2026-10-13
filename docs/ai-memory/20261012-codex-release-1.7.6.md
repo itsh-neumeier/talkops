@@ -5,7 +5,7 @@
 - Task ID: 20261012-codex-release-1.7.6
 - Date: 2026-10-12, Europe/Berlin
 - Tool: Codex
-- Status: In progress. Developer handoff complete; final combined CI pending.
+- Status: Completed. Release and image verification passed.
 - Branch: codex/release-initial-batch
 - Base commit: 2fbe3195517b509d2afd3d57247c05a98437f064
 - Related PR: [Integration PR #1](https://github.com/itsh-neumeier/talkops/pull/1)
@@ -21,7 +21,18 @@ asked the release manager to continue.
 Updated the existing release worktree from the current remote target.
 Preserved PR #1's original head `017476afdb32f6bc03b30c31c87ce789ca98a860`.
 Merged PR #2 final head `9a844f38bfc8b7486fc8579c941b8dcc668385a6` with source history.
-Prepared version 1.7.6 and English release notes. No target merge or publication.
+Prepared version 1.7.6 and English release notes. PR #1 and PR #2 are merged.
+Release commit: `4503fb3b96167aa77320cc936597fc6147b392c3`.
+Annotated tag `v1.7.6` resolves to that exact commit. The Release workflow passed.
+[TalkOps 1.7.6](https://github.com/itsh-neumeier/talkops/releases/tag/v1.7.6)
+is published with the English changelog and upgrade notes.
+All three versioned images contain amd64 and arm64. Moving tags `1.7` and
+`latest` select the same architecture manifests. All six image configurations
+identify revision `4503fb3` and version `v1.7.6`.
+
+The final audit commits are saved on the integration branch after publication.
+They change documentation only. The published tag and target commit remain
+unchanged. PR #1 holds the final release result and audit commit identifier.
 
 ## Changes
 
@@ -48,6 +59,20 @@ Prepared version 1.7.6 and English release notes. No target merge or publication
 - Passed: DE/EN catalogs contain the same 1,030 keys with no duplicate keys.
 - Passed source CI/E2E at `9a844f3`: Actions runs `38256624961` and
   `38256624940`. The final source adds a real-Piper speed and WAV test.
+- Passed final integration CI/E2E at `0e776a0`: runs `38258187142` and
+  `38258187128`. All push checks also passed.
+- Passed target CI/E2E at `4503fb3`: runs `38259479755` and `38259479919`.
+  Server and worker version smoke output reports 1.7.6. The target tree equals
+  the final integration candidate tree.
+- Passed Release workflow `38260786484`: version check, all six architecture
+  builds, three manifest jobs and GitHub release creation.
+- Passed tag CI, E2E and FreeSWITCH checks: runs `38260786507`, `38260786504`
+  and `38260786467`.
+- Passed registry reads: all versioned and moving-tag platforms and all six
+  image revision/version labels match the checked release.
+- Not run locally: A deployed browser version check or execution of the
+  published arm64 images. Docker Linux is unavailable. CI version smoke tests
+  report 1.7.6; the UI reads the server's version. The live UI was not observed.
 - Manual integration review: Checked API/UI speed fields, defaults, parser,
   prompt and greeting cache identities, WAV assembly and test coverage.
 - Not run locally: Full Linux CI/E2E; Docker Linux and services unavailable.
@@ -61,17 +86,14 @@ Prepared version 1.7.6 and English release notes. No target merge or publication
 ## Dependencies and open work
 
 - Migration: 20261026000001_voicebox_speech_speed. Update server and worker together.
-- Re-fetch PR #2 if its head changes. The development handoff is complete.
-- Verify the final integration CI/E2E, merge PR #1, then verify target CI/E2E.
-- Push unused tag `v1.7.6` only on the verified target commit.
-- Verify Release workflow, GitHub release, all three multi-architecture images,
-  moving tags and runtime versions where executable.
-- No tag, release or background automation was created.
+- No release work remains. Both agreed PRs are merged and published.
+- Integration and target gates passed. Tag `v1.7.6` was new and pushed once.
+- Draft softphone PR #3 and guided backup work remain outside this release.
+- No background automation was created.
 
 ## Next action
 
-Record final candidate CI links in PR #1. Wait for successful combined checks.
-Use the PR body and current GitHub checks to recover the latest state.
+None for release 1.7.6. Keep the published tag immutable.
 
 ## References
 

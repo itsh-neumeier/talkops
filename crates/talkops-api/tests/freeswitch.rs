@@ -91,20 +91,27 @@ fn has(actions: &[(String, String)], app: &str, data: &str) -> bool {
 }
 
 async fn internal_call(router: &axum::Router, ext: &Value, dest: &str) -> Vec<(String, String)> {
+    internal_call_with(router, ext, dest, &[]).await
+}
+
+/// An internal call with additional channel variables of the caller.
+async fn internal_call_with(
+    router: &axum::Router,
+    ext: &Value,
+    dest: &str,
+    vars: &[(&str, &str)],
+) -> Vec<(String, String)> {
     let ext_id = ext["id"].as_str().unwrap();
-    let (status, xml) = fs_post(
-        router,
-        "/fs/xml",
-        &[
-            ("section", "dialplan"),
-            ("Caller-Context", "internal"),
-            ("Caller-Destination-Number", dest),
-            ("Caller-Caller-ID-Number", "200"),
-            ("variable_talkops_tenant_id", TENANT),
-            ("variable_talkops_extension_id", ext_id),
-        ],
-    )
-    .await;
+    let mut params = vec![
+        ("section", "dialplan"),
+        ("Caller-Context", "internal"),
+        ("Caller-Destination-Number", dest),
+        ("Caller-Caller-ID-Number", "200"),
+        ("variable_talkops_tenant_id", TENANT),
+        ("variable_talkops_extension_id", ext_id),
+    ];
+    params.extend_from_slice(vars);
+    let (status, xml) = fs_post(router, "/fs/xml", &params).await;
     assert_eq!(status, StatusCode::OK);
     assert!(xml.contains("<context name=\"internal\">"), "{xml}");
     actions(&xml)
@@ -277,10 +284,10 @@ async fn internal_routing(db: PgPool) {
     assert!(has(&a, "bridge", &ring20(&f)), "{a:?}");
 
     // Directed pickup.
-    let a = internal_call(&router, &f.ext21, "**200").await;
+    let a = internal_call(&router, &f.ext21, "*8*200").await;
     let group = format!("ext-{}", f.ext20["id"].as_str().unwrap().replace('-', ""));
     assert!(has(&a, "pickup", &group), "{a:?}");
-    let a = internal_call(&router, &f.ext21, "**99").await;
+    let a = internal_call(&router, &f.ext21, "*8*99").await;
     assert!(has(&a, "respond", "404 Not Found"), "{a:?}");
 
     // CLIR is applied for normal calls but never for emergency calls.
@@ -455,6 +462,80 @@ async fn cdr_ingestion(db: PgPool) {
         "bob sees only the internal call to his extension"
     );
     assert_eq!(calls[0]["call_uuid"], "call-2");
+}
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn cdr_spool_import(db: PgPool) {
+    let state = state(db);
+    let router = talkops_api::app(state.clone(), None);
+    let f = fixture(&router).await;
+
+    // A malformed post is refused, so FreeSWITCH spools it instead of losing it.
+    let (status, _) = fs_post(&router, "/fs/cdr", &[("cdr", "<cdr>")]).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+
+    let record = |uuid: &str| {
+        format!(
+            r#"<?xml version="1.0"?><cdr><variables>
+            <uuid>{uuid}</uuid><talkops_direction>outbound</talkops_direction>
+            <talkops_tenant_id>{TENANT}</talkops_tenant_id>
+            <talkops_caller_number>200</talkops_caller_number><talkops_destination>%2B4930123456</talkops_destination>
+            <start_epoch>1791150000</start_epoch><answer_epoch>1791150003</answer_epoch><end_epoch>1791152433</end_epoch>
+            <duration>2433</duration><billsec>2430</billsec><hangup_cause>NORMAL_CLEARING</hangup_cause>
+            </variables></cdr>"#
+        )
+    };
+    // Already delivered by POST: the spooled copy is a duplicate.
+    fs_post(&router, "/fs/cdr", &[("cdr", &record("spool-2"))]).await;
+
+    let dir = std::env::temp_dir().join(format!("talkops-spool-{}", uuid::Uuid::new_v4()));
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(dir.join("a_spool-1.cdr.xml"), record("spool-1")).unwrap();
+    std::fs::write(dir.join("a_spool-2.cdr.xml"), record("spool-2")).unwrap();
+    std::fs::write(
+        dir.join("a_scanner.cdr.xml"),
+        "<cdr><variables><uuid>x</uuid></variables></cdr>",
+    )
+    .unwrap();
+    std::fs::write(dir.join("a_broken.cdr.xml"), "<cdr>").unwrap();
+    std::fs::write(dir.join("notes.txt"), "not a record").unwrap();
+
+    // Files that can still be in the middle of a write are left alone.
+    let n = talkops_api::cdr_spool::import_dir(&state, &dir, std::time::Duration::from_secs(3600))
+        .await
+        .unwrap();
+    assert_eq!(n, talkops_api::cdr_spool::Imported::default());
+
+    let n = talkops_api::cdr_spool::import_dir(&state, &dir, std::time::Duration::ZERO)
+        .await
+        .unwrap();
+    assert_eq!(n.done, 3, "stored, duplicate and unrouted records are done");
+    assert_eq!(n.rejected, 1);
+    let mut left: Vec<String> = std::fs::read_dir(&dir)
+        .unwrap()
+        .map(|e| e.unwrap().file_name().into_string().unwrap())
+        .collect();
+    left.sort();
+    assert_eq!(left, ["notes.txt", "rejected"]);
+    assert!(dir.join("rejected/a_broken.cdr.xml").exists());
+
+    let (_, calls) = f.admin.get("/api/v1/calls").await;
+    let mut uuids: Vec<&str> = calls
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| c["call_uuid"].as_str().unwrap())
+        .collect();
+    uuids.sort();
+    assert_eq!(uuids, ["spool-1", "spool-2"]);
+    let spooled = calls
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["call_uuid"] == "spool-1")
+        .unwrap();
+    assert_eq!(spooled["billsec"], 2430);
+    std::fs::remove_dir_all(&dir).unwrap();
 }
 
 #[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
@@ -801,6 +882,13 @@ async fn ivr_routing_and_transfers(db: PgPool) {
     assert!(has(&a, "bridge", &ring20(&f)), "{a:?}");
     let a = transfer("dial:200".into(), true).await;
     assert!(has(&a, "bridge", &ring20(&f)), "{a:?}");
+    let a = transfer("**200".into(), true).await;
+    assert!(has(&a, "bridge", &ring20(&f)), "{a:?}");
+    for dest in ["**999", "**", "**1", "**+200", "**123456789"] {
+        let a = transfer(dest.into(), true).await;
+        assert!(has(&a, "respond", "404 Not Found"), "{dest}: {a:?}");
+        assert!(!a.iter().any(|(app, _)| app == "bridge"), "{a:?}");
+    }
     let a = transfer("dest:bogus:x".into(), true).await;
     assert!(has(&a, "respond", "404 Not Found"));
     let a = transfer("dial:200".into(), false).await;
@@ -1619,6 +1707,180 @@ async fn video_only_where_enabled(db: PgPool) {
     );
 }
 
+/// Directory `param` or `variable` value of a SIP user.
+async fn directory_value(
+    router: &axum::Router,
+    user: &str,
+    tag: &str,
+    name: &str,
+) -> Option<String> {
+    let (status, xml) = fs_post(
+        router,
+        "/fs/xml",
+        &[
+            ("section", "directory"),
+            ("action", "sip_auth"),
+            ("user", user),
+        ],
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let doc = roxmltree::Document::parse(&xml).unwrap();
+    // The user's own entry (the domain has a default dial-string too).
+    let user = doc.descendants().find(|n| n.has_tag_name("user"))?;
+    user.descendants()
+        .find(|n| n.has_tag_name(tag) && n.attribute("name") == Some(name))
+        .and_then(|n| n.attribute("value"))
+        .map(str::to_owned)
+}
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn codec_profiles_pin_the_device_leg(db: PgPool) {
+    let router = router(db);
+    let f = fixture(&router).await;
+    let ext20 = f.ext20["id"].as_str().unwrap();
+    let (s, creds) = f
+        .admin
+        .post(
+            &format!("/api/v1/extensions/{ext20}/devices"),
+            json!({"name": "Handset", "kind": "wifi"}),
+        )
+        .await;
+    assert_eq!(s, StatusCode::OK, "{creds}");
+    let user = creds["sip_username"].as_str().unwrap().to_owned();
+    let device_id = creds["device_id"].as_str().unwrap().to_owned();
+    let endpoint = |codecs: &str| {
+        format!(
+            "[^^;absolute_codec_string={codecs};jitterbuffer_msec=60:200;\
+             rtp_jitter_buffer_during_bridge=true]user/{user}@talkops.local"
+        )
+    };
+    // The bridge of a call from extension 210 to extension 200.
+    let bridge = || async {
+        internal_call(&router, &f.ext21, "200")
+            .await
+            .into_iter()
+            .find(|(app, _)| app == "bridge")
+            .map(|(_, data)| data)
+            .unwrap()
+    };
+
+    // Wi-Fi handsets default to HD: the bridge sets G.722 for the handset
+    // only, and the per-leg variables win over the exported codec list.
+    let b = bridge().await;
+    assert!(b.starts_with("{local_var_clobber=true}"), "{b}");
+    assert!(b.contains(&endpoint("G722,PCMA,PCMU")), "{b}");
+    assert!(
+        b.contains("}user/200-1@talkops.local,user/200-2@talkops.local,"),
+        "desk phone unchanged: {b}"
+    );
+    // Calls without a dialplan bridge (queues, ESL) use the directory.
+    let dial = directory_value(&router, &user, "param", "dial-string")
+        .await
+        .unwrap();
+    assert!(
+        dial.contains(";absolute_codec_string=G722,PCMA,PCMU;"),
+        "{dial}"
+    );
+    assert_eq!(
+        directory_value(&router, &user, "variable", "talkops_codec_profile")
+            .await
+            .as_deref(),
+        Some("hd")
+    );
+
+    // The admin selects the robust profile.
+    let update =
+        |profile: Value| json!({"name": "Handset", "kind": "wifi", "codec_profile": profile});
+    let (s, device) = f
+        .admin
+        .put(
+            &format!("/api/v1/devices/{device_id}"),
+            update(json!("robust")),
+        )
+        .await;
+    assert_eq!(s, StatusCode::OK, "{device}");
+    assert_eq!(device["codec_profile"], "robust");
+    let b = bridge().await;
+    assert!(b.contains(&endpoint("iLBC@20i,iLBC@30i,PCMA,PCMU")), "{b}");
+    let (s, _) = f
+        .admin
+        .put(
+            &format!("/api/v1/devices/{device_id}"),
+            update(json!("opus")),
+        )
+        .await;
+    assert!(s.is_client_error(), "unknown profile is rejected");
+
+    // Calls from the device: the caller's leg is pinned to the profile, the
+    // plan's codec lists go to the called legs only.
+    let robust = [("variable_talkops_codec_profile", "robust")];
+    let a = internal_call_with(&router, &f.ext21, "210", &robust).await;
+    assert_eq!(
+        a[..3],
+        [
+            (
+                "set".to_owned(),
+                "absolute_codec_string=iLBC@20i,iLBC@30i,PCMA,PCMU".to_owned()
+            ),
+            ("set".to_owned(), "jitterbuffer_msec=60:200".to_owned()),
+            (
+                "set".to_owned(),
+                "rtp_jitter_buffer_during_bridge=true".to_owned()
+            ),
+        ],
+        "{a:?}"
+    );
+    assert!(
+        has(
+            &a,
+            "export",
+            "nolocal:absolute_codec_string=OPUS,G722,PCMA,PCMU"
+        ),
+        "{a:?}"
+    );
+    assert!(!has(
+        &a,
+        "export",
+        "absolute_codec_string=OPUS,G722,PCMA,PCMU"
+    ));
+    let a = internal_call_with(&router, &f.ext21, "030123456", &robust).await;
+    assert!(
+        has(&a, "export", "nolocal:absolute_codec_string=G722,PCMA,PCMU"),
+        "{a:?}"
+    );
+    assert!(
+        !has(&a, "set", "absolute_codec_string=G722,PCMA,PCMU"),
+        "{a:?}"
+    );
+
+    // Standard devices keep today's plan.
+    let standard = [("variable_talkops_codec_profile", "standard")];
+    assert_eq!(
+        internal_call_with(&router, &f.ext21, "210", &standard).await,
+        internal_call(&router, &f.ext21, "210").await
+    );
+
+    // Back to automatic (null), then standard: no per-leg variables.
+    let (_, device) = f
+        .admin
+        .put(&format!("/api/v1/devices/{device_id}"), update(Value::Null))
+        .await;
+    assert!(device["codec_profile"].is_null());
+    assert!(bridge().await.contains(&endpoint("G722,PCMA,PCMU")));
+    f.admin
+        .put(
+            &format!("/api/v1/devices/{device_id}"),
+            update(json!("standard")),
+        )
+        .await;
+    let b = bridge().await;
+    assert!(
+        !b.contains("absolute_codec_string") && !b.contains("local_var_clobber"),
+        "{b}"
+    );
+}
+
 /// Dials `user` with the request URI host `host`, as a phone or the
 /// softphone does for `user@host`.
 async fn uri_call(
@@ -1786,6 +2048,163 @@ async fn sip_addresses(db: PgPool) {
         )
         .await;
     assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+}
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn explicit_internal_calls_do_not_become_external_or_pickup(db: PgPool) {
+    let router = router(db.clone());
+    let f = fixture(&router).await;
+    let (_, mut settings) = f.admin.get("/api/v1/settings").await;
+    settings["area_code"] = json!("9543");
+    let (status, _) = f.admin.put("/api/v1/settings", settings).await;
+    assert_eq!(status, StatusCode::OK);
+
+    // Without a matching target, bare 101 becomes the reported external number.
+    let a = internal_call(&router, &f.ext21, "101").await;
+    assert!(has(&a, "set", "talkops_destination=+499543101"), "{a:?}");
+    let a = internal_call(&router, &f.ext21, "**101").await;
+    assert!(has(&a, "respond", "404 Not Found"), "{a:?}");
+
+    for number in ["101", "510", "310", "12345", "12345678"] {
+        let (status, ext) = f
+            .admin
+            .post(
+                "/api/v1/extensions",
+                json!({"number": number, "display_name": number}),
+            )
+            .await;
+        assert_eq!(status, StatusCode::OK, "{ext}");
+        let (status, _) = f
+            .admin
+            .post(
+                &format!("/api/v1/extensions/{}/devices", ext["id"].as_str().unwrap()),
+                json!({"name": "Desk", "kind": "desk"}),
+            )
+            .await;
+        assert_eq!(status, StatusCode::OK);
+        let plain = internal_call(&router, &f.ext21, number).await;
+        let explicit = internal_call(&router, &f.ext21, &format!("**{number}")).await;
+        assert_eq!(plain, explicit, "{number}");
+        for hide_prefix in ["*31", "#31#"] {
+            let hidden =
+                internal_call(&router, &f.ext21, &format!("{hide_prefix}**{number}")).await;
+            assert_eq!(plain, hidden, "{hide_prefix}**{number}");
+        }
+        assert!(
+            has(&explicit, "set", "talkops_direction=internal"),
+            "{explicit:?}"
+        );
+        assert!(
+            has(&explicit, "set", &format!("talkops_destination={number}")),
+            "{explicit:?}"
+        );
+        assert!(
+            explicit
+                .iter()
+                .any(|(app, data)| app == "bridge" && data.starts_with("user/")),
+            "{explicit:?}"
+        );
+        assert!(
+            !explicit
+                .iter()
+                .any(|(app, data)| app == "pickup" || data.contains("sofia/gateway/")),
+            "{explicit:?}"
+        );
+    }
+    // Keep the full dialable range, including existing two-digit extensions.
+    sqlx::query("UPDATE extensions SET number = '21' WHERE id = $1")
+        .bind(
+            f.ext21["id"]
+                .as_str()
+                .unwrap()
+                .parse::<uuid::Uuid>()
+                .unwrap(),
+        )
+        .execute(&db)
+        .await
+        .unwrap();
+    let plain = internal_call(&router, &f.ext20, "21").await;
+    assert_eq!(plain, internal_call(&router, &f.ext20, "**21").await);
+
+    // Explicit internal destinations must not use an external fallback.
+    let foreign_tenant: uuid::Uuid =
+        sqlx::query_scalar("INSERT INTO tenants (name) VALUES ('Other') RETURNING id")
+            .fetch_one(&db)
+            .await
+            .unwrap();
+    sqlx::query("INSERT INTO extensions (tenant_id, number, display_name) VALUES ($1, '999', 'Other tenant')")
+        .bind(foreign_tenant).execute(&db).await.unwrap();
+    // A request URI host must not send an explicit internal target to a SIP peer.
+    let (_, xml) = fs_post(
+        &router,
+        "/fs/xml",
+        &[
+            ("section", "dialplan"),
+            ("Caller-Context", "internal"),
+            ("Caller-Destination-Number", "**missing999"),
+            ("variable_sip_req_host", "external.example"),
+            ("variable_talkops_tenant_id", TENANT),
+            (
+                "variable_talkops_extension_id",
+                f.ext20["id"].as_str().unwrap(),
+            ),
+        ],
+    )
+    .await;
+    let a = actions(&xml);
+    assert!(has(&a, "respond", "404 Not Found"), "{a:?}");
+    assert!(!a.iter().any(|(app, _)| app == "bridge"), "{a:?}");
+    for dest in [
+        "**999",
+        "*31**999",
+        "#31#**999",
+        "**110",
+        "**112",
+        "**115",
+        "**",
+        "**1",
+        "**0101",
+        "***101",
+        "**+101",
+        "**123456789",
+    ] {
+        let a = internal_call(&router, &f.ext20, dest).await;
+        assert!(has(&a, "respond", "404 Not Found"), "{dest}: {a:?}");
+        assert!(
+            !a.iter().any(|(app, _)| app == "bridge" || app == "pickup"),
+            "{a:?}"
+        );
+    }
+    // The shared internal number space includes ring groups.
+    let (status, group) = f
+        .admin
+        .post(
+            "/api/v1/ring-groups",
+            json!({
+                "number": "600", "name": "Reception", "members": [f.ext20["id"]]
+            }),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{group}");
+    assert_eq!(
+        internal_call(&router, &f.ext21, "600").await,
+        internal_call(&router, &f.ext21, "**600").await
+    );
+    // Disabled targets retain their normal unavailable response.
+    sqlx::query("UPDATE extensions SET enabled = false WHERE id = $1")
+        .bind(
+            f.ext20["id"]
+                .as_str()
+                .unwrap()
+                .parse::<uuid::Uuid>()
+                .unwrap(),
+        )
+        .execute(&db)
+        .await
+        .unwrap();
+    let a = internal_call(&router, &f.ext21, "**200").await;
+    assert!(has(&a, "respond", "480 Temporarily Unavailable"), "{a:?}");
+    assert!(!a.iter().any(|(app, _)| app == "bridge"), "{a:?}");
 }
 
 #[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]

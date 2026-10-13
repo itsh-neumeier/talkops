@@ -10,7 +10,9 @@
 # offers its caller to a registered agent, that answered calls are
 # recorded, that a door station's ring reaches a phone with video and
 # (WEBRTC_E2E=1, needs Node.js with Playwright) that the browser softphone
-# can call an extension, and that repeated wrong passwords ban the address.
+# can call an extension, that TalkOps transcodes to iLBC for a Wi-Fi handset
+# with the robust codec profile, and that repeated wrong passwords ban the
+# address.
 #
 #   BASE=http://127.0.0.1:8080 SIP_HOST=192.168.1.10 tests/e2e/run.sh
 set -euo pipefail
@@ -95,7 +97,7 @@ sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/bad_password.xml" -s "$CALLEE" -au "$CALLEE
     || { cat "$WORK/bad.log" 2>/dev/null; fail "wrong password was not rejected"; }
 
 log "callee registers (calls are answered by a SIPp UAS on port 5094)"
-sipp -sn uas -p 5094 -i "$SIP_HOST" -m 1 -min_rtp_port 16000 -max_rtp_port 16050 -timeout 90 -timeout_error \
+sipp -sn uas -p 5094 -i "$SIP_HOST" -m 2 -min_rtp_port 16000 -max_rtp_port 16050 -timeout 90 -timeout_error \
     -trace_err -error_file "$WORK/callee.log" >"$WORK/callee.out" 2>&1 &
 CALLEE_PID=$!
 sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/register.xml" -set contact_port 5094 -s "$CALLEE" -au "$CALLEE" -ap "$CALLEE_PW" \
@@ -108,11 +110,13 @@ done
 api GET /api/v1/telephony/status | jq -e --arg u "$CALLEE" '.registrations[] | select(.user == $u)' >/dev/null \
     || fail "registration of $CALLEE not visible in /api/v1/telephony/status"
 
-log "caller calls extension 210"
-printf 'SEQUENTIAL\n210;\n' > "$WORK/dest.csv"
-sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/call.xml" -inf "$WORK/dest.csv" -s "$CALLER" -au "$CALLER" -ap "$CALLER_PW" \
-    -m 1 -p 5093 -min_rtp_port 16100 -max_rtp_port 16150 -i "$SIP_HOST" -timeout 30 -timeout_error -trace_err -error_file "$WORK/caller.log" >/dev/null \
-    || { cat "$WORK/caller.log" 2>/dev/null; fail "call failed"; }
+for destination in 210 '**210'; do
+    log "caller calls extension 210 with $destination"
+    printf 'SEQUENTIAL\n%s;\n' "$destination" > "$WORK/dest.csv"
+    sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/call.xml" -inf "$WORK/dest.csv" -s "$CALLER" -au "$CALLER" -ap "$CALLER_PW" \
+        -m 1 -p 5093 -min_rtp_port 16100 -max_rtp_port 16150 -i "$SIP_HOST" -timeout 30 -timeout_error -trace_err -error_file "$WORK/caller.log" >/dev/null \
+        || { cat "$WORK/caller.log" 2>/dev/null; fail "call failed"; }
+done
 wait "$CALLEE_PID" || { cat "$WORK/callee.log" 2>/dev/null; fail "callee scenario failed"; }
 
 log "call record"
@@ -144,10 +148,13 @@ CFG=$(curl -sf -u "$PUSER:$PPASS" -A "Yealink SIP-T54W 96.86.0.100 80:5e:c0:00:e
     || fail "phone configuration"
 echo "$CFG" | grep -q '^account.1.user_name = 210-2$' || fail "account missing in phone configuration"
 echo "$CFG" | grep -q '^linekey.3.type = 16$' || fail "BLF key missing in phone configuration"
+echo "$CFG" | grep -Fq 'linekey.3.pickup_value = *8*210' || fail "BLF pickup code"
 [ "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/provisioning/805ec000e2e2.cfg")" = 401 ] \
     || fail "provisioning without credentials must be rejected"
 curl -sf -u "$PUSER:$PPASS" "$BASE/provisioning/phonebook/internal.xml" | grep -q '<Name>E2E 210</Name>' \
     || fail "internal phonebook"
+curl -sf -u "$PUSER:$PPASS" "$BASE/provisioning/phonebook/internal.xml" | grep -Fq '>**210</Telephone>' \
+    || fail "internal phonebook dialable number"
 
 log "voicemail answers and stores a message"
 EXT22=$(api POST /api/v1/extensions '{"number":"220","display_name":"E2E 220"}' | jq -r .id) || fail "create extension 220"
@@ -215,17 +222,44 @@ printf 'SEQUENTIAL\n800;\n' > "$WORK/queue.csv"
 wait "$AGENT_PID" || { cat "$WORK/agent.log" 2>/dev/null; fail "agent did not receive the queue call"; }
 
 log "answered calls are recorded"
-SETTINGS=$(api GET /api/v1/settings | jq '.record_internal = true') || fail "read settings"
+SETTINGS=$(api GET /api/v1/settings | jq '.record_internal = true | .transcription_enabled = true') || fail "read settings"
 api PUT /api/v1/settings "$SETTINGS" >/dev/null || fail "enable recording"
-sipp -sn uas -p 5094 -i "$SIP_HOST" -m 1 -min_rtp_port 16800 -max_rtp_port 16850 -timeout 60 -timeout_error \
+sipp -sn uas -p 5094 -i "$SIP_HOST" -m 1 -min_rtp_port 16800 -max_rtp_port 16850 -timeout 140 -timeout_error \
     -trace_err -error_file "$WORK/rec-callee.log" >"$WORK/rec-callee.out" 2>&1 &
 REC_PID=$!
 sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/register.xml" -set contact_port 5094 -s "$CALLEE" -au "$CALLEE" -ap "$CALLEE_PW" \
     -m 1 -p 5092 -i "$SIP_HOST" -timeout 20 -timeout_error -trace_err -error_file "$WORK/register3.log" >/dev/null \
     || { cat "$WORK/register3.log" 2>/dev/null; fail "registration for the recorded call failed"; }
-(cd "$DIR" && sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/call_hold.xml" -inf "$WORK/dest.csv" -s "$CALLER" -au "$CALLER" -ap "$CALLER_PW" \
-    -m 1 -p 5097 -min_rtp_port 16900 -max_rtp_port 16950 -i "$SIP_HOST" -timeout 60 -timeout_error -trace_err -error_file "$WORK/rec.log" >/dev/null) \
-    || { cat "$WORK/rec.log" 2>/dev/null; fail "recorded call failed"; }
+sed 's/pause milliseconds="10000"/pause milliseconds="90000"/' "$DIR/call_hold.xml" > "$WORK/call-live.xml"
+(cd "$DIR" && sipp "$SIP_HOST:$SIP_PORT" -sf "$WORK/call-live.xml" -inf "$WORK/dest.csv" -s "$CALLER" -au "$CALLER" -ap "$CALLER_PW" \
+    -m 1 -p 5097 -min_rtp_port 16900 -max_rtp_port 16950 -i "$SIP_HOST" -timeout 140 -timeout_error -trace_err -error_file "$WORK/rec.log" >/dev/null) &
+REC_CALL_PID=$!
+LIVE_UUID=""
+for _ in $(seq 1 20); do
+    LIVE_CALL=$(api GET /api/v1/telephony/calls | jq -c '[.[] | select(.direction == "internal" and .transcript_available)][0] // empty')
+    if [ -n "$LIVE_CALL" ]; then LIVE_UUID=$(echo "$LIVE_CALL" | jq -r .uuid); break; fi
+    sleep 1
+done
+[ -n "$LIVE_UUID" ] || fail "recorded call missing from the resolved overview"
+echo "$LIVE_CALL" | jq -e '.caller.name == "E2E 200" and .called.name == "E2E 210" and .answered_at != null' >/dev/null \
+    || { echo "$LIVE_CALL" | jq .; fail "live call identities or answer time are incorrect"; }
+# Play real Piper speech into the recording while SIPp keeps both legs alive.
+LIVE_CLIP=$(echo "$TTS_NORMAL" | jq -r .id)
+docker compose exec -T freeswitch sh -c 'fs_cli -p "$TALKOPS_ESL_PASSWORD" -x "$1"' talkops \
+    "uuid_broadcast $LIVE_UUID /var/lib/talkops/sounds/clips/00000000-0000-4000-8000-000000000001/$LIVE_CLIP.wav aleg" \
+    | grep -q '+OK' || fail "inject live Piper speech"
+LIVE_TEXT=""
+for _ in $(seq 1 60); do
+    LIVE_PREVIEW=$(api POST "/api/v1/telephony/calls/$LIVE_UUID/transcript" '{}') || fail "read live transcript"
+    LIVE_TEXT=$(echo "$LIVE_PREVIEW" | jq -r '[.segments[].text] | join(" ")')
+    [ -n "$LIVE_TEXT" ] && break
+    sleep 1
+done
+[ -n "$LIVE_TEXT" ] || fail "local worker did not transcribe live Piper speech"
+echo "$LIVE_PREVIEW" | jq -e '.processed_secs > 0 and all(.segments[]; .start >= 0 and (.speaker == "caller" or .speaker == "called"))' >/dev/null \
+    || fail "live transcript has invalid offsets or speaker labels"
+api DELETE "/api/v1/telephony/calls/$LIVE_UUID/transcript" >/dev/null || fail "close live preview"
+wait "$REC_CALL_PID" || { cat "$WORK/rec.log" 2>/dev/null; fail "recorded call failed"; }
 wait "$REC_PID" || { cat "$WORK/rec-callee.log" 2>/dev/null; fail "callee of the recorded call failed"; }
 REC=""
 for _ in $(seq 1 15); do
@@ -258,6 +292,7 @@ api GET /api/v1/door-events | jq -e '.[] | select(.kind == "ring" and .detail.di
     || fail "door ring not logged"
 
 if [ "${WEBRTC_E2E:-0}" = 1 ]; then
+    node "$DIR/../e2e/softphone-ui.mjs" "$BASE" || fail "softphone UI"
     log "browser softphone (WebRTC) calls an extension"
     WEBU=$(api POST /api/v1/users '{"username":"e2e-web","display_name":"E2E Web","role":"user","password":"e2e-web-password"}' | jq -r .id) \
         || fail "create web user"
@@ -272,6 +307,34 @@ if [ "${WEBRTC_E2E:-0}" = 1 ]; then
     node "$DIR/../e2e/webrtc.mjs" "$BASE" e2e-web e2e-web-password 210 || fail "softphone call"
     wait "$WEB_PID" || { cat "$WORK/web-callee.log" 2>/dev/null; fail "callee of the softphone call failed"; }
 fi
+
+log "codec profile: TalkOps transcodes for a device with the robust profile"
+EXT240=$(api POST /api/v1/extensions '{"number":"240","display_name":"E2E 240"}' | jq -r .id) || fail "create extension 240"
+read -r HANDSET HANDSET_PW <<<"$(api POST "/api/v1/extensions/$EXT240/devices" '{"name":"Handset","kind":"wifi","codec_profile":"robust"}' \
+    | jq -r '"\(.sip_username) \(.sip_password)"')" || fail "create Wi-Fi handset"
+# Calls to the handset: the INVITE offers iLBC; the caller only has G.711.
+sipp -sf "$DIR/uas_ilbc.xml" -p 5094 -i "$SIP_HOST" -m 1 -min_rtp_port 17400 -max_rtp_port 17450 -timeout 60 -timeout_error \
+    -trace_err -error_file "$WORK/ilbc-callee.log" >"$WORK/ilbc-callee.out" 2>&1 &
+ILBC_PID=$!
+sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/register.xml" -set contact_port 5094 -s "$HANDSET" -au "$HANDSET" -ap "$HANDSET_PW" \
+    -m 1 -p 5097 -i "$SIP_HOST" -timeout 20 -timeout_error -trace_err -error_file "$WORK/register-handset.log" >/dev/null \
+    || { cat "$WORK/register-handset.log" 2>/dev/null; fail "registration of the Wi-Fi handset failed"; }
+printf 'SEQUENTIAL\n240;\n' > "$WORK/handset.csv"
+sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/call.xml" -inf "$WORK/handset.csv" -s "$CALLER" -au "$CALLER" -ap "$CALLER_PW" \
+    -m 1 -p 5098 -min_rtp_port 17500 -max_rtp_port 17550 -i "$SIP_HOST" -timeout 30 -timeout_error -trace_err -error_file "$WORK/to-handset.log" >/dev/null \
+    || { cat "$WORK/to-handset.log" 2>/dev/null; fail "G.711 call to the iLBC handset failed"; }
+wait "$ILBC_PID" || { cat "$WORK/ilbc-callee.log" 2>/dev/null; fail "the handset was not offered iLBC only"; }
+# Calls from the handset: TalkOps answers with iLBC although G.722 comes first.
+sipp -sn uas -p 5094 -i "$SIP_HOST" -m 1 -min_rtp_port 17600 -max_rtp_port 17650 -timeout 60 -timeout_error \
+    -trace_err -error_file "$WORK/from-handset-callee.log" >"$WORK/from-handset-callee.out" 2>&1 &
+FROM_PID=$!
+sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/register.xml" -set contact_port 5094 -s "$CALLEE" -au "$CALLEE" -ap "$CALLEE_PW" \
+    -m 1 -p 5092 -i "$SIP_HOST" -timeout 20 -timeout_error -trace_err -error_file "$WORK/register6.log" >/dev/null \
+    || { cat "$WORK/register6.log" 2>/dev/null; fail "registration for the handset call failed"; }
+sipp "$SIP_HOST:$SIP_PORT" -sf "$DIR/call_ilbc.xml" -inf "$WORK/dest.csv" -s "$HANDSET" -au "$HANDSET" -ap "$HANDSET_PW" \
+    -m 1 -p 5097 -min_rtp_port 17700 -max_rtp_port 17750 -i "$SIP_HOST" -timeout 30 -timeout_error -trace_err -error_file "$WORK/from-handset.log" >/dev/null \
+    || { cat "$WORK/from-handset.log" 2>/dev/null; fail "the handset's call was not answered with iLBC"; }
+wait "$FROM_PID" || { cat "$WORK/from-handset-callee.log" 2>/dev/null; fail "callee of the handset call failed"; }
 
 log "repeated wrong passwords ban the address"
 api PUT /api/v1/security/sip \

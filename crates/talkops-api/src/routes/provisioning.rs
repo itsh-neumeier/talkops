@@ -14,6 +14,7 @@ use axum::http::{HeaderMap, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
+use talkops_core::extensions::CodecProfile;
 use talkops_core::phones::{self, Phone};
 use talkops_core::tenant::TenantId;
 use talkops_core::{extensions, numbering, settings};
@@ -21,7 +22,8 @@ use talkops_provisioning::SettingValues;
 use talkops_provisioning::dial_now::{self, DialNowInput};
 use talkops_provisioning::phonebook::{self, Entry};
 use talkops_provisioning::yealink::{
-    self, Account, LineKey, Locale, MediaFile, PhoneSetup, Provisioning, RemotePhonebook,
+    self, Account, AccountCodecs, LineKey, Locale, MediaFile, PhoneSetup, Provisioning,
+    RemotePhonebook,
 };
 use talkops_provisioning::{catalog::firmware_from_user_agent, normalize_mac};
 use uuid::Uuid;
@@ -140,6 +142,11 @@ pub async fn render_phone_config(
             index: a.account_index.max(1) as u16,
             label: a.label().to_owned(),
             display_name: a.caller_name().to_owned(),
+            codecs: if a.effective_codec_profile() == CodecProfile::Standard {
+                AccountCodecs::PhoneDefault
+            } else {
+                AccountCodecs::Profiles
+            },
             username: a.sip_username,
             password,
         });
@@ -340,7 +347,7 @@ async fn internal_phonebook(state: &AppState, search: Option<&String>) -> ApiRes
             } else {
                 e.display_name.clone()
             },
-            numbers: vec![("Extension".to_owned(), e.number)],
+            numbers: vec![("Extension".to_owned(), format!("**{}", e.number))],
         })
         .collect();
     let entries = phonebook::search(entries, search.map(String::as_str));
@@ -391,11 +398,7 @@ async fn contacts_phonebook(
             .filter(|(_, n)| !n.is_empty())
             .map(|(label, n)| (label.to_owned(), display(n)))
             .collect();
-            let name = if c.company.is_empty() || c.name.is_empty() {
-                format!("{}{}", c.name, c.company)
-            } else {
-                format!("{} ({})", c.name, c.company)
-            };
+            let name = c.display_name();
             Entry { name, numbers }
         })
         .collect();

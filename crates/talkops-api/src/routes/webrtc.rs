@@ -3,8 +3,8 @@
 //! bound to localhost and only reachable through TalkOps (logged-in users).
 
 use axum::Json;
-use axum::extract::State;
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
+use axum::extract::{Query, State};
 use std::net::IpAddr;
 
 use axum::http::{HeaderMap, header};
@@ -13,8 +13,10 @@ use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use talkops_core::audit;
-use talkops_core::extensions::{self, DeviceInput, DeviceKind};
+use talkops_core::extensions::{self, Extension};
 use talkops_core::turn::{self, IceServer};
+use talkops_core::users::Role;
+use talkops_core::{cdr, settings, trunks};
 use tokio_tungstenite::tungstenite::{self, client::IntoClientRequest};
 use utoipa::ToSchema;
 use utoipa_axum::router::OpenApiRouter;
@@ -29,14 +31,107 @@ use crate::fsxml::SIP_DOMAIN;
 pub fn router() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
         .routes(routes!(webrtc_account))
+        .routes(routes!(webrtc_choices))
+        .routes(routes!(webrtc_calls))
         .routes(routes!(conference_add))
 }
 
 #[derive(Deserialize, ToSchema)]
 pub struct AccountRequest {
-    /// Extension to use; default: the user's first extension.
+    /// Extension to use. Admins must select explicitly; other users default to their first.
     #[serde(default)]
     pub extension_id: Option<Uuid>,
+}
+
+async fn allowed_extensions(state: &AppState, auth: &AuthUser) -> ApiResult<Vec<Extension>> {
+    let extensions = if auth.role == Role::Admin {
+        extensions::list(&state.db, auth.tenant).await?
+    } else {
+        extensions::list_for_user(&state.db, auth.tenant, auth.id).await?
+    };
+    Ok(extensions.into_iter().filter(|e| e.enabled).collect())
+}
+
+async fn selected_extension(
+    state: &AppState,
+    auth: &AuthUser,
+    id: Option<Uuid>,
+) -> ApiResult<Extension> {
+    if auth.role == Role::Admin && id.is_none() {
+        return Err(ApiError::BadRequest("select an extension".into()));
+    }
+    allowed_extensions(state, auth)
+        .await?
+        .into_iter()
+        .find(|e| id.is_none_or(|id| id == e.id))
+        .ok_or(ApiError::NotFound)
+}
+
+#[derive(Serialize, ToSchema)]
+pub struct WebrtcChoice {
+    pub extension_id: Uuid,
+    pub extension_number: String,
+    pub display_name: String,
+    /// Effective public caller number; null if no usable outbound route exists.
+    pub outbound_number: Option<String>,
+    pub uses_default_number: bool,
+    pub hide_caller_id: bool,
+}
+
+/// Lists the identities this user can select without exposing SIP credentials.
+#[utoipa::path(get, path = "/api/v1/me/webrtc/extensions", tag = "extensions", responses((status = 200, body = [WebrtcChoice])))]
+pub async fn webrtc_choices(
+    State(state): State<AppState>,
+    auth: AuthUser,
+) -> ApiResult<Json<Vec<WebrtcChoice>>> {
+    let default = settings::get(&state.db, auth.tenant)
+        .await?
+        .default_number_id;
+    let mut choices = Vec::new();
+    for ext in allowed_extensions(&state, &auth).await? {
+        let outbound_number = match ext.outbound_number_id.or(default) {
+            Some(id) => trunks::outbound_route(&state.db, auth.tenant, id)
+                .await?
+                .map(|r| r.e164),
+            None => None,
+        };
+        choices.push(WebrtcChoice {
+            extension_id: ext.id,
+            extension_number: ext.number,
+            display_name: ext.display_name,
+            outbound_number,
+            uses_default_number: ext.outbound_number_id.is_none(),
+            hide_caller_id: ext.hide_caller_id,
+        });
+    }
+    Ok(Json(choices))
+}
+
+#[derive(Deserialize, utoipa::IntoParams)]
+pub struct WebrtcCallsQuery {
+    pub extension_id: Uuid,
+}
+
+/// Recent calls of a permitted softphone identity, including incoming calls.
+#[utoipa::path(get, path = "/api/v1/me/webrtc/calls", tag = "extensions", params(WebrtcCallsQuery), responses((status = 200, body = [cdr::Cdr])))]
+pub async fn webrtc_calls(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Query(q): Query<WebrtcCallsQuery>,
+) -> ApiResult<Json<Vec<cdr::Cdr>>> {
+    let ext = selected_extension(&state, &auth, Some(q.extension_id)).await?;
+    Ok(Json(
+        cdr::list(
+            &state.db,
+            auth.tenant,
+            &cdr::CdrQuery {
+                extension_id: Some(ext.id),
+                limit: Some(30),
+                ..Default::default()
+            },
+        )
+        .await?,
+    ))
 }
 
 #[derive(Serialize, ToSchema)]
@@ -57,80 +152,52 @@ pub struct WebrtcAccount {
     pub video_enabled: bool,
 }
 
-/// SIP account of the own browser softphone; created on first use.
-#[utoipa::path(post, path = "/api/v1/me/webrtc", tag = "extensions", request_body = AccountRequest, responses((status = 200, body = WebrtcAccount), (status = 404, description = "the user has no extension")))]
+/// SIP account for a permitted extension, owned by this user; created on first use.
+#[utoipa::path(post, path = "/api/v1/me/webrtc", tag = "extensions", request_body = AccountRequest, responses((status = 200, body = WebrtcAccount), (status = 403, description = "browser device disabled"), (status = 404, description = "extension unavailable"), (status = 422, description = "admin must select an extension")))]
 pub async fn webrtc_account(
     State(state): State<AppState>,
     auth: AuthUser,
     Json(req): Json<AccountRequest>,
-) -> ApiResult<Json<WebrtcAccount>> {
-    let own = extensions::list_for_user(&state.db, auth.tenant, auth.id).await?;
-    let ext = match req.extension_id {
-        Some(id) => own.into_iter().find(|e| e.id == id),
-        None => own.into_iter().find(|e| e.enabled),
-    }
-    .ok_or(ApiError::NotFound)?;
-    let devices = extensions::list_devices(&state.db, auth.tenant, ext.id).await?;
-    let (device, password) = match devices.into_iter().find(|d| d.kind == DeviceKind::Browser) {
-        Some(d) => {
-            let pw = state
-                .secrets
-                .decrypt(&d.sip_password_enc)
-                .map_err(|e| ApiError::Internal(e.to_string()))?;
-            (d, pw)
-        }
-        None => {
-            let input = DeviceInput {
-                name: "Browser".into(),
-                kind: DeviceKind::Browser,
-                sip_username: None,
-                phone_id: None,
-                account_index: None,
-                phone_label: String::new(),
-                phone_display_name: String::new(),
-                enabled: true,
-            };
-            let (d, pw) =
-                extensions::create_device(&state.db, auth.tenant, &state.secrets, &ext, &input)
-                    .await?;
-            audit::record(
-                &state.db,
-                &auth.actor(),
-                "create",
-                "device",
-                Some(d.id.to_string()),
-                json!({"extension": ext.number, "sip_username": d.sip_username, "kind": "browser"}),
-            )
-            .await?;
-            (d, pw)
-        }
-    };
+) -> ApiResult<Response> {
+    let ext = selected_extension(&state, &auth, req.extension_id).await?;
+    let (device, password) = extensions::browser_device(
+        &state.db,
+        &state.secrets,
+        &ext,
+        &auth.actor(),
+        &auth.display_name,
+    )
+    .await?;
     if !device.enabled {
         return Err(ApiError::Forbidden);
     }
-    Ok(Json(WebrtcAccount {
-        extension_id: ext.id,
-        extension_number: ext.number,
-        display_name: ext.display_name,
-        sip_username: device.sip_username,
-        sip_password: password,
-        sip_domain: SIP_DOMAIN,
-        ws_path: "/api/v1/webrtc/ws",
-        ice_servers: state
-            .turn
-            .as_ref()
-            .and_then(|t| {
-                let now = std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .map(|d| d.as_secs())
-                    .unwrap_or_default();
-                turn::ice_server(&t.urls, &t.secret, &auth.id.to_string(), now)
-            })
-            .into_iter()
-            .collect(),
-        relay_only: state.turn.as_ref().is_some_and(|t| t.relay_only),
-        video_enabled: ext.video_enabled,
-    }))
+    Ok((
+        [(header::CACHE_CONTROL, "no-store")],
+        Json(WebrtcAccount {
+            extension_id: ext.id,
+            extension_number: ext.number,
+            display_name: ext.display_name,
+            sip_username: device.sip_username,
+            sip_password: password,
+            sip_domain: SIP_DOMAIN,
+            ws_path: "/api/v1/webrtc/ws",
+            ice_servers: state
+                .turn
+                .as_ref()
+                .and_then(|t| {
+                    let now = std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .map(|d| d.as_secs())
+                        .unwrap_or_default();
+                    turn::ice_server(&t.urls, &t.secret, &auth.id.to_string(), now)
+                })
+                .into_iter()
+                .collect(),
+            relay_only: state.turn.as_ref().is_some_and(|t| t.relay_only),
+            video_enabled: ext.video_enabled,
+        }),
+    )
+        .into_response())
 }
 
 #[derive(Deserialize, ToSchema)]
@@ -157,11 +224,7 @@ pub async fn conference_add(
     Json(req): Json<ConferenceRequest>,
 ) -> ApiResult<(axum::http::StatusCode, Json<ConferenceResponse>)> {
     use crate::conference::{self, ConferenceError, Initiator};
-    let ext = extensions::list_for_user(&state.db, auth.tenant, auth.id)
-        .await?
-        .into_iter()
-        .find(|e| e.id == req.extension_id && e.enabled)
-        .ok_or(ApiError::NotFound)?;
+    let ext = selected_extension(&state, &auth, Some(req.extension_id)).await?;
     let number = conference::clean_number(&req.number)
         .ok_or_else(|| ApiError::BadRequest("invalid number".into()))?;
     if req.call_id.is_empty() || req.call_id.len() > 256 {

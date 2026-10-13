@@ -5,12 +5,14 @@
     <param name="auth-scheme" value="basic"/>
     <!-- POST body is cdr=<url-encoded XML> -->
     <param name="encode" value="true"/>
-    <param name="retries" value="3"/>
-    <param name="delay" value="5"/>
+    <!-- About one minute of retries covers a TalkOps restart. -->
+    <param name="retries" value="5"/>
+    <param name="delay" value="10"/>
     <param name="timeout" value="10"/>
     <param name="disable-100-continue" value="true"/>
-    <!-- CDRs that could not be delivered are kept here for manual re-import. -->
-    <param name="err-log-dir" value="$${log_dir}/xml_cdr"/>
+    <!-- CDRs that could not be delivered go to the spool volume shared with
+         TalkOps, which imports them (cdr_spool.rs). -->
+    <param name="err-log-dir" value="$${talkops_cdr_spool_dir}"/>
     <param name="log-b-leg" value="false"/>
     <param name="prefix-a-leg" value="true"/>
   </settings>

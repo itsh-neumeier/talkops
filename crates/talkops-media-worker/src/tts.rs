@@ -229,7 +229,7 @@ pub async fn ensure_prompts(piper: &Piper, sounds_dir: &Path) -> anyhow::Result<
     Ok(rendered)
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 pub(crate) mod tests {
     use super::*;
     use std::os::unix::fs::PermissionsExt;

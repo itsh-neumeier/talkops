@@ -122,7 +122,8 @@ documentation *Ring Tones*, *Wallpaper Settings* and *Line Key*
 |---|---|
 | `*78` / `*79` | do not disturb on / off |
 | `*72<number>` / `*73` | forward all calls (extension or external number) / off |
-| `**<extension>` | pick up a ringing call |
+| `**<extension>` | call an internal extension |
+| `*8*<extension>` | pick up a ringing call |
 | `*51` … `*59` | park a call / pick up a parked call ([call routing](call-routing.md)) |
 | `*30<number>` | time condition "closed" on/off |
 | `*97` / `*98` | own voicemail / any voicemail with PIN ([voicemail](voicemail.md)) |
@@ -141,15 +142,13 @@ go out after one second:
 
 - emergency numbers (110, 112 or the ones set under *Settings → Telephony*),
 - the fixed codes `*51`–`*59`, `*73`, `*78`, `*79`, `*97`, `*98`,
-- all internal numbers (extensions, groups, menus, queues).
+- explicit internal numbers such as `**101` (extensions, groups, menus, queues).
 
-A number is left out if another dialable number starts with it – with 300 and
-3000, the phone keeps waiting after 300. `*1`–`*99` are reserved for system
-codes and take precedence; `*<number>` for internal numbers starts at `*100`.
-Internal numbers that begin with a system code (e.g. 510 → `*51`) are
-therefore dialed without the star on a Yealink. Internal numbers starting with `11`
-(service numbers such as 11833) and – when an area code is set – all internal
-numbers also have no dial-now rule, because local numbers can then be dialed
+A number is left out if another dialable number starts with it – with `**300` and
+`**3000`, the phone keeps waiting after `**300`. `**101` and `**510` do not conflict
+with single-star system codes. Bare internal numbers starting with `11`
+(service numbers such as 11833) have no dial-now rule. With a configured area
+code, other bare internal numbers also wait, because local numbers can be dialed
 without the area code. New extensions reach the phone with the next resync
 (at the latest overnight).
 
@@ -180,11 +179,25 @@ extended there. Sources: Yealink AX86R documentation (firmware 180.87) on
 support.yealink.com; vibration only appears in Yealink's AX8X provisioning
 template 180.87.0.5.
 
+### Audio codecs
+
+TalkOps writes codec settings only for devices with the codec profile HD or
+Robust. Wi-Fi handsets use HD by default. See
+[Codec profiles](codec-profiles.md).
+
 ## 5. Phonebook
 
 Every phone shows **Internal** (all enabled extensions) and **Contacts** (the
-global phone book: all contacts without a section). Numbers are shown in
-national format and can be dialed directly.
+global phone book: all contacts without a section). The internal directory
+uses `**101` to call extension `101`. TalkOps does not add a country code or
+area code to an explicit internal number. The extension and SIP account
+identifiers in the database stay unchanged. External contacts use national
+format on the phone and can be dialed directly.
+
+For an internal contact, enter `**101` in a contact number field or CSV file.
+TalkOps stores the prefix and sends the same number to global and section
+phonebooks. Do not convert an external number such as `+499543101` by removing
+its country code. Correct an incorrectly stored contact to `**101` yourself.
 
 **Sections** are additional phone books that appear only on selected phones –
 e.g. *Family* only in the living room, *Suppliers* only in the office:
@@ -195,6 +208,15 @@ e.g. *Family* only in the living room, *Suppliers* only in the office:
    on this phone*, save, **Resync**.
 
 A deleted section disappears with its contacts from the phones as well.
+
+### Upgrade and call pickup
+
+`**101` now calls extension `101`. It no longer picks up a ringing call.
+Use `*8*101` for call pickup. After the update, resync all provisioned phones
+and reload the remote phonebook. TalkOps updates the BLF pickup codes.
+Update manually configured BLF keys, pickup codes and saved speed dials too.
+Bare internal calls and the existing single-star call alias remain available.
+Unknown explicit internal numbers return `404`; they do not use a trunk.
 
 ### Importing contacts (CSV)
 

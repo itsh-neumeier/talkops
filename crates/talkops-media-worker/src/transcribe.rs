@@ -259,6 +259,7 @@ impl Whisper {
         for (speaker, file, samples) in channels {
             let out = file.with_extension("");
             let output = Command::new(&self.bin)
+                .kill_on_drop(true)
                 .args(&args)
                 .arg("-f")
                 .arg(&file)
@@ -312,12 +313,15 @@ pub(crate) fn to_lines(parties: &[(&str, Vec<Word>, Vec<f32>)]) -> Vec<Segment> 
 
 /// Downloads `url` to `file`, checking size and SHA-256.
 async fn download(url: &str, file: &Path, sum: &str, size: u64) -> anyhow::Result<()> {
+    static DOWNLOAD_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+    let _download = DOWNLOAD_LOCK.lock().await;
     if let Some(dir) = file.parent() {
         tokio::fs::create_dir_all(dir).await?;
     }
     let tmp = file.with_extension("part");
     tracing::info!(url, bytes = size, "downloading model");
     let status = Command::new("curl")
+        .kill_on_drop(true)
         .args(["-fsSL", "--retry", "3", "-o"])
         .arg(&tmp)
         .arg(url)

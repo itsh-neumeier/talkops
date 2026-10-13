@@ -18,12 +18,15 @@
 
 	let {
 		extensionId,
+		extensionNumber = '',
 		devices,
 		registrations = null,
 		admin = false,
 		onchange
 	}: {
 		extensionId: string;
+		/** Prefix of the SIP usernames (admin form). */
+		extensionNumber?: string;
 		devices: Device[];
 		registrations?: Registration[] | null;
 		admin?: boolean;
@@ -46,6 +49,9 @@
 		phone_label: '',
 		phone_display_name: '',
 		codec_profile: '' as CodecProfile | '',
+		// Part of the SIP username after the extension number; empty = generated
+		// (new device) or unchanged (edit).
+		sip_suffix: '',
 		enabled: true
 	});
 	let form = $state(empty());
@@ -79,6 +85,10 @@
 			phone_label: d.phone_label,
 			phone_display_name: d.phone_display_name,
 			codec_profile: d.codec_profile ?? '',
+			sip_suffix:
+				extensionNumber && d.sip_username.startsWith(extensionNumber)
+					? d.sip_username.slice(extensionNumber.length)
+					: '',
 			enabled: d.enabled
 		};
 		addOpen = true;
@@ -87,8 +97,11 @@
 	async function add(e: SubmitEvent) {
 		e.preventDefault();
 		error = '';
+		const { sip_suffix, ...fields } = form;
+		const suffix = sip_suffix.trim();
 		const body = {
-			...form,
+			...fields,
+			sip_username: suffix ? extensionNumber + suffix : null,
 			phone_id: form.phone_id || null,
 			codec_profile: form.codec_profile || null,
 			account_index: form.phone_id && form.account_index !== '' ? Number(form.account_index) : null
@@ -200,6 +213,27 @@
 				{#each kinds as k (k)}<option value={k}>{t(`kinds.${k}`)}</option>{/each}
 			</select>
 		</div>
+		{#if extensionNumber && editing?.kind !== 'browser'}
+			<div>
+				<label for="d-sip">{t('ext.sipUsername')}</label>
+				<div class="flex items-center gap-1">
+					<span class="font-mono text-slate-500">{extensionNumber}</span>
+					<input
+						id="d-sip"
+						class="input mt-0 font-mono"
+						bind:value={form.sip_suffix}
+						maxlength={64 - extensionNumber.length}
+						pattern="[A-Za-z._\-][A-Za-z0-9._\-]*"
+						autocomplete="off"
+						placeholder={editing ? '' : form.kind === 'door' ? 'vto' : t('ext.sipSuffixAuto')}
+					/>
+				</div>
+				<p class="hint">
+					{t('ext.sipSuffixHint')}
+					{#if editing}{t('ext.sipRenameHint')}{/if}
+				</p>
+			</div>
+		{/if}
 		<div class="grid grid-cols-2 gap-3">
 			<div>
 				<label for="d-phone">{t('phones.phone')} ({t('common.optional')})</label>

@@ -244,14 +244,21 @@ pub async fn update_device(
 ) -> ApiResult<Json<Device>> {
     auth.require(Role::Admin)?;
     check_phone_slot(&state, &auth, &input).await?;
+    let before = extensions::get_device(&state.db, auth.tenant, id).await?;
     let device = extensions::update_device(&state.db, auth.tenant, id, &input).await?;
+    let mut detail = json!({"enabled": device.enabled, "codec_profile": device.codec_profile});
+    if device.sip_username != before.sip_username {
+        // The device must register again with the new name.
+        detail["sip_username"] = json!(device.sip_username);
+        detail["previous_sip_username"] = json!(before.sip_username);
+    }
     audit::record(
         &state.db,
         &auth.actor(),
         "update",
         "device",
         Some(id.to_string()),
-        json!({"enabled": device.enabled, "codec_profile": device.codec_profile}),
+        detail,
     )
     .await?;
     Ok(Json(device))

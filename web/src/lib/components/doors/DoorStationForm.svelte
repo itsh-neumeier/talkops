@@ -33,6 +33,11 @@
 		snapshots: station?.snapshots ?? true,
 		webhook_url: '',
 		remove_webhook: false,
+		unlock_code_1: '',
+		unlock_code_2: '',
+		remove_codes: false,
+		// One number per line.
+		dtmf_allowed_numbers: (station?.dtmf_allowed_numbers ?? []).join('\n'),
 		enabled: station?.enabled ?? true
 	});
 	let extensions = $state<Extension[]>([]);
@@ -50,8 +55,16 @@
 	async function save(e: SubmitEvent) {
 		e.preventDefault();
 		error = '';
+		// Empty code fields keep the stored code; "remove" clears both.
+		const code = (c: string) => (form.remove_codes ? '' : c === '' ? null : c);
 		const body = {
 			...form,
+			unlock_code_1: code(form.unlock_code_1),
+			unlock_code_2: Number(form.doors) > 1 ? code(form.unlock_code_2) : '',
+			dtmf_allowed_numbers: form.dtmf_allowed_numbers
+				.split('\n')
+				.map((n) => n.trim())
+				.filter((n) => n !== ''),
 			port: Number(form.port),
 			doors: Number(form.doors),
 			// Empty password/webhook fields keep the stored value.
@@ -162,6 +175,57 @@
 				<option value={2}>2</option>
 			</select>
 			<p class="hint">{t('door.doorsHint')}</p>
+		</div>
+		<div class="grid grid-cols-2 gap-3">
+			<div>
+				<label for="d-code-1">{t('door.unlockCode', { door: 1 })}</label>
+				<input
+					id="d-code-1"
+					class="input font-mono"
+					type="password"
+					inputmode="tel"
+					autocomplete="new-password"
+					maxlength="8"
+					pattern={'[0-9*#]{2,8}'}
+					disabled={form.remove_codes}
+					bind:value={form.unlock_code_1}
+					placeholder={station?.has_unlock_code_1 ? t('door.passwordKeep') : '*1'}
+				/>
+			</div>
+			{#if Number(form.doors) > 1}
+				<div>
+					<label for="d-code-2">{t('door.unlockCode', { door: 2 })}</label>
+					<input
+						id="d-code-2"
+						class="input font-mono"
+						type="password"
+						inputmode="tel"
+						autocomplete="new-password"
+						maxlength="8"
+						pattern={'[0-9*#]{2,8}'}
+						disabled={form.remove_codes}
+						bind:value={form.unlock_code_2}
+						placeholder={station?.has_unlock_code_2 ? t('door.passwordKeep') : '*2'}
+					/>
+				</div>
+			{/if}
+		</div>
+		{#if station?.has_unlock_code_1 || station?.has_unlock_code_2}
+			<label class="flex items-center gap-2 text-sm"
+				><input type="checkbox" bind:checked={form.remove_codes} />
+				{t('door.unlockCodeRemove')}</label
+			>
+		{/if}
+		<p class="hint">{t('door.unlockCodeHint')}</p>
+		<div>
+			<label for="d-allowed">{t('door.allowedNumbers')} ({t('common.optional')})</label>
+			<textarea
+				id="d-allowed"
+				class="input font-mono"
+				rows="3"
+				bind:value={form.dtmf_allowed_numbers}
+				placeholder="+491701234567"></textarea>
+			<p class="hint">{t('door.allowedNumbersHint')}</p>
 		</div>
 		<label class="flex items-center gap-2"
 			><input type="checkbox" bind:checked={form.snapshots} /> {t('door.snapshots')}</label

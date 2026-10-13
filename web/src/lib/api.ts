@@ -796,6 +796,11 @@ export interface DoorStation {
 	snapshots: boolean;
 	has_webhook: boolean;
 	has_api_token: boolean;
+	/** A DTMF unlock code is stored for door 1 / door 2 (never returned). */
+	has_unlock_code_1: boolean;
+	has_unlock_code_2: boolean;
+	/** External numbers (E.164) that may use the unlock codes; admins only. */
+	dtmf_allowed_numbers: string[];
 	online: boolean;
 	model: string;
 	last_seen: string | null;

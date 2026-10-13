@@ -421,6 +421,14 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
             video = CallVideo::All(AUDIO_VIDEO_CODECS);
         }
         let r = &Routing { video, ..*r };
+        if station.detects_unlock_codes() {
+            // The answering leg (not the station's own) listens for the
+            // DTMF unlock code (`door_dtmf`).
+            actions.push((
+                "export",
+                format!("nolocal:{}={}", crate::door_dtmf::MARK, station.id),
+            ));
+        }
         let name = sanitize_value(&station.name);
         actions.extend(route_to(r, tenant, kind, id, &name, 0).await?);
         return Ok(actions);
@@ -468,6 +476,16 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
             video: call_video,
             ..*r
         };
+        // A direct call to a door station: the caller's leg listens for the
+        // DTMF unlock code (`door_dtmf`).
+        if kind == NumberDestination::Extension {
+            if let Some(station) = doors::for_extension(pool, id)
+                .await?
+                .filter(|s| s.detects_unlock_codes())
+            {
+                actions.push(set(crate::door_dtmf::MARK, station.id.to_string()));
+            }
+        }
         let name = sanitize_value(&caller.display_name);
         actions.extend(route_to(r, tenant, kind, Some(id), &name, 0).await?);
         return Ok(actions);
@@ -1238,6 +1256,15 @@ async fn plan_public(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Actio
     if destination_type == NumberDestination::Extension {
         if let Some(ext) = destination_id {
             actions.push(set("talkops_extension_id", ext.to_string()));
+            // A direct call from an allowed external number to a door
+            // station: the caller's leg listens for the unlock code.
+            if let (Some(station), Some(caller)) =
+                (doors::for_extension(pool, ext).await?, caller_e164.as_ref())
+            {
+                if station.detects_unlock_codes() && station.dtmf_allowed_numbers.contains(caller) {
+                    actions.push(set(crate::door_dtmf::MARK, station.id.to_string()));
+                }
+            }
         }
     }
     // Most providers have no video: only a trunk with video switched on

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import EmptyRow from '#lib/components/EmptyRow.svelte';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import SkeletonRows from '#lib/components/SkeletonRows.svelte';
 	import { net } from '#lib/net.svelte.ts';
 	import { onMount } from 'svelte';
@@ -37,21 +39,22 @@
 </script>
 
 <div class="space-y-4">
-	<div class="flex items-center justify-between">
-		<h1>{t('nav.extensions')}</h1>
-		{#if hasRole('admin')}<button class="btn btn-primary" onclick={() => (open = true)}
-				>{t('ext.new')}</button
-			>{/if}
-	</div>
+	<PageHeader title={t('nav.extensions')}>
+		{#snippet actions()}
+			{#if hasRole('admin')}<button class="btn btn-primary" onclick={() => (open = true)}
+					>{t('ext.new')}</button
+				>{/if}
+		{/snippet}
+	</PageHeader>
 	<ErrorBox {error} />
-	<div class="card overflow-x-auto">
+	<div class="card scroll-x">
 		<table class="table">
 			<thead>
 				<tr>
 					<th>{t('ext.number')}</th>
 					<th>{t('ext.displayName')}</th>
-					<th>{t('ext.user')}</th>
-					<th>{t('ext.outboundNumber')}</th>
+					<th class="col-opt">{t('ext.user')}</th>
+					<th class="col-opt-lg">{t('ext.outboundNumber')}</th>
 				</tr>
 			</thead>
 			<tbody>
@@ -65,11 +68,13 @@
 							{#if !ext.enabled}<span class="badge badge-muted">{t('common.disabled')}</span>{/if}
 							{#if ext.hide_caller_id}<span class="badge badge-warn">CLIR</span>{/if}
 						</td>
-						<td>{userName(ext.user_id)}</td>
-						<td class="font-mono">{numberOf(ext.outbound_number_id) ?? t('ext.defaultNumber')}</td>
+						<td class="col-opt">{userName(ext.user_id)}</td>
+						<td class="col-opt-lg font-mono"
+							>{numberOf(ext.outbound_number_id) ?? t('ext.defaultNumber')}</td
+						>
 					</tr>
 				{:else}
-					{#if !net.settled}<SkeletonRows cols={4} />{/if}
+					{#if !net.settled}<SkeletonRows cols={4} />{:else}<EmptyRow cols={4} />{/if}
 				{/each}
 			</tbody>
 		</table>

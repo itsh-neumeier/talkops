@@ -1,4 +1,6 @@
 <script lang="ts">
+	import EmptyRow from '#lib/components/EmptyRow.svelte';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import SkeletonRows from '#lib/components/SkeletonRows.svelte';
 	import { net } from '#lib/net.svelte.ts';
 	import { onMount } from 'svelte';
@@ -104,20 +106,22 @@
 </script>
 
 <div class="space-y-4">
-	<div class="flex items-center justify-between">
-		<h1>{t('nav.users')}</h1>
-		{#if hasRole('admin')}<button class="btn btn-primary" onclick={create}>{t('users.new')}</button
-			>{/if}
-	</div>
+	<PageHeader title={t('nav.users')}>
+		{#snippet actions()}
+			{#if hasRole('admin')}<button class="btn btn-primary" onclick={create}
+					>{t('users.new')}</button
+				>{/if}
+		{/snippet}
+	</PageHeader>
 	<ErrorBox {error} />
-	<div class="card overflow-x-auto">
+	<div class="card scroll-x">
 		<table class="table">
 			<thead>
 				<tr>
 					<th>{t('users.username')}</th>
 					<th>{t('users.displayName')}</th>
-					<th>{t('users.role')}</th>
-					<th>{t('users.lastLogin')}</th>
+					<th class="col-opt">{t('users.role')}</th>
+					<th class="col-opt-lg">{t('users.lastLogin')}</th>
 					<th></th>
 				</tr>
 			</thead>
@@ -131,8 +135,8 @@
 							{#if user.totp_enabled}<span class="badge badge-ok" title={t('mfa.title')}>2FA</span
 								>{/if}
 						</td>
-						<td>{t(`roles.${user.role}`)}</td>
-						<td>{formatDateTime(user.last_login_at)}</td>
+						<td class="col-opt">{t(`roles.${user.role}`)}</td>
+						<td class="col-opt-lg">{formatDateTime(user.last_login_at)}</td>
 						<td class="space-x-1 text-right whitespace-nowrap">
 							{#if hasRole('admin')}
 								<button class="btn btn-sm" onclick={() => edit(user)}>{t('common.edit')}</button>
@@ -155,7 +159,7 @@
 						</td>
 					</tr>
 				{:else}
-					{#if !net.settled}<SkeletonRows cols={5} />{/if}
+					{#if !net.settled}<SkeletonRows cols={5} />{:else}<EmptyRow cols={5} />{/if}
 				{/each}
 			</tbody>
 		</table>

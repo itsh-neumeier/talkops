@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import Skeleton from '#lib/components/Skeleton.svelte';
 	import { net } from '#lib/net.svelte.ts';
 	import { goto } from '$app/navigation';
@@ -61,18 +62,18 @@
 </script>
 
 <div class="space-y-4">
-	<a class="text-sm text-slate-500 hover:underline" href="/extensions">← {t('common.back')}</a>
+	<PageHeader
+		back={{ href: '/extensions', label: t('nav.extensions') }}
+		heading={ext ? heading : undefined}
+		actions={ext && hasRole('admin') ? actions : undefined}
+	/>
+	{#snippet heading()}<span class="font-mono">{ext!.number}</span> · {ext!.display_name}{/snippet}
+	{#snippet actions()}
+		<button class="btn" onclick={() => (editOpen = true)}>{t('common.edit')}</button>
+		<button class="btn btn-danger" onclick={remove}>{t('common.delete')}</button>
+	{/snippet}
 	<ErrorBox {error} />
 	{#if ext}
-		<div class="flex flex-wrap items-center justify-between gap-2">
-			<h1><span class="font-mono">{ext.number}</span> · {ext.display_name}</h1>
-			{#if hasRole('admin')}
-				<div class="space-x-1">
-					<button class="btn" onclick={() => (editOpen = true)}>{t('common.edit')}</button>
-					<button class="btn btn-danger" onclick={remove}>{t('common.delete')}</button>
-				</div>
-			{/if}
-		</div>
 		<section class="card">
 			<CallSettings extension={ext} onchange={load} />
 		</section>

@@ -114,7 +114,7 @@
 <div class="space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
 	<h3 class="font-medium">{t('stt.apiTitle')}</h3>
 	<p
-		class="rounded-md bg-amber-50 p-2 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-200"
+		class="rounded-lg bg-amber-50 p-2 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-200"
 	>
 		{t('stt.privacy')}
 	</p>

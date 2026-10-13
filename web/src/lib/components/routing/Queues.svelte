@@ -32,17 +32,18 @@
 			>{/if}
 	</div>
 	<ErrorBox {error} />
-	<div class="card overflow-x-auto">
+	<div class="card scroll-x">
 		{#if targets.queues.length === 0}
 			<p class="text-sm text-slate-500">{t('routing.none')}</p>
 		{:else}
 			<table class="table">
 				<thead
 					><tr
-						><th>{t('routing.number')}</th><th>{t('common.name')}</th><th>{t('groups.strategy')}</th
-						><th>{t('queues.agents')}</th><th>{t('queues.tab.schedule')}</th><th
-							>{t('queues.unanswered')}</th
-						><th></th></tr
+						><th>{t('routing.number')}</th><th>{t('common.name')}</th><th class="col-opt-lg"
+							>{t('groups.strategy')}</th
+						><th class="col-opt-lg">{t('queues.agents')}</th><th class="col-opt"
+							>{t('queues.tab.schedule')}</th
+						><th class="col-opt-lg">{t('queues.unanswered')}</th><th></th></tr
 					></thead
 				>
 				<tbody>
@@ -55,15 +56,15 @@
 										>{t('common.disabled')}</span
 									>{/if}</td
 							>
-							<td>{t(`queues.s.${q.strategy}` as MessageKey)}</td>
-							<td>{q.members.length}</td>
-							<td
+							<td class="col-opt-lg">{t(`queues.s.${q.strategy}` as MessageKey)}</td>
+							<td class="col-opt-lg">{q.members.length}</td>
+							<td class="col-opt"
 								>{#if hours}{hours.name}
 									<span class="badge {hours.state.open ? 'badge-ok' : 'badge-muted'}"
 										>{hours.state.open ? t('flow.branch.open') : t('flow.branch.closed')}</span
 									>{:else}{t('queues.alwaysOpen')}{/if}</td
 							>
-							<td>{unanswered(q)}</td>
+							<td class="col-opt-lg">{unanswered(q)}</td>
 							<td class="space-x-1 text-right whitespace-nowrap">
 								<a class="btn btn-sm" href="/routing/queues/{q.id}"
 									>{hasRole('admin') ? t('common.edit') : t('flow.view')}</a

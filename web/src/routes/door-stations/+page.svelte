@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import Skeleton from '#lib/components/Skeleton.svelte';
 	import { net } from '#lib/net.svelte.ts';
 	import { onMount } from 'svelte';
@@ -79,10 +80,11 @@
 </script>
 
 <div class="space-y-4">
-	<div class="flex flex-wrap items-center justify-between gap-2">
-		<h1>{t('nav.doorStations')}</h1>
-		<button class="btn btn-primary" onclick={() => edit(null)}>{t('door.new')}</button>
-	</div>
+	<PageHeader title={t('nav.doorStations')}>
+		{#snippet actions()}
+			<button class="btn btn-primary" onclick={() => edit(null)}>{t('door.new')}</button>
+		{/snippet}
+	</PageHeader>
 	<p class="hint">
 		{t('door.setupHint')} <a class="underline" href="/doors">{t('door.toDoorPage')}</a>
 	</p>
@@ -93,7 +95,7 @@
 		<div class="card text-sm text-slate-600 dark:text-slate-300">{t('door.none')}</div>
 	{/if}
 
-	<div class="grid gap-4 md:grid-cols-2">
+	<div class="grid grid-cols-1 gap-4 @3xl:grid-cols-2">
 		{#each stations ?? [] as s (s.id)}
 			<div class="card space-y-3">
 				<div class="flex flex-wrap items-center justify-between gap-2">
@@ -149,13 +151,13 @@
 			<p>{t('door.tokenHint')}</p>
 			<div>
 				<span class="font-medium">URL</span>
-				<code class="block rounded bg-slate-100 p-2 break-all dark:bg-slate-800"
+				<code class="block rounded-lg bg-slate-100 p-2 break-all dark:bg-slate-800"
 					>POST {hookUrl(token.station)}</code
 				>
 			</div>
 			<div>
 				<span class="font-medium">Authorization</span>
-				<code class="block rounded bg-slate-100 p-2 break-all dark:bg-slate-800"
+				<code class="block rounded-lg bg-slate-100 p-2 break-all dark:bg-slate-800"
 					>Bearer {token.token}</code
 				>
 			</div>

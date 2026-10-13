@@ -111,7 +111,7 @@
 			>{/if}
 	</div>
 	<ErrorBox error={open ? '' : error} />
-	<div class="card overflow-x-auto">
+	<div class="card scroll-x">
 		{#if targets.conditions.length === 0}
 			<p class="text-sm text-slate-500">{t('routing.none')}</p>
 		{:else}
@@ -119,8 +119,8 @@
 				<thead
 					><tr
 						><th>{t('routing.number')}</th><th>{t('common.name')}</th><th>{t('tc.state')}</th><th
-							>{t('tc.whenOpen')}</th
-						><th>{t('tc.whenClosed')}</th><th></th></tr
+							class="col-opt-lg">{t('tc.whenOpen')}</th
+						><th class="col-opt-lg">{t('tc.whenClosed')}</th><th></th></tr
 					></thead
 				>
 				<tbody>
@@ -133,8 +133,8 @@
 									>{stateLabel(c)}</span
 								></td
 							>
-							<td>{describe(c.open_type, c.open_id)?.label ?? '—'}</td>
-							<td>{describe(c.closed_type, c.closed_id)?.label ?? '—'}</td>
+							<td class="col-opt-lg">{describe(c.open_type, c.open_id)?.label ?? '—'}</td>
+							<td class="col-opt-lg">{describe(c.closed_type, c.closed_id)?.label ?? '—'}</td>
 							<td class="space-x-1 text-right whitespace-nowrap">
 								<select
 									class="input mt-0 inline-block w-auto py-1"
@@ -236,7 +236,7 @@
 				placeholder="2026-12-24&#10;2026-12-31"></textarea>
 			<p class="hint">{t('tc.closedDatesHint')}</p>
 		</div>
-		<div class="grid gap-3 sm:grid-cols-2">
+		<div class="grid grid-cols-1 gap-3 @lg:grid-cols-2">
 			<div>
 				<label for="tc-open">{t('tc.whenOpen')}</label><DestinationSelect
 					inputId="tc-open"

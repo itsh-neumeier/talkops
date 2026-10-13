@@ -1,4 +1,6 @@
 <script lang="ts">
+	import EmptyRow from '#lib/components/EmptyRow.svelte';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import SkeletonRows from '#lib/components/SkeletonRows.svelte';
 	import { net } from '#lib/net.svelte.ts';
 	import { onMount } from 'svelte';
@@ -20,15 +22,15 @@
 </script>
 
 <div class="space-y-4">
-	<h1>{t('nav.audit')}</h1>
+	<PageHeader title={t('nav.audit')} />
 	<ErrorBox {error} />
-	<div class="card overflow-x-auto">
+	<div class="card scroll-x">
 		<table class="table">
 			<thead>
 				<tr
 					><th>{t('audit.time')}</th><th>{t('audit.user')}</th><th>{t('audit.action')}</th><th
-						>{t('audit.entity')}</th
-					><th></th></tr
+						class="col-opt">{t('audit.entity')}</th
+					><th class="col-opt-lg"></th></tr
 				>
 			</thead>
 			<tbody>
@@ -40,13 +42,14 @@
 							<div class="text-xs text-slate-500">{e.ip ?? ''}</div></td
 						>
 						<td>{e.action}</td>
-						<td>{e.entity_type}</td>
-						<td class="max-w-md truncate font-mono text-xs" title={JSON.stringify(e.details)}
-							>{JSON.stringify(e.details)}</td
+						<td class="col-opt">{e.entity_type}</td>
+						<td
+							class="col-opt-lg max-w-md truncate font-mono text-xs"
+							title={JSON.stringify(e.details)}>{JSON.stringify(e.details)}</td
 						>
 					</tr>
 				{:else}
-					{#if !net.settled}<SkeletonRows cols={5} />{/if}
+					{#if !net.settled}<SkeletonRows cols={5} />{:else}<EmptyRow cols={5} />{/if}
 				{/each}
 			</tbody>
 		</table>

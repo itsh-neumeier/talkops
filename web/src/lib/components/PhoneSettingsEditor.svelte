@@ -58,7 +58,7 @@
 {#each groups as group (group)}
 	<fieldset class="space-y-2">
 		<legend class="text-sm font-semibold">{t(`phoneset.group.${group}` as MessageKey)}</legend>
-		<div class="grid gap-3 sm:grid-cols-2">
+		<div class="grid grid-cols-1 gap-3 @lg:grid-cols-2">
 			{#each shown.filter((s) => s.group === group) as s (s.key)}
 				<div>
 					<label for="{idPrefix}-{s.key}">{t(`phoneset.${s.key}` as MessageKey)}</label>

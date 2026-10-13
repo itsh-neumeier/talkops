@@ -5,11 +5,11 @@
 - Task ID: 20261012-codex-release-1.7.7
 - Date: 2026-10-12, Europe/Berlin
 - Tool: Codex
-- Status: In progress. First batch merged; codec completion candidate prepared.
+- Status: In progress. All ready PRs merged; publication workflow running.
 - Branch: codex/release-1.7.7
 - Base commit: 4503fb3b96167aa77320cc936597fc6147b392c3
 - First integration PR: https://github.com/itsh-neumeier/talkops/pull/10
-- Completion integration PR: Pending
+- Completion integration PR: https://github.com/itsh-neumeier/talkops/pull/11
 
 ## Goal
 
@@ -19,9 +19,9 @@ branches. The user then asked to include PR #8 after another readiness check.
 
 ## Result
 
-Merged ready PRs #3 through #8 with their source histories. No feature branch
+Merged ready PRs #3 through #9 with their source histories. No feature branch
 was rewritten. Preserved the final documentation audit from release 1.7.6.
-Prepared version 1.7.7 and English notes. No target merge or publication yet.
+Prepared version 1.7.7 and English notes.
 
 Resume on 2026-10-13: PR #10 merged as
 `63510b35f50afc6c6fc2e96d79ec46649b6dde6c`. Its CI (`38298375924`) and E2E
@@ -29,7 +29,13 @@ Resume on 2026-10-13: PR #10 merged as
 the first batch. Its current head `13600923aca14af900ecb8e3531e6f1d2be3391f`
 passed all source checks and includes the first batch. The user's original
 request covers all complete PRs; a completion candidate includes #9. Its PR
-proposes a later minor release, so a scope preference was presented to the user.
+proposes a later minor release. The original all-ready request determines scope.
+
+PR #11 merged as `21f5a5158978bfdddb86c293cdf4688c73223e5b`. Its tree equals
+the checked candidate `9773e412d66db1e910df8657d72bd9cc57f5d2b7`. All seven
+source heads are ancestors. Target CI, E2E and FreeSWITCH checks passed.
+The new annotated tag `v1.7.7` points to this exact target commit.
+Release workflow `38348018997` is running. Publication is not yet verified.
 
 ## Sources
 
@@ -68,7 +74,7 @@ and preserved. It is now ready and included in the completion candidate.
 
 ## Checks
 
-- Passed: Source CI/E2E on all six recorded heads. PR #8 also passed FreeSWITCH.
+- Passed: Source CI/E2E on all seven recorded heads. PRs #8/#9 passed FreeSWITCH.
 - Passed: Rust format, whitespace, merge ancestry and unique migration IDs.
 - Passed: 31 migrations; new IDs `20261026000002` and `20261026000003` follow
   the released `20261026000001`. Released migrations remain unchanged.
@@ -79,6 +85,12 @@ and preserved. It is now ready and included in the completion candidate.
 - Passed first batch integration CI/E2E (`38297401397`, `38297401356`) and
   target CI/E2E (`38298375924`, `38298375922`). Server and worker report 1.7.7.
 - Passed PR #9 source CI, E2E and FreeSWITCH checks at `1360092`.
+- Passed completion candidate CI/E2E/FreeSWITCH (`38345317841`, `38345317878`,
+  `38345317834`) and all corresponding push checks.
+- Passed final target CI/E2E/FreeSWITCH (`38346664274`, `38346664278`,
+  `38346664328`). Server and worker image smoke tests report 1.7.7.
+- Passed completion static checks: 32 unique migration IDs, unchanged released
+  migrations and 1,135 matching DE/EN keys.
 - Full combined Rust/database, images, Compose and E2E validation uses CI.
 - Review: Manual integration review. CodeRabbit CLI is unavailable.
 - STE review: Repository writing rules used. Full official standard unavailable;
@@ -95,13 +107,14 @@ and preserved. It is now ready and included in the completion candidate.
 - Local previews need the base model and add worker CPU/memory load.
 - PR #8's diagnostic feedback about unavailable ESL and unresolved overview
   rows remains follow-up work. The production cause of lost CDRs is unconfirmed.
+- Branch `claude/vibrant-allen-8j9w71` has no PR or ready handoff. Preserve it.
+- Real handset tests and a deployed UI version check are unavailable locally.
 - No background automation was created.
 
 ## Next action
 
-Open the completion integration PR. Wait for all relevant final checks, merge,
-and verify the resulting target's CI/E2E/FreeSWITCH checks before tagging.
-Publish v1.7.7 and verify all three amd64/arm64 manifests and moving tags.
+Verify workflow `38348018997`, the GitHub release, all three amd64/arm64
+manifests, their version/revision labels and stable moving tags.
 Then perform safe branch cleanup and save the final result in the PR.
 
 ## References

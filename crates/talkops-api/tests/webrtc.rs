@@ -488,6 +488,7 @@ async fn migration_preserves_existing_owner_credentials(db: PgPool) {
         account_index: None,
         phone_label: String::new(),
         phone_display_name: String::new(),
+        codec_profile: None,
         enabled: true,
     };
     let (legacy, password) =

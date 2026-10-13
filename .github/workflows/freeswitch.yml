@@ -48,5 +48,7 @@ jobs:
             fi
           done
           [ "$missing" = 0 ] || { docker logs fs 2>&1 | grep -E '\[(ERR|CRIT)\]'; exit 1; }
+      - name: iLBC codec is available (codec profiles, ADR 0023)
+        run: docker exec fs fs_cli -p ci -x "show codec" | grep -i ilbc
       - name: Container runs unprivileged
         run: test "$(docker exec fs id -u)" = 10001

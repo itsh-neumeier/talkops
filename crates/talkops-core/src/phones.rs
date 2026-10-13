@@ -8,6 +8,7 @@ use uuid::Uuid;
 
 use crate::crypto::{self, SecretBox};
 use crate::error::{CoreError, CoreResult};
+use crate::extensions::{CodecProfile, DeviceKind};
 use crate::tenant::TenantId;
 
 #[derive(Debug, Clone, FromRow, Serialize, utoipa::ToSchema)]
@@ -309,9 +310,16 @@ pub struct PhoneAccount {
     pub phone_label: String,
     /// Display name set for the account on the phone (empty = `display_name`).
     pub phone_display_name: String,
+    pub kind: DeviceKind,
+    pub codec_profile: Option<CodecProfile>,
 }
 
 impl PhoneAccount {
+    /// The codec profile in use for the account's device.
+    pub fn effective_codec_profile(&self) -> CodecProfile {
+        CodecProfile::effective(self.kind, self.codec_profile)
+    }
+
     /// Label the phone shows for the account.
     pub fn label(&self) -> &str {
         if self.phone_label.is_empty() {
@@ -336,7 +344,7 @@ pub async fn accounts(pool: &PgPool, phone: Uuid) -> CoreResult<Vec<PhoneAccount
     Ok(sqlx::query_as(
         "SELECT d.account_index, d.id AS device_id, d.name AS device_name, d.sip_username, d.sip_password_enc,
                 e.id AS extension_id, e.number AS extension_number, e.display_name,
-                d.phone_label, d.phone_display_name
+                d.phone_label, d.phone_display_name, d.kind, d.codec_profile
          FROM devices d JOIN extensions e ON e.id = d.extension_id
          WHERE d.phone_id = $1 AND d.account_index IS NOT NULL AND d.enabled AND e.enabled
          ORDER BY d.account_index",

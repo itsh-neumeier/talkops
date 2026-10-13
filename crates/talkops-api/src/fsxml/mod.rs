@@ -7,6 +7,7 @@
 
 pub mod callcenter;
 pub mod cdr;
+pub mod codecs;
 pub mod dialplan;
 pub mod directory;
 pub mod sofia;

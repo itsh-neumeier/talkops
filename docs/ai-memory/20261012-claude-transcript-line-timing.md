@@ -7,7 +7,9 @@
 - Tool: Claude Code
 - Status: Completed
 - Branch: claude/vibrant-allen-8j9w71
-- Base commit: 4503fb3 (release 1.7.6, remote default branch `ccr-df1c8083-0ce1he`)
+- Base commit: 4503fb3 (release 1.7.6); `main` at 21f5a51 (release 1.7.7)
+  merged in. The old target branch `ccr-df1c8083-0ce1he` was removed; the
+  target branch is `main`.
 - Related commits or PR: Pending
 
 ## Goal
@@ -73,7 +75,8 @@ transcribed with the old and the new code (whisper.cpp v1.9.4,
 
 - Passed: `cargo fmt --all --check`.
 - Passed: `cargo clippy --workspace --all-targets --locked -- -D warnings`.
-- Passed: `cargo test --workspace --locked` with local PostgreSQL 16.
+- Passed: `cargo test --workspace --locked` with local PostgreSQL 16, also
+  after the merge of `main` 21f5a51.
   The LDAP server of CI was not started; tests that need it were not
   checked.
 - Passed: sample call, old and new code, results above.
@@ -84,6 +87,8 @@ transcribed with the old and the new code (whisper.cpp v1.9.4,
 ## Dependencies and open work
 
 - None. Migration IDs: none.
+- The live transcription from 1.7.7 (`live.rs`) uses the same
+  `Whisper::transcribe` and gets the new lines too.
 - Possible later work: an echo filter if a recording with cross-talk shows
   the need.
 

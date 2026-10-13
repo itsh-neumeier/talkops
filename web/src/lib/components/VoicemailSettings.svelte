@@ -94,7 +94,7 @@
 			{t('vm.enabled')}
 		</label>
 		<p class="hint">{t('vm.enabledHint')}</p>
-		<div class="grid gap-3 sm:grid-cols-3">
+		<div class="grid grid-cols-1 gap-3 @xl:grid-cols-3">
 			<div>
 				<label for="vm-pin-{extensionId}">{t('vm.pin')}</label>
 				<input

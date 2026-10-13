@@ -15,13 +15,18 @@ Select **Live transcript** for an answered, recorded call with transcription
 enabled. Admins can read all tenant calls. Operators can read calls of their
 own extensions. The popup never starts a recording.
 
-The worker uses the local `base` model with at most two threads. It downloads
-the pinned model on first use if necessary. The preview starts with the last
+By default, the worker uses the local `base` model with at most two threads.
+It downloads the pinned model on first use if necessary. The engine of the
+*Live preview* in the
+[transcription settings](recording.md#engines-per-purpose) can select the
+local *Fast* model or a cloud model. A cloud model can also stream over the
+Realtime API, with about one second of delay
+([live preview in the cloud](recording.md#live-preview-in-the-cloud)). The preview starts with the last
 few seconds and adds new contributions with speaker labels and speech times.
 New text has a short typing animation. Reduced motion disables the animation.
 
-Text is provisional and can lag behind speech. Each job reads at most eight
-seconds. Each tenant can have four previews. The popup keeps the last 200
+Text is provisional and can lag behind speech. Without streaming, each job
+reads at most eight seconds. Each tenant can have four previews. The popup keeps the last 200
 segments. Use the final transcript for complete text and search.
 
 If the call is transferred to another party, reopen the popup. The old
@@ -36,4 +41,5 @@ access, and preview capacity. Silence can produce no text. Update server and
 worker together. Run migrations before use.
 
 See [recording settings](recording.md) and
-[implementation](../adr/0022-active-call-identities-and-live-previews.md).
+implementation ([ADR 0022](../adr/0022-active-call-identities-and-live-previews.md),
+[ADR 0024](../adr/0024-transcription-engines-per-purpose.md)).

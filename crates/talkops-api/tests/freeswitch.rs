@@ -1794,7 +1794,7 @@ async fn video_only_where_enabled(db: PgPool) {
     );
 }
 
-/// The policy for calls from trunks and door stations (ADR 0024).
+/// The policy for calls from trunks and door stations (ADR 0025).
 #[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
 async fn video_from_trunks_and_door_stations(db: PgPool) {
     let router = router(db);
@@ -2212,7 +2212,7 @@ async fn sip_addresses(db: PgPool) {
         &format!("talkops_trunk_id={}", trunk["id"].as_str().unwrap())
     ));
 
-    // Video (ADR 0024): a direct peer is external and gets audio only; a
+    // Video (ADR 0025): a direct peer is external and gets audio only; a
     // gateway only with a trunk that has video.
     let mut ext21 = f.ext21.clone();
     ext21["video_enabled"] = json!(true);

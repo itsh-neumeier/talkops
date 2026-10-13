@@ -182,18 +182,18 @@
 			<li>
 				{t('restore.getTool')}
 				<pre
-					class="mt-2 overflow-x-auto rounded bg-slate-950 p-3 text-sm text-white">docker run --rm ghcr.io/itsh-neumeier/talkops-server:latest recovery-script &gt; recover.sh</pre>
+					class="mt-2 overflow-x-auto rounded-lg bg-slate-950 p-3 text-sm text-white">docker run --rm ghcr.io/itsh-neumeier/talkops-server:latest recovery-script &gt; recover.sh</pre>
 			</li>
 			<li>
 				{t('restore.prepareHint')}
 				<pre
-					class="mt-2 overflow-x-auto rounded bg-slate-950 p-3 text-sm text-white">{prepareCommand}</pre>
+					class="mt-2 overflow-x-auto rounded-lg bg-slate-950 p-3 text-sm text-white">{prepareCommand}</pre>
 			</li>
 			<li>{t('restore.checkHost')}</li>
 			<li>
 				{t('restore.runHint')}
 				<pre
-					class="mt-2 overflow-x-auto rounded bg-slate-950 p-3 text-sm text-white">{restoreCommand}</pre>
+					class="mt-2 overflow-x-auto rounded-lg bg-slate-950 p-3 text-sm text-white">{restoreCommand}</pre>
 			</li>
 			<li>{t('restore.portainer')}</li>
 			<li>{t('restore.verify')}</li>

@@ -17,14 +17,19 @@ Gesprächen mit aktivierter Transkription. Administratoren können alle Gespräc
 ihres Mandanten lesen, Operatoren nur Gespräche eigener Nebenstellen.
 Das Popup startet keine Aufnahme.
 
-Der Worker nutzt das lokale Modell `base` mit höchstens zwei Threads und lädt
-es beim ersten Bedarf herunter, falls es fehlt. Die Vorschau beginnt mit den
+Standardmäßig nutzt der Worker das lokale Modell `base` mit höchstens zwei
+Threads und lädt es beim ersten Bedarf herunter, falls es fehlt. Die Engine
+der *Live-Vorschau* in den
+[Transkriptions-Einstellungen](aufzeichnung.md#engines-je-zweck) kann das
+lokale Modell *Schnell* oder ein Cloud-Modell wählen; ein Cloud-Modell kann
+auch über die Realtime-API streamen, mit ca. einer Sekunde Verzögerung
+([Live-Vorschau in der Cloud](aufzeichnung.md#live-vorschau-in-der-cloud)). Die Vorschau beginnt mit den
 letzten Sekunden beim Öffnen. Neue Beiträge erscheinen mit Sprecher und
 Uhrzeit der Sprache. Eine kurze Tippanimation zeigt neuen Text schrittweise;
 bei reduzierten Animationen erscheint er sofort vollständig.
 
-Die Erkennung ist vorläufig und lastabhängig zeitversetzt. Pro Schritt werden
-höchstens acht Sekunden Audio gelesen. Pro Mandant sind vier Vorschauen
+Die Erkennung ist vorläufig und lastabhängig zeitversetzt. Ohne Streaming
+liest jeder Schritt höchstens acht Sekunden Audio. Pro Mandant sind vier Vorschauen
 möglich. Das Popup behält die letzten 200 Textabschnitte. Das endgültige
 Transkript bleibt für vollständige Texte und Suche zuständig.
 
@@ -41,4 +46,5 @@ freie Kapazität prüfen. Stille kann ohne Text bleiben. Server und Worker
 gemeinsam aktualisieren und zuvor die Migrationen ausführen.
 
 Siehe [Aufzeichnung](aufzeichnung.md) und
-[Implementierung](../adr/0022-active-call-identities-and-live-previews.md).
+Implementierung ([ADR 0022](../adr/0022-active-call-identities-and-live-previews.md),
+[ADR 0024](../adr/0024-transcription-engines-per-purpose.md)).

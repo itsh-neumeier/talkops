@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { onDestroy, onMount } from 'svelte';
 	import { SessionState, Web, type Session } from 'sip.js';
 	import { ApiError, api, type Call, type Contact } from '#lib/api.ts';
@@ -665,15 +666,13 @@
 <svelte:window onkeydown={onKey} />
 
 <div class="mx-auto max-w-3xl space-y-4" class:hidden={!full}>
-	<div class="flex flex-wrap items-center justify-between gap-2">
-		<h1>{t('nav.phone')}</h1>
-		{#if account}
-			<span class="text-sm text-slate-500"
-				><span class="font-mono">{account.extension_number}</span> · {account.display_name}
-				<span class="badge {badge}">{t(`phone.state.${status}`)}</span></span
-			>
-		{/if}
-	</div>
+	<PageHeader title={t('nav.phone')} actions={account ? accountInfo : undefined} />
+	{#snippet accountInfo()}
+		<span class="text-sm text-slate-500 dark:text-slate-400"
+			><span class="font-mono">{account!.extension_number}</span> · {account!.display_name}
+			<span class="badge {badge}">{t(`phone.state.${status}`)}</span></span
+		>
+	{/snippet}
 	{#if !secure}
 		<div class="card text-sm">{t('phone.insecure')}</div>
 	{/if}
@@ -716,7 +715,7 @@
 		</div>
 	{/if}
 
-	<div class="grid gap-4 md:grid-cols-[1fr_16rem]">
+	<div class="grid grid-cols-1 gap-4 @2xl:grid-cols-[1fr_16rem]">
 		<div
 			class="card relative aspect-video overflow-hidden p-0 {busy
 				? 'bg-slate-900'
@@ -890,7 +889,7 @@
 		</div>
 	{/if}
 	<ErrorBox error={dataError} />
-	<div class="grid gap-4 md:grid-cols-2">
+	<div class="grid grid-cols-1 gap-4 @3xl:grid-cols-2">
 		<section class="card space-y-3" aria-label={t('nav.phonebook')}>
 			<div class="flex items-center justify-between">
 				<h2>{t('nav.phonebook')}</h2>

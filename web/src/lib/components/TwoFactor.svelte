@@ -75,7 +75,7 @@
 		</p>
 		{#if recovery}
 			<div
-				class="space-y-2 rounded-md border border-amber-300 bg-amber-50 p-3 dark:border-amber-700 dark:bg-amber-950/40"
+				class="space-y-2 rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-700 dark:bg-amber-950/40"
 			>
 				<p class="text-sm font-medium">{t('mfa.recoveryTitle')}</p>
 				<p class="text-sm">{t('mfa.recoveryHint')}</p>

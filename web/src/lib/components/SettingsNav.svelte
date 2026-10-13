@@ -62,30 +62,37 @@
 	const personal = $derived(settingsPages.filter((p) => p.group === 'personal' && hasRole(p.role)));
 	const pages = $derived(settingsPages.filter((p) => p.group === 'setup' && hasRole(p.role)));
 	const path = $derived(page.url.pathname);
-	const cls = (on: boolean) =>
-		`flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-left text-sm whitespace-nowrap ${
-			on
-				? 'bg-teal-50 font-medium text-teal-800 dark:bg-teal-900/40 dark:text-teal-200'
-				: 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
-		}`;
+
+	// In the horizontal strip (narrow screens) keep the active entry visible.
+	let strip: HTMLElement | undefined = $state();
+	$effect(() => {
+		void path;
+		void section;
+		const el = strip?.querySelector('[aria-current="page"]');
+		if (!strip || !el || strip.scrollWidth <= strip.clientWidth) return;
+		const a = el.getBoundingClientRect();
+		const b = strip.getBoundingClientRect();
+		strip.scrollLeft += a.left - b.left - (b.width - a.width) / 2;
+	});
 </script>
 
 <nav
-	class="-mx-1 flex gap-1 overflow-x-auto px-1 md:sticky md:top-4 md:w-56 md:shrink-0 md:flex-col md:overflow-visible"
+	bind:this={strip}
+	class="scroll-x -mx-1 flex gap-1 px-1 pb-1 lg:sticky lg:top-[calc(var(--header-h)+1rem)] lg:w-56 lg:shrink-0 lg:flex-col lg:overflow-visible lg:bg-none lg:pb-0"
 	aria-label={t('nav.settings')}
 >
 	{#each visible as s (s.id)}
 		{#if onsection}
 			<button
 				type="button"
-				class={cls(section === s.id)}
+				class="nav-item"
 				aria-current={section === s.id ? 'page' : undefined}
 				onclick={() => onsection(s.id)}
 				><span aria-hidden="true" class="w-5 text-center">{s.icon}</span>
 				{t(`settings.section.${s.id}`)}</button
 			>
 		{:else}
-			<a href="/settings#{s.id}" class={cls(false)}
+			<a href="/settings#{s.id}" class="nav-item"
 				><span aria-hidden="true" class="w-5 text-center">{s.icon}</span>
 				{t(`settings.section.${s.id}`)}</a
 			>
@@ -93,19 +100,19 @@
 	{/each}
 	{#each personal as p (p.href)}
 		{@const on = path === p.href || path.startsWith(p.href + '/')}
-		<a href={p.href} class={cls(on)} aria-current={on ? 'page' : undefined}
+		<a href={p.href} class="nav-item" aria-current={on ? 'page' : undefined}
 			><span aria-hidden="true" class="w-5 text-center">{p.icon}</span> {t(p.key)}</a
 		>
 	{/each}
 	{#if pages.length}
 		<p
-			class="hidden px-3 pt-3 pb-1 text-xs font-semibold tracking-wide text-slate-500 uppercase md:block dark:text-slate-400"
+			class="hidden px-3 pt-3 pb-1 text-xs font-semibold tracking-wide text-slate-500 uppercase lg:block dark:text-slate-400"
 		>
 			{t('settings.setup')}
 		</p>
 		{#each pages as p (p.href)}
 			{@const on = path === p.href || path.startsWith(p.href + '/')}
-			<a href={p.href} class={cls(on)} aria-current={on ? 'page' : undefined}
+			<a href={p.href} class="nav-item" aria-current={on ? 'page' : undefined}
 				><span aria-hidden="true" class="w-5 text-center">{p.icon}</span> {t(p.key)}</a
 			>
 		{/each}

@@ -116,7 +116,7 @@
 		</label>
 		<ErrorBox {error} />
 		{#if report}
-			<div class="rounded border border-slate-200 p-3 text-sm dark:border-slate-700">
+			<div class="rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-700">
 				{#if done}<p class="mb-1 font-medium">{t('contacts.importDone')}</p>{:else}<p
 						class="mb-1 font-medium"
 					>

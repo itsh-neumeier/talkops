@@ -100,12 +100,12 @@ pub struct Routing<'a> {
     pub telephony: &'a crate::telephony::Telephony,
     /// Call blocking (own list, anonymous, PhoneBlock).
     pub spam: &'a crate::spam::SpamCheck,
-    /// Which called extensions get video on this call (ADR 0024). The plan
+    /// Which called extensions get video on this call (ADR 0025). The plan
     /// of the call sets it; [`CallVideo::Off`] for a new lookup.
     pub video: CallVideo,
 }
 
-/// Video policy of a call (ADR 0024). The SIP profiles offer audio only, so
+/// Video policy of a call (ADR 0025). The SIP profiles offer audio only, so
 /// a called device gets video only through a per-leg codec list.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum CallVideo {
@@ -226,7 +226,7 @@ async fn video_destination(
     }
 }
 
-/// Media of a call that can carry video (ADR 0024): the caller's leg
+/// Media of a call that can carry video (ADR 0025): the caller's leg
 /// accepts `with_video`. The called legs get `audio`, unless their own
 /// per-leg codec list has video (see [`device_endpoint`]).
 fn video_media(audio: &str, with_video: &str) -> [Action; 2] {
@@ -345,7 +345,7 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
     };
     let settings = settings::get(pool, tenant).await?;
     // Video only from an extension with video that offers it; a device with
-    // a codec profile (a Wi-Fi handset) stays audio-only (ADR 0024).
+    // a codec profile (a Wi-Fi handset) stays audio-only (ADR 0025).
     let caller_video = caller.video_enabled && !has_codec_profile(req) && offers_video(req);
     // BLF keys monitoring a park slot dial `park+*51`.
     let raw_dest = req
@@ -622,7 +622,7 @@ async fn plan_sip_address(
     ];
     // Internet peers: Opus first. Video only through a trunk with video
     // and from a caller with video; a direct peer is external and gets
-    // audio only (ADR 0024).
+    // audio only (ADR 0025).
     let video = match &gateway {
         Some(g) if caller_video => trunks::get(r.pool, tenant, g.trunk_id)
             .await
@@ -1241,7 +1241,7 @@ async fn plan_public(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Actio
         }
     }
     // Most providers have no video: only a trunk with video switched on
-    // sends video to the called extensions that have it (ADR 0024).
+    // sends video to the called extensions that have it (ADR 0025).
     // The trunk leg accepts video only if the provider offers it and a
     // called phone can get it.
     let trunk_video = offers_video(req)
@@ -1708,7 +1708,7 @@ async fn ring_legs(
 /// codec list. `^^;` keeps the commas of the codec list in the variable.
 ///
 /// `video` is the codec list with video if the call allows video to this
-/// device (ADR 0024). A device with a codec profile stays audio-only.
+/// device (ADR 0025). A device with a codec profile stays audio-only.
 fn device_endpoint(target: &extensions::RingTarget, video: Option<&str>) -> String {
     let user = format!("user/{}@{SIP_DOMAIN}", sanitize_value(&target.sip_username));
     match (codecs::leg_media(target.effective_codec_profile()), video) {

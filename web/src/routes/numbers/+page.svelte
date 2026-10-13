@@ -1,4 +1,6 @@
 <script lang="ts">
+	import EmptyRow from '#lib/components/EmptyRow.svelte';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import SkeletonRows from '#lib/components/SkeletonRows.svelte';
 	import { net } from '#lib/net.svelte.ts';
 	import { onMount } from 'svelte';
@@ -29,13 +31,14 @@
 </script>
 
 <div class="space-y-4">
-	<h1>{t('nav.numbers')}</h1>
+	<PageHeader title={t('nav.numbers')} />
 	<ErrorBox {error} />
-	<div class="card overflow-x-auto">
+	<div class="card scroll-x">
 		<table class="table">
 			<thead>
 				<tr
-					><th>{t('numbers.number')}</th><th>{t('numbers.label')}</th><th>{t('numbers.trunk')}</th
+					><th>{t('numbers.number')}</th><th class="col-opt">{t('numbers.label')}</th><th
+						class="col-opt-lg">{t('numbers.trunk')}</th
 					><th>{t('trunks.destination')}</th></tr
 				>
 			</thead>
@@ -44,12 +47,14 @@
 					{@const trunk = trunks.find((tr) => tr.id === n.trunk_id)}
 					<tr>
 						<td class="font-mono">{n.e164}</td>
-						<td>{n.label}</td>
-						<td><a class="hover:underline" href="/trunks/{n.trunk_id}">{trunk?.name ?? '—'}</a></td>
+						<td class="col-opt">{n.label}</td>
+						<td class="col-opt-lg"
+							><a class="hover:underline" href="/trunks/{n.trunk_id}">{trunk?.name ?? '—'}</a></td
+						>
 						<td><NumberDestination number={n} editable={hasRole('admin')} onchange={load} /></td>
 					</tr>
 				{:else}
-					{#if !net.settled}<SkeletonRows cols={4} />{/if}
+					{#if !net.settled}<SkeletonRows cols={4} />{:else}<EmptyRow cols={4} />{/if}
 				{/each}
 			</tbody>
 		</table>

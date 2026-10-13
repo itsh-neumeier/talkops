@@ -71,15 +71,18 @@
 			>{/if}
 	</div>
 	<ErrorBox error={open ? '' : error} />
-	<div class="card overflow-x-auto">
+	<div class="card scroll-x">
 		{#if targets.groups.length === 0}
 			<p class="text-sm text-slate-500">{t('routing.none')}</p>
 		{:else}
 			<table class="table">
 				<thead
 					><tr
-						><th>{t('routing.number')}</th><th>{t('common.name')}</th><th>{t('groups.strategy')}</th
-						><th>{t('groups.members')}</th><th>{t('routing.fallback')}</th><th></th></tr
+						><th>{t('routing.number')}</th><th>{t('common.name')}</th><th class="col-opt"
+							>{t('groups.strategy')}</th
+						><th class="col-opt-lg">{t('groups.members')}</th><th class="col-opt-lg"
+							>{t('routing.fallback')}</th
+						><th></th></tr
 					></thead
 				>
 				<tbody>
@@ -91,10 +94,11 @@
 										>{t('common.disabled')}</span
 									>{/if}</td
 							>
-							<td>{t(g.strategy === 'sequential' ? 'groups.sequential' : 'groups.simultaneous')}</td
+							<td class="col-opt"
+								>{t(g.strategy === 'sequential' ? 'groups.sequential' : 'groups.simultaneous')}</td
 							>
-							<td>{g.members.length}</td>
-							<td>{describe(g.fallback_type, g.fallback_id)?.label ?? '—'}</td>
+							<td class="col-opt-lg">{g.members.length}</td>
+							<td class="col-opt-lg">{describe(g.fallback_type, g.fallback_id)?.label ?? '—'}</td>
 							<td class="space-x-1 text-right whitespace-nowrap">
 								{#if hasRole('admin')}
 									<button class="btn btn-sm" onclick={() => edit(g)}>{t('common.edit')}</button>

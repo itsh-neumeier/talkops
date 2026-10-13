@@ -110,11 +110,15 @@ async fn backup_and_restore(db: PgPool) {
         .unwrap()
         .encrypt("saved API password")
         .unwrap();
-    sqlx::query("UPDATE tenant_settings SET transcription_api_key_enc = $1")
-        .bind(&encrypted)
-        .execute(&db)
-        .await
-        .unwrap();
+    sqlx::query(
+        "INSERT INTO transcription_providers (tenant_id, name, kind, url, key_enc)
+         VALUES ($1, 'OpenAI', 'openai', 'https://api.openai.com/v1', $2)",
+    )
+    .bind(talkops_core::tenant::TenantId::DEFAULT)
+    .bind(&encrypted)
+    .execute(&db)
+    .await
+    .unwrap();
     // Run a backup through the API and wait for it.
     let (status, _) = admin.post("/api/v1/backups", json!({})).await;
     assert_eq!(status, StatusCode::ACCEPTED);
@@ -212,7 +216,7 @@ async fn backup_and_restore(db: PgPool) {
         .await
         .unwrap();
     assert_eq!(hour, 5, "database restored");
-    let saved: String = sqlx::query_scalar("SELECT transcription_api_key_enc FROM tenant_settings")
+    let saved: String = sqlx::query_scalar("SELECT key_enc FROM transcription_providers")
         .fetch_one(&pool)
         .await
         .unwrap();

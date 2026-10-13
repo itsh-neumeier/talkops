@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { api, type SearchHit } from '#lib/api.ts';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
 	import { formatDateTime, t } from '#lib/i18n/index.svelte.ts';
@@ -40,7 +41,7 @@
 </script>
 
 <div class="space-y-4">
-	<h1>{t('nav.search')}</h1>
+	<PageHeader title={t('nav.search')} />
 	<form class="flex gap-2" onsubmit={search}>
 		<input
 			class="input mt-0 flex-1"

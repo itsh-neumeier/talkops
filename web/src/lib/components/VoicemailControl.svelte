@@ -3,6 +3,7 @@
 	import { api } from '#lib/api.ts';
 	import type { Voice } from '#lib/audio.ts';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
+	import Tabs from '#lib/components/Tabs.svelte';
 	import { t, type MessageKey } from '#lib/i18n/index.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
 
@@ -101,7 +102,7 @@
 		<section class="card space-y-3">
 			<h2>{t('vmc.keys')}</h2>
 			<p class="text-sm text-slate-600 dark:text-slate-300">{t('vmc.keysHint')}</p>
-			<div class="grid gap-4 md:grid-cols-2">
+			<div class="grid grid-cols-1 gap-4 @3xl:grid-cols-2">
 				{#each [{ title: 'vmc.mainMenu', items: MAIN }, { title: 'vmc.messageMenu', items: MESSAGE }] as menu (menu.title)}
 					<div class="space-y-2">
 						<h3 class="font-medium">{t(menu.title as MessageKey)}</h3>
@@ -139,7 +140,7 @@
 		<section class="card space-y-3">
 			<h2>{t('vmc.voices')}</h2>
 			<p class="text-sm text-slate-600 dark:text-slate-300">{t('vmc.voicesHint')}</p>
-			<div class="grid gap-3 sm:grid-cols-2">
+			<div class="grid grid-cols-1 gap-3 @lg:grid-cols-2">
 				{#each LANGS as l (l)}
 					<div>
 						<label for="vmc-voice-{l}">{t(`vmc.lang.${l}` as MessageKey)}</label>
@@ -167,17 +168,12 @@
 		<section class="card space-y-3">
 			<div class="flex flex-wrap items-center justify-between gap-2">
 				<h2>{t('vmc.texts')}</h2>
-				<div class="flex gap-1" role="tablist">
-					{#each LANGS as l (l)}
-						<button
-							type="button"
-							role="tab"
-							aria-selected={lang === l}
-							class="btn btn-sm {lang === l ? 'btn-primary' : ''}"
-							onclick={() => (lang = l)}>{t(`vmc.lang.${l}` as MessageKey)}</button
-						>
-					{/each}
-				</div>
+				<Tabs
+					variant="pills"
+					label={t('vmc.texts')}
+					tabs={LANGS.map((l) => ({ id: l, label: t(`vmc.lang.${l}` as MessageKey) }))}
+					bind:value={lang}
+				/>
 			</div>
 			<p class="text-sm text-slate-600 dark:text-slate-300">{t('vmc.textsHint')}</p>
 			<p class="hint">{t('audio.speedTagsHint')}</p>

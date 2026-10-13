@@ -249,10 +249,6 @@ export interface Settings {
 	recording_announcement: boolean;
 	recording_retention_days: number;
 	transcription_enabled: boolean;
-	/** Engine of the quick first pass. */
-	transcription_quality: TranscriptionEngine;
-	/** Engine of the more accurate second pass; '' = none. */
-	transcription_refine: TranscriptionEngine | '';
 	/** Extensions may dial SIP addresses (user@domain). */
 	sip_uri_dialing: boolean;
 	/** Names and terms Whisper should recognise, comma-separated. */
@@ -567,13 +563,48 @@ export interface VoicemailMessage {
 	transcript_status: TranscriptStatus;
 }
 
-export type TranscriptionEngine = 'fast' | 'accurate' | 'best' | 'german' | 'api';
+export type TranscriptionPurpose =
+	'live' | 'recording' | 'recording_refine' | 'voicemail' | 'voicemail_refine';
+export type LocalModel = 'base' | 'fast' | 'accurate' | 'best' | 'german';
 
-/** OpenAI-compatible transcription API (key never returned). */
-export interface TranscriptionApi {
-	url: string;
+/** Engine of one purpose: off (second passes only), a local model or a cloud model. */
+export interface TranscriptionProfile {
+	purpose: TranscriptionPurpose;
+	engine: 'off' | 'local' | 'cloud';
+	local_model: LocalModel;
+	provider_id: string | null;
 	model: string;
+	/** Live only: stream over the Realtime API. */
+	realtime: boolean;
+	/** Own price per audio minute; null = list price. */
+	price_per_minute: number | null;
+	/** Known list price of the cloud model (read-only). */
+	list_price?: number | null;
+}
+
+/** Cloud connection: OpenAI or an OpenAI-compatible server (key never returned). */
+export interface TranscriptionProvider {
+	id: string;
+	name: string;
+	kind: 'openai' | 'compatible';
+	url: string;
 	has_key: boolean;
+}
+
+export interface TranscriptionUsage {
+	month: string;
+	purpose: TranscriptionPurpose;
+	engine: string;
+	seconds: number;
+	cost: number;
+	unpriced_seconds: number;
+}
+
+export interface TranscriptionOverview {
+	providers: TranscriptionProvider[];
+	profiles: TranscriptionProfile[];
+	usage: TranscriptionUsage[];
+	openai_prices: { model: string; price_per_minute: number }[];
 }
 
 export interface SmtpSettings {

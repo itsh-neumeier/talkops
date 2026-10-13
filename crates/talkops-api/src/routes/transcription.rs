@@ -1,18 +1,22 @@
-//! Settings of the OpenAI-compatible transcription API (admin).
+//! Transcription settings (admin, ADR 0024): cloud connections, the engine
+//! per purpose and the cloud usage.
 
 use std::sync::OnceLock;
 use std::time::Duration;
 
 use axum::Json;
-use axum::extract::State;
+use axum::extract::{Path, State};
+use axum::http::StatusCode;
 use serde::Serialize;
 use serde_json::json;
 use talkops_core::audit;
-use talkops_core::transcription_api::{self, TranscriptionApi, TranscriptionApiInput};
+use talkops_core::transcription_api::{self, Provider, ProviderInput};
+use talkops_core::transcription_profiles::{self, OPENAI_PRICES, Profile, Usage};
 use talkops_core::users::Role;
 use utoipa::ToSchema;
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
+use uuid::Uuid;
 
 use crate::AppState;
 use crate::auth::AuthUser;
@@ -20,45 +24,157 @@ use crate::error::{ApiError, ApiResult};
 
 pub fn router() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
-        .routes(routes!(get_api, update_api))
-        .routes(routes!(test_api))
+        .routes(routes!(overview))
+        .routes(routes!(update_profiles))
+        .routes(routes!(create_provider))
+        .routes(routes!(update_provider, delete_provider))
+        .routes(routes!(test_provider))
 }
 
-/// Transcription API settings, without the key (admin).
-#[utoipa::path(get, path = "/api/v1/settings/transcription-api", tag = "settings", responses((status = 200, body = TranscriptionApi)))]
-pub async fn get_api(
-    State(state): State<AppState>,
-    auth: AuthUser,
-) -> ApiResult<Json<TranscriptionApi>> {
-    auth.require(Role::Admin)?;
-    Ok(Json(transcription_api::get(&state.db, auth.tenant).await?))
+#[derive(Debug, Serialize, ToSchema)]
+pub struct ModelPrice {
+    pub model: String,
+    /// USD per audio minute.
+    pub price_per_minute: f64,
 }
 
-/// Changes the transcription API (admin). The key is stored encrypted.
-#[utoipa::path(put, path = "/api/v1/settings/transcription-api", tag = "settings", request_body = TranscriptionApiInput, responses((status = 200, body = TranscriptionApi)))]
-pub async fn update_api(
+#[derive(Debug, Serialize, ToSchema)]
+pub struct TranscriptionOverview {
+    pub providers: Vec<Provider>,
+    /// One per purpose: live, recording, recording_refine, voicemail,
+    /// voicemail_refine.
+    pub profiles: Vec<Profile>,
+    /// Cloud usage of this and the previous month.
+    pub usage: Vec<Usage>,
+    /// OpenAI list prices, used when a profile sets no own price.
+    pub openai_prices: Vec<ModelPrice>,
+}
+
+/// Connections, profiles and usage, without keys (admin).
+#[utoipa::path(get, path = "/api/v1/settings/transcription", tag = "settings", responses((status = 200, body = TranscriptionOverview)))]
+pub async fn overview(
     State(state): State<AppState>,
     auth: AuthUser,
-    Json(input): Json<TranscriptionApiInput>,
-) -> ApiResult<Json<TranscriptionApi>> {
+) -> ApiResult<Json<TranscriptionOverview>> {
     auth.require(Role::Admin)?;
-    let s = transcription_api::update(&state.db, auth.tenant, &state.secrets, &input).await?;
+    Ok(Json(TranscriptionOverview {
+        providers: transcription_api::list(&state.db, auth.tenant).await?,
+        profiles: transcription_profiles::list(&state.db, auth.tenant).await?,
+        usage: transcription_profiles::usage(&state.db, auth.tenant).await?,
+        openai_prices: OPENAI_PRICES
+            .iter()
+            .map(|(model, price)| ModelPrice {
+                model: (*model).into(),
+                price_per_minute: *price,
+            })
+            .collect(),
+    }))
+}
+
+/// Sets the engine of the given purposes (admin).
+#[utoipa::path(put, path = "/api/v1/settings/transcription/profiles", tag = "settings", request_body = Vec<Profile>, responses((status = 200, body = Vec<Profile>)))]
+pub async fn update_profiles(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Json(input): Json<Vec<Profile>>,
+) -> ApiResult<Json<Vec<Profile>>> {
+    auth.require(Role::Admin)?;
+    let profiles = transcription_profiles::update(&state.db, auth.tenant, &input).await?;
+    let summary: Vec<_> = profiles
+        .iter()
+        .map(|p| {
+            json!({"purpose": p.purpose, "engine": p.engine, "local_model": p.local_model,
+                   "provider_id": p.provider_id, "model": p.model, "realtime": p.realtime})
+        })
+        .collect();
     audit::record(
         &state.db,
         &auth.actor(),
         "update",
-        "transcription_api",
+        "transcription_profiles",
         None,
-        json!({"url": s.url, "model": s.model, "key_changed": input.key.is_some()}),
+        json!({"profiles": summary}),
     )
     .await?;
-    Ok(Json(s))
+    Ok(Json(profiles))
+}
+
+/// Adds a cloud connection (admin). The key is stored encrypted.
+#[utoipa::path(post, path = "/api/v1/settings/transcription/providers", tag = "settings", request_body = ProviderInput, responses((status = 201, body = Provider)))]
+pub async fn create_provider(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Json(input): Json<ProviderInput>,
+) -> ApiResult<(StatusCode, Json<Provider>)> {
+    auth.require(Role::Admin)?;
+    let p = transcription_api::create(&state.db, auth.tenant, &state.secrets, &input).await?;
+    audit::record(
+        &state.db,
+        &auth.actor(),
+        "create",
+        "transcription_provider",
+        Some(p.id.to_string()),
+        json!({"name": p.name, "kind": p.kind, "url": p.url, "has_key": p.has_key}),
+    )
+    .await?;
+    Ok((StatusCode::CREATED, Json(p)))
+}
+
+/// Changes a cloud connection (admin); `key: null` keeps the key.
+#[utoipa::path(put, path = "/api/v1/settings/transcription/providers/{id}", tag = "settings", params(("id" = Uuid, Path)), request_body = ProviderInput, responses((status = 200, body = Provider)))]
+pub async fn update_provider(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<Uuid>,
+    Json(input): Json<ProviderInput>,
+) -> ApiResult<Json<Provider>> {
+    auth.require(Role::Admin)?;
+    let p = transcription_api::update(&state.db, auth.tenant, &state.secrets, id, &input).await?;
+    audit::record(
+        &state.db,
+        &auth.actor(),
+        "update",
+        "transcription_provider",
+        Some(id.to_string()),
+        json!({"name": p.name, "kind": p.kind, "url": p.url, "key_changed": input.key.is_some()}),
+    )
+    .await?;
+    Ok(Json(p))
+}
+
+/// Deletes a cloud connection that no purpose uses (admin).
+#[utoipa::path(delete, path = "/api/v1/settings/transcription/providers/{id}", tag = "settings", params(("id" = Uuid, Path)), responses((status = 204)))]
+pub async fn delete_provider(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<Uuid>,
+) -> ApiResult<StatusCode> {
+    auth.require(Role::Admin)?;
+    let old = transcription_api::get(&state.db, auth.tenant, id).await?;
+    transcription_api::delete(&state.db, auth.tenant, id)
+        .await
+        .map_err(|err| match err {
+            // In use: the message names the purposes.
+            talkops_core::error::CoreError::Conflict(msg) => ApiError::Conflict(msg),
+            other => other.into(),
+        })?;
+    audit::record(
+        &state.db,
+        &auth.actor(),
+        "delete",
+        "transcription_provider",
+        Some(id.to_string()),
+        json!({"name": old.name}),
+    )
+    .await?;
+    Ok(StatusCode::NO_CONTENT)
 }
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct ApiTest {
-    /// The configured model is offered by the server (if it lists models).
-    pub model_found: Option<bool>,
+    /// Models of this connection's profiles that the server does not offer;
+    /// `null` if the server lists no models.
+    pub missing_models: Option<Vec<String>>,
     /// Models that look like speech recognition (whisper, transcribe, voxtral).
     pub speech_models: Vec<String>,
 }
@@ -86,12 +202,16 @@ fn client() -> &'static reqwest::Client {
     })
 }
 
-/// Checks URL and key with the saved settings: lists the server's models
+/// Checks URL and key of a saved connection: lists the server's models
 /// (`GET {url}/models`), without sending audio (admin).
-#[utoipa::path(post, path = "/api/v1/settings/transcription-api/test", tag = "settings", responses((status = 200, body = ApiTest)))]
-pub async fn test_api(State(state): State<AppState>, auth: AuthUser) -> ApiResult<Json<ApiTest>> {
+#[utoipa::path(post, path = "/api/v1/settings/transcription/providers/{id}/test", tag = "settings", params(("id" = Uuid, Path)), responses((status = 200, body = ApiTest)))]
+pub async fn test_provider(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<Uuid>,
+) -> ApiResult<Json<ApiTest>> {
     auth.require(Role::Admin)?;
-    let cfg = transcription_api::config(&state.db, auth.tenant, &state.secrets).await?;
+    let cfg = transcription_api::config(&state.db, auth.tenant, &state.secrets, id, "").await?;
     let mut req = client().get(format!("{}/models", cfg.url.trim_end_matches('/')));
     if let Some(key) = &cfg.key {
         req = req.bearer_auth(key);
@@ -107,10 +227,19 @@ pub async fn test_api(State(state): State<AppState>, auth: AuthUser) -> ApiResul
             status.as_u16()
         )));
     }
+    audit::record(
+        &state.db,
+        &auth.actor(),
+        "test",
+        "transcription_provider",
+        Some(id.to_string()),
+        json!({}),
+    )
+    .await?;
     if !status.is_success() {
         // Some servers have no model list; transcription may still work.
         return Ok(Json(ApiTest {
-            model_found: None,
+            missing_models: None,
             speech_models: Vec::new(),
         }));
     }
@@ -138,17 +267,22 @@ pub async fn test_api(State(state): State<AppState>, auth: AuthUser) -> ApiResul
         .cloned()
         .collect();
     speech.sort();
-    audit::record(
-        &state.db,
-        &auth.actor(),
-        "test",
-        "transcription_api",
-        None,
-        json!({}),
-    )
-    .await?;
+    let missing = if ids.is_empty() {
+        None
+    } else {
+        let mut used: Vec<String> = transcription_profiles::list(&state.db, auth.tenant)
+            .await?
+            .into_iter()
+            .filter(|p| p.engine == "cloud" && p.provider_id == Some(id))
+            .map(|p| p.model)
+            .filter(|m| !ids.contains(m))
+            .collect();
+        used.sort();
+        used.dedup();
+        Some(used)
+    };
     Ok(Json(ApiTest {
-        model_found: (!ids.is_empty()).then(|| ids.contains(&cfg.model)),
+        missing_models: missing,
         speech_models: speech,
     }))
 }

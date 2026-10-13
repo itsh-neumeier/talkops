@@ -6,6 +6,48 @@ All notable changes to TalkOps. The format follows
 
 ## [Unreleased]
 
+## [1.7.8] – 2026-10-13
+
+### Added
+
+- Select a local or cloud transcription engine separately for live previews,
+  recordings and voicemails. Recordings and voicemails can use a second pass.
+  Add several OpenAI or compatible connections with encrypted API keys.
+- Stream live previews through the OpenAI Realtime API. The worker sends speech
+  from each channel and updates provisional text while the caller speaks.
+- Show cloud audio minutes by purpose and model, with an estimated cost.
+
+### Fixed
+
+- Build transcript lines from word timestamps and map local Whisper token times
+  back through VAD. Short lines from both speakers now appear in time order.
+  API servers can fall back to segment timestamps. Existing transcripts stay.
+- Keep the selected light or dark theme after a reload. Scrollbars and native
+  controls follow the app theme. Settings use the available content width on
+  phones and tablets.
+- Preserve word timing and cloud usage accounting in the combined worker.
+  Keep the new transcription controls and usage table within the shared layout.
+
+### Changed
+
+- Use shared page headers, tabs, dialogs and table layouts across the web UI.
+  Hide less important table columns on narrow screens. Add a styled error page.
+
+### Upgrade notes
+
+- Update the server and media worker together. Migration
+  `20261028000001_transcription_profiles` copies existing transcription settings
+  into provider connections and profiles for recordings and voicemails.
+  Local live previews remain the default. Cloud use requires an enabled profile.
+- API clients must replace `/api/v1/settings/transcription-api` with the new
+  `/api/v1/settings/transcription` provider and profile endpoints.
+  `TenantSettings` no longer returns `transcription_quality` or
+  `transcription_refine`.
+- Cloud profiles send audio to the configured provider. Realtime WebSocket
+  connections do not use `HTTPS_PROXY`. Cost figures are estimates; the
+  provider's bill is authoritative. Real OpenAI account access was not tested.
+- Restarting FreeSWITCH during an image update ends active calls.
+
 ## [1.7.7] – 2026-10-13
 
 ### Added

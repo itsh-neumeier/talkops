@@ -7,7 +7,8 @@
 - Tool: Claude Code
 - Status: Completed (PR submitted for review)
 - Branch: `claude/dreamy-dirac-1djvf7`
-- Base commit: `21f5a51` (release 1.7.7 on `main`)
+- Base commit: `21f5a51` (release 1.7.7 on `main`); release 1.7.8
+  (`8fe0192`) merged into the branch
 - Related commits or PR: Pending
 
 ## Goal
@@ -28,7 +29,7 @@ The user approved the proposal with these defaults:
 ## Result
 
 Implemented, tested locally and on a local FreeSWITCH 1.7.7 stack.
-ADR 0024 records the policy.
+ADR 0025 records the policy.
 
 Root causes found:
 
@@ -71,7 +72,7 @@ calls before the fix, and `call record stored` after the fix.
   `sip_addresses`), unit tests in `dialplan.rs` and `cdr.rs`,
   `web/tests/softphone.test.ts`, SIPp `tests/sipp/uas_audio_only.xml`,
   `tests/sipp/trunk_call_video.xml`, new section in `tests/e2e/run.sh`.
-- Docs: `docs/adr/0024-video-policy.md`, `docs/adr/README.md`,
+- Docs: `docs/adr/0025-video-policy.md`, `docs/adr/README.md`,
   `docs/en/softphone.md`, `docs/de/softphone.md`, `docs/en/door-station.md`,
   `docs/de/tuersprechstelle.md`.
 
@@ -91,7 +92,8 @@ calls before the fix, and `call record stored` after the fix.
 - The trunk leg accepts video only if a called extension can get video
   (`video_destination`), so the provider does not get a video answer for
   an audio-only target.
-- ADR number 0024; no migration (the flags exist since `20261021000003`).
+- ADR number 0025: 1.7.8 uses 0024 for the transcription engines. No
+  migration: the flags exist since `20261021000003`.
 
 ## Checks
 
@@ -134,6 +136,6 @@ Wait for the review and the merge by the release manager.
 
 ## References
 
-- `docs/adr/0024-video-policy.md`
+- `docs/adr/0025-video-policy.md`
 - `docs/adr/0023-device-codec-profiles.md`
 - `docs/ai-memory/20261012-claude-codec-profiles.md`

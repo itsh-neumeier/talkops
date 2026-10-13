@@ -69,7 +69,9 @@
 			<summary class="cursor-pointer text-slate-600 dark:text-slate-300">
 				{extraNames ? t('numbers.alsoRings', { names: extraNames }) : t('numbers.addExtensions')}
 			</summary>
-			<div class="mt-1 grid gap-1 rounded-md border border-slate-200 p-2 dark:border-slate-700">
+			<div
+				class="mt-1 grid grid-cols-1 gap-1 rounded-lg border border-slate-200 p-2 dark:border-slate-700"
+			>
 				{#each others as e (e.id)}
 					<label class="flex items-center gap-2 font-normal">
 						<input

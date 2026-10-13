@@ -48,6 +48,9 @@ pub fn spawn(db: PgPool, media: Arc<MediaPaths>) {
             if let Err(err) = talkops_core::live_transcripts::cleanup(&db).await {
                 tracing::warn!(error = %err, "live transcript cleanup failed");
             }
+            if let Err(err) = talkops_core::transcription_profiles::cleanup(&db).await {
+                tracing::warn!(error = %err, "transcription usage cleanup failed");
+            }
             loop {
                 match purge(&db, &media.recordings).await {
                     Ok(0) => break,

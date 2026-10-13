@@ -28,7 +28,7 @@ pub struct Extension {
     pub forward_all: Option<String>,
     /// Call recording: `inherit` (tenant defaults), `always` or `never`.
     pub record_calls: String,
-    /// Video calls (ADR 0024): internal calls with another extension with
+    /// Video calls (ADR 0025): internal calls with another extension with
     /// video, door stations, trunks with video. Otherwise audio only.
     pub video_enabled: bool,
 }

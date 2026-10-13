@@ -1293,20 +1293,18 @@ async fn voicemail_boxes_messages_and_smtp(pool: PgPool) {
         .unwrap();
     let t = recordings::transcript_of(&pool, T, source).await.unwrap();
     assert!(t.is_final);
-    // Engines and second pass.
-    use talkops_core::settings::{TranscriptionEngine, TranscriptionQuality};
-    let mut s = talkops_core::settings::get(&pool, T).await.unwrap();
-    assert_eq!(TranscriptionEngine::refine(&s), None);
-    s.transcription_refine = "api".into();
+    // Engines per purpose: defaults without stored profiles.
+    use talkops_core::settings::TranscriptionQuality;
+    use talkops_core::transcription_profiles::{self as profiles, Engine, Purpose};
     assert_eq!(
-        TranscriptionEngine::refine(&s),
-        Some(TranscriptionEngine::Api)
+        profiles::engine(&pool, T, Purpose::VoicemailRefine)
+            .await
+            .unwrap(),
+        None
     );
-    s.transcription_quality = "api".into();
-    assert_eq!(TranscriptionEngine::refine(&s), None);
     assert_eq!(
-        TranscriptionEngine::parse("best"),
-        Some(TranscriptionEngine::Local(TranscriptionQuality::Best))
+        profiles::engine(&pool, T, Purpose::Live).await.unwrap(),
+        Some(Engine::Local(TranscriptionQuality::Base))
     );
     let info = voicemail::mail_info(&pool, third.id)
         .await

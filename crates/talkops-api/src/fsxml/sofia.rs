@@ -32,7 +32,7 @@ impl Default for ProfileSettings {
 /// Local WebSocket listener of the internal profile (see `TALKOPS_SIP_WS_URL`).
 pub const WS_BINDING: &str = "127.0.0.1:5066";
 
-/// Audio only: the dialplan allows video per call and per leg (ADR 0024).
+/// Audio only: the dialplan allows video per call and per leg (ADR 0025).
 /// Calls without a codec list from the dialplan (queues, calls started over
 /// the event socket) therefore never offer video.
 const INTERNAL_CODECS: &str = "OPUS,G722,PCMA,PCMU";
@@ -250,7 +250,7 @@ pub fn render(settings: &ProfileSettings, gateways: &[GatewaySpec]) -> String {
     w.param("outbound-codec-prefs", EXTERNAL_CODECS);
     // Negotiate the provider's offer only when the call is answered, with
     // the codec list of the dialplan: a trunk with video switched on can
-    // accept the video stream, all others stay audio-only (ADR 0024).
+    // accept the video stream, all others stay audio-only (ADR 0025).
     w.param("inbound-late-negotiation", "true");
     w.param("dtmf-type", "rfc2833");
     w.param("rfc2833-pt", "101");

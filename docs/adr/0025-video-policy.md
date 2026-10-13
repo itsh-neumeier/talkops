@@ -1,4 +1,4 @@
-# 0024 - Video only on local calls and trunks with video
+# 0025 - Video only on local calls and trunks with video
 
 - Status: Accepted
 - Date: 2026-10-13

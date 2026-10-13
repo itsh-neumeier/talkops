@@ -159,7 +159,7 @@ mod tests {
     #[test]
     fn accepts_variables_with_a_prefix() {
         // `export nolocal:absolute_codec_string=…` (calls from trunks, ADR
-        // 0023 and 0024) gives an element name with a colon.
+        // 0023 and 0025) gives an element name with a colon.
         let xml = SAMPLE.replace(
             "<uuid>",
             "<nolocal:absolute_codec_string>G722%2CPCMA</nolocal:absolute_codec_string>\n    <uuid>",

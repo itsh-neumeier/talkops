@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import Skeleton from '#lib/components/Skeleton.svelte';
 	import { net } from '#lib/net.svelte.ts';
 	import { onMount } from 'svelte';
@@ -23,7 +24,7 @@
 </script>
 
 <div class="space-y-4">
-	<h1>{t('nav.myPhones')}</h1>
+	<PageHeader title={t('nav.myPhones')} />
 	<ErrorBox {error} />
 	{#if phones && phones.length === 0}
 		<p class="text-sm text-slate-500">{t('me.none')}</p>

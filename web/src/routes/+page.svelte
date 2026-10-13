@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import Skeleton from '#lib/components/Skeleton.svelte';
 	import { net } from '#lib/net.svelte.ts';
 	import { onMount } from 'svelte';
@@ -103,7 +104,7 @@
 </script>
 
 <div class="space-y-4">
-	<h1>{t('nav.dashboard')}</h1>
+	<PageHeader title={t('nav.dashboard')} />
 	{#if hasRole('admin')}<GettingStarted
 			registrations={live ? live.registrations.length : null}
 		/>{/if}
@@ -112,7 +113,7 @@
 	{/if}
 
 	{#if hasRole('operator') && stats}
-		<div class="grid grid-cols-2 gap-3 lg:grid-cols-5">
+		<div class="grid grid-cols-2 gap-3 @3xl:grid-cols-5">
 			{#each [['dash.kpi.active', String(active.filter((c) => c.state !== 'ringing').length)], ['dash.kpi.calls', String(stats.total)], ['dash.kpi.missed', String(stats.missed)], ['dash.kpi.answerRate', stats.answer_rate === null ? '—' : `${stats.answer_rate.toLocaleString()} %`], ['dash.kpi.avgTalk', formatDuration(stats.avg_talk_secs)]] as const as [key, value] (key)}
 				<div class="card">
 					<p class="text-xs text-slate-500 dark:text-slate-400">{t(key)}</p>
@@ -128,8 +129,8 @@
 			{/each}
 		</div>
 
-		<div class="grid gap-4 lg:grid-cols-3">
-			<section class="card space-y-3 lg:col-span-2">
+		<div class="grid grid-cols-1 gap-4 @3xl:grid-cols-3">
+			<section class="card space-y-3 @3xl:col-span-2">
 				<div class="flex flex-wrap items-center justify-between gap-2">
 					<h2>{t('dash.chart.title')}</h2>
 					<div class="inline-flex rounded-lg border border-slate-300 p-0.5 dark:border-slate-600">
@@ -223,8 +224,8 @@
 			</section>
 		</div>
 	{:else if hasRole('operator') && !net.settled}
-		<div class="grid gap-4 lg:grid-cols-3">
-			<div class="card lg:col-span-2"><Skeleton lines={8} /></div>
+		<div class="grid grid-cols-1 gap-4 @3xl:grid-cols-3">
+			<div class="card @3xl:col-span-2"><Skeleton lines={8} /></div>
 			<div class="card"><Skeleton lines={5} /></div>
 		</div>
 	{:else if status}
@@ -239,7 +240,7 @@
 		</section>
 	{/if}
 
-	<div class="grid gap-4 {hasRole('operator') ? 'lg:grid-cols-2' : ''}">
+	<div class="grid grid-cols-1 gap-4 {hasRole('operator') ? '@3xl:grid-cols-2' : ''}">
 		{#if hasRole('operator')}
 			<ActiveCalls calls={active} {now} />
 		{/if}

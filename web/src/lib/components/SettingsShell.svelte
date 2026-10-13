@@ -13,8 +13,8 @@
 {#if wide}
 	{@render children()}
 {:else}
-	<div class="flex flex-col gap-4 md:flex-row md:items-start">
+	<div class="flex flex-col gap-4 lg:flex-row lg:items-start">
 		<SettingsNav />
-		<div class="min-w-0 flex-1">{@render children()}</div>
+		<div class="@container min-w-0 flex-1">{@render children()}</div>
 	</div>
 {/if}

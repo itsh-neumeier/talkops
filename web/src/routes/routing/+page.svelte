@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
+	import PageHeader from '#lib/components/PageHeader.svelte';
+	import Tabs from '#lib/components/Tabs.svelte';
 	import Attendants from '#lib/components/routing/Attendants.svelte';
 	import CallBlocking from '#lib/components/routing/CallBlocking.svelte';
 	import Queues from '#lib/components/routing/Queues.svelte';
@@ -47,21 +49,14 @@
 </script>
 
 <div class="space-y-4">
-	<h1>{t('nav.routing')}</h1>
-	<p class="text-sm text-slate-600 dark:text-slate-300">{t('routing.intro')}</p>
+	<PageHeader title={t('nav.routing')} intro={t('routing.intro')} />
 	<ErrorBox {error} />
-	<div class="flex flex-wrap gap-1 border-b border-slate-200 dark:border-slate-800" role="tablist">
-		{#each tabs as x (x.id)}
-			<button
-				role="tab"
-				aria-selected={tab === x.id}
-				class="rounded-t-md px-3 py-2 text-sm {tab === x.id
-					? 'border-b-2 border-teal-600 font-medium text-teal-800 dark:text-teal-200'
-					: 'text-slate-600 hover:text-slate-900 dark:text-slate-300'}"
-				onclick={() => select(x.id)}>{t(x.key)}</button
-			>
-		{/each}
-	</div>
+	<Tabs
+		tabs={tabs.map((x) => ({ id: x.id, label: t(x.key) }))}
+		value={tab}
+		onchange={select}
+		label={t('nav.routing')}
+	/>
 	{#if loaded}
 		{#if tab === 'groups'}<RingGroups />
 		{:else if tab === 'schedules'}<TimeConditions />

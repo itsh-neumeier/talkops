@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import Skeleton from '#lib/components/Skeleton.svelte';
 	import { net } from '#lib/net.svelte.ts';
 	import { onMount } from 'svelte';
@@ -170,10 +171,10 @@
 </script>
 
 <div class="space-y-4">
-	<h1>{t('nav.settings')}</h1>
-	<div class="flex flex-col gap-4 md:flex-row md:items-start">
+	<PageHeader title={t('nav.settings')} />
+	<div class="flex flex-col gap-4 lg:flex-row lg:items-start">
 		<SettingsNav {section} onsection={show} />
-		<div class="min-w-0 flex-1 space-y-4">
+		<div class="@container min-w-0 flex-1 space-y-4">
 			{#if section === 'telephony'}
 				{#if settings && hasRole('admin')}
 					<form class="card space-y-4" onsubmit={save}>
@@ -182,7 +183,7 @@
 						{#if saved}<p class="text-sm text-emerald-700 dark:text-emerald-400">
 								{t('common.saved')}
 							</p>{/if}
-						<div class="grid gap-3 sm:grid-cols-2">
+						<div class="grid grid-cols-1 gap-3 @lg:grid-cols-2">
 							<div>
 								<label for="s-cc">{t('settings.countryCode')}</label><input
 									id="s-cc"
@@ -419,8 +420,8 @@
 						{#if smtpInfo}<p class="text-sm text-emerald-700 dark:text-emerald-400">
 								{smtpInfo}
 							</p>{/if}
-						<div class="grid gap-3 sm:grid-cols-3">
-							<div class="sm:col-span-2">
+						<div class="grid grid-cols-1 gap-3 @xl:grid-cols-3">
+							<div class="@xl:col-span-2">
 								<label for="smtp-host">{t('smtp.host')}</label>
 								<input
 									id="smtp-host"

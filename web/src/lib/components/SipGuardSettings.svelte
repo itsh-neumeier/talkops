@@ -81,7 +81,7 @@
 		<label class="flex items-center gap-2 font-medium"
 			><input type="checkbox" bind:checked={s.enabled} /> {t('guard.enabled')}</label
 		>
-		<div class="grid gap-3 sm:grid-cols-3">
+		<div class="grid grid-cols-1 gap-3 @xl:grid-cols-3">
 			<div>
 				<label for="g-max">{t('guard.maxFailures')}</label>
 				<input

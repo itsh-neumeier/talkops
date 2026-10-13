@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import SkeletonRows from '#lib/components/SkeletonRows.svelte';
 	import { net } from '#lib/net.svelte.ts';
 	import { onMount } from 'svelte';
@@ -51,26 +52,28 @@
 </script>
 
 <div class="space-y-4">
-	<div class="flex flex-wrap items-center justify-between gap-2">
-		<h1>{t('nav.calls')}</h1>
-		<form
-			class="flex gap-2"
-			onsubmit={(e) => {
-				e.preventDefault();
-				load();
-			}}
-		>
-			<input
-				class="input mt-0"
-				bind:value={search}
-				placeholder={t('common.search')}
-				aria-label={t('common.search')}
-			/>
-			<button class="btn">{t('common.search')}</button>
-		</form>
-	</div>
+	<PageHeader title={t('nav.calls')}>
+		{#snippet actions()}
+			<form
+				class="flex gap-2"
+				onsubmit={(e) => {
+					e.preventDefault();
+					load();
+				}}
+			>
+				<input
+					class="input mt-0 min-w-0 flex-1"
+					type="search"
+					bind:value={search}
+					placeholder={t('common.search')}
+					aria-label={t('common.search')}
+				/>
+				<button class="btn">{t('common.search')}</button>
+			</form>
+		{/snippet}
+	</PageHeader>
 	<ErrorBox {error} />
-	<div class="card overflow-x-auto">
+	<div class="card scroll-x">
 		{#if calls && calls.length === 0}
 			<p class="text-sm text-slate-500">{t('calls.empty')}</p>
 		{:else}
@@ -79,7 +82,7 @@
 					<tr
 						><th>{t('calls.time')}</th><th>{t('calls.direction')}</th><th>{t('calls.from')}</th><th
 							>{t('calls.to')}</th
-						><th>{t('calls.duration')}</th><th>{t('calls.result')}</th><th
+						><th class="col-opt">{t('calls.duration')}</th><th>{t('calls.result')}</th><th
 							><span class="sr-only">{t('rec.recording')}</span></th
 						></tr
 					>
@@ -88,7 +91,9 @@
 					{#each calls ?? [] as c (c.id)}
 						<tr>
 							<td class="whitespace-nowrap">{formatDateTime(c.started_at)}</td>
-							<td title={t(`dir.${c.direction}`)}>{arrow[c.direction]} {t(`dir.${c.direction}`)}</td
+							<td title={t(`dir.${c.direction}`)}
+								>{arrow[c.direction]}
+								<span class="hidden @xl:inline">{t(`dir.${c.direction}`)}</span></td
 							>
 							<td
 								><span class="font-mono">{c.caller_number}</span
@@ -99,7 +104,7 @@
 									</div>{/if}</td
 							>
 							<td class="font-mono">{c.destination}</td>
-							<td class="font-mono">{c.answered_at ? formatDuration(c.billsec) : '—'}</td>
+							<td class="col-opt font-mono">{c.answered_at ? formatDuration(c.billsec) : '—'}</td>
 							<td>
 								{#if c.answered_at}<span class="badge badge-ok">OK</span>
 								{:else}<span class="badge badge-bad" title={c.hangup_cause}

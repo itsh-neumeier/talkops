@@ -98,7 +98,7 @@
 		<fieldset class="space-y-3">
 			<legend class="font-medium">{t('identity.roles')}</legend>
 			<p class="hint">{t('identity.rolesHint')}</p>
-			<div class="grid gap-3 sm:grid-cols-3">
+			<div class="grid grid-cols-1 gap-3 @xl:grid-cols-3">
 				<div>
 					<label for="id-admin">{t('roles.admin')}</label>
 					<input id="id-admin" class="input" bind:value={s.admin_group} placeholder="pbx-admins" />
@@ -136,7 +136,7 @@
 						required
 					/>
 				</div>
-				<div class="grid gap-3 sm:grid-cols-2">
+				<div class="grid grid-cols-1 gap-3 @lg:grid-cols-2">
 					<div>
 						<label for="id-cid">{t('identity.clientId')}</label>
 						<input id="id-cid" class="input font-mono" bind:value={s.oidc_client_id} required />
@@ -155,13 +155,13 @@
 				</div>
 				<div>
 					<span class="text-sm font-medium">{t('identity.redirectUri')}</span>
-					<code class="block rounded bg-slate-100 p-2 text-sm break-all dark:bg-slate-800"
+					<code class="block rounded-lg bg-slate-100 p-2 text-sm break-all dark:bg-slate-800"
 						>{callback}</code
 					>
 				</div>
 				<details class="text-sm">
 					<summary class="cursor-pointer">{t('identity.advanced')}</summary>
-					<div class="mt-2 grid gap-3 sm:grid-cols-2">
+					<div class="mt-2 grid grid-cols-1 gap-3 @lg:grid-cols-2">
 						<div>
 							<label for="id-scopes">{t('identity.scopes')}</label>
 							<input id="id-scopes" class="input font-mono" bind:value={s.oidc_scopes} />
@@ -178,7 +178,7 @@
 							<label for="id-gc">{t('identity.groupsClaim')}</label>
 							<input id="id-gc" class="input font-mono" bind:value={s.oidc_groups_claim} />
 						</div>
-						<div class="sm:col-span-2">
+						<div class="@lg:col-span-2">
 							<label for="id-pub">{t('identity.publicUrl')}</label>
 							<input
 								id="id-pub"
@@ -199,8 +199,8 @@
 			>
 			{#if s.ldap_enabled}
 				<p class="hint">{t('identity.ldapHint')}</p>
-				<div class="grid gap-3 sm:grid-cols-3">
-					<div class="sm:col-span-2">
+				<div class="grid grid-cols-1 gap-3 @xl:grid-cols-3">
+					<div class="@xl:col-span-2">
 						<label for="id-lurl">URL</label>
 						<input
 							id="id-lurl"
@@ -214,7 +214,7 @@
 						><input type="checkbox" bind:checked={s.ldap_starttls} /> StartTLS</label
 					>
 				</div>
-				<div class="grid gap-3 sm:grid-cols-2">
+				<div class="grid grid-cols-1 gap-3 @lg:grid-cols-2">
 					<div>
 						<label for="id-bdn">{t('identity.bindDn')}</label>
 						<input
@@ -251,7 +251,7 @@
 					<input id="id-filter" class="input font-mono" bind:value={s.ldap_user_filter} />
 					<p class="hint">{t('identity.filterHint')}</p>
 				</div>
-				<div class="grid gap-3 sm:grid-cols-4">
+				<div class="grid grid-cols-1 gap-3 @2xl:grid-cols-4">
 					<div>
 						<label for="id-ua">{t('identity.attrUser')}</label>
 						<input id="id-ua" class="input font-mono" bind:value={s.ldap_username_attr} />
@@ -278,7 +278,7 @@
 				</div>
 				<p class="hint">{t('identity.testHint')}</p>
 				{#if testResult?.dn}
-					<div class="rounded-md bg-slate-50 p-3 text-sm dark:bg-slate-800/60">
+					<div class="rounded-lg bg-slate-50 p-3 text-sm dark:bg-slate-800/60">
 						<div class="font-mono break-all">{testResult.dn}</div>
 						<div>{testResult.display_name}</div>
 						<div>

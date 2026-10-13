@@ -331,7 +331,7 @@
 		<button class="btn" onclick={load}>↻ {t('diag.refresh')}</button>
 	</div>
 	{#if view?.channels.length}
-		<div class="overflow-x-auto">
+		<div class="scroll-x">
 			<table class="w-full text-left text-sm">
 				<thead class="text-slate-500 dark:text-slate-400">
 					<tr>
@@ -369,7 +369,7 @@
 <section class="card space-y-3">
 	<h2>{t('diag.testCalls')}</h2>
 	<p class="text-sm text-slate-600 dark:text-slate-300">{t('diag.testCallsHint')}</p>
-	<div class="grid gap-2 sm:grid-cols-2">
+	<div class="grid grid-cols-1 gap-2 @lg:grid-cols-2">
 		{#each testCalls as tc (tc.uri)}
 			<a class="btn justify-start text-left" href="/phone?dial={encodeURIComponent(tc.uri)}"
 				><span class="font-medium">{t(tc.label)}</span>

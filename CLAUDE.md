@@ -125,6 +125,8 @@ CI (`.github/workflows/ci.yml`) runs exactly these checks; keep them green.
 - **Frontend**: SvelteKit 3 / Svelte 5 runes. Config lives in `web/vite.config.ts`
   (no `svelte.config.js`); import app code via `#lib/...` (package.json `imports`).
   All UI strings go through `t()` with keys in both `en.ts` and `de.ts`.
+  Follow `docs/ui-guidelines.md` for page structure, responsive layout and
+  shared components (`PageHeader`, `Tabs`, `Modal`, `.scroll-x`).
 - **Language**: code, comments and commit messages use English. New technical
   documentation, new ADRs, release notes and task summaries use English with
   ASD-STE100 Simplified Technical English. Follow `docs/documentation-style.md`.

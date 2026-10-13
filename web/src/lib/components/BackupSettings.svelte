@@ -124,7 +124,7 @@
 		<h2>{t('backup.title')}</h2>
 		<p class="text-sm text-slate-600 dark:text-slate-300">{t('backup.hint')}</p>
 		<ErrorBox {error} />
-		<div class="space-y-2 rounded border border-slate-300 p-3 dark:border-slate-700">
+		<div class="space-y-2 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
 			<h3>{t('backup.configTitle')}</h3>
 			{#if data.configuration_error}<p class="hint">{data.configuration_error}</p>{/if}
 			{#if data.configuration}
@@ -168,7 +168,7 @@
 		<label class="flex items-center gap-2 font-medium"
 			><input type="checkbox" bind:checked={data.settings.enabled} /> {t('backup.daily')}</label
 		>
-		<div class="grid gap-3 sm:grid-cols-3">
+		<div class="grid grid-cols-1 gap-3 @xl:grid-cols-3">
 			<div>
 				<label for="bk-hour">{t('backup.hour')}</label>
 				<input
@@ -209,7 +209,7 @@
 			</button>
 		</div>
 		{#if data.files.length}
-			<div class="overflow-x-auto">
+			<div class="scroll-x">
 				<table class="table">
 					<thead>
 						<tr>

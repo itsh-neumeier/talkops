@@ -353,6 +353,45 @@ impl CodecProfile {
     }
 }
 
+/// Format of the SIP passwords TalkOps generates for a device. The format
+/// applies when TalkOps creates or resets a password; it never changes a
+/// stored password.
+#[derive(
+    Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, utoipa::ToSchema,
+)]
+#[sqlx(type_name = "sip_password_format", rename_all = "lowercase")]
+#[serde(rename_all = "lowercase")]
+pub enum SipPasswordFormat {
+    /// 20 letters and digits.
+    #[default]
+    Standard,
+    /// 15 letters and digits, for devices that accept at most 15 characters
+    /// (e.g. Dahua VTO/VTH).
+    Compact15,
+}
+
+impl SipPasswordFormat {
+    /// Number of characters of a generated password.
+    pub fn length(self) -> usize {
+        match self {
+            SipPasswordFormat::Standard => 20,
+            SipPasswordFormat::Compact15 => 15,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            SipPasswordFormat::Standard => "standard",
+            SipPasswordFormat::Compact15 => "compact15",
+        }
+    }
+
+    /// A new random password in this format.
+    pub fn generate(self) -> CoreResult<String> {
+        Ok(crypto::random_password(self.length())?)
+    }
+}
+
 #[derive(Debug, Clone, FromRow, Serialize, utoipa::ToSchema)]
 pub struct Device {
     pub id: Uuid,
@@ -375,6 +414,8 @@ pub struct Device {
     pub phone_display_name: String,
     /// Configured codec profile; `None` = automatic from the device kind.
     pub codec_profile: Option<CodecProfile>,
+    /// Format of the next generated SIP password.
+    pub sip_password_format: SipPasswordFormat,
     pub enabled: bool,
 }
 
@@ -401,6 +442,11 @@ pub struct DeviceInput {
     /// Codec profile; omitted or `null` = automatic from the device kind.
     #[serde(default)]
     pub codec_profile: Option<CodecProfile>,
+    /// Format of generated SIP passwords. On create, omitted = `standard`.
+    /// On update, omitted keeps the stored format. A changed format does not
+    /// change the current password; it applies to the next reset.
+    #[serde(default)]
+    pub sip_password_format: Option<SipPasswordFormat>,
     #[serde(default = "yes")]
     pub enabled: bool,
 }
@@ -510,7 +556,7 @@ pub async fn set_phone_texts(
         .await?)
 }
 
-const DEV_COLUMNS: &str = "id, extension_id, browser_user_id, name, kind, sip_username, sip_password_enc, phone_id, account_index, phone_label, phone_display_name, codec_profile, enabled";
+const DEV_COLUMNS: &str = "id, extension_id, browser_user_id, name, kind, sip_username, sip_password_enc, phone_id, account_index, phone_label, phone_display_name, codec_profile, sip_password_format, enabled";
 
 /// Resolves the account slot for a device on a phone: the requested one, or
 /// the lowest free slot. Checks that the phone exists.
@@ -702,7 +748,7 @@ pub async fn browser_device(
         let password = secrets.decrypt(&device.sip_password_enc)?;
         (device, password, "view_credentials")
     } else {
-        let password = crypto::random_password(20)?;
+        let password = SipPasswordFormat::Standard.generate()?;
         let sql = format!(
             "INSERT INTO devices
             (tenant_id, extension_id, browser_user_id, name, kind, sip_username, sip_password_enc)
@@ -752,12 +798,14 @@ pub async fn create_device(
         }
         None => default_username(pool, extension, input.kind).await?,
     };
-    let password = crypto::random_password(20)?;
+    let format = input.sip_password_format.unwrap_or_default();
+    check_password_format(input.kind, format)?;
+    let password = format.generate()?;
     let sql = format!(
         "INSERT INTO devices (tenant_id, extension_id, name, kind, sip_username, sip_password_enc,
                               phone_id, account_index, enabled, phone_label, phone_display_name,
-                              codec_profile)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING {DEV_COLUMNS}"
+                              codec_profile, sip_password_format)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING {DEV_COLUMNS}"
     );
     let device = sqlx::query_as(&sql)
         .bind(tenant)
@@ -772,9 +820,21 @@ pub async fn create_device(
         .bind(label)
         .bind(display)
         .bind(input.codec_profile)
+        .bind(format)
         .fetch_one(pool)
         .await?;
     Ok((device, password))
+}
+
+/// Browser devices get their password from TalkOps only; they keep the
+/// standard format.
+fn check_password_format(kind: DeviceKind, format: SipPasswordFormat) -> CoreResult<()> {
+    if kind == DeviceKind::Browser && format != SipPasswordFormat::Standard {
+        return Err(CoreError::Validation(
+            "SIP password format: browser devices use the standard format".into(),
+        ));
+    }
+    Ok(())
 }
 
 pub async fn update_device(
@@ -801,11 +861,17 @@ pub async fn update_device(
             .await?;
         validate_sip_username(&number, username)?;
     }
+    if let Some(format) = input.sip_password_format {
+        check_password_format(current.kind, format)?;
+    }
     let slot = phone_slot(pool, tenant, input.phone_id, input.account_index, Some(id)).await?;
+    // The format applies to the next generated password; the current
+    // password stays valid.
     let sql = format!(
         "UPDATE devices SET name = $3, kind = $4, phone_id = $5, account_index = $6, enabled = $7,
              phone_label = $8, phone_display_name = $9, codec_profile = $10,
-             sip_username = COALESCE($11, sip_username), updated_at = now()
+             sip_username = COALESCE($11, sip_username),
+             sip_password_format = COALESCE($12, sip_password_format), updated_at = now()
          WHERE tenant_id = $1 AND id = $2 RETURNING {DEV_COLUMNS}"
     );
     Ok(sqlx::query_as(&sql)
@@ -820,28 +886,44 @@ pub async fn update_device(
         .bind(display)
         .bind(input.codec_profile)
         .bind(rename)
+        .bind(input.sip_password_format)
         .fetch_one(pool)
         .await?)
 }
 
-/// Generates a new SIP password; returns the plaintext.
-pub async fn reset_device_password<'e>(
-    db: impl PgExecutor<'e>,
+/// Generates a new SIP password in the device's format; `format` changes the
+/// stored format first. Returns the plaintext and the format used.
+pub async fn reset_device_password(
+    pool: &sqlx::PgPool,
     tenant: TenantId,
     secrets: &SecretBox,
     id: Uuid,
-) -> CoreResult<String> {
-    let password = crypto::random_password(20)?;
-    let res = sqlx::query("UPDATE devices SET sip_password_enc = $3, updated_at = now() WHERE tenant_id = $1 AND id = $2")
-        .bind(tenant)
-        .bind(id)
-        .bind(secrets.encrypt(&password)?)
-        .execute(db)
-        .await?;
-    if res.rows_affected() == 0 {
-        return Err(CoreError::NotFound);
-    }
-    Ok(password)
+    format: Option<SipPasswordFormat>,
+) -> CoreResult<(String, SipPasswordFormat)> {
+    let mut tx = pool.begin().await?;
+    let current: Option<(DeviceKind, SipPasswordFormat)> = sqlx::query_as(
+        "SELECT kind, sip_password_format FROM devices WHERE tenant_id = $1 AND id = $2 FOR UPDATE",
+    )
+    .bind(tenant)
+    .bind(id)
+    .fetch_optional(&mut *tx)
+    .await?;
+    let (kind, stored) = current.ok_or(CoreError::NotFound)?;
+    let format = format.unwrap_or(stored);
+    check_password_format(kind, format)?;
+    let password = format.generate()?;
+    sqlx::query(
+        "UPDATE devices SET sip_password_enc = $3, sip_password_format = $4, updated_at = now()
+         WHERE tenant_id = $1 AND id = $2",
+    )
+    .bind(tenant)
+    .bind(id)
+    .bind(secrets.encrypt(&password)?)
+    .bind(format)
+    .execute(&mut *tx)
+    .await?;
+    tx.commit().await?;
+    Ok((password, format))
 }
 
 pub async fn delete_device<'e>(
@@ -962,5 +1044,33 @@ mod tests {
         assert!(validate(&mk("1120"), &emergency).is_err());
         assert!(validate(&mk("2"), &emergency).is_err());
         assert!(validate(&mk("2a"), &emergency).is_err());
+    }
+
+    #[test]
+    fn sip_password_formats() {
+        // The alphabet of crypto::random_password: no 0, O, 1, l, I.
+        let allowed = |c: char| c.is_ascii_alphanumeric() && !"0O1lI".contains(c);
+        for (format, len) in [
+            (SipPasswordFormat::Standard, 20),
+            (SipPasswordFormat::Compact15, 15),
+        ] {
+            assert_eq!(format.length(), len);
+            for _ in 0..50 {
+                let p = format.generate().unwrap();
+                assert_eq!(p.len(), len, "{format:?}");
+                assert!(p.chars().all(allowed), "{p}");
+            }
+        }
+        assert_eq!(SipPasswordFormat::default(), SipPasswordFormat::Standard);
+        assert_eq!(
+            serde_json::to_value(SipPasswordFormat::Compact15).unwrap(),
+            "compact15"
+        );
+        assert_eq!(
+            serde_json::from_value::<SipPasswordFormat>("compact15".into()).unwrap(),
+            SipPasswordFormat::Compact15
+        );
+        assert!(serde_json::from_value::<SipPasswordFormat>("short".into()).is_err());
+        assert_eq!(SipPasswordFormat::Compact15.as_str(), "compact15");
     }
 }

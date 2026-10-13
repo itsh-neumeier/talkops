@@ -901,6 +901,9 @@ const de: Record<keyof typeof en, string> = {
 	'door.unlockCodeRemove': 'Öffnungscodes entfernen',
 	'door.unlockCodeHint':
 		'2–8 Tasten (0–9, *, #). Am Telefon während des Klingelns oder eines Anrufs bei der Station gedrückt, öffnet TalkOps die Tür über den HTTP-Zugang (erforderlich). Einen anderen Code als den in der Station hinterlegten verwenden.',
+	'door.allowedNumbers': 'Externe Nummern für Öffnungscodes',
+	'door.allowedNumbersHint':
+		'Eine Nummer pro Zeile. Interne Telefone dürfen die Codes immer verwenden. Ein externes Gespräch (z. B. Klingeln aufs Handy weitergeleitet oder Anruf von außen auf die Türsprechstelle) nur von diesen Nummern. Leer: kein Öffnen von extern.',
 	'door.snapshots': 'Bei jedem Klingeln ein Bild speichern',
 	'door.events': 'Ereignisprotokoll',
 	'door.webhook': 'Webhook (Home Assistant)',

@@ -1491,6 +1491,7 @@ async fn door_stations_and_events(pool: PgPool) {
         webhook_url: Some("https://ha.local/api/webhook/abc".into()),
         unlock_code_1: Some("*1".into()),
         unlock_code_2: None,
+        dtmf_allowed_numbers: vec![],
         enabled: true,
     };
     let s = doors::create(&pool, T, &secrets, &input).await.unwrap();

@@ -3,12 +3,18 @@
 //! follows the DTMF digits of the marked legs over the Event Socket and opens
 //! the door through the station's HTTP API when the digits end with the code
 //! of door 1 or door 2. The station's own DTMF unlock is not affected.
+//!
+//! Internal phones may always use the codes. An external leg (trunk: a
+//! forwarded mobile phone or an inbound call) may only use them when its
+//! number is in the station's `dtmf_allowed_numbers`.
 
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
 use serde_json::json;
+use talkops_core::dialing::DialPlanSettings;
 use talkops_core::doors;
+use talkops_core::settings;
 use talkops_core::tenant::TenantId;
 use tokio::sync::broadcast::error::RecvError;
 use uuid::Uuid;
@@ -121,6 +127,36 @@ fn device(channel: &str) -> &str {
     user.split('@').next().unwrap_or(user)
 }
 
+/// Phones register on the `internal` profile; trunk and loopback legs are
+/// external.
+fn is_internal(channel: &str) -> bool {
+    channel.starts_with("sofia/internal/")
+}
+
+/// The numbers of an external leg: the caller of an inbound call (normalized
+/// by the dialplan first), the dialed number of an outbound call (e.g. a
+/// forwarded mobile phone).
+fn external_numbers(h: &talkops_esl::Headers) -> Vec<&str> {
+    let names: &[&str] = if h.get("Call-Direction") == Some("inbound") {
+        &["variable_talkops_caller_number", "Caller-Caller-ID-Number"]
+    } else {
+        &["Caller-Destination-Number", "Caller-Callee-ID-Number"]
+    };
+    names.iter().filter_map(|n| h.get(n)).collect()
+}
+
+/// The allowed number of an external leg, if any.
+fn allowed_external(
+    h: &talkops_esl::Headers,
+    dial_plan: &DialPlanSettings,
+    allowed: &[String],
+) -> Option<String> {
+    external_numbers(h)
+        .into_iter()
+        .filter_map(|n| dial_plan.normalize_incoming(n))
+        .find(|n| allowed.contains(n))
+}
+
 /// Loads the codes of a newly answered marked leg.
 async fn answered(ctx: &DoorCtx, matcher: &mut Matcher, ev: &talkops_esl::Event) {
     let h = &ev.headers;
@@ -134,28 +170,36 @@ async fn answered(ctx: &DoorCtx, matcher: &mut Matcher, ev: &talkops_esl::Event)
     ) else {
         return;
     };
-    let codes = match doors::get(&ctx.db, tenant, station).await {
-        Ok(s) if s.detects_unlock_codes() => {
-            doors::unlock_codes(&ctx.db, &ctx.secrets, tenant, station).await
+    let channel = h.get("Channel-Name").unwrap_or_default();
+    let loaded = async {
+        let s = doors::get(&ctx.db, tenant, station).await?;
+        if !s.detects_unlock_codes() {
+            return Ok(None);
         }
-        Ok(_) => return,
-        Err(err) => Err(err),
+        let by = if is_internal(channel) {
+            let mut by = json!({ "dtmf": true, "device": device(channel) });
+            if let Some(ext) = h.get("variable_talkops_extension_id") {
+                by["extension_id"] = json!(ext);
+            }
+            by
+        } else {
+            let dial_plan = settings::get(&ctx.db, tenant).await?.dial_plan();
+            match allowed_external(h, &dial_plan, &s.dtmf_allowed_numbers) {
+                Some(number) => json!({ "dtmf": true, "number": number }),
+                None => {
+                    tracing::debug!(%station, "external leg not allowed to use unlock codes");
+                    return Ok(None);
+                }
+            }
+        };
+        let codes = doors::unlock_codes(&ctx.db, &ctx.secrets, tenant, station).await?;
+        Ok::<_, talkops_core::error::CoreError>(Some((codes, by)))
     };
-    let codes = match codes {
-        Ok(c) => c,
-        Err(err) => {
-            tracing::warn!(%station, error = %err, "cannot load door unlock codes");
-            return;
-        }
-    };
-    let mut by = json!({
-        "dtmf": true,
-        "device": device(h.get("Channel-Name").unwrap_or_default()),
-    });
-    if let Some(ext) = h.get("variable_talkops_extension_id") {
-        by["extension_id"] = json!(ext);
+    match loaded.await {
+        Ok(Some((codes, by))) => matcher.answered(uuid, tenant, station, codes, by),
+        Ok(None) => {}
+        Err(err) => tracing::warn!(%station, error = %err, "cannot load door unlock codes"),
     }
-    matcher.answered(uuid, tenant, station, codes, by);
 }
 
 async fn open(ctx: DoorCtx, unlock: Unlock) {
@@ -303,6 +347,51 @@ mod tests {
         // A leg without codes is not followed.
         let mut m = matcher([None, None]);
         assert!(press(&mut m, "12", now).is_empty());
+    }
+
+    #[test]
+    fn external_legs_need_an_allowed_number() {
+        let dial_plan = DialPlanSettings {
+            country_code: "49".into(),
+            area_code: "89".into(),
+            national_prefix: "0".into(),
+            international_prefix: "00".into(),
+            ..Default::default()
+        };
+        let allowed = vec!["+491701234567".to_owned()];
+        let headers = |pairs: &[(&str, &str)]| {
+            let mut h = talkops_esl::Headers::default();
+            for (k, v) in pairs {
+                h.push((*k).into(), (*v).into());
+            }
+            h
+        };
+        // Forwarded mobile phone (outbound leg, national format).
+        let out = headers(&[
+            ("Call-Direction", "outbound"),
+            ("Caller-Destination-Number", "01701234567"),
+        ]);
+        assert_eq!(
+            allowed_external(&out, &dial_plan, &allowed).as_deref(),
+            Some("+491701234567")
+        );
+        // Inbound call: the caller counts, not the dialed number.
+        let inbound = headers(&[
+            ("Call-Direction", "inbound"),
+            ("variable_talkops_caller_number", "+491701234567"),
+            ("Caller-Destination-Number", "01709999999"),
+        ]);
+        assert!(allowed_external(&inbound, &dial_plan, &allowed).is_some());
+        let other = headers(&[
+            ("Call-Direction", "inbound"),
+            ("Caller-Caller-ID-Number", "+491709999999"),
+            ("Caller-Destination-Number", "01701234567"),
+        ]);
+        assert_eq!(allowed_external(&other, &dial_plan, &allowed), None);
+        assert_eq!(allowed_external(&out, &dial_plan, &[]), None);
+        assert!(is_internal("sofia/internal/8001vth@192.0.2.1"));
+        assert!(!is_internal("sofia/external/01701234567"));
+        assert!(!is_internal("loopback/8001-a"));
     }
 
     #[test]

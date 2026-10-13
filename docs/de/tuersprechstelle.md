@@ -103,10 +103,17 @@ Jedes Schloss kann einen eigenen Öffnungscode haben: 2 bis 8 Tasten aus
 `0-9`, `*` und `#`, z. B. `*1` für Tür 1 und `*2` für Tür 2. TalkOps erkennt
 den Code in diesen Gesprächen und öffnet die Tür über den HTTP-Zugang:
 
-- im Gespräch nach dem Klingeln (das Telefon, das annimmt, auch ein
-  weitergeleitetes Handy);
+- im Gespräch nach dem Klingeln (das Telefon, das annimmt);
 - bei einem direkten Anruf eines internen Telefons auf die Nebenstelle der
-  Türsprechstelle (z. B. `8001`).
+  Türsprechstelle (z. B. `8001`);
+- in externen Gesprächen nur von den Nummern unter **Externe Nummern für
+  Öffnungscodes**: Klingeln, das aufs Handy weitergeleitet wird, oder ein
+  Anruf von außen auf eine Rufnummer, die zur Türsprechstelle geht.
+
+Interne Telefone dürfen die Codes immer verwenden. Ist die Liste leer, kann
+kein externes Gespräch die Tür per Code öffnen. Eine Nummer pro Zeile, in
+jedem üblichen Format (`0170 1234567` oder `+491701234567`). TalkOps
+speichert die Nummern in E.164.
 
 Tasten an der Türsprechstelle selbst wertet TalkOps nicht aus. Eine Pause
 von mehr als 4 Sekunden beginnt einen neuen Code. Je Gespräch wertet TalkOps
@@ -121,8 +128,9 @@ Voraussetzungen und Hinweise:
 - Die beiden Codes dürfen nicht aufeinander enden (z. B. `#1` und `1`).
 - Einen anderen Code als den Entriegelungscode der Station verwenden. Sind
   beide gleich, öffnet die Tür zweimal.
-- Mindestens 4 Tasten verwenden, wenn unbekannte Anrufer die Nebenstelle der
-  Türsprechstelle erreichen können.
+- Bei Anrufen von außen vergleicht TalkOps die Rufnummer des Anrufers. Diese
+  lässt sich fälschen. Bei erlaubten externen Nummern einen Code mit
+  mindestens 4 Tasten verwenden.
 
 ## Livebild und Protokoll
 
@@ -177,7 +185,8 @@ rest_command:
   z. B. `8001vto` (Gerät **Bearbeiten** → SIP-Benutzername).
 - **Öffnungscode bewirkt nichts:** HTTP-Zugang eingerichtet (**Verbindung
   testen**)? Sendet das Telefon DTMF als RFC 2833? Das Ereignisprotokoll
-  zeigt jede Öffnung mit der Quelle `dtmf`.
+  zeigt jede Öffnung mit der Quelle `dtmf`. Bei externen Gesprächen: Steht
+  die Nummer unter **Externe Nummern für Öffnungscodes**?
 - **Kein Bild am Telefon:** Das Telefon muss Video (H.264) können, z. B.
   Yealink T58W/VP59. Audio funktioniert immer.
 - **Tür öffnet per Tastenton nicht:** Nur ein DTMF-Verfahren an der Station

@@ -898,6 +898,9 @@ export default {
 	'door.unlockCodeRemove': 'Remove unlock codes',
 	'door.unlockCodeHint':
 		'2-8 keys (0-9, *, #). When pressed on the phone during a ring or a call to the station, TalkOps opens the door through the HTTP access (required). Use a different code than the one stored in the station.',
+	'door.allowedNumbers': 'External numbers for unlock codes',
+	'door.allowedNumbersHint':
+		'One number per line. Internal phones can always use the codes. An external call (e.g. a ring forwarded to a mobile phone, or a call from outside to the door station) can use them only from these numbers. Empty: no external opening.',
 	'door.snapshots': 'Save a picture with every ring',
 	'door.events': 'Event log',
 	'door.webhook': 'Webhook (Home Assistant)',

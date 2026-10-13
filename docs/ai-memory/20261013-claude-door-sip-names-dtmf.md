@@ -33,6 +33,12 @@ the VTO SIP fields from the user's screenshot against TalkOps.
   internal call to the door extension (`set talkops_door_dtmf=<id>`).
   `door_dtmf.rs` follows CHANNEL_ANSWER, DTMF and CHANNEL_HANGUP_COMPLETE
   over the inbound ESL connection and opens the door through the HTTP API.
+- External legs (not `sofia/internal/…`) may use the codes only when their
+  number is in `door_stations.dtmf_allowed_numbers` (E.164, normalized with
+  the tenant dial plan, max. 20). Outbound legs (forwarded mobile) use the
+  dialed number; inbound legs use `talkops_caller_number`/caller ID. The
+  public dialplan marks a direct inbound call to the door extension only
+  when the caller is allowed.
 - User docs (EN/DE) have a VTO field table that matches the screenshot.
 
 ## Changes
@@ -56,6 +62,9 @@ the VTO SIP fields from the user's screenshot against TalkOps.
   `vto`.
 - User decision: TalkOps detects the code itself and opens through HTTP, in
   ring calls and in direct calls to the door station.
+- User decision: external callers only from an allow list of numbers.
+  Internal phones are always allowed. Caller ID can be falsified; the docs
+  recommend codes with at least 4 keys when external numbers are allowed.
 - Codes are encrypted (secret rule in CLAUDE.md, ADR 0008) and never returned
   or audited; the API returns `has_unlock_code_1/2`.
 - Detection by ESL events and a per-leg map (CHANNEL_ANSWER carries channel
@@ -78,7 +87,8 @@ the VTO SIP fields from the user's screenshot against TalkOps.
 
 ## Dependencies and open work
 
-- Migration ID: `20261029000001_door_unlock_codes`.
+- Migration ID: `20261029000001_door_unlock_codes` (codes and
+  `dtmf_allowed_numbers`).
 - Real-hardware check: VTO registration with `8001vto`, DTMF detection on a
   real FreeSWITCH (RFC 2833 events on the B-leg of a ring).
 - Queue and voice-menu targets of a ring: the mark is exported to bridged

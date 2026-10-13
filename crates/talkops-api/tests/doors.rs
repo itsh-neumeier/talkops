@@ -421,6 +421,109 @@ async fn door_station(db: PgPool) {
     assert_eq!(events[0]["detail"]["door"], 2);
     fake.opened.lock().unwrap().pop();
 
+    // External legs: only numbers in the allow list may use the codes.
+    let (status, station) = admin
+        .put(
+            &format!("/api/v1/door-stations/{sid}"),
+            json!({"name": "Front door", "extension_id": id(&door_ext),
+                   "host": host, "port": port, "doors": 2,
+                   "destination_type": "extension", "destination_id": id(&ext20),
+                   "buttons": [{"number": "9902", "type": "extension", "id": id(&ext21)}],
+                   "events_enabled": false,
+                   "dtmf_allowed_numbers": ["0170 1234567", "+491701234567", ""]}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{station}");
+    assert_eq!(station["dtmf_allowed_numbers"], json!(["+491701234567"]));
+    assert_eq!(station["has_unlock_code_1"], true, "codes kept");
+    let (_, list) = kim.get("/api/v1/door-stations").await;
+    assert_eq!(list[0]["dtmf_allowed_numbers"], json!([]), "admins only");
+    let (status, _) = admin
+        .put(
+            &format!("/api/v1/door-stations/{sid}"),
+            json!({"name": "Front door", "extension_id": id(&door_ext),
+                   "dtmf_allowed_numbers": ["abc"]}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    // An inbound call from an allowed number to the door station's line.
+    let (_, trunk) = admin
+        .post(
+            "/api/v1/trunks",
+            json!({"name": "LEONET", "preset": "leonet"}),
+        )
+        .await;
+    let (status, line) = admin
+        .post(
+            &format!("/api/v1/trunks/{}/lines", id(&trunk)),
+            json!({"e164": "+49891234567", "password": "leo-secret",
+                   "destination_extension_id": id(&door_ext)}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{line}");
+    let inbound = |caller: &'static str| {
+        let router = router.clone();
+        async move {
+            let (_, xml) = fs_post(
+                &router,
+                "/fs/xml",
+                &[
+                    ("section", "dialplan"),
+                    ("Caller-Context", "public"),
+                    ("Caller-Destination-Number", "+49891234567"),
+                    ("Caller-Caller-ID-Number", caller),
+                ],
+            )
+            .await;
+            actions(&xml)
+        }
+    };
+    let a = inbound("+491701234567").await;
+    assert!(has(&a, "set", &format!("talkops_door_dtmf={sid}")), "{a:?}");
+    let a = inbound("+491709999999").await;
+    assert!(
+        !a.iter().any(|(_, d)| d.contains("talkops_door_dtmf")),
+        "{a:?}"
+    );
+    // A ring forwarded to a mobile phone: the allowed number may open.
+    let answer_ext = |leg: &str, dialed: &str| {
+        event(&[
+            ("Event-Name", "CHANNEL_ANSWER"),
+            ("Unique-ID", leg),
+            ("Call-Direction", "outbound"),
+            ("Channel-Name", "sofia/external/01701234567"),
+            ("Caller-Destination-Number", dialed),
+            ("variable_talkops_door_dtmf", &sid),
+            ("variable_talkops_tenant_id", TENANT),
+        ])
+    };
+    let press = |leg: &str, d: &str| {
+        event(&[
+            ("Event-Name", "DTMF"),
+            ("Unique-ID", leg),
+            ("DTMF-Digit", d),
+        ])
+    };
+    let mobile = "6f1c2c1e-0000-4000-8000-000000000002";
+    let stranger = "6f1c2c1e-0000-4000-8000-000000000003";
+    for (leg, dialed) in [(mobile, "01701234567"), (stranger, "01709999999")] {
+        talkops_api::door_dtmf::handle(&door_ctx, &mut matcher, &answer_ext(leg, dialed)).await;
+    }
+    let mut opened = Vec::new();
+    for leg in [mobile, stranger] {
+        for d in ["*", "1"] {
+            if let Some(u) =
+                talkops_api::door_dtmf::handle(&door_ctx, &mut matcher, &press(leg, d)).await
+            {
+                opened.push((leg, u));
+            }
+        }
+    }
+    assert_eq!(opened.len(), 1, "{opened:?}");
+    assert_eq!(opened[0].0, mobile);
+    assert_eq!(opened[0].1.door, 1);
+    assert_eq!(opened[0].1.by["number"], "+491701234567");
+
     // Token hook for Home Assistant.
     let hook = |token: Option<String>| {
         let mut req = Request::post(format!("/hooks/door/{sid}/open"))

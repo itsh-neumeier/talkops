@@ -46,6 +46,9 @@ pub struct DoorStation {
     /// A DTMF unlock code is stored for door 1 / door 2 (never returned).
     pub has_unlock_code_1: bool,
     pub has_unlock_code_2: bool,
+    /// External numbers (E.164) that may open with the unlock codes, e.g. a
+    /// forwarded mobile phone. Internal phones always may.
+    pub dtmf_allowed_numbers: Vec<String>,
     pub online: bool,
     pub model: String,
     pub last_seen: Option<DateTime<Utc>>,
@@ -84,7 +87,7 @@ const COLUMNS: &str = "id, name, extension_id, host, port, username, password_en
      doors, destination_type, destination_id, buttons, events_enabled, snapshots, \
      webhook_url_enc IS NOT NULL AS has_webhook, api_token_hash IS NOT NULL AS has_api_token, \
      unlock_code_1_enc IS NOT NULL AS has_unlock_code_1, \
-     unlock_code_2_enc IS NOT NULL AS has_unlock_code_2, online, model, last_seen, enabled";
+     unlock_code_2_enc IS NOT NULL AS has_unlock_code_2, dtmf_allowed_numbers, online, model, last_seen, enabled";
 
 #[derive(Debug, Clone, Deserialize, utoipa::ToSchema)]
 pub struct DoorStationInput {
@@ -122,6 +125,10 @@ pub struct DoorStationInput {
     /// The same for door 2 (only for stations with two doors).
     #[serde(default)]
     pub unlock_code_2: Option<String>,
+    /// External numbers that may use the unlock codes (any usual format,
+    /// stored as E.164). Empty: only internal phones.
+    #[serde(default)]
+    pub dtmf_allowed_numbers: Vec<String>,
     #[serde(default = "yes")]
     pub enabled: bool,
 }
@@ -161,7 +168,12 @@ fn valid_dialed(n: &str) -> bool {
             .all(|b| b.is_ascii_digit() || b == b'#' || b == b'*')
 }
 
-async fn validate(pool: &PgPool, tenant: TenantId, input: &DoorStationInput) -> CoreResult<()> {
+/// Checks the input; returns the allowed external numbers as E.164.
+async fn validate(
+    pool: &PgPool,
+    tenant: TenantId,
+    input: &DoorStationInput,
+) -> CoreResult<Vec<String>> {
     let invalid = |m: &str| Err(CoreError::Validation(m.into()));
     if input.name.trim().is_empty() || input.name.len() > 64 {
         return invalid("name must have 1-64 characters");
@@ -223,7 +235,45 @@ async fn validate(pool: &PgPool, tenant: TenantId, input: &DoorStationInput) -> 
         }
         numbering::check_destination(pool, tenant, b.kind, b.id).await?;
     }
-    Ok(())
+    allowed_numbers(pool, tenant, &input.dtmf_allowed_numbers).await
+}
+
+/// Normalizes the external numbers that may use the unlock codes to E.164
+/// with the tenant's dial plan (`0170…` → `+49170…`).
+async fn allowed_numbers(
+    pool: &PgPool,
+    tenant: TenantId,
+    raw: &[String],
+) -> CoreResult<Vec<String>> {
+    let raw: Vec<&str> = raw
+        .iter()
+        .map(|n| n.trim())
+        .filter(|n| !n.is_empty())
+        .collect();
+    if raw.is_empty() {
+        return Ok(Vec::new());
+    }
+    if raw.len() > 20 {
+        return Err(CoreError::Validation("at most 20 allowed numbers".into()));
+    }
+    let dial_plan = crate::settings::get(pool, tenant).await?.dial_plan();
+    let mut numbers: Vec<String> = Vec::new();
+    for n in raw {
+        let compact: String = n
+            .chars()
+            .filter(|c| !matches!(c, ' ' | '-' | '/' | '(' | ')'))
+            .collect();
+        let e164 = dial_plan
+            .normalize_incoming(&compact)
+            .filter(|e| (6..=16).contains(&e.len()))
+            .ok_or_else(|| {
+                CoreError::Validation(format!("allowed number {n}: not a phone number"))
+            })?;
+        if !numbers.contains(&e164) {
+            numbers.push(e164);
+        }
+    }
+    Ok(numbers)
 }
 
 pub async fn list<'e>(db: impl PgExecutor<'e>, tenant: TenantId) -> CoreResult<Vec<DoorStation>> {
@@ -285,7 +335,7 @@ pub async fn create(
     secrets: &SecretBox,
     input: &DoorStationInput,
 ) -> CoreResult<DoorStation> {
-    validate(pool, tenant, input).await?;
+    let allowed = validate(pool, tenant, input).await?;
     let password = encrypt_opt(secrets, input.password.as_deref())?.flatten();
     let webhook = encrypt_opt(secrets, input.webhook_url.as_deref())?.flatten();
     let code_1 = encrypt_opt(secrets, input.unlock_code_1.as_deref())?.flatten();
@@ -294,8 +344,8 @@ pub async fn create(
         "INSERT INTO door_stations (tenant_id, name, extension_id, host, port, username, password_enc,
                                     doors, destination_type, destination_id, buttons, events_enabled,
                                     snapshots, webhook_url_enc, enabled, unlock_code_1_enc,
-                                    unlock_code_2_enc)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+                                    unlock_code_2_enc, dtmf_allowed_numbers)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
          RETURNING {COLUMNS}"
     );
     sqlx::query_as(&sql)
@@ -316,6 +366,7 @@ pub async fn create(
         .bind(input.enabled)
         .bind(code_1)
         .bind(code_2)
+        .bind(&allowed)
         .fetch_one(pool)
         .await
         .map_err(|e| match e {
@@ -333,7 +384,7 @@ pub async fn update(
     id: Uuid,
     input: &DoorStationInput,
 ) -> CoreResult<DoorStation> {
-    validate(pool, tenant, input).await?;
+    let allowed = validate(pool, tenant, input).await?;
     check_kept_codes(pool, secrets, tenant, id, input).await?;
     let password = encrypt_opt(secrets, input.password.as_deref())?;
     let webhook = encrypt_opt(secrets, input.webhook_url.as_deref())?;
@@ -353,7 +404,7 @@ pub async fn update(
              enabled = $18,
              unlock_code_1_enc = CASE WHEN $19 THEN $20 ELSE unlock_code_1_enc END,
              unlock_code_2_enc = CASE WHEN $21 THEN $22 ELSE unlock_code_2_enc END,
-             updated_at = now()
+             dtmf_allowed_numbers = $23, updated_at = now()
          WHERE tenant_id = $1 AND id = $2 RETURNING {COLUMNS}"
     );
     sqlx::query_as(&sql)
@@ -379,6 +430,7 @@ pub async fn update(
         .bind(code_1.flatten())
         .bind(code_2.is_some())
         .bind(code_2.flatten())
+        .bind(&allowed)
         .fetch_one(pool)
         .await
         .map_err(|e| match e {
@@ -709,6 +761,7 @@ mod tests {
             has_api_token: false,
             has_unlock_code_1: false,
             has_unlock_code_2: false,
+            dtmf_allowed_numbers: vec![],
             online: false,
             model: String::new(),
             last_seen: None,

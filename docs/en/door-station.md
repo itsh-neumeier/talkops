@@ -101,10 +101,17 @@ Each lock can have its own unlock code: 2 to 8 keys of `0-9`, `*` and `#`,
 e.g. `*1` for door 1 and `*2` for door 2. TalkOps detects the code in these
 calls and opens the door through the HTTP access:
 
-- the call after a ring (the phone that answers, also a forwarded mobile
-  phone);
+- the call after a ring (the phone that answers);
 - a direct call from an internal phone to the door station's extension
-  (e.g. `8001`).
+  (e.g. `8001`);
+- external calls only from the numbers in **External numbers for unlock
+  codes**: a ring that is forwarded to a mobile phone, or a call from
+  outside to a number that goes to the door station.
+
+Internal phones can always use the codes. If the list is empty, no external
+call can open the door with a code. Enter one number per line, in any usual
+format (`0170 1234567` or `+491701234567`). TalkOps stores the numbers in
+E.164.
 
 Keys pressed at the door station itself are not evaluated. A pause of more
 than 4 seconds starts a new code. TalkOps evaluates at most 40 keys in each
@@ -119,8 +126,9 @@ Requirements and notes:
 - The two codes must not end with each other (e.g. `#1` and `1`).
 - Use a different code than the unlock code stored in the station. If both
   are identical, the door opens two times.
-- Use at least 4 keys if callers that you do not trust can reach the door
-  station's extension.
+- For a call from outside, TalkOps compares the caller ID. A caller can
+  falsify the caller ID. Use a code with at least 4 keys when you allow
+  external numbers.
 
 ## Live picture and log
 
@@ -174,7 +182,8 @@ rest_command:
   `8001vto` (device **Edit** → SIP user name).
 - **Unlock code does nothing:** is the HTTP access configured (**Test
   connection**)? Does the phone send DTMF as RFC 2833? The event log shows
-  every opening with the source `dtmf`.
+  every opening with the source `dtmf`. For an external call: is the number
+  in **External numbers for unlock codes**?
 - **No picture on the phone:** the phone must support video (H.264), e.g.
   Yealink T58W/VP59. Audio always works.
 - **Key tone does not open the door:** select only one DTMF method on the

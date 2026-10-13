@@ -1139,6 +1139,15 @@ async fn plan_public(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Actio
     if destination_type == NumberDestination::Extension {
         if let Some(ext) = destination_id {
             actions.push(set("talkops_extension_id", ext.to_string()));
+            // A direct call from an allowed external number to a door
+            // station: the caller's leg listens for the unlock code.
+            if let (Some(station), Some(caller)) =
+                (doors::for_extension(pool, ext).await?, caller_e164.as_ref())
+            {
+                if station.detects_unlock_codes() && station.dtmf_allowed_numbers.contains(caller) {
+                    actions.push(set(crate::door_dtmf::MARK, station.id.to_string()));
+                }
+            }
         }
     }
     let routed = match (destination_type, destination_id) {

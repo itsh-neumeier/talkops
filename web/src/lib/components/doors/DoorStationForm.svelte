@@ -36,6 +36,8 @@
 		unlock_code_1: '',
 		unlock_code_2: '',
 		remove_codes: false,
+		// One number per line.
+		dtmf_allowed_numbers: (station?.dtmf_allowed_numbers ?? []).join('\n'),
 		enabled: station?.enabled ?? true
 	});
 	let extensions = $state<Extension[]>([]);
@@ -59,6 +61,10 @@
 			...form,
 			unlock_code_1: code(form.unlock_code_1),
 			unlock_code_2: Number(form.doors) > 1 ? code(form.unlock_code_2) : '',
+			dtmf_allowed_numbers: form.dtmf_allowed_numbers
+				.split('\n')
+				.map((n) => n.trim())
+				.filter((n) => n !== ''),
 			port: Number(form.port),
 			doors: Number(form.doors),
 			// Empty password/webhook fields keep the stored value.
@@ -211,6 +217,16 @@
 			>
 		{/if}
 		<p class="hint">{t('door.unlockCodeHint')}</p>
+		<div>
+			<label for="d-allowed">{t('door.allowedNumbers')} ({t('common.optional')})</label>
+			<textarea
+				id="d-allowed"
+				class="input font-mono"
+				rows="3"
+				bind:value={form.dtmf_allowed_numbers}
+				placeholder="+491701234567"></textarea>
+			<p class="hint">{t('door.allowedNumbersHint')}</p>
+		</div>
 		<label class="flex items-center gap-2"
 			><input type="checkbox" bind:checked={form.snapshots} /> {t('door.snapshots')}</label
 		>

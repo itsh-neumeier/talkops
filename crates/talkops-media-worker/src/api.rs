@@ -12,7 +12,7 @@
 //! line.
 
 use std::path::Path;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 use anyhow::{Context, bail};
 use serde::Deserialize;
@@ -31,13 +31,14 @@ const MAX_UTTERANCE_SECS: f32 = 30.0;
 const TIMEOUT_SECS: &str = "900";
 
 /// Transcribes a WAV file with the API. Stereo files are split into
-/// `caller` and `called`, as with local Whisper.
+/// `caller` and `called`, as with local Whisper. Also returns the seconds
+/// of audio the provider accepted (for the usage estimate).
 pub async fn transcribe(
     cfg: &ApiConfig,
     wav: &Path,
     language: &str,
     vocabulary: &str,
-) -> anyhow::Result<Vec<Segment>> {
+) -> anyhow::Result<(Vec<Segment>, f64)> {
     let work = tempdir()?;
     let channels = {
         let (wav, dir) = (wav.to_owned(), work.path.clone());
@@ -45,6 +46,7 @@ pub async fn transcribe(
     };
     let prompt = initial_prompt(language, vocabulary);
     let mut segments = Vec::new();
+    let mut sent = 0;
     for (i, (speaker, _, samples)) in channels.into_iter().enumerate() {
         let request = Request {
             cfg,
@@ -52,19 +54,21 @@ pub async fn transcribe(
             prompt: &prompt,
             dir: &work.path,
             minimal: AtomicBool::new(false),
+            sent: AtomicUsize::new(0),
         };
         let mut parsed = match request.timed(&samples, i).await? {
             Some(segs) => segs,
             // No timestamps from this model: send each stretch of speech.
             None => request.by_utterance(&samples, i).await?,
         };
+        sent += request.sent.load(Ordering::Relaxed);
         for seg in &mut parsed {
             seg.speaker = speaker.to_owned();
         }
         segments.extend(parsed.into_iter().filter(|s| !s.text.trim().is_empty()));
     }
     segments.sort_by(|a, b| a.start.total_cmp(&b.start));
-    Ok(segments)
+    Ok((segments, sent as f64 / f64::from(SAMPLE_RATE)))
 }
 
 struct Request<'a> {
@@ -74,6 +78,8 @@ struct Request<'a> {
     dir: &'a Path,
     /// The server rejects `prompt`/`response_format`: send only the basics.
     minimal: AtomicBool,
+    /// Samples the server accepted.
+    sent: AtomicUsize,
 }
 
 /// Which form fields a request carries.
@@ -121,6 +127,7 @@ impl Request<'_> {
                 Outcome::Ok(a) => a,
                 Outcome::Rejected(_) => return Ok(None),
             };
+            self.sent.fetch_add(part.len(), Ordering::Relaxed);
             let Some(segs) = answer.segments else {
                 // Accepted, but without timestamps.
                 return Ok(None);
@@ -161,6 +168,7 @@ impl Request<'_> {
                 }
             }
             let answer = answer.context("no answer from transcription API")?;
+            self.sent.fetch_add(to - from, Ordering::Relaxed);
             out.push(Segment {
                 start,
                 end,

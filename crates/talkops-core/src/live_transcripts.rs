@@ -94,7 +94,7 @@ pub async fn request(
             .execute(&mut *tx)
             .await?;
     }
-    let mut preview: Preview = sqlx::query_as("SELECT p.id, p.started_at, p.processed_secs, p.segments, j.status::text AS status FROM live_transcript_previews p JOIN jobs j ON j.id = p.job_id WHERE p.id = $1")
+    let mut preview: Preview = sqlx::query_as("SELECT p.id, p.started_at, p.processed_secs, p.segments, CASE WHEN p.stream_failed_at > now() - interval '30 seconds' THEN 'failed' ELSE j.status::text END AS status FROM live_transcript_previews p JOIN jobs j ON j.id = p.job_id WHERE p.id = $1")
         .bind(id).fetch_one(&mut *tx).await?;
     tx.commit().await?;
     if previous_status.as_deref() == Some("failed") {
@@ -134,6 +134,42 @@ pub async fn save(
         .collect();
     Ok(sqlx::query("UPDATE live_transcript_previews SET cursor_frames = $4, processed_secs = $5, segments = $6 WHERE id = $1 AND tenant_id = $2 AND cursor_frames = $3 AND requested_at > now() - interval '30 seconds'")
         .bind(id).bind(tenant).bind(previous).bind(cursor).bind(seconds).bind(Json(segments)).execute(pool).await?.rows_affected() == 1)
+}
+
+/// Takes the realtime stream of a preview for a worker. Fails while another
+/// worker streams it, the viewer is gone, or it failed in the last 30 s.
+pub async fn claim_stream(
+    pool: &PgPool,
+    tenant: TenantId,
+    id: Uuid,
+    owner: &str,
+) -> CoreResult<bool> {
+    Ok(sqlx::query("UPDATE live_transcript_previews SET stream_owner = $3, stream_beat = now() WHERE id = $1 AND tenant_id = $2 AND requested_at > now() - interval '30 seconds' AND (stream_beat IS NULL OR stream_beat < now() - interval '20 seconds' OR stream_owner = $3) AND (stream_failed_at IS NULL OR stream_failed_at < now() - interval '30 seconds')")
+        .bind(id).bind(tenant).bind(owner).execute(pool).await?.rows_affected() == 1)
+}
+
+/// Keeps a stream alive; `false` means stop (viewer gone or lease lost).
+pub async fn beat_stream(
+    pool: &PgPool,
+    tenant: TenantId,
+    id: Uuid,
+    owner: &str,
+) -> CoreResult<bool> {
+    Ok(sqlx::query("UPDATE live_transcript_previews SET stream_beat = now() WHERE id = $1 AND tenant_id = $2 AND stream_owner = $3 AND requested_at > now() - interval '30 seconds'")
+        .bind(id).bind(tenant).bind(owner).execute(pool).await?.rows_affected() == 1)
+}
+
+/// Ends a stream; a failed one is not restarted for 30 s.
+pub async fn release_stream(
+    pool: &PgPool,
+    tenant: TenantId,
+    id: Uuid,
+    owner: &str,
+    failed: bool,
+) -> CoreResult<()> {
+    sqlx::query("UPDATE live_transcript_previews SET stream_owner = NULL, stream_beat = NULL, stream_failed_at = CASE WHEN $4 THEN now() ELSE stream_failed_at END WHERE id = $1 AND tenant_id = $2 AND stream_owner = $3")
+        .bind(id).bind(tenant).bind(owner).bind(failed).execute(pool).await?;
+    Ok(())
 }
 
 pub async fn cleanup(pool: &PgPool) -> CoreResult<()> {
@@ -308,5 +344,53 @@ mod tests {
             .unwrap();
         assert!(!ids.contains(&job.id));
         assert!(ids.contains(&other));
+    }
+
+    #[sqlx::test(migrator = "crate::db::MIGRATOR")]
+    async fn realtime_streams_have_one_owner(pool: PgPool) {
+        let tenant = TenantId::DEFAULT;
+        let user = user(&pool).await;
+        let call = Uuid::new_v4();
+        let preview = request(&pool, tenant, user, call, &file(call), Utc::now())
+            .await
+            .unwrap()
+            .0;
+        assert!(claim_stream(&pool, tenant, preview.id, "a").await.unwrap());
+        assert!(claim_stream(&pool, tenant, preview.id, "a").await.unwrap());
+        assert!(!claim_stream(&pool, tenant, preview.id, "b").await.unwrap());
+        assert!(
+            !claim_stream(&pool, TenantId(Uuid::new_v4()), preview.id, "a")
+                .await
+                .unwrap()
+        );
+        assert!(beat_stream(&pool, tenant, preview.id, "a").await.unwrap());
+        assert!(!beat_stream(&pool, tenant, preview.id, "b").await.unwrap());
+        // A stale lease goes to another worker.
+        sqlx::query(
+            "UPDATE live_transcript_previews SET stream_beat = now() - interval '21 seconds'",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        assert!(claim_stream(&pool, tenant, preview.id, "b").await.unwrap());
+        assert!(!beat_stream(&pool, tenant, preview.id, "a").await.unwrap());
+        // A failed stream pauses and shows as failed.
+        release_stream(&pool, tenant, preview.id, "b", true)
+            .await
+            .unwrap();
+        assert!(!claim_stream(&pool, tenant, preview.id, "a").await.unwrap());
+        let job = jobs::claim(&pool, "test", &[JOB]).await.unwrap().unwrap();
+        jobs::complete(&pool, job.id).await.unwrap();
+        let again = request(&pool, tenant, user, call, &file(call), Utc::now())
+            .await
+            .unwrap()
+            .0;
+        assert_eq!(again.status, "failed");
+        // The viewer leaves: no new stream.
+        sqlx::query("UPDATE live_transcript_previews SET stream_failed_at = NULL, requested_at = now() - interval '31 seconds'")
+            .execute(&pool)
+            .await
+            .unwrap();
+        assert!(!claim_stream(&pool, tenant, preview.id, "a").await.unwrap());
     }
 }

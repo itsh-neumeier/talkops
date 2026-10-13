@@ -1,23 +1,35 @@
-//! Read bounded PCM snapshots without relying on an unfinished WAV data length.
+//! Live previews of active calls (ADR 0022, 0024). Reads bounded PCM from
+//! the growing recording without relying on an unfinished WAV data length.
 
 use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
 use std::time::Duration;
 
 use anyhow::{Context, ensure};
+use talkops_core::transcription_profiles::{self as profiles, Engine, Purpose};
 use talkops_core::{jobs::Job, live_transcripts, settings};
 use uuid::Uuid;
 
-use crate::{Ctx, transcribe};
+use crate::{Ctx, realtime, transcribe};
 
-struct Snapshot {
-    start: u64,
-    end: u64,
-    rate: u32,
+/// Complete PCM16 stereo frames `start..end` of a growing recording.
+pub(crate) struct Pcm {
+    pub start: u64,
+    pub end: u64,
+    pub rate: u32,
+    /// Interleaved caller/called samples.
+    pub samples: Vec<i16>,
 }
 
-/// FreeSWITCH writes PCM16 stereo. Read only complete frames already on disk.
-fn snapshot(source: &Path, output: &Path, cursor: i64) -> anyhow::Result<Option<Snapshot>> {
+/// FreeSWITCH writes PCM16 stereo. Read only complete frames already on
+/// disk, at least `min` and at most `max` seconds from `cursor`. A negative
+/// cursor starts eight seconds before the end.
+pub(crate) fn read_pcm(
+    source: &Path,
+    cursor: i64,
+    min: f32,
+    max: f32,
+) -> anyhow::Result<Option<Pcm>> {
     let mut file = std::fs::File::open(source)?;
     let size = file.metadata()?.len();
     let mut header = [0u8; 12];
@@ -63,6 +75,7 @@ fn snapshot(source: &Path, output: &Path, cursor: i64) -> anyhow::Result<Option<
     };
     let (channels, rate) = format.context("WAV without format")?;
     let frame_bytes = u64::from(channels * 2);
+    let secs = |s: f32| (s * rate as f32) as u64;
     // Leave 500 ms behind the writer. Never read or allocate the whole recording.
     let frames = size.saturating_sub(data) / frame_bytes;
     let available = frames.saturating_sub(u64::from(rate) / 2);
@@ -72,29 +85,48 @@ fn snapshot(source: &Path, output: &Path, cursor: i64) -> anyhow::Result<Option<
         cursor as u64
     };
     ensure!(start <= frames, "recording was truncated");
-    if available.saturating_sub(start) < u64::from(rate) * 2 {
+    if available.saturating_sub(start) < secs(min).max(1) {
         return Ok(None);
     }
-    let end = available.min(start + u64::from(rate) * 8);
+    let end = available.min(start + secs(max));
     file.seek(SeekFrom::Start(data + start * frame_bytes))?;
     let mut bytes = vec![0; ((end - start) * frame_bytes) as usize];
     file.read_exact(&mut bytes)?;
+    let samples = bytes
+        .chunks_exact(2)
+        .map(|s| i16::from_le_bytes([s[0], s[1]]))
+        .collect();
+    Ok(Some(Pcm {
+        start,
+        end,
+        rate,
+        samples,
+    }))
+}
+
+/// An eight-second WAV snapshot (two seconds at least) for one recognition.
+fn snapshot(source: &Path, output: &Path, cursor: i64) -> anyhow::Result<Option<Pcm>> {
+    let Some(pcm) = read_pcm(source, cursor, 2.0, 8.0)? else {
+        return Ok(None);
+    };
     let mut writer = hound::WavWriter::create(
         output,
         hound::WavSpec {
-            channels,
-            sample_rate: rate,
+            channels: 2,
+            sample_rate: pcm.rate,
             bits_per_sample: 16,
             sample_format: hound::SampleFormat::Int,
         },
     )?;
-    for sample in bytes.chunks_exact(2) {
-        writer.write_sample(i16::from_le_bytes([sample[0], sample[1]]))?;
+    for sample in &pcm.samples {
+        writer.write_sample(*sample)?;
     }
     writer.finalize()?;
-    Ok(Some(Snapshot { start, end, rate }))
+    Ok(Some(pcm))
 }
 
+/// Runs one preview step: a snapshot with a local model or a cloud API, or
+/// (Realtime API) starts a stream that keeps running in the background.
 pub async fn run(ctx: &Ctx, job: &Job) -> anyhow::Result<()> {
     #[derive(serde::Deserialize)]
     struct Payload {
@@ -112,6 +144,32 @@ pub async fn run(ctx: &Ctx, job: &Job) -> anyhow::Result<()> {
     let root = ctx.recordings_dir.canonicalize()?;
     let source = root.join(&work.file).canonicalize()?;
     ensure!(source.starts_with(&root), "recording outside media volume");
+    let language = talkops_core::prompts::language(&settings.default_language);
+    let engine = profiles::engine(&ctx.pool, job.tenant_id, Purpose::Live)
+        .await?
+        .unwrap_or(Engine::Local(settings::TranscriptionQuality::Base));
+    if let Engine::Cloud {
+        provider_id,
+        model,
+        realtime: true,
+        price,
+    } = &engine
+    {
+        let cfg = crate::cloud_config(ctx, job.tenant_id, *provider_id, model).await?;
+        return realtime::start(realtime::Start {
+            pool: ctx.pool.clone(),
+            worker_id: ctx.worker_id.clone(),
+            streams: ctx.streams.clone(),
+            tenant: job.tenant_id,
+            preview: payload.preview_id,
+            source,
+            cfg,
+            language: language.to_owned(),
+            vocabulary: settings.transcription_vocabulary,
+            price: *price,
+        })
+        .await;
+    }
     let temporary = transcribe::tempdir()?;
     let output = temporary.path.join("preview.wav");
     let (copy, path, cursor) = (source.clone(), output.clone(), work.cursor_frames);
@@ -119,19 +177,17 @@ pub async fn run(ctx: &Ctx, job: &Job) -> anyhow::Result<()> {
     else {
         return Ok(());
     };
-    // A small local model bounds memory and leaves the final quality choice intact.
-    let whisper = transcribe::Whisper {
-        model: "base".into(),
-        threads: ctx.whisper.threads.clamp(1, 2),
-        ..ctx.whisper.clone()
-    };
-    let options = transcribe::Options {
-        vocabulary: settings.transcription_vocabulary,
-        ..Default::default()
-    };
-    let mut segments = tokio::time::timeout(
+    let (mut segments, _) = tokio::time::timeout(
         Duration::from_secs(60),
-        whisper.transcribe(&output, &settings.default_language, &options),
+        crate::run_engine(
+            ctx,
+            job.tenant_id,
+            Purpose::Live,
+            engine,
+            &output,
+            language,
+            &settings.transcription_vocabulary,
+        ),
     )
     .await
     .context("live recognition timed out")??;

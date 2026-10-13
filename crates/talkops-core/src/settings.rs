@@ -42,14 +42,6 @@ pub struct TenantSettings {
     pub hold_music: String,
     #[serde(default)]
     pub hold_music_clip_id: Option<Uuid>,
-    /// Engine of the first (quick) pass: `fast`, `accurate`, `best`,
-    /// `german` (see [TranscriptionQuality]) or `api` (see [TranscriptionEngine]).
-    #[serde(default = "default_quality")]
-    pub transcription_quality: String,
-    /// Engine of an optional second, more accurate pass that replaces the
-    /// first transcript; empty = none.
-    #[serde(default)]
-    pub transcription_refine: String,
     /// Extensions may dial SIP addresses (`user@domain`).
     #[serde(default = "yes")]
     pub sip_uri_dialing: bool,
@@ -58,13 +50,12 @@ pub struct TenantSettings {
     pub transcription_vocabulary: String,
 }
 
-fn default_quality() -> String {
-    "fast".into()
-}
-
-/// Accuracy of transcriptions; better costs time and memory.
+/// A local Whisper model; better costs time and memory. Which one runs for
+/// which purpose is set in [crate::transcription_profiles].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TranscriptionQuality {
+    /// `base`: small and quick, for live previews on weak hardware.
+    Base,
     /// The worker's configured model (default `large-v3-turbo-q5_0`).
     Fast,
     /// `large-v3-q5_0`: full decoder, about 2 GB RAM, several times slower.
@@ -79,6 +70,7 @@ pub enum TranscriptionQuality {
 impl TranscriptionQuality {
     pub fn parse(s: &str) -> Option<Self> {
         match s {
+            "base" => Some(Self::Base),
             "fast" => Some(Self::Fast),
             "accurate" => Some(Self::Accurate),
             "best" => Some(Self::Best),
@@ -86,33 +78,15 @@ impl TranscriptionQuality {
             _ => None,
         }
     }
-}
 
-/// Where a transcription runs: a local Whisper model or an
-/// OpenAI-compatible API ([crate::transcription_api]).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TranscriptionEngine {
-    Local(TranscriptionQuality),
-    Api,
-}
-
-impl TranscriptionEngine {
-    pub fn parse(s: &str) -> Option<Self> {
-        match s {
-            "api" => Some(Self::Api),
-            other => TranscriptionQuality::parse(other).map(Self::Local),
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Base => "base",
+            Self::Fast => "fast",
+            Self::Accurate => "accurate",
+            Self::Best => "best",
+            Self::German => "german",
         }
-    }
-
-    /// The engine of the second pass, if one is configured and differs
-    /// from the first.
-    pub fn refine(settings: &TenantSettings) -> Option<Self> {
-        if settings.transcription_refine.is_empty()
-            || settings.transcription_refine == settings.transcription_quality
-        {
-            return None;
-        }
-        Self::parse(&settings.transcription_refine)
     }
 }
 
@@ -143,8 +117,7 @@ const COLUMNS: &str = "country_code, area_code, national_prefix, international_p
                        emergency_numbers, external_ip, default_language, default_number_id, timezone, \
                        record_inbound, record_outbound, record_internal, recording_announcement, \
                        recording_retention_days, transcription_enabled, hold_music, hold_music_clip_id, \
-                       transcription_quality, transcription_vocabulary, transcription_refine, \
-                       sip_uri_dialing";
+                       transcription_vocabulary, sip_uri_dialing";
 
 pub async fn get<'e>(db: impl PgExecutor<'e>, tenant: TenantId) -> CoreResult<TenantSettings> {
     let sql = format!("SELECT {COLUMNS} FROM tenant_settings WHERE tenant_id = $1");
@@ -163,8 +136,7 @@ pub async fn update<'e>(
              record_inbound = $11, record_outbound = $12, record_internal = $13,
              recording_announcement = $14, recording_retention_days = $15,
              transcription_enabled = $16, hold_music = $17, hold_music_clip_id = $18,
-             transcription_quality = $19, transcription_vocabulary = $20,
-             transcription_refine = $21, sip_uri_dialing = $22, updated_at = now()
+             transcription_vocabulary = $19, sip_uri_dialing = $20, updated_at = now()
          WHERE tenant_id = $1 RETURNING {COLUMNS}"
     );
     Ok(sqlx::query_as(&sql)
@@ -186,9 +158,7 @@ pub async fn update<'e>(
         .bind(s.transcription_enabled)
         .bind(&s.hold_music)
         .bind(s.hold_music_clip_id)
-        .bind(&s.transcription_quality)
         .bind(s.transcription_vocabulary.trim())
-        .bind(&s.transcription_refine)
         .bind(s.sip_uri_dialing)
         .fetch_one(db)
         .await?)

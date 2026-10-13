@@ -51,97 +51,157 @@ async fn transcription_settings(db: PgPool) {
         .await;
     let ben = login(&router, "ben", "ben-password-1").await.unwrap();
 
-    // Two passes: quick local first, API second.
-    let (_, mut s) = admin.get("/api/v1/settings").await;
-    assert_eq!(s["transcription_refine"], "");
-    s["transcription_quality"] = json!("fast");
-    s["transcription_refine"] = json!("api");
-    let (status, body) = admin.put("/api/v1/settings", s.clone()).await;
-    assert_eq!(status, StatusCode::OK, "{body}");
-    assert_eq!(body["transcription_refine"], "api");
-    s["transcription_refine"] = json!("huge");
-    let (status, _) = admin.put("/api/v1/settings", s.clone()).await;
-    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
-    s["transcription_refine"] = json!("");
-    s["transcription_quality"] = json!("api");
-    let (status, _) = admin.put("/api/v1/settings", s).await;
-    assert_eq!(status, StatusCode::OK);
-
-    // API settings: admin only, key never returned, stored encrypted.
-    let (status, _) = ben.get("/api/v1/settings/transcription-api").await;
+    // Admin only; defaults without connections.
+    let (status, _) = ben.get("/api/v1/settings/transcription").await;
     assert_eq!(status, StatusCode::FORBIDDEN);
-    let (status, a) = admin.get("/api/v1/settings/transcription-api").await;
+    let (status, _) = ben
+        .post(
+            "/api/v1/settings/transcription/providers",
+            json!({"name": "X", "kind": "openai"}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    let (status, o) = admin.get("/api/v1/settings/transcription").await;
     assert_eq!(status, StatusCode::OK);
-    assert_eq!(
-        a,
-        json!({"url": "https://api.openai.com/v1", "model": "whisper-1", "has_key": false})
+    assert_eq!(o["providers"], json!([]));
+    assert_eq!(o["profiles"][0]["purpose"], "live");
+    assert_eq!(o["profiles"][0]["local_model"], "base");
+    assert_eq!(o["profiles"][2]["engine"], "off");
+    assert!(
+        o["openai_prices"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|p| p["model"] == "gpt-live-transcribe")
     );
+
+    // Connections: validated, key never returned, stored encrypted.
     for bad in [
-        json!({"url": "ftp://x", "model": "whisper-1"}),
-        json!({"url": "https://x/v1", "model": "a b"}),
-        json!({"url": "https://x/v1", "model": "m", "key": "with space"}),
+        json!({"name": "X", "kind": "compatible", "url": "ftp://x"}),
+        json!({"name": "", "kind": "openai"}),
+        json!({"name": "X", "kind": "openai", "key": "with space"}),
     ] {
-        let (status, _) = admin.put("/api/v1/settings/transcription-api", bad).await;
+        let (status, _) = admin
+            .post("/api/v1/settings/transcription/providers", bad)
+            .await;
         assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
     }
     let url = fake_api().await;
-    let (status, a) = admin
-        .put(
-            "/api/v1/settings/transcription-api",
-            json!({"url": format!("{url}/"), "model": "whisper-1", "key": "sk-good"}),
+    let (status, p) = admin
+        .post(
+            "/api/v1/settings/transcription/providers",
+            json!({"name": "LAN", "kind": "compatible", "url": format!("{url}/"), "key": "sk-good"}),
         )
         .await;
-    assert_eq!(status, StatusCode::OK, "{a}");
+    assert_eq!(status, StatusCode::CREATED, "{p}");
+    let id = p["id"].as_str().unwrap().to_owned();
     assert_eq!(
-        a,
-        json!({"url": url, "model": "whisper-1", "has_key": true})
+        p,
+        json!({"id": id, "name": "LAN", "kind": "compatible", "url": url, "has_key": true})
     );
-    let stored: Option<String> =
-        sqlx::query_scalar("SELECT transcription_api_key_enc FROM tenant_settings")
-            .fetch_one(&db)
-            .await
-            .unwrap();
-    assert!(!stored.unwrap().contains("sk-good"));
-    let cfg = transcription_api::config(&db, TenantId::DEFAULT, &SecretBox::from_hex(KEY).unwrap())
+    let stored: String = sqlx::query_scalar("SELECT key_enc FROM transcription_providers")
+        .fetch_one(&db)
         .await
         .unwrap();
+    assert!(!stored.contains("sk-good"));
+    let uuid = id.parse().unwrap();
+    let cfg = transcription_api::config(
+        &db,
+        TenantId::DEFAULT,
+        &SecretBox::from_hex(KEY).unwrap(),
+        uuid,
+        "whisper-1",
+    )
+    .await
+    .unwrap();
     assert_eq!(cfg.key.as_deref(), Some("sk-good"));
     assert_eq!(cfg.endpoint(), format!("{url}/audio/transcriptions"));
 
-    // Test: lists the server's speech models.
+    // Profiles: cloud for live (streaming) and the second recording pass.
+    let mut profiles = o["profiles"].clone();
+    profiles[0] = json!({"purpose": "live", "engine": "cloud", "local_model": "base",
+        "provider_id": id, "model": "gpt-live-transcribe", "realtime": true});
+    profiles[2] = json!({"purpose": "recording_refine", "engine": "cloud", "local_model": "fast",
+        "provider_id": id, "model": "whisper-1", "price_per_minute": 0.002});
+    let (status, saved) = admin
+        .put("/api/v1/settings/transcription/profiles", profiles.clone())
+        .await;
+    assert_eq!(status, StatusCode::OK, "{saved}");
+    assert_eq!(saved[0]["realtime"], true);
+    assert_eq!(saved[2]["price_per_minute"], 0.002);
+    // A compatible server has no list price.
+    assert_eq!(saved[2]["list_price"], json!(null));
+    let mut bad = profiles.clone();
+    bad[1]["engine"] = json!("off");
+    let (status, _) = admin
+        .put("/api/v1/settings/transcription/profiles", bad)
+        .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    let (status, _) = ben
+        .put("/api/v1/settings/transcription/profiles", profiles)
+        .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+
+    // Test: lists the server's speech models and the profile models it lacks.
     let (status, t) = admin
-        .post("/api/v1/settings/transcription-api/test", json!({}))
+        .post(
+            &format!("/api/v1/settings/transcription/providers/{id}/test"),
+            json!({}),
+        )
         .await;
     assert_eq!(status, StatusCode::OK, "{t}");
-    assert_eq!(t["model_found"], true);
+    assert_eq!(t["missing_models"], json!(["gpt-live-transcribe"]));
     assert_eq!(
         t["speech_models"],
         json!(["gpt-4o-transcribe", "whisper-1"])
     );
 
     // `null` keeps the key, a wrong key fails the test, "" removes it.
-    let (_, a) = admin
+    let path = format!("/api/v1/settings/transcription/providers/{id}");
+    let (_, p) = admin
         .put(
-            "/api/v1/settings/transcription-api",
-            json!({"url": url, "model": "whisper-1"}),
+            &path,
+            json!({"name": "LAN", "kind": "compatible", "url": url}),
         )
         .await;
-    assert_eq!(a["has_key"], true);
+    assert_eq!(p["has_key"], true);
     admin
         .put(
-            "/api/v1/settings/transcription-api",
-            json!({"url": url, "model": "whisper-1", "key": "sk-bad"}),
+            &path,
+            json!({"name": "LAN", "kind": "compatible", "url": url, "key": "sk-bad"}),
         )
         .await;
-    let (status, t) = admin
-        .post("/api/v1/settings/transcription-api/test", json!({}))
-        .await;
+    let (status, t) = admin.post(&format!("{path}/test"), json!({})).await;
     assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{t}");
-    let (_, a) = admin
+    let (_, p) = admin
         .put(
-            "/api/v1/settings/transcription-api",
-            json!({"url": url, "model": "whisper-1", "key": ""}),
+            &path,
+            json!({"name": "LAN", "kind": "compatible", "url": url, "key": ""}),
         )
         .await;
-    assert_eq!(a["has_key"], false);
+    assert_eq!(p["has_key"], false);
+
+    // In use: no delete. After switching back to local, delete works.
+    let (status, e) = admin.call("DELETE", &path, None).await;
+    assert_eq!(status, StatusCode::CONFLICT);
+    assert_eq!(
+        e["message"],
+        "connection is in use for: live, recording_refine"
+    );
+    let (status, _) = admin
+        .put(
+            "/api/v1/settings/transcription/profiles",
+            json!([o["profiles"][0], o["profiles"][2]]),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK);
+    let (status, _) = admin.call("DELETE", &path, None).await;
+    assert_eq!(status, StatusCode::NO_CONTENT);
+    let audit: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM audit_log WHERE entity_type LIKE 'transcription%' AND details::text LIKE '%sk-%'",
+    )
+    .fetch_one(&db)
+    .await
+    .unwrap();
+    assert_eq!(audit, 0, "no keys in the audit log");
 }

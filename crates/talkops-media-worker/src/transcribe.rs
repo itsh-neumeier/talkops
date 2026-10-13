@@ -145,6 +145,7 @@ impl Whisper {
     /// The model for a quality level; `fast` is the configured model.
     pub fn model_name(&self, quality: TranscriptionQuality) -> &str {
         match quality {
+            TranscriptionQuality::Base => "base",
             TranscriptionQuality::Fast => &self.model,
             TranscriptionQuality::Accurate => "large-v3-q5_0",
             TranscriptionQuality::Best => "large-v3",
@@ -207,7 +208,10 @@ impl Whisper {
             // No "[Musik]", "(lacht)" and the like.
             "-sns".to_owned(),
         ];
-        if opts.quality != TranscriptionQuality::Fast {
+        if !matches!(
+            opts.quality,
+            TranscriptionQuality::Fast | TranscriptionQuality::Base
+        ) {
             // Wider beam search: slower, fewer wrong words.
             args.extend(["-bs", "8", "-bo", "8"].map(str::to_owned));
         }
@@ -435,7 +439,7 @@ fn refine_starts(segments: &mut [Segment], samples: &[f32]) {
 
 /// Linear resampling; when downsampling, a moving average first suppresses
 /// most of what would alias (good enough for speech recognition).
-fn resample(input: &[f32], from: u32, to: u32) -> Vec<f32> {
+pub(crate) fn resample(input: &[f32], from: u32, to: u32) -> Vec<f32> {
     if from == to || input.is_empty() {
         return input.to_vec();
     }

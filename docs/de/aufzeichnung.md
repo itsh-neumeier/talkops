@@ -74,12 +74,14 @@ Aufnahme und jede neue Sprachnachricht in Text um:
   Whisper transkribiert. Das verhindert erfundene Sätze in Pausen und
   macht die Erkennung schneller. Abschalten mit `TALKOPS_WHISPER_VAD=false`.
 
-**Genauigkeit** (Einstellungen → Anrufbehandlung): *Schnell* nutzt das Modell
-aus `TALKOPS_WHISPER_MODEL`. *Genau* (`large-v3-q5_0`, 1,1 GB, ca. 2 GB RAM)
-und *Beste* (`large-v3`, 3,1 GB, ca. 4 GB RAM) nutzen das volle large-v3 mit
+**Lokale Modelle** (Einstellungen → Anrufbehandlung →
+*Transkriptions-Engines*): *Schnell* nutzt das Modell aus
+`TALKOPS_WHISPER_MODEL`. *Genau* (`large-v3-q5_0`, 1,1 GB, ca. 2 GB RAM) und
+*Beste* (`large-v3`, 3,1 GB, ca. 4 GB RAM) nutzen das volle large-v3 mit
 breiterer Suche: deutlich weniger falsche Wörter, aber zwei- bis viermal
-langsamer. **Namen und Begriffe** (durch Komma getrennt) helfen bei Namen,
-Firmen und Fachwörtern. Zum Vergleichen im Container:
+langsamer. *Base* (ca. 150 MB) gibt es nur für die Live-Vorschau. **Namen und
+Begriffe** (durch Komma getrennt) helfen bei Namen, Firmen und Fachwörtern.
+Zum Vergleichen im Container:
 `talkops-media-worker transcribe --quality accurate --vocabulary "Name, Firma" datei.wav`.
 
 Modell wählen (`.env`):
@@ -100,52 +102,87 @@ Andere Modelle als `ggml-<name>.bin` selbst in das Volume `models` legen und
 den Namen eintragen. Weitere Optionen: `TALKOPS_WHISPER_THREADS`
 (CPU-Threads je Transkription, Standard bis 4).
 
-### Zwei Durchgänge: erst schnell, dann genau
+### Engines je Zweck
 
-Unter *Einstellungen → Anrufbehandlung* lassen sich zwei Durchgänge wählen:
+*Einstellungen → Anrufbehandlung → Transkriptions-Engines* legt je Zweck eine
+Engine fest ([ADR 0024](../adr/0024-transcription-engines-per-purpose.md)):
 
-- **Erste Transkription (sofort)** läuft direkt nach dem Gespräch. Ihr Text
-  erscheint zuerst und geht mit der Voicemail-Mail raus – am besten
-  *Schnell*.
-- **Zweite, genauere Transkription (danach)** läuft im Anschluss mit
-  niedrigerer Priorität (neue erste Durchgänge gehen vor) und ersetzt das
-  erste Transkript, sobald sie fertig ist, z. B. *Beste* (large-v3) oder die
-  KI-API. Bis dahin steht am Transkript *Vorläufig – genauere Fassung
-  folgt*; die Ansicht aktualisiert sich von selbst. Schlägt der zweite
-  Durchgang fehl (ein Wiederholungsversuch), bleibt das erste Transkript.
+| Zweck | Wann | Standard |
+|---|---|---|
+| Live-Vorschau | Während eines laufenden, aufgezeichneten Gesprächs ([laufende Gespräche](laufende-gespraeche.md)) | Lokal *Base* |
+| Aufnahme – schnell | Direkt nach dem Gespräch; sein Text erscheint zuerst. | Lokal *Schnell* |
+| Aufnahme – langsam, genau | Optional; danach mit niedrigerer Priorität. | Aus |
+| Voicemail – schnell | Direkt nach der Nachricht; die Mail enthält seinen Text. | Lokal *Schnell* |
+| Voicemail – langsam, genau | Optional; danach mit niedrigerer Priorität. | Aus |
+
+Jeder Zweck nutzt **Lokal** (ein Whisper-Modell auf diesem Server) oder
+**Cloud** (ein Modell einer Cloud-Verbindung). Ein zweiter Durchgang ersetzt
+das erste Transkript, sobald er fertig ist. Bis dahin steht am Transkript
+*Vorläufig – genauere Fassung folgt*; die Ansicht aktualisiert sich von
+selbst. Schlägt der zweite Durchgang fehl (ein Wiederholungsversuch), bleibt
+das erste Transkript. Ein zweiter Durchgang mit derselben Engine wie der
+erste läuft nicht.
 
 Am Transkript steht, welches Modell es erstellt hat (z. B.
-`whisper:large-v3-turbo-q5_0` oder `api:whisper-1`).
+`whisper:large-v3-turbo-q5_0` oder `api:OpenAI/gpt-transcribe`).
 
-### KI-API (OpenAI, Groq, Mistral, eigener Server)
+Ein Update von 1.7 oder älter übernimmt die bisherigen Einstellungen: Die
+bisherige KI-API wird zur Verbindung *OpenAI* (bzw. *API* bei anderer URL),
+erster und zweiter Durchgang gelten für Aufnahmen und Voicemails.
 
-Statt des lokalen Whisper kann jeder Durchgang eine OpenAI-kompatible
-Transkriptions-API nutzen (`POST …/audio/transcriptions`). Auswahl
-*KI-API*, dann Anbieter, URL, Modell und Schlüssel eintragen und *Verbindung
-testen* (listet die Sprachmodelle des Servers, ohne Audio zu senden):
+### Cloud-Verbindungen (OpenAI, Groq, Mistral, eigener Server)
 
-| Anbieter | URL | Modelle (Beispiele) |
+Unter *Cloud-Verbindungen* lassen sich eine oder mehrere Verbindungen mit
+OpenAI-Transkriptionsschnittstelle anlegen (`POST …/audio/transcriptions`):
+**Verbindung hinzufügen**, Typ wählen, Schlüssel eintragen, bei eigenem
+Server auch die URL. **Verbindung testen** listet die Sprachmodelle des
+Servers, ohne Audio zu senden, und nennt Modelle deiner Engines, die der
+Server nicht anbietet.
+
+| Typ | URL | Modelle (Beispiele) |
 |---|---|---|
-| OpenAI | `https://api.openai.com/v1` | `whisper-1`, `gpt-4o-transcribe`, `gpt-4o-mini-transcribe` |
+| OpenAI | fest: `https://api.openai.com/v1` | `gpt-transcribe`, `gpt-4o-mini-transcribe`, `gpt-4o-transcribe`, `whisper-1`; live: `gpt-live-transcribe` |
 | Groq | `https://api.groq.com/openai/v1` | `whisper-large-v3-turbo`, `whisper-large-v3` |
 | Mistral | `https://api.mistral.ai/v1` | `voxtral-mini-latest` |
 | eigener Server (Speaches, LocalAI, …) | z. B. `http://192.168.1.10:8000/v1` | je nach Server |
 
-- **Datenschutz:** Mit der KI-API gehen Aufnahmen und Sprachnachrichten an
-  den Anbieter. Gesprächspartner informieren und eine
-  Auftragsverarbeitung (DSGVO) abschließen; ein eigener Server im LAN hält
-  die Daten im Haus.
+- **Datenschutz:** Mit einem Cloud-Modell gehen Aufnahmen und
+  Sprachnachrichten an den Anbieter, bei der Live-Vorschau schon während des
+  Gesprächs. Gesprächspartner informieren und eine Auftragsverarbeitung
+  (DSGVO) abschließen; ein eigener Server im LAN hält die Daten im Haus.
 - Jede Gesprächsseite wird getrennt geschickt (16 kHz mono WAV), lange
   Gespräche in Stücken bis 10 Minuten. Modelle mit Zeitstempeln
   (`whisper-1`, Groq) liefern die Sätze mit Zeit; bei Modellen ohne (z. B.
-  `gpt-4o-transcribe`) schickt TalkOps jeden Gesprächsabschnitt einzeln,
-  damit die Reihenfolge stimmt. Server, die die OpenAI-Optionen nicht
-  kennen, bekommen nur Datei, Modell und Sprache.
+  `gpt-transcribe`) schickt TalkOps jeden Gesprächsabschnitt einzeln, damit
+  die Reihenfolge stimmt. Server, die die OpenAI-Optionen nicht kennen,
+  bekommen nur Datei, Modell und Sprache.
 - Der Schlüssel wird verschlüsselt gespeichert (wie das SMTP-Passwort) und
   nie angezeigt. Der Media-Worker braucht dafür `TALKOPS_SECRET_KEY` (in der
   `docker-compose.yml` ab 1.5 gesetzt).
-- Getestet mit einem nachgebauten OpenAI-kompatiblen Server; die Abläufe der
-  einzelnen Anbieter sind nach deren Dokumentation umgesetzt.
+- Eine Verbindung, die eine Engine nutzt, lässt sich nicht löschen. Diese
+  Engines vorher auf eine andere Verbindung oder auf lokal stellen.
+
+### Live-Vorschau in der Cloud
+
+Für die Live-Vorschau **Cloud** wählen. Es gibt zwei Arten:
+
+- **Ohne Streaming:** TalkOps schickt 8-Sekunden-Stücke der Aufnahme. Der
+  Text kommt mit ca. 10 Sekunden Verzögerung. Das können alle Verbindungen.
+- **Live streamen (Realtime-API):** Der Media-Worker schickt die Sprache jeder
+  Gesprächsseite per WebSocket (`…/realtime?intent=transcription`). Text
+  erscheint, während gesprochen wird, mit ca. einer Sekunde Verzögerung. Bei
+  OpenAI `gpt-live-transcribe` verwenden. Der Worker schickt nur Sprache und
+  beendet den Stream, wenn das Popup schließt, das Gespräch endet oder nach
+  vier Stunden. Die WebSocket-Verbindung nutzt kein `HTTPS_PROXY`.
+
+### Cloud-Nutzung und Kosten
+
+*Cloud-Nutzung* zeigt die an jedes Cloud-Modell gesendeten Audiominuten in
+diesem und im letzten Monat mit geschätzten Kosten. Die Schätzung nutzt den
+Preis pro Minute der Engine, sonst den OpenAI-Listenpreis (Stand 2026-10-13,
+z. B. `gpt-transcribe` 0,0045 USD, `gpt-live-transcribe` 0,017 USD pro
+Minute). Ein Sternchen markiert Audio ohne bekannten Preis, etwa von einem
+eigenen Server. Maßgeblich ist die Rechnung des Anbieters.
 
 ## Suche
 

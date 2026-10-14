@@ -40,7 +40,11 @@ preserved through conflict-free merge commits.
   recur in three single and two complete runs. Do not ignore a final failure.
 - Passed: local Rust fmt/whitespace, migration/translation and lock checks.
 - Passed: local npm ci/lint/check (zero errors/warnings), six Node tests/build.
-- Pending: final candidate CI/E2E, resulting main CI/E2E,
+- Passed: final candidate 32b9bd96fd0557379ae66b8f8213d459b1bc63d4 CI
+  (38536710003, 38536705015) and E2E (38536710012, 38536704964).
+  ASCII, SDP, ring-group and door_station tests all passed. Source H264 fallback
+  for missing mappings is unchanged.
+- Pending: resulting main CI/E2E,
   Release workflow, manifests, labels and moving 1.7/latest tags.
 - Linux PostgreSQL/LDAP/Compose/images/SIPp/browser checks use CI because the
   local Docker daemon is unavailable. Real Dahua VTO/VTH and deployed UI are
@@ -61,10 +65,12 @@ No development-chat message or automation is requested or created.
 
 ## Next action
 
-Save the candidate and PR ledger. Wait for final checks, merge, then verify
-resulting main CI/E2E before pushing unused v1.7.11 once. Verify Release and all
-three amd64/arm64 manifests, labels and moving tags. Remove only integrated,
-unchanged remote branches. Save final audit and detach the owned checkout.
+PR #22 merged as 7b6e51f612475fc4473880f8a2f818c49147e9e2. The resulting
+main tree equals the checked candidate; source history is included. #21 is
+merged, with no open PR remaining. Target CI 38538862130 and E2E 38538862192
+are running. Wait for both before pushing unused v1.7.11 once on that exact
+commit. Verify publication and all registry artifacts, then clean up only
+integrated unchanged branches and save the final audit.
 
 ## References
 

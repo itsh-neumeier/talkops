@@ -6,6 +6,12 @@ All notable changes to TalkOps. The format follows
 
 ## [Unreleased]
 
+### Removed
+
+- Remove the "Test calls" card (sip5060.net targets) from *Settings → System*.
+  The targets did not work reliably. Dialing SIP addresses and the softphone
+  link `/phone?dial=…` remain available.
+
 ## [1.7.11] – 2026-10-14
 
 ### Fixed

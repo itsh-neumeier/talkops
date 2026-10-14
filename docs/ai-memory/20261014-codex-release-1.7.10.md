@@ -8,7 +8,7 @@
 - Status: In progress
 - Branch: codex/release-1.7.10
 - Base: bfc46429f0889ceec79e72f45b49c6ec79dc9f26 (remote main, 1.7.9)
-- Integration PR: Pending
+- Integration PR: https://github.com/itsh-neumeier/talkops/pull/20
 
 ## Goal and scope
 

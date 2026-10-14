@@ -73,6 +73,53 @@ pub fn sanitize_value(value: &str) -> String {
         .to_owned()
 }
 
+/// A display name with ASCII characters only, for devices that do not handle
+/// UTF-8 in SIP headers (Dahua door stations do not accept an ACK whose
+/// `From` name has an umlaut, and drop the call after 30 s). German umlauts
+/// and common Latin letters with diacritics get their usual spelling
+/// (`ü` → `ue`, `é` → `e`); other characters are left out.
+pub fn ascii_name(value: &str) -> String {
+    let mut out = String::with_capacity(value.len());
+    for c in value.chars() {
+        let s = match c {
+            c if c.is_ascii() => {
+                out.push(c);
+                continue;
+            }
+            'ä' => "ae",
+            'ö' => "oe",
+            'ü' => "ue",
+            'Ä' => "Ae",
+            'Ö' => "Oe",
+            'Ü' => "Ue",
+            'ß' => "ss",
+            'à' | 'á' | 'â' | 'ã' | 'å' => "a",
+            'À' | 'Á' | 'Â' | 'Ã' | 'Å' => "A",
+            'æ' => "ae",
+            'Æ' => "Ae",
+            'ç' => "c",
+            'Ç' => "C",
+            'è' | 'é' | 'ê' | 'ë' => "e",
+            'È' | 'É' | 'Ê' | 'Ë' => "E",
+            'ì' | 'í' | 'î' | 'ï' => "i",
+            'Ì' | 'Í' | 'Î' | 'Ï' => "I",
+            'ñ' => "n",
+            'Ñ' => "N",
+            'ò' | 'ó' | 'ô' | 'õ' | 'ø' => "o",
+            'Ò' | 'Ó' | 'Ô' | 'Õ' | 'Ø' => "O",
+            'œ' => "oe",
+            'Œ' => "Oe",
+            'ù' | 'ú' | 'û' => "u",
+            'Ù' | 'Ú' | 'Û' => "U",
+            'ý' | 'ÿ' => "y",
+            'Ý' => "Y",
+            _ => "",
+        };
+        out.push_str(s);
+    }
+    out.trim().to_owned()
+}
+
 /// Minimal XML writer producing indented FreeSWITCH documents.
 #[derive(Default)]
 pub struct XmlWriter {
@@ -152,6 +199,17 @@ impl XmlWriter {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn ascii_names() {
+        assert_eq!(
+            ascii_name("Türsprechstelle_Außen Öl"),
+            "Tuersprechstelle_Aussen Oel"
+        );
+        assert_eq!(ascii_name("Café Ñandú"), "Cafe Nandu");
+        assert_eq!(ascii_name("Büro 📞"), "Buero");
+        assert_eq!(ascii_name("Door 1"), "Door 1");
+    }
 
     #[test]
     fn escapes_xml_and_variable_syntax() {

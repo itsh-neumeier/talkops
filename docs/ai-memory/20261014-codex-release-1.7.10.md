@@ -44,7 +44,9 @@ Add combined English release and upgrade notes. No production deployment.
 - Passed: local npm ci/lint/check (zero errors/warnings), six Node tests and build.
 - Passed: final candidate b1582421e5a451afce0602cd610f40c9beaad991 CI
   (38520138029, 38520132966) and E2E (38520138011, 38520132928).
-- Pending: resulting main CI/E2E,
+- Passed: resulting main CI 38521860605 and E2E 38521860655 on
+  3cad0180d34fedaa554339afaa67a9e56fed0ab4. Both binaries report 1.7.10.
+- Pending:
   Release workflow, three amd64/arm64 manifests, labels and moving 1.7/latest tags.
 - Full Linux DB/LDAP/stack checks use CI: the local Docker daemon is unavailable.
   New source tests cover passwords, roles, encryption, audit, FS directory and
@@ -73,9 +75,10 @@ No development-chat message or automation was requested or created.
 
 PR #20 merged as 3cad0180d34fedaa554339afaa67a9e56fed0ab4. The merged tree
 equals the candidate; source history is included. #19 is merged, no open PR
-remains. Target CI 38521860605 and E2E 38521860655 are queued.
-Verify resulting main CI/E2E before pushing unused v1.7.10
-once. Verify publication and all registry artifacts. Delete only fully integrated
+remains. Both target checks passed. A fresh scope/main/version/tag gate passed.
+Pushed unused annotated v1.7.10 once on the exact checked commit.
+Tag object: 2202a9027519ab16df7777893e83f4e4452f4af0.
+Verify the running Release workflow and all registry artifacts. Delete only fully integrated
 unchanged remote branches and the owned release branch. Save the final audit.
 
 ## References

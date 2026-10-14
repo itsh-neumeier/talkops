@@ -8,7 +8,7 @@
 - Status: In progress
 - Branch: codex/release-1.7.11
 - Base: 3cad0180d34fedaa554339afaa67a9e56fed0ab4 (main, 1.7.10)
-- Integration PR: Pending
+- Integration PR: https://github.com/itsh-neumeier/talkops/pull/22
 
 ## Goal and scope
 

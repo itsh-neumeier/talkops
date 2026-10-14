@@ -210,7 +210,7 @@ mit TalkOps nicht getestet.
 | `401`, danach `403 Forbidden` | (1) Falsches oder gekürztes Passwort: neues Passwort im Format **Kompatibel (15 Zeichen)** erzeugen und eintragen. (2) Unbekannter SIP-Benutzername: Die Room No. des VTH weicht vom SIP-Benutzernamen ab. (3) VTO: *SIP Server Username* weicht von *Username* ab. (4) TalkOps hat die Adresse gesperrt (siehe [SIP-Anmeldeschutz](tuersprechstelle.md#sip-anmeldeschutz)). |
 | `200 OK`, aber eine Funktion fehlt | Siehe [Fehlersuche](tuersprechstelle.md#fehlersuche). |
 | Ruf von der VTO: Ton geht, der VTH zeigt kein Bild | TalkOps bietet den gerufenen Geräten nur den Video-Codec der VTO an (H264). FreeSWITCH wandelt Video nicht um. Ein Gerät, das nur VP8 kann, bekommt kein Bild. Prüfe, dass die VTO H264 sendet. |
-| Ruf zur VTO endet nach 30 Sekunden | Die VTO V4.600 nimmt das ACK nicht an, wenn der Anrufername Umlaute hat. TalkOps sendet bei Rufen von und zu Türstationen die Anrufernamen in ASCII (`ü` → `ue`). Der Anrufverlauf zeigt den vollen Namen. Ältere TalkOps-Versionen: einen Namen ohne Umlaute verwenden. |
+| Ruf zur VTO endet nach 30 Sekunden | Umlaute im Anrufernamen sind eine vermutete Ursache dafür, dass die VTO V4.600 das ACK ablehnt. Ein Hardwaretest muss das bestätigen. TalkOps sendet bei Rufen von und zu Türstationen die Anrufernamen in ASCII (`ü` → `ue`). Der Anrufverlauf zeigt den vollen Namen. Ältere TalkOps-Versionen: einen Namen ohne Umlaute verwenden. |
 
 Das TalkOps-Log zeigt SIP-Benutzernamen und Adresse jeder fehlgeschlagenen
 Anmeldung. Eine Zeile `SIP authentication for unknown or disabled user` mit

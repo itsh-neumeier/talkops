@@ -6,6 +6,34 @@ All notable changes to TalkOps. The format follows
 
 ## [Unreleased]
 
+## [1.7.11] – 2026-10-14
+
+### Fixed
+
+- Limit door station video offers to the station's advertised video codecs.
+  Dahua H264 offers no longer add VP8 on the called legs. Rejected SDP streams
+  and payloads outside the active media list cannot add codecs.
+- Send ASCII caller names on calls from door stations and direct calls to their
+  extensions. Convert umlauts and Latin accents. Keep the full caller name in
+  call records; ordinary calls retain their existing names. Ring-group prefixes
+  on door calls also remain ASCII.
+
+### Upgrade notes
+
+- No migration, dependency upgrade or device password change. Update the server
+  to use the revised dialplan on new calls. No FreeSWITCH source patch is used.
+- The ASCII name workaround addresses a suspected cause of Dahua VTO calls
+  ending after 30 seconds. Its effect on VTO4202F-P-S2 V4.600.0.3 and VTH5422H
+  V4.800.0.2 still needs a hardware test. Check the VTO-to-VTH picture and a
+  VTH-to-VTO call longer than 30 seconds after updating.
+
+### Known limitations
+
+- FreeSWITCH video direction and rtcp-fb behavior are unchanged. This release
+  does not force a sendonly video offer or claim verified Dahua hardware results.
+- The percent-encoded FreeSWITCH CDR spool import defect remains separate work.
+  Preserve files in `cdr-spool/rejected/` for a later recovery.
+
 ## [1.7.10] – 2026-10-14
 
 ### Added

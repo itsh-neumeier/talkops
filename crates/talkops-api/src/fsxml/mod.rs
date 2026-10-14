@@ -74,8 +74,8 @@ pub fn sanitize_value(value: &str) -> String {
 }
 
 /// A display name with ASCII characters only, for devices that do not handle
-/// UTF-8 in SIP headers (Dahua door stations do not accept an ACK whose
-/// `From` name has an umlaut, and drop the call after 30 s). German umlauts
+/// UTF-8 in SIP headers. An umlaut in `From` is a suspected cause of Dahua
+/// ACK rejection and 30-second call drops; hardware testing is pending. German umlauts
 /// and common Latin letters with diacritics get their usual spelling
 /// (`ü` → `ue`, `é` → `e`); other characters are left out.
 pub fn ascii_name(value: &str) -> String {

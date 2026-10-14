@@ -635,9 +635,9 @@ async fn door_station(db: PgPool) {
     );
 }
 
-/// Dahua stations do not handle UTF-8 caller names (a VTO ignores the ACK
-/// and drops the call after 30 s): door calls carry ASCII names in both
-/// directions, the call record keeps the real name.
+/// Door calls carry ASCII names in both directions, including ring-group
+/// prefixes. The call record keeps the real name. Hardware compatibility
+/// of the workaround must be verified separately.
 #[sqlx::test(migrations = "../../migrations")]
 async fn door_calls_use_ascii_caller_names(db: PgPool) {
     let router = talkops_api::app(state(db), None);
@@ -699,5 +699,44 @@ async fn door_calls_use_ascii_caller_names(db: PgPool) {
         !a.iter()
             .any(|(_, d)| d.starts_with("effective_caller_id_name=")),
         "{a:?} {lab}"
+    );
+
+    // A group prefix must not reintroduce umlauts on the door call.
+    admin
+        .post(
+            &format!("/api/v1/extensions/{}/devices", id(&office)),
+            json!({"name": "Desk", "kind": "desk"}),
+        )
+        .await;
+    let (status, group) = admin
+        .post(
+            "/api/v1/ring-groups",
+            json!({"number": "500", "name": "Hall", "caller_id_prefix": "Tür: ",
+                   "members": [id(&office)]}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{group}");
+    let (status, station) = admin
+        .put(
+            &format!("/api/v1/door-stations/{}", id(&station)),
+            json!({"name": "Tür", "extension_id": id(&door_ext),
+                   "destination_type": "ring_group", "destination_id": id(&group)}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{station}");
+    let a = call(&router, &door_ext, "9901").await;
+    assert!(
+        has(&a, "set", "effective_caller_id_name=Tuer: Tuer"),
+        "{a:?}"
+    );
+    assert!(
+        has(&a, "set", "talkops_caller_name=Türsprechstelle Außen"),
+        "{a:?}"
+    );
+    assert!(
+        a.iter()
+            .filter(|(app, d)| app == "set" && d.starts_with("effective_caller_id_name="))
+            .all(|(_, d)| d.is_ascii()),
+        "{a:?}"
     );
 }

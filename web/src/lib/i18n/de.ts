@@ -369,15 +369,6 @@ const de: Record<keyof typeof en, string> = {
 	'settings.sipUriDialing': 'SIP-Adressen wählen erlauben (name@domain)',
 	'settings.sipUriDialingHint':
 		'Nebenstellen können SIP-Adressen anrufen: über einen Trunk-Account derselben Domain, sonst direkt übers Internet (für guten Ton die externe IP oben eintragen).',
-	'diag.testCalls': 'Testanrufe',
-	'diag.testCallsHint':
-		'Öffentliche Testziele: prüfen Ton und NAT ins Internet, ohne Trunk-Anbieter. Öffnet das Softphone mit der Adresse – dann „Anrufen“.',
-	'diag.testCallsSource':
-		'Testziele von sip5060.net. Braucht „SIP-Adressen wählen“ (Einstellungen → Telefonie).',
-	'diag.test.echo': 'Echo (du hörst dich selbst)',
-	'diag.test.dtmf': 'Tastentest (liest Tasten vor, mit # abschließen)',
-	'diag.test.time': 'Zeitansage',
-	'diag.test.ring': 'Nur klingeln (nimmt nie ab)',
 	'diag.download': 'Herunterladen',
 	'diag.clear': 'Leeren',
 	'diag.empty': 'Noch kein Log. Debug-Logging starten und das Problem nachstellen.',

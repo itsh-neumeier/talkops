@@ -414,7 +414,7 @@
 	}
 
 	onMount(() => {
-		// Test calls from the diagnostics page: `/phone?dial=test.echo@sip5060.net`.
+		// Prefill the number from a link: `/phone?dial=200` or `/phone?dial=name@example.org`.
 		const dial = new URLSearchParams(location.search).get('dial');
 		if (dial) number = dial.slice(0, 320);
 		try {

@@ -864,6 +864,13 @@ pub async fn update_device(
     if let Some(format) = input.sip_password_format {
         check_password_format(current.kind, format)?;
     }
+    // A kind change must also keep the resulting device's format valid.
+    check_password_format(
+        input.kind,
+        input
+            .sip_password_format
+            .unwrap_or(current.sip_password_format),
+    )?;
     let slot = phone_slot(pool, tenant, input.phone_id, input.account_index, Some(id)).await?;
     // The format applies to the next generated password; the current
     // password stays valid.

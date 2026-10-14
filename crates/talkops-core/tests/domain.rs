@@ -221,6 +221,28 @@ async fn sip_password_formats(pool: PgPool) {
         .unwrap();
     assert_eq!(pw3.len(), 15);
 
+    // Changing the kind must not carry a compact format into a browser.
+    for format in [None, Some(SipPasswordFormat::Compact15)] {
+        assert!(matches!(
+            extensions::update_device(
+                &pool,
+                T,
+                desk.id,
+                &DeviceInput {
+                    kind: DeviceKind::Browser,
+                    sip_password_format: format,
+                    ..base.clone()
+                }
+            )
+            .await,
+            Err(CoreError::Validation(_))
+        ));
+    }
+    let unchanged = extensions::get_device(&pool, T, desk.id).await.unwrap();
+    assert_eq!(unchanged.kind, DeviceKind::Desk);
+    assert_eq!(unchanged.sip_password_format, SipPasswordFormat::Compact15);
+    assert_eq!(stored(desk.id).await.1, pw3);
+
     // A reset with a format stores the new format.
     let (pw4, format) = extensions::reset_device_password(
         &pool,

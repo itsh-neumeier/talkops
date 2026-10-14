@@ -6,6 +6,43 @@ All notable changes to TalkOps. The format follows
 
 ## [Unreleased]
 
+## [1.7.10] – 2026-10-14
+
+### Added
+
+- Add an English and German setup guide for Dahua VTO door stations and VTH
+  indoor monitors in Settings → Door stations. Links keep the vendor and device
+  selection. The guide includes field mappings and SIP login troubleshooting.
+- Select a SIP password format per device: standard (20 characters) or
+  compatible (15 random letters and digits). New door devices use the compatible
+  format in the web UI. API clients without the new field keep the old default.
+- Store the manufacturer of a door station and select its HTTP integration.
+  Existing stations use Dahua.
+- Log the SIP user and address of failed SIP logins and unknown-user lookups.
+  Passwords are not logged.
+
+### Fixed
+
+- Validate the password format when a device changes to the browser type.
+  Browser devices keep the standard format.
+
+### Upgrade notes
+
+- Migrations `20261030000001_device_sip_password_format` and
+  `20261030000002_door_station_vendor` add the new fields. Existing devices get
+  the standard format; existing stations get Dahua. Existing passwords stay.
+- Editing a format keeps the current password. Select New password to generate
+  a password in the stored format, then update the device. A reset without an
+  API body continues to use the stored format. Only administrators can change
+  the format; browser devices use standard passwords.
+- The 15-character workaround and Room No. settings for VTH5422H firmware
+  V4.800.0.2 still need a real-device test. A softphone test does not verify them.
+
+### Known limitations
+
+- The percent-encoded FreeSWITCH CDR spool import defect is not changed.
+  Preserve files in `cdr-spool/rejected/` for a later recovery.
+
 ## [1.7.9] – 2026-10-13
 
 ### Added

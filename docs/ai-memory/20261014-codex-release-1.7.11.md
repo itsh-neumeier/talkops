@@ -44,7 +44,9 @@ preserved through conflict-free merge commits.
   (38536710003, 38536705015) and E2E (38536710012, 38536704964).
   ASCII, SDP, ring-group and door_station tests all passed. Source H264 fallback
   for missing mappings is unchanged.
-- Pending: resulting main CI/E2E,
+- Passed: resulting main CI 38538862130 and E2E 38538862192 on
+  7b6e51f612475fc4473880f8a2f818c49147e9e2. Both binaries report 1.7.11.
+- Pending:
   Release workflow, manifests, labels and moving 1.7/latest tags.
 - Linux PostgreSQL/LDAP/Compose/images/SIPp/browser checks use CI because the
   local Docker daemon is unavailable. Real Dahua VTO/VTH and deployed UI are
@@ -65,12 +67,12 @@ No development-chat message or automation is requested or created.
 
 ## Next action
 
-PR #22 merged as 7b6e51f612475fc4473880f8a2f818c49147e9e2. The resulting
-main tree equals the checked candidate; source history is included. #21 is
-merged, with no open PR remaining. Target CI 38538862130 and E2E 38538862192
-are running. Wait for both before pushing unused v1.7.11 once on that exact
-commit. Verify publication and all registry artifacts, then clean up only
-integrated unchanged branches and save the final audit.
+PR #22 merged as 7b6e51f612475fc4473880f8a2f818c49147e9e2 with an identical
+candidate tree. Both target checks passed. Fresh scope/main/version/tag gates
+passed. Pushed new annotated v1.7.11 once on that checked commit; tag object
+c5e6eb01d2b3cdc55bd8b09a8d8fd40140d1ae6d. Verify the running Release workflow
+and registry artifacts, then remove only integrated unchanged branches and
+save the final audit. No release success is claimed before verification.
 
 ## References
 

@@ -18,13 +18,15 @@ publication if the source branches contain no new work.
 
 ## Result
 
-Both open source PRs are merged into the owned release branch with merge
-commits. No source history was rewritten. No release has been published yet.
+Both source PRs and integration PR #25 are merged. Main is
+`6276e7d5e1b3bbe2a97e0fe237758b3f3a0e44b4`. Its tree equals tested candidate
+`45121e6c1e6c425f05dfd96b4618bd719be5a5d4`. Both source heads are ancestors.
+No source history was rewritten. No release has been published yet.
 
 | Source | Contributor | Head commit | State |
 | --- | --- | --- | --- |
-| [PR #23](https://github.com/itsh-neumeier/talkops/pull/23), free SIP names | Claude Code | `4e63b382b7457f51fbc529df60e28631f319c651` | Ready; integrated |
-| [PR #24](https://github.com/itsh-neumeier/talkops/pull/24), diagnostics cleanup | Claude Code | `93b3366bd72d5f0ac6ce2c2abc713611e2d533ea` | Ready; integrated |
+| [PR #23](https://github.com/itsh-neumeier/talkops/pull/23), free SIP names | Claude Code | `4e63b382b7457f51fbc529df60e28631f319c651` | Merged |
+| [PR #24](https://github.com/itsh-neumeier/talkops/pull/24), diagnostics cleanup | Claude Code | `93b3366bd72d5f0ac6ce2c2abc713611e2d533ea` | Merged |
 
 No open contribution is omitted. No separate Codex feature PR is assigned.
 Codex owns integration checks, one error correction, and release metadata.
@@ -84,7 +86,14 @@ not drafts. There are no source dependencies or new migration IDs.
 - Not run locally: Compose, image smoke tests, SIPp and browser E2E. The Linux
   Docker daemon is unavailable. Use the existing Linux CI/E2E workflows.
 - FreeSWITCH sources and workflow are unchanged. E2E still builds the image.
-- Final integration, main and publication checks: pending.
+- Passed: final candidate PR CI 38616972557 and E2E 38616972568;
+  push CI 38616966900 and E2E 38616966909. All 12 final head checks passed.
+  CI logs show both numeric-name resolution and database-error tests passed.
+  Smoke output shows `talkops 1.7.12` and `talkops-media-worker 1.7.12`.
+- Passed: merge commit tree equals candidate tree; both sources are ancestors.
+  All source PRs closed as merged. No other open PR remains.
+- Main CI 38619610046 and E2E 38619610127: pending on the exact main commit.
+  Publication remains blocked until both pass.
 - STE review: manual review with `docs/documentation-style.md`. The full
   official standard is unavailable; the full language review is pending.
 - CodeRabbit CLI is unavailable. Focused integration review used the actual
@@ -102,8 +111,8 @@ not drafts. There are no source dependencies or new migration IDs.
 
 ## Next action
 
-Wait for the final head checks on PR #25, merge, check main, then publish
-and verify. Keep the PR ledger current without changing the tested head.
+Wait for exact-main CI 38619610046 and E2E 38619610127. Then recheck scope,
+main, versions and unused tag before publication. Keep the PR ledger current.
 
 ## References
 

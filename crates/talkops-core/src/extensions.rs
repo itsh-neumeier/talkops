@@ -516,18 +516,20 @@ async fn ensure_username_free(
 const GENERATED_USERNAME_LEN: usize = 6;
 
 /// Generated SIP username: 6 random lower-case letters and digits with at
-/// least one letter (`28x1js`), so that it never looks like an extension
+/// least one letter (`28x2js`), so that it never looks like an extension
 /// number. It does not depend on the extension. Existing devices keep their
 /// names.
 async fn default_username(pool: &sqlx::PgPool) -> CoreResult<String> {
-    // 32^6 names: a collision is rare, a few attempts are sufficient.
+    // The large name space makes collisions rare; retry names already in use.
     for _ in 0..16 {
         let name = crypto::random_lowercase(GENERATED_USERNAME_LEN)?;
         if !name.chars().any(|c| c.is_ascii_lowercase()) {
             continue;
         }
-        if ensure_username_free(pool, &name, None).await.is_ok() {
-            return Ok(name);
+        match ensure_username_free(pool, &name, None).await {
+            Ok(()) => return Ok(name),
+            Err(CoreError::Conflict(_)) => continue,
+            Err(err) => return Err(err),
         }
     }
     Err(CoreError::Conflict(
@@ -985,6 +987,18 @@ mod tests {
             assert_eq!(CodecProfile::parse(p.as_str()), Some(p));
         }
         assert_eq!(CodecProfile::parse("opus"), None);
+    }
+
+    #[tokio::test]
+    async fn generated_username_keeps_database_errors() {
+        let pool = sqlx::postgres::PgPoolOptions::new()
+            .connect_lazy("postgres://localhost/talkops")
+            .unwrap();
+        pool.close().await;
+        assert!(matches!(
+            default_username(&pool).await,
+            Err(CoreError::Db(sqlx::Error::PoolClosed))
+        ));
     }
 
     #[test]

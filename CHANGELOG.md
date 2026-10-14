@@ -6,11 +6,43 @@ All notable changes to TalkOps. The format follows
 
 ## [Unreleased]
 
+## [1.7.12] – 2026-10-14
+
+### Changed
+
+- Set device SIP user names independently of the extension number. Names accept
+  3 to 64 ASCII letters, digits, dots, underscores and hyphens. The device editor
+  has one field for the full name. Numeric names can be used for Dahua VTO and
+  VTH devices. Names are unique across tenants without regard to letter case.
+- Generate a random six-character SIP user name when no name is supplied.
+  Each generated name has at least one letter. Existing device names stay.
+
+### Fixed
+
+- Resolve extension numbers before device SIP user names in the active call
+  overview. A numeric device name cannot select a different extension there.
+- Use the SIP user name returned by the API in the Yealink provisioning E2E
+  check. The check no longer assumes the old extension-based name format.
+- Keep database errors when generating a SIP user name. Retry only name
+  conflicts, so a database outage does not return a name conflict error.
+
 ### Removed
 
 - Remove the "Test calls" card (sip5060.net targets) from *Settings → System*.
   The targets did not work reliably. Dialing SIP addresses and the softphone
   link `/phone?dial=…` remain available.
+
+### Upgrade notes
+
+- No migration or dependency upgrade. Existing SIP names and passwords stay.
+  API clients must read `sip_username` from the device response. They must not
+  construct a name from the extension number. The `web-` prefix stays reserved
+  for browser devices. Browser devices cannot be renamed.
+- To use a numeric name on a Dahua device, change the TalkOps device name and
+  set the same SIP user name on the device. Test its registration and calls.
+  Dahua VTO/VTH hardware checks with the new names remain pending.
+- The percent-encoded FreeSWITCH CDR spool import defect remains separate work.
+  Preserve files in `cdr-spool/rejected/` for a later recovery.
 
 ## [1.7.11] – 2026-10-14
 

@@ -8,7 +8,7 @@
 - Status: In progress
 - Branch: `codex/release-1.7.12`
 - Base commit: `7b6e51f612475fc4473880f8a2f818c49147e9e2` (`origin/main`, 1.7.11)
-- Integration PR: Pending
+- Integration PR: [#25](https://github.com/itsh-neumeier/talkops/pull/25)
 
 ## Goal
 
@@ -102,8 +102,8 @@ not drafts. There are no source dependencies or new migration IDs.
 
 ## Next action
 
-Push the candidate and create the integration PR.
-Wait for the final head checks, merge, check main, then publish and verify.
+Wait for the final head checks on PR #25, merge, check main, then publish
+and verify. Keep the PR ledger current without changing the tested head.
 
 ## References
 

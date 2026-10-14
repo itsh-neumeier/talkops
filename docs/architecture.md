@@ -393,7 +393,7 @@ talkops/
 ├── docs/
 │   ├── architecture.md · adr/
 │   ├── de/  installation.md · portainer.md · erste-schritte.md · leonet.md · yealink.md
-│   │        voicemail.md · anrufsteuerung.md · aufzeichnung.md · tuersprechstelle.md
+│   │        voicemail.md · anrufsteuerung.md · aufzeichnung.md · tuersprechstelle.md · tuersprechstelle-dahua.md
 │   │        anmeldung.md · softphone.md
 │   │        (P8: backup.md)
 │   ├── en/  (gleiche Inhalte auf Englisch)

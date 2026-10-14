@@ -1,22 +1,32 @@
-# Türsprechstelle (Dahua VTO)
+# Türsprechstellen
 
-TalkOps bindet Dahua-VTO-Türstationen (z. B. VTO2202F, VTO2211G, VTO3221E,
-VTO4202F) direkt an: Die Station meldet sich wie ein Telefon an, das
-Klingeln geht an eine Nebenstelle, Rufgruppe oder ein anderes Ziel, das
-Kamerabild (H.264) kommt bei Videotelefonen mit. Die Tür öffnet man am
-Telefon, in der Weboberfläche oder per Home Assistant.
+TalkOps bindet Türsprechstellen und Innenstationen als SIP-Geräte an: Die
+Station meldet sich wie ein Telefon an, das Klingeln geht an eine
+Nebenstelle, Rufgruppe oder ein anderes Ziel, das Kamerabild (H.264) kommt
+bei Videotelefonen mit. Die Tür öffnet man am Telefon, in der
+Weboberfläche oder per Home Assistant.
 
-> **Status:** Mit SIP-Simulator und einem nachgebauten Dahua-HTTP-API
-> getestet, noch nicht mit echter Hardware. Dahuas HTTP-Schnittstelle ist
-> nicht öffentlich dokumentiert; TalkOps nutzt die Aufrufe, die etablierte
-> Open-Source-Integrationen verwenden. Rückmeldungen mit Modell und
-> Firmware-Stand sind willkommen.
+SIP, Klingelziele, Video und Öffnungscodes sind für alle Hersteller gleich.
+Die HTTP-Anbindung (Türöffner, Bilder, Ereignisse) und die
+Geräteeinstellungen hängen vom Hersteller ab (ADR 0026).
 
-## 1. Nebenstelle für die Tür anlegen
+| Hersteller | Geräte | Einrichtung |
+|---|---|---|
+| Dahua | VTO-Außenstationen, VTH-Innenstationen | [Dahua VTO und VTH](tuersprechstelle-dahua.md) |
 
-**Einstellungen → Nebenstellen → Neue Nebenstelle**, z. B. `8001` „Haustür“. Darin
+Die Weboberfläche zeigt eine Schritt-für-Schritt-Anleitung pro Hersteller
+und Gerätetyp: **Einstellungen → Türsprechstellen → Einrichtungsanleitung**.
+
+> **Status:** Mit SIP-Simulator und einer nachgebildeten Dahua-HTTP-API
+> getestet. Praxisberichte mit echten Geräten stehen auf der
+> Herstellerseite. Rückmeldungen mit Modell und Firmware-Stand sind
+> willkommen.
+
+## 1. Nebenstelle für jedes Gerät anlegen
+
+**Einstellungen → Nebenstellen → Neue Nebenstelle**, z. B. `8000` „Haustür“. Darin
 **Gerät hinzufügen**, Typ **Türsprechstelle**. Die angezeigten SIP-Zugangsdaten
-(Benutzername `8001vto`, Passwort) braucht die Station.
+(Benutzername `8000vto`, Passwort) braucht das Gerät.
 
 Der SIP-Benutzername ist die Nebenstellennummer plus eine Endung. Ohne eigene
 Endung verwendet TalkOps bei Türsprechstellen `vto`. Dahua-VTO- und
@@ -34,37 +44,29 @@ einer Ziffer beginnen. Ein Admin kann den Benutzernamen eines Geräts später
 ändern (**Bearbeiten**). Danach muss sich das Gerät mit dem neuen Namen neu
 registrieren.
 
-## 2. Station einrichten (Weboberfläche der VTO)
+### SIP-Passwortformat
 
-Die Menüs unterscheiden sich je nach Firmware; die Namen stammen aus Dahuas
-Anleitungen (VTO-Kurzanleitung v4.5, Handbuch VTO2311R-WP).
+| Format | Länge | Verwendung |
+|---|---|---|
+| Standard | 20 Buchstaben und Ziffern | alle Geräte (Vorgabe) |
+| Kompatibel | 15 Buchstaben und Ziffern | Geräte, die höchstens 15 Zeichen annehmen, z. B. Dahua VTO und VTH |
 
-1. **Netzwerk → SIP-Server:**
+- TalkOps wählt **Kompatibel (15 Zeichen)** vor, wenn du ein Gerät vom Typ
+  **Türsprechstelle** hinzufügst. Du kannst es im Dialog ändern.
+- Das Format gilt, wenn TalkOps ein Passwort erzeugt. **Bearbeiten**
+  speichert das Format für das nächste neue Passwort und behält das
+  aktuelle Passwort.
+- **Neues Passwort** erzeugt sofort ein Passwort. Ein Admin kann in diesem
+  Dialog das Format wählen. Das alte Passwort gilt sofort nicht mehr; trage
+  das neue Passwort im Gerät ein.
+- TalkOps speichert SIP-Passwörter verschlüsselt. Das Audit-Log enthält das
+  Format, nie das Passwort.
 
-   | Feld der VTO | Wert |
-   |---|---|
-   | SIP Server – Enable | **aus** (sonst spielt die Station selbst Telefonanlage) |
-   | Server Type | *ThirdParty* (manche Firmware: *Asterisk*) |
-   | IP Addr. | IP-Adresse oder Hostname des TalkOps-Hosts |
-   | Port | `5060` |
-   | Username + **Enable** | **Enable** anhaken, dann der SIP-Benutzername aus Schritt 1, z. B. `8001vto`. Ohne *Enable* nimmt die Station ihre eigene VTO-Nummer. |
-   | Password | das SIP-Passwort aus Schritt 1 |
-   | SIP Domain | `talkops.local` (Dahuas Vorgabe `VDP` funktioniert auch) |
-   | SIP Server Username | **derselbe** SIP-Benutzername wie bei *Username* – nicht `admin` |
-   | SIP Server Password | **dasselbe** SIP-Passwort |
+## 2. Gerät einrichten
 
-   TalkOps nimmt eine Registrierung nur an, wenn der Anmeldename gleich dem
-   SIP-Benutzernamen ist. *Username* und *SIP Server Username* müssen also
-   übereinstimmen.
-2. **Lokale Einstellungen → Basis:** Die **Rufnummer** („Call No.“, Standard
-   `9901`) wählt die Station beim Klingeln. Bei Stationen mit mehreren Tasten
-   bekommt jede Taste ihre Nummer.
-3. **Türöffnung per Tastenton in der Station (optional):** Einen
-   Entriegelungscode festlegen und als Verfahren **RFC 2833** wählen – **nur
-   eines** der Verfahren (RFC 2833 *oder* SIP INFO), sonst öffnet laut Dahua
-   keines. Alternativ erkennt TalkOps eigene Öffnungscodes (siehe Abschnitt 3).
-
-Die Station erscheint danach in der **Übersicht** unter *Registrierte Geräte* als `8001vto`.
+Folge der Herstellerseite, z. B. [Dahua VTO und VTH](tuersprechstelle-dahua.md).
+Prüfe die Registrierung: Die **Übersicht** zeigt den SIP-Benutzernamen unter
+*Registrierte Geräte*.
 
 ## 3. Türsprechstelle in TalkOps
 
@@ -72,6 +74,7 @@ Die Station erscheint danach in der **Übersicht** unter *Registrierte Geräte* 
 
 | Feld | Bedeutung |
 |---|---|
+| Hersteller | bestimmt die HTTP-Anbindung und die Einrichtungsanleitung (derzeit: Dahua) |
 | Nebenstelle | die Nebenstelle aus Schritt 1 – jeder Anruf von ihr ist ein Klingeln |
 | Klingeln geht an | Nebenstelle, Rufgruppe, Zeitsteuerung, Smart Attendant, Warteschlange oder Voicemail |
 | Tasten | für Mehrfamilien-Stationen: gewählte Nummer (z. B. `9902`) → eigenes Ziel; `9902#0` und `9902` gelten als gleich |
@@ -85,11 +88,17 @@ Die Station erscheint danach in der **Übersicht** unter *Registrierte Geräte* 
 **Verbindung testen** zeigt das gemeldete Modell. Das Passwort der Station
 wird verschlüsselt gespeichert.
 
+### Klingelziel und Rufgruppe
+
+Um mehrere Innenstationen oder Telefone klingeln zu lassen, öffne
+**Anrufsteuerung → Rufgruppen** und lege eine Rufgruppe an, z. B. mit `8001`
+und `8002`. Setze dann **Klingeln geht an** auf diese Rufgruppe.
+
 ## Tür öffnen
 
 | Weg | Wie |
 |---|---|
-| Während des Gesprächs | Öffnungscode von TalkOps (siehe unten) oder Entriegelungscode der Station (Schritt 2.3) am Telefon tippen |
+| Während des Gesprächs | Öffnungscode von TalkOps (siehe unten) oder Entriegelungscode der Station (siehe Herstellerseite) am Telefon tippen |
 | Kurzwahl | `*85` (erste Türsprechstelle) bzw. `*85<Nebenstelle>`, z. B. `*858001`; `*86…` für das zweite Schloss. Eine Ansage bestätigt. Gut als Kurzwahltaste am Telefon. |
 | Weboberfläche | **Tür → Tür öffnen** (alle Benutzer, mit Rückfrage) |
 | Automation | `POST /hooks/door/<id>/open` mit Token, siehe unten |
@@ -175,8 +184,29 @@ rest_command:
     payload: '{"door": 1}'
 ```
 
+## SIP-Anmeldeschutz
+
+Der SIP-Anmeldeschutz sperrt Adressen nach fehlgeschlagenen Anmeldungen
+(**Einstellungen → Anmeldung & Sicherheit → SIP-Anmeldeschutz**). Für eine
+Türsprechstelle muss er nicht ausgeschaltet werden.
+
+- Hat TalkOps die Adresse eines Geräts bei der Einrichtung gesperrt, wähle
+  **Entsperren** für diese Adresse.
+- Scheitert ein Gerät bei der Einrichtung oft, trage nur seine IP-Adresse
+  unter *Vertrauenswürdige Netze* ein (z. B. `192.168.1.50`), nicht das
+  ganze Netz.
+- Entferne die Ausnahme nach erfolgreicher Einrichtung, wenn du sie nicht
+  brauchst.
+
 ## Fehlersuche
 
+- **`401`, danach `403 Forbidden`:** TalkOps hat die Anmeldung abgelehnt.
+  Ursachen sind ein falsches oder gekürztes Passwort, ein unbekannter
+  SIP-Benutzername, ein Authentifizierungsname, der vom SIP-Benutzernamen
+  abweicht, oder eine gesperrte Adresse. Das TalkOps-Log zeigt
+  Benutzernamen und Adresse:
+  `docker compose logs -f talkops | grep "SIP authentication"`. Die
+  Herstellerseite nennt die gerätespezifischen Prüfungen.
 - **Station registriert sich nicht:** „SIP Server“ an der Station aus?
   *Username* (mit *Enable*) und *SIP Server Username* beide auf den
   SIP-Benutzernamen (z. B. `8001vto`) und beide Passwörter gesetzt? Ist der

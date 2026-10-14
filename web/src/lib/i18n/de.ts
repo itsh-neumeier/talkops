@@ -200,7 +200,7 @@ const de: Record<keyof typeof en, string> = {
 	'ext.showCredentials': 'Zugangsdaten anzeigen',
 	'ext.resetPassword': 'Neues Passwort',
 	'ext.resetConfirm':
-		'Neues SIP-Passwort erzeugen? Das Telefon muss danach neu eingerichtet werden.',
+		'TalkOps erzeugt ein neues SIP-Passwort. Das aktuelle Passwort gilt sofort nicht mehr. Trage das neue Passwort im Gerät ein und starte das Gerät bei Bedarf neu.',
 	'ext.online': 'online',
 	'ext.offline': 'offline',
 	'ext.codecProfile': 'Codec-Profil',
@@ -1338,7 +1338,240 @@ const de: Record<keyof typeof en, string> = {
 	'phone.callNumber': '{number} anrufen',
 	'phone.noIdentity': 'Für dieses Konto ist keine aktive Nebenstelle verfügbar.',
 	'phone.identityUnavailable':
-		'Diese Nebenstelle ist nicht mehr verfügbar. Liste aktualisieren und eine verfügbare Nebenstelle auswählen.'
+		'Diese Nebenstelle ist nicht mehr verfügbar. Liste aktualisieren und eine verfügbare Nebenstelle auswählen.',
+	'ext.pwFormat': 'SIP-Passwortformat',
+	'ext.pwFormat.standard': 'Standard (20 Zeichen)',
+	'ext.pwFormat.compact15': 'Kompatibel (15 Zeichen)',
+	'ext.pwFormatHint':
+		'Kompatibel: für Geräte, die höchstens 15 Zeichen annehmen, zum Beispiel Dahua VTO und VTH. Das Format gilt, wenn TalkOps ein Passwort erzeugt.',
+	'ext.pwFormatKeep':
+		'Das aktuelle Passwort bleibt gültig. Das neue Format gilt ab dem nächsten neuen Passwort.',
+	'ext.pwFormatBadge': 'Passwort 15 Zeichen',
+	'ext.resetTitle': 'Neues SIP-Passwort',
+	'ext.resetFormatCurrent': 'Passwortformat: {format}',
+	'ext.resetGenerate': 'Neues Passwort erzeugen',
+	'ext.credsDoorHint':
+		'Dahua VTO: Passwort in Password und in SIP Server Password eintragen. Dahua VTH: in ConfigTool → Sip Register Pwd eintragen. Die Room No. des VTH muss der SIP-Benutzername sein.',
+	'door.tabStations': 'Türsprechstellen',
+	'door.tabGuide': 'Einrichtungsanleitung',
+	'door.vendor': 'Hersteller',
+	'door.vendorHint':
+		'Bestimmt die HTTP-Anbindung (Türöffner, Bilder, Ereignisse) und die Einrichtungsanleitung. TalkOps unterstützt derzeit Dahua.',
+	'doorGuide.intro':
+		'Schritt-für-Schritt-Einrichtung für Türsprechstellen und Innenstationen. Wähle Hersteller und Gerätetyp. Menünamen können je nach Modell und Firmware abweichen.',
+	'doorGuide.vendor': 'Hersteller',
+	'doorGuide.device': 'Gerätetyp',
+	'doorGuide.values':
+		'Werte für diesen TalkOps-Server: SIP-Server {host}, Port {port}, Domain {domain}.',
+	'doorGuide.commonHeading': 'Für alle Türsprechstellen',
+	'doorGuide.unconfirmed': 'Nicht bestätigt',
+	'doorGuide.colField': 'Feld',
+	'doorGuide.colValue': 'Wert',
+	'doorGuide.colDevice': 'Gerät',
+	'doorGuide.colExtension': 'Nebenstelle',
+	'doorGuide.colSipUser': 'SIP-Benutzername',
+	'doorGuide.colPassword': 'Passwort',
+	'doorGuide.colWhere': 'Wo eintragen',
+	'doorGuide.colUse': 'Zweck',
+	'doorGuide.colSymptom': 'Was du siehst',
+	'doorGuide.colCheck': 'Was zu tun ist',
+	'doorGuide.colModel': 'Modell und Firmware',
+	'doorGuide.colState': 'Stand',
+	'doorGuide.colFunction': 'Funktion',
+	'doorGuide.colRequirement': 'Voraussetzung',
+	'doorGuide.pw.sip': 'SIP-Passwort (aus TalkOps)',
+	'doorGuide.pw.sipUse': 'SIP-Registrierung und Anrufe zu TalkOps.',
+	'doorGuide.dahua.vto.label': 'VTO (Außenstation)',
+	'doorGuide.dahua.vto.summary':
+		'Die VTO registriert sich als SIP-Gerät bei TalkOps. Ein Klingeln ruft das Klingelziel an, das du in TalkOps einstellst.',
+	'doorGuide.dahua.prereq.title': 'Vor dem Start',
+	'doorGuide.dahua.prereq.ownAccount':
+		'Gib jedem Gerät eine eigene Nebenstelle und einen eigenen SIP-Benutzernamen. Nutze ein SIP-Konto nie auf zwei Geräten.',
+	'doorGuide.dahua.prereq.separate':
+		'Halte SIP-Passwort und Geräte-Login (Web-Login) getrennt. Der Abschnitt „SIP-Passwort und Gerätepasswort“ zeigt den Unterschied.',
+	'doorGuide.dahua.prereq.network':
+		'Stelle sicher, dass das Gerät den TalkOps-Server auf UDP-Port {port} erreicht.',
+	'doorGuide.dahua.prereq.plan': 'Beispielplan',
+	'doorGuide.dahua.vto.talkops.title': 'Einstellungen in TalkOps',
+	'doorGuide.dahua.vto.talkops.ext':
+		'Öffne Einstellungen → Nebenstellen und lege eine Nebenstelle für die VTO an, zum Beispiel 8000 „Haustür“.',
+	'doorGuide.dahua.vto.talkops.device':
+		'Wähle in der Nebenstelle Gerät hinzufügen. Setze den Typ auf Türsprechstelle und die Endung des SIP-Benutzernamens auf vto (SIP-Benutzername 8000vto).',
+	'doorGuide.dahua.talkops.format':
+		'Setze das SIP-Passwortformat auf Kompatibel (15 Zeichen). TalkOps wählt dieses Format für neue Türsprechstellen-Geräte vor.',
+	'doorGuide.dahua.talkops.copy':
+		'Speichere. TalkOps zeigt SIP-Benutzernamen und SIP-Passwort. Kopiere beide Werte. Zugangsdaten anzeigen zeigt sie später erneut.',
+	'doorGuide.dahua.vto.talkops.station':
+		'Öffne Einstellungen → Türsprechstellen → Neue Türsprechstelle. Setze den Hersteller auf Dahua und wähle die Nebenstelle der VTO.',
+	'doorGuide.dahua.vto.talkops.target':
+		'Wähle das Klingelziel unter Klingeln geht an. Für Türöffner, Bilder und Ereignisprotokoll trage den HTTP-Zugang der VTO ein (IP-Adresse, Port, Web-Login).',
+	'doorGuide.dahua.vto.talkops.test': 'Wähle Verbindung testen. TalkOps zeigt das Modell der VTO.',
+	'doorGuide.dahua.vto.web.title': 'Einstellungen in der VTO-Weboberfläche',
+	'doorGuide.dahua.vto.web.intro':
+		'Öffne die Weboberfläche der VTO und melde dich mit dem Web-Login an. Gehe zu Network → SIP Server (manche Firmware: Network Settings → SIP Server).',
+	'doorGuide.dahua.vto.web.enable':
+		'Aus. TalkOps ist der SIP-Server. Ist die Einstellung an, arbeitet die VTO als eigener SIP-Server.',
+	'doorGuide.dahua.vto.web.type': 'Drittanbieter-Server (manche Firmware: Asterisk).',
+	'doorGuide.dahua.web.host': '{host} (IP-Adresse oder Hostname des TalkOps-Servers)',
+	'doorGuide.dahua.web.port': '{port}',
+	'doorGuide.dahua.vto.web.user':
+		'Enable aktivieren. Den SIP-Benutzernamen aus TalkOps eintragen, zum Beispiel 8000vto. Ohne Enable nutzt die VTO ihre eigene VTO-Nummer.',
+	'doorGuide.dahua.web.password': 'Das SIP-Passwort aus TalkOps.',
+	'doorGuide.dahua.web.domain':
+		'{domain} oder die Dahua-Vorgabe VDP. TalkOps akzeptiert jede Domain.',
+	'doorGuide.dahua.vto.web.serverUser':
+		'Derselbe SIP-Benutzername wie in Username. Nicht admin verwenden.',
+	'doorGuide.dahua.vto.web.serverPassword': 'Dasselbe SIP-Passwort.',
+	'doorGuide.dahua.vto.web.match':
+		'TalkOps akzeptiert eine Registrierung nur, wenn der Authentifizierungsname gleich dem SIP-Benutzernamen ist. Username und SIP Server Username müssen daher identisch sein.',
+	'doorGuide.dahua.vto.web.callNo':
+		'Local Settings → Basic → Call No. ist die Nummer, die die VTO beim Klingeln wählt (Vorgabe 9901). TalkOps leitet jeden Anruf der VTO an das Klingelziel. Bei Stationen mit mehreren Tasten unter Tasten ein Ziel pro Tastennummer festlegen.',
+	'doorGuide.dahua.vto.web.dtmf':
+		'Optional: ein Öffnungscode in der VTO. Als DTMF-Methode nur RFC 2833 wählen, nicht RFC 2833 und SIP INFO zusammen.',
+	'doorGuide.dahua.pw.title': 'SIP-Passwort und Gerätepasswort',
+	'doorGuide.dahua.vto.pw.sipWhere': 'VTO: Password und SIP Server Password',
+	'doorGuide.dahua.vto.pw.web': 'Web-Login der VTO',
+	'doorGuide.dahua.vto.pw.webWhere': 'TalkOps: Türsprechstelle → HTTP-Zugang',
+	'doorGuide.dahua.vto.pw.webUse':
+		'Türöffner, Bilder und Ereignisprotokoll über die HTTP-Schnittstelle. TalkOps nutzt es nie für SIP.',
+	'doorGuide.dahua.pw.separate':
+		'Nutze unterschiedliche Passwörter. Ein neues SIP-Passwort in TalkOps ändert den Geräte-Login nicht. Ein neuer Geräte-Login ändert das SIP-Passwort nicht.',
+	'doorGuide.dahua.check.title': 'Speichern, neu starten und prüfen',
+	'doorGuide.dahua.vto.check.save': 'Wähle OK oder Save in der VTO-Weboberfläche.',
+	'doorGuide.dahua.vto.check.restart':
+		'Starte die VTO neu, wenn sich der Registrierungsstatus nach einer Minute nicht ändert (zum Beispiel Maintenance → Reboot).',
+	'doorGuide.dahua.vto.check.dashboard':
+		'Öffne in TalkOps die Übersicht. Registrierte Geräte zeigt 8000vto. Die Nebenstelle zeigt das Gerät als online.',
+	'doorGuide.dahua.vto.check.ring':
+		'Drücke die Taste an der VTO. Das Klingelziel klingelt. Mit HTTP-Zugang zeigt die Seite Tür das Klingeln im Ereignisprotokoll.',
+	'doorGuide.dahua.vth.label': 'VTH (Innenstation)',
+	'doorGuide.dahua.vth.summary':
+		'Jeder VTH registriert sich als eigenes SIP-Gerät bei TalkOps. Dann können die VTO und alle Telefone den VTH anrufen.',
+	'doorGuide.dahua.vth.prereq.activate':
+		'Aktiviere den VTH mit ConfigTool und setze seinen Geräte-Login.',
+	'doorGuide.dahua.vth.prereq.room':
+		'Die Room No. (Raumnummer) des VTH ist sein SIP-Benutzername. Die Room No. muss daher identisch mit dem SIP-Benutzernamen in TalkOps sein.',
+	'doorGuide.dahua.vth.prereq.limit':
+		'Praxisbericht: Ein VTH5422H mit Firmware V4.800.0.2 erhielt 403 Forbidden mit einem 20-stelligen Passwort; ein Softphone registrierte sich mit demselben Konto. Die Yeastar-Anleitung für Dahua-VTH nennt eine Passwortlänge von 8–15 Zeichen. Dieses Limit ist für dieses Modell und diese Firmware nicht bestätigt.',
+	'doorGuide.dahua.vth.talkops.ext':
+		'Öffne Einstellungen → Nebenstellen und lege für jeden VTH eine Nebenstelle an, zum Beispiel 8001 „Innenstation Flur“.',
+	'doorGuide.dahua.vth.talkops.device':
+		'Wähle in der Nebenstelle Gerät hinzufügen. Setze den Typ auf Türsprechstelle und die Endung des SIP-Benutzernamens auf vth (SIP-Benutzername 8001vth). TalkOps hat keinen eigenen Typ für Innenstationen. Der Typ bestimmt nur den vorgegebenen Benutzernamen und das Passwortformat.',
+	'doorGuide.dahua.vth.talkops.existing':
+		'Gerät mit 20-stelligem Passwort: Wähle Neues Passwort und dann Kompatibel (15 Zeichen). Das alte Passwort gilt sofort nicht mehr. Trage das neue Passwort im VTH ein.',
+	'doorGuide.dahua.vth.config.title': 'Einstellungen in ConfigTool',
+	'doorGuide.dahua.vth.config.intro':
+		'Öffne ConfigTool → Device Config. Wähle die IP-Adresse des VTH und Get Device Info. Melde dich mit dem Geräte-Login des VTH an, nicht mit dem SIP-Passwort.',
+	'doorGuide.dahua.vth.config.room':
+		'Der SIP-Benutzername aus TalkOps, exakt, zum Beispiel 8001vth. Groß- und Kleinschreibung gleich übernehmen.',
+	'doorGuide.dahua.vth.config.main':
+		'Main VTH. Jeder VTH, der sich bei TalkOps registriert, ist ein Haupt-VTH.',
+	'doorGuide.dahua.vth.config.mode':
+		'An. Der VTH registriert sich beim SIP-Server. Die Yeastar-Anleitung nennt das Feld „Initiale Mode“.',
+	'doorGuide.dahua.vth.config.login':
+		'Nicht das SIP-Passwort. ConfigTool füllt diese Werte für einen Haupt-VTH aus. Für TalkOps nicht ändern.',
+	'doorGuide.dahua.vth.config.ok':
+		'Wähle OK. ConfigTool meldet, wenn der VTH die Einstellungen übernommen hat.',
+	'doorGuide.dahua.vth.screen.title': 'Einstellungen am VTH-Bildschirm',
+	'doorGuide.dahua.vth.screen.intro':
+		'Manche Firmware zeigt dieselben Werte am VTH: Einstellungen → Projektpasswort → Netzwerk oder SIP-Server. Menünamen weichen ab.',
+	'doorGuide.dahua.vth.screen.one':
+		'Ändere Werte in ConfigTool oder am VTH-Bildschirm, nicht gleichzeitig an beiden Stellen.',
+	'doorGuide.dahua.vth.screen.same':
+		'Prüfe, dass der VTH-Bildschirm dieselbe Room No., denselben SIP-Server und Port wie ConfigTool zeigt.',
+	'doorGuide.dahua.vth.screen.unconfirmed':
+		'Die Menüs am VTH-Bildschirm für Firmware V4.800.0.2 sind mit TalkOps nicht bestätigt.',
+	'doorGuide.dahua.vth.main.title': 'Haupt- und Nebengeräte',
+	'doorGuide.dahua.vth.main.own':
+		'Stelle jeden VTH als Main VTH mit eigener Room No. und eigenem SIP-Konto ein.',
+	'doorGuide.dahua.vth.main.group':
+		'Um mehrere VTH klingeln zu lassen, nutze eine Rufgruppe in TalkOps (siehe „Klingelziel und Rufgruppe“).',
+	'doorGuide.dahua.vth.main.ext':
+		'Ein Dahua-Neben-VTH (Room No. mit -1, #1 oder ähnlich) verbindet sich im Dahua-System mit seinem Haupt-VTH, nicht mit TalkOps.',
+	'doorGuide.dahua.vth.main.unconfirmed':
+		'Neben-VTH, die über einen Haupt-VTH verbunden sind, sind mit TalkOps nicht getestet.',
+	'doorGuide.dahua.vth.pw.sipWhere': 'ConfigTool: Sip Register Pwd',
+	'doorGuide.dahua.vth.pw.device': 'Geräte-Login des VTH',
+	'doorGuide.dahua.vth.pw.deviceWhere': 'Anmeldung in ConfigTool, Weboberfläche',
+	'doorGuide.dahua.vth.pw.deviceUse': 'Konfiguration des VTH. TalkOps nutzt es nicht.',
+	'doorGuide.dahua.vth.pw.login': 'Login Password (Haupt-VTH)',
+	'doorGuide.dahua.vth.pw.loginWhere': 'ConfigTool: Local Info',
+	'doorGuide.dahua.vth.pw.loginUse': 'Verbindung zwischen Dahua-Geräten. Nicht das SIP-Passwort.',
+	'doorGuide.dahua.vth.pw.mask':
+		'Die Anzahl der Maskierungszeichen (•••) in ConfigTool zeigt nicht die echte Länge eines gespeicherten Passworts.',
+	'doorGuide.dahua.vth.check.save': 'Wähle OK in ConfigTool.',
+	'doorGuide.dahua.vth.check.restart': 'Starte den VTH neu (ConfigTool oder Stromversorgung).',
+	'doorGuide.dahua.vth.check.dashboard':
+		'Öffne in TalkOps die Übersicht. Registrierte Geräte zeigt den SIP-Benutzernamen, zum Beispiel 8001vth.',
+	'doorGuide.dahua.vth.check.call':
+		'Rufe die Nebenstelle des VTH von einem Telefon an. Der VTH klingelt.',
+	'doorGuide.dahua.vth.check.trouble': 'Erhält der VTH 403 Forbidden, lies „Fehlersuche“.',
+	'doorGuide.dahua.models.title': 'Modelle und Firmware',
+	'doorGuide.dahua.models.vto4202': 'Registriert sich bei TalkOps (Praxisbericht).',
+	'doorGuide.dahua.models.vth5422':
+		'403 Forbidden mit 20-stelligem Passwort. Der Test mit Kompatibel (15 Zeichen) steht aus.',
+	'doorGuide.dahua.models.other':
+		'Mit SIP-Simulator und nachgebildeter HTTP-API getestet, nicht mit echter Hardware. Menünamen können abweichen.',
+	'doorGuide.dahua.models.note':
+		'Das Limit von 8–15 Zeichen stammt aus der Yeastar-Anleitung für andere VTH-Modelle. Ein erfolgreicher Softphone-Test (zum Beispiel MicroSIP) ersetzt keinen Test mit dem echten Gerät.',
+	'doorGuide.common.ring.title': 'Klingelziel und Rufgruppe',
+	'doorGuide.common.ring.group':
+		'Öffne Anrufsteuerung → Rufgruppen und lege eine Rufgruppe mit den Nebenstellen aller Innenstationen an, zum Beispiel 8001 und 8002. Füge bei Bedarf weitere Telefone hinzu.',
+	'doorGuide.common.ring.target':
+		'Öffne Einstellungen → Türsprechstellen → Bearbeiten und setze Klingeln geht an auf diese Rufgruppe.',
+	'doorGuide.common.ring.buttons':
+		'Bei Stationen mit mehreren Tasten unter Tasten ein Klingelziel pro Tastennummer festlegen.',
+	'doorGuide.common.video.title': 'Video',
+	'doorGuide.common.video.local':
+		'Anrufe der Türsprechstelle senden H.264-Video an jedes angerufene Gerät mit Videounterstützung. Das Nebenstellen-Merkmal Videoanrufe ist dafür nicht nötig.',
+	'doorGuide.common.video.limits':
+		'Warteschlangen und WLAN-Mobilteile mit Codecprofil HD oder Robust erhalten nur Audio.',
+	'doorGuide.common.video.audio':
+		'Audio funktioniert immer. Fehlt das Bild, prüfe, ob das Empfangsgerät H.264 unterstützt.',
+	'doorGuide.common.dtmf.title': 'Türöffnung per DTMF',
+	'doorGuide.common.dtmf.http':
+		'Richte den HTTP-Zugang der Türsprechstelle in TalkOps ein und wähle Verbindung testen. TalkOps öffnet die Tür über diesen Zugang.',
+	'doorGuide.common.dtmf.code':
+		'Trage im Türsprechstellen-Formular einen Öffnungscode pro Schloss ein (2 bis 8 Tasten aus 0–9, * und #).',
+	'doorGuide.common.dtmf.use':
+		'Tippe den Code während des Gesprächs am Telefon oder an der Innenstation. Das Gerät muss DTMF als RFC 2833 senden.',
+	'doorGuide.common.dtmf.external':
+		'Externe Anrufer können die Codes nur von den Nummern unter Externe Nummern für Öffnungscodes nutzen.',
+	'doorGuide.common.dtmf.twice':
+		'Ein Öffnungscode in der Türsprechstelle selbst funktioniert ohne TalkOps. Nutze einen anderen Code als in TalkOps, sonst öffnet die Tür zweimal.',
+	'doorGuide.common.http.title': 'Optionale HTTP-Funktionen',
+	'doorGuide.common.http.opener': 'Türöffner aus TalkOps (Seite Tür, *85, Home Assistant)',
+	'doorGuide.common.http.openerReq': 'HTTP-Zugang mit dem Web-Login der Türsprechstelle',
+	'doorGuide.common.http.picture': 'Livebild und Bild bei jedem Klingeln',
+	'doorGuide.common.http.pictureReq': 'HTTP-Zugang; Bei jedem Klingeln ein Bild speichern',
+	'doorGuide.common.http.events': 'Ereignisprotokoll (Tür offen oder zu, Alarm)',
+	'doorGuide.common.http.eventsReq': 'HTTP-Zugang; Ereignisprotokoll an',
+	'doorGuide.common.http.webhook': 'Webhook (Home Assistant)',
+	'doorGuide.common.http.webhookReq': 'Webhook-URL im Türsprechstellen-Formular',
+	'doorGuide.common.guard.title': 'SIP-Anmeldeschutz',
+	'doorGuide.common.guard.keep':
+		'Lass den SIP-Anmeldeschutz eingeschaltet. Für eine Türsprechstelle muss er nicht ausgeschaltet werden.',
+	'doorGuide.common.guard.unban':
+		'Hat TalkOps die Adresse eines Geräts bei der Einrichtung gesperrt, öffne Einstellungen → Anmeldung & Sicherheit → SIP-Anmeldeschutz und wähle Entsperren für diese Adresse.',
+	'doorGuide.common.guard.trust':
+		'Scheitert ein Gerät bei der Einrichtung oft, trage nur seine IP-Adresse unter Vertrauenswürdige Netze ein, zum Beispiel 192.168.1.50. Trage nicht das ganze Netz ein.',
+	'doorGuide.common.guard.remove':
+		'Entferne die Ausnahme nach erfolgreicher Einrichtung, wenn du sie nicht brauchst.',
+	'doorGuide.common.trouble.title': 'Fehlersuche',
+	'doorGuide.common.trouble.none': 'Keine SIP-Pakete erreichen TalkOps',
+	'doorGuide.common.trouble.noneCheck':
+		'SIP-Server-Adresse und Port im Gerät prüfen. Netzwerk, VLAN und Firewall zwischen Gerät und TalkOps prüfen. VTO: SIP Server (Enable) muss aus sein. Gerät nach einer Änderung neu starten.',
+	'doorGuide.common.trouble.401': 'Nur 401 Unauthorized',
+	'doorGuide.common.trouble.401Check':
+		'Das ist die normale erste Antwort: TalkOps fragt nach dem Passwort. Das Gerät muss dann ein zweites REGISTER mit Passwort senden. Fehlt es, SIP-Passwort im Gerät neu eintragen und Gerät neu starten.',
+	'doorGuide.common.trouble.403': '401, danach 403 Forbidden',
+	'doorGuide.common.trouble.403Check':
+		'TalkOps hat die Anmeldung abgelehnt. Mögliche Ursachen: (1) falsches oder gekürztes Passwort: Neues Passwort mit Format Kompatibel (15 Zeichen) erzeugen und im Gerät eintragen; (2) unbekannter SIP-Benutzername: ein Dahua-VTH sendet seine Room No., die identisch mit dem SIP-Benutzernamen sein muss; (3) Authentifizierungsname weicht vom SIP-Benutzernamen ab (VTO: SIP Server Username); (4) gesperrte Adresse (siehe SIP-Anmeldeschutz).',
+	'doorGuide.common.trouble.ok': '200 OK, aber eine Funktion fehlt',
+	'doorGuide.common.trouble.okCheck':
+		'Die Registrierung ist korrekt. Kein Klingeln: Nebenstelle und Klingelziel der Türsprechstelle prüfen und ob Nebenstelle und Gerät aktiviert sind. Kein Bild: siehe Video. Tür öffnet nicht: HTTP-Zugang mit Verbindung testen und DTMF-Methode (RFC 2833) prüfen.',
+	'doorGuide.common.trouble.log':
+		'Das TalkOps-Log nennt SIP-Benutzernamen und Adresse jeder fehlgeschlagenen Anmeldung: „SIP authentication failed“ und „SIP authentication for unknown or disabled user“. Befehl: docker compose logs -f talkops | grep "SIP authentication"'
 };
 
 export default de;

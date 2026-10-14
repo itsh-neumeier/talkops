@@ -205,6 +205,8 @@ async fn door_station(db: PgPool) {
         )
         .await;
     assert_eq!(status, StatusCode::OK, "{station}");
+    // Clients without a vendor create Dahua stations (ADR 0026).
+    assert_eq!(station["vendor"], "dahua");
     assert_eq!(station["has_password"], true);
     assert_eq!(station["has_webhook"], true);
     assert!(station.get("password").is_none() && station.get("password_enc").is_none());
@@ -216,6 +218,24 @@ async fn door_station(db: PgPool) {
         )
         .await;
     assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    let (status, _) = admin
+        .post(
+            "/api/v1/door-stations",
+            json!({"name": "Other", "extension_id": id(&ext21), "vendor": "acme"}),
+        )
+        .await;
+    assert!(status.is_client_error(), "unknown vendor: {status}");
+    let (_, audit) = admin.get("/api/v1/audit").await;
+    assert!(
+        audit
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|e| e["entity_type"] == "door_station"
+                && e["action"] == "create"
+                && e["details"]["vendor"] == "dahua"),
+        "{audit}"
+    );
 
     let (status, t) = admin
         .post(&format!("/api/v1/door-stations/{sid}/test"), json!({}))

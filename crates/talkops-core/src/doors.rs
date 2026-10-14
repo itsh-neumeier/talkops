@@ -1,5 +1,6 @@
-//! Door stations (Dahua VTO): the station is the device of an extension, so
-//! it registers and calls like a phone. TalkOps routes its rings, opens the
+//! Door stations: the station is the device of an extension, so it
+//! registers and calls like a phone. The vendor selects the HTTP integration
+//! (ADR 0026); TalkOps supports Dahua VTO stations. TalkOps routes its rings, opens the
 //! door through the station's HTTP API and keeps an event log with
 //! snapshots.
 
@@ -25,10 +26,33 @@ pub struct Button {
     pub id: Option<Uuid>,
 }
 
+/// Manufacturer of a door station. It selects the HTTP integration (door
+/// opener, snapshots, events) and the setup guide (ADR 0026). SIP, ring
+/// routing and DTMF unlock codes are the same for all vendors.
+#[derive(
+    Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, utoipa::ToSchema,
+)]
+#[sqlx(type_name = "door_vendor", rename_all = "lowercase")]
+#[serde(rename_all = "lowercase")]
+pub enum DoorVendor {
+    /// Dahua VTO door stations and VTH indoor monitors.
+    #[default]
+    Dahua,
+}
+
+impl DoorVendor {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            DoorVendor::Dahua => "dahua",
+        }
+    }
+}
+
 #[derive(Debug, Clone, FromRow, Serialize, utoipa::ToSchema)]
 pub struct DoorStation {
     pub id: Uuid,
     pub name: String,
+    pub vendor: DoorVendor,
     pub extension_id: Uuid,
     pub host: String,
     pub port: i32,
@@ -83,7 +107,7 @@ impl DoorStation {
     }
 }
 
-const COLUMNS: &str = "id, name, extension_id, host, port, username, password_enc IS NOT NULL AS has_password, \
+const COLUMNS: &str = "id, name, vendor, extension_id, host, port, username, password_enc IS NOT NULL AS has_password, \
      doors, destination_type, destination_id, buttons, events_enabled, snapshots, \
      webhook_url_enc IS NOT NULL AS has_webhook, api_token_hash IS NOT NULL AS has_api_token, \
      unlock_code_1_enc IS NOT NULL AS has_unlock_code_1, \
@@ -92,6 +116,10 @@ const COLUMNS: &str = "id, name, extension_id, host, port, username, password_en
 #[derive(Debug, Clone, Deserialize, utoipa::ToSchema)]
 pub struct DoorStationInput {
     pub name: String,
+    /// Manufacturer. On create, omitted = `dahua`; on update, omitted keeps
+    /// the stored vendor.
+    #[serde(default)]
+    pub vendor: Option<DoorVendor>,
     pub extension_id: Uuid,
     #[serde(default)]
     pub host: String,
@@ -344,8 +372,8 @@ pub async fn create(
         "INSERT INTO door_stations (tenant_id, name, extension_id, host, port, username, password_enc,
                                     doors, destination_type, destination_id, buttons, events_enabled,
                                     snapshots, webhook_url_enc, enabled, unlock_code_1_enc,
-                                    unlock_code_2_enc, dtmf_allowed_numbers)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+                                    unlock_code_2_enc, dtmf_allowed_numbers, vendor)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
          RETURNING {COLUMNS}"
     );
     sqlx::query_as(&sql)
@@ -367,6 +395,7 @@ pub async fn create(
         .bind(code_1)
         .bind(code_2)
         .bind(&allowed)
+        .bind(input.vendor.unwrap_or_default())
         .fetch_one(pool)
         .await
         .map_err(|e| match e {
@@ -404,7 +433,7 @@ pub async fn update(
              enabled = $18,
              unlock_code_1_enc = CASE WHEN $19 THEN $20 ELSE unlock_code_1_enc END,
              unlock_code_2_enc = CASE WHEN $21 THEN $22 ELSE unlock_code_2_enc END,
-             dtmf_allowed_numbers = $23, updated_at = now()
+             dtmf_allowed_numbers = $23, vendor = COALESCE($24, vendor), updated_at = now()
          WHERE tenant_id = $1 AND id = $2 RETURNING {COLUMNS}"
     );
     sqlx::query_as(&sql)
@@ -431,6 +460,7 @@ pub async fn update(
         .bind(code_2.is_some())
         .bind(code_2.flatten())
         .bind(&allowed)
+        .bind(input.vendor)
         .fetch_one(pool)
         .await
         .map_err(|e| match e {
@@ -466,6 +496,7 @@ pub async fn delete(pool: &PgPool, tenant: TenantId, id: Uuid) -> CoreResult<Vec
 /// HTTP API access of a station (password decrypted).
 #[derive(Debug, Clone)]
 pub struct Connection {
+    pub vendor: DoorVendor,
     pub host: String,
     pub port: u16,
     pub username: String,
@@ -477,16 +508,17 @@ pub async fn connection(
     secrets: &SecretBox,
     id: Uuid,
 ) -> CoreResult<Option<Connection>> {
-    let row: Option<(String, i32, String, Option<String>)> = sqlx::query_as(
-        "SELECT host, port, username, password_enc FROM door_stations WHERE id = $1",
+    let row: Option<(DoorVendor, String, i32, String, Option<String>)> = sqlx::query_as(
+        "SELECT vendor, host, port, username, password_enc FROM door_stations WHERE id = $1",
     )
     .bind(id)
     .fetch_optional(pool)
     .await?;
-    let Some((host, port, username, password)) = row.filter(|r| !r.0.is_empty()) else {
+    let Some((vendor, host, port, username, password)) = row.filter(|r| !r.1.is_empty()) else {
         return Ok(None);
     };
     Ok(Some(Connection {
+        vendor,
         host,
         port: port as u16,
         username,
@@ -746,6 +778,7 @@ mod tests {
         DoorStation {
             id: Uuid::nil(),
             name: "Door".into(),
+            vendor: DoorVendor::Dahua,
             extension_id: Uuid::nil(),
             host: String::new(),
             port: 80,

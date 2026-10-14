@@ -126,8 +126,13 @@ export interface Device {
 	phone_display_name: string;
 	/** Codec profile; null = automatic from the device kind. */
 	codec_profile: CodecProfile | null;
+	/** Format of the next generated SIP password; never changes the current one. */
+	sip_password_format: SipPasswordFormat;
 	enabled: boolean;
 }
+
+/** Generated SIP passwords: 20 or 15 letters and digits. */
+export type SipPasswordFormat = 'standard' | 'compact15';
 
 /** Codecs TalkOps uses with a device (ADR 0023). */
 export type CodecProfile = 'standard' | 'hd' | 'robust';
@@ -780,9 +785,13 @@ export interface DoorButton {
 	id: string | null;
 }
 
+/** Manufacturer of a door station (ADR 0026). */
+export type DoorVendor = 'dahua';
+
 export interface DoorStation {
 	id: string;
 	name: string;
+	vendor: DoorVendor;
 	extension_id: string;
 	host: string;
 	port: number;

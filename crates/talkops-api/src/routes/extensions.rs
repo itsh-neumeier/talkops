@@ -6,7 +6,9 @@ use axum::http::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use talkops_core::audit;
-use talkops_core::extensions::{self, Device, DeviceInput, Extension, ExtensionInput};
+use talkops_core::extensions::{
+    self, Device, DeviceInput, Extension, ExtensionInput, SipPasswordFormat,
+};
 use talkops_core::users::Role;
 use talkops_core::{phones, settings};
 use utoipa::ToSchema;
@@ -223,7 +225,8 @@ pub async fn create_device(
         "create",
         "device",
         Some(device.id.to_string()),
-        json!({"extension": ext.number, "sip_username": device.sip_username}),
+        json!({"extension": ext.number, "sip_username": device.sip_username,
+               "sip_password_format": device.sip_password_format}),
     )
     .await?;
     Ok(Json(DeviceCredentials {
@@ -251,6 +254,11 @@ pub async fn update_device(
         // The device must register again with the new name.
         detail["sip_username"] = json!(device.sip_username);
         detail["previous_sip_username"] = json!(before.sip_username);
+    }
+    if device.sip_password_format != before.sip_password_format {
+        // Applies to the next generated password; the current one stays.
+        detail["sip_password_format"] = json!(device.sip_password_format);
+        detail["previous_sip_password_format"] = json!(before.sip_password_format);
     }
     audit::record(
         &state.db,
@@ -326,26 +334,50 @@ pub async fn device_credentials(
     }))
 }
 
-/// Generates a new SIP password for a device (admin or the owning user).
-#[utoipa::path(post, path = "/api/v1/devices/{id}/reset-password", tag = "extensions", params(("id" = Uuid, Path)), responses((status = 200, body = DeviceCredentials)))]
+/// Options for a new SIP password.
+#[derive(Debug, Default, Deserialize, ToSchema)]
+pub struct ResetPasswordInput {
+    /// Changes the device's password format before the new password is
+    /// generated (admin). Omitted: the stored format.
+    #[serde(default)]
+    pub sip_password_format: Option<SipPasswordFormat>,
+}
+
+/// Generates a new SIP password for a device (admin or the owning user) in
+/// the device's password format. The device must then use the new password.
+#[utoipa::path(post, path = "/api/v1/devices/{id}/reset-password", tag = "extensions", params(("id" = Uuid, Path)), request_body(content = Option<ResetPasswordInput>), responses((status = 200, body = DeviceCredentials)))]
 pub async fn reset_device_password(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(id): Path<Uuid>,
+    body: Option<Json<ResetPasswordInput>>,
 ) -> ApiResult<Json<DeviceCredentials>> {
+    let input = body.map(|Json(b)| b).unwrap_or_default();
     let device = extensions::get_device(&state.db, auth.tenant, id).await?;
     check_browser_owner(&auth, &device)?;
     let ext = extensions::get(&state.db, auth.tenant, device.extension_id).await?;
     check_owner(&state, &auth, &ext, true).await?;
-    let password =
-        extensions::reset_device_password(&state.db, auth.tenant, &state.secrets, id).await?;
+    // Only an admin changes the format; the owner resets with the stored one.
+    let format = input
+        .sip_password_format
+        .filter(|f| *f != device.sip_password_format);
+    if format.is_some() {
+        auth.require(Role::Admin)?;
+    }
+    let (password, used) =
+        extensions::reset_device_password(&state.db, auth.tenant, &state.secrets, id, format)
+            .await?;
+    let mut detail = json!({"sip_username": device.sip_username, "sip_password_format": used});
+    if used != device.sip_password_format {
+        detail["previous_sip_password_format"] = json!(device.sip_password_format);
+    }
     audit::record(
         &state.db,
         &auth.actor(),
         "reset_password",
         "device",
         Some(id.to_string()),
-        json!({"sip_username": device.sip_username}),
+        detail,
     )
     .await?;
     Ok(Json(DeviceCredentials {

@@ -70,7 +70,7 @@ codec profiles for Wi-Fi handsets [EN](docs/en/codec-profiles.md) / [DE](docs/de
 voicemail [EN](docs/en/voicemail.md) / [DE](docs/de/voicemail.md) ·
 call routing [EN](docs/en/call-routing.md) / [DE](docs/de/anrufsteuerung.md) ·
 recording & transcription [EN](docs/en/recording.md) / [DE](docs/de/aufzeichnung.md) ·
-door station [EN](docs/en/door-station.md) / [DE](docs/de/tuersprechstelle.md) ·
+door stations [EN](docs/en/door-station.md) / [DE](docs/de/tuersprechstelle.md), Dahua VTO/VTH [EN](docs/en/door-station-dahua.md) / [DE](docs/de/tuersprechstelle-dahua.md) ·
 sign-in, 2FA, SSO, LDAP [EN](docs/en/sign-in.md) / [DE](docs/de/anmeldung.md) ·
 softphone [EN](docs/en/softphone.md) / [DE](docs/de/softphone.md) ·
 backup & restore [EN](docs/en/backup.md) / [DE](docs/de/datensicherung.md) ·

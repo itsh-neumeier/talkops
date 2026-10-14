@@ -201,7 +201,19 @@ async fn directory_user(state: &AppState, params: &HashMap<String, String>) -> O
     let user = params.get("user").filter(|u| !u.is_empty())?;
     let device = match talkops_core::extensions::device_auth(&state.db, user).await {
         Ok(Some(device)) => device,
-        Ok(None) => return None,
+        Ok(None) => {
+            // Without an entry FreeSWITCH answers 403 after the 401 challenge,
+            // the same as for a wrong password. Name the cause for setups.
+            if params.get("action").map(String::as_str) == Some("sip_auth") {
+                tracing::info!(
+                    user = %log_value(user),
+                    ip = params.get("ip").map(String::as_str).unwrap_or_default(),
+                    method = params.get("sip_auth_method").map(String::as_str).unwrap_or_default(),
+                    "SIP authentication for unknown or disabled user"
+                );
+            }
+            return None;
+        }
         Err(err) => {
             tracing::error!(error = %err, "directory lookup failed");
             return None;
@@ -239,5 +251,27 @@ pub async fn xml_cdr(
             tracing::error!(error = %err, "cannot store CDR");
             StatusCode::SERVICE_UNAVAILABLE.into_response()
         }
+    }
+}
+
+/// A SIP value from the network for a log line: at most 64 characters,
+/// control characters replaced.
+pub(crate) fn log_value(value: &str) -> String {
+    value
+        .chars()
+        .take(64)
+        .map(|c| if c.is_control() { '?' } else { c })
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::log_value;
+
+    #[test]
+    fn log_values_are_short_and_printable() {
+        assert_eq!(log_value("8001vth"), "8001vth");
+        assert_eq!(log_value("a\nb\u{1b}c"), "a?b?c");
+        assert_eq!(log_value(&"x".repeat(200)).len(), 64);
     }
 }

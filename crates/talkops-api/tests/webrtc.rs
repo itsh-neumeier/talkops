@@ -481,6 +481,7 @@ async fn migration_preserves_existing_owner_credentials(db: PgPool) {
     let extension = extensions::get(&db, TenantId::DEFAULT, id).await.unwrap();
     let secrets = SecretBox::from_hex(KEY).unwrap();
     let input = extensions::DeviceInput {
+        sip_password_format: None,
         name: "Browser".into(),
         kind: extensions::DeviceKind::Browser,
         sip_username: None,

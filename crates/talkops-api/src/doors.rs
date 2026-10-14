@@ -9,7 +9,7 @@ use std::time::Duration;
 use serde_json::{Value, json};
 use sqlx::PgPool;
 use talkops_core::crypto::SecretBox;
-use talkops_core::doors::{self, DoorEvent, DoorStation};
+use talkops_core::doors::{self, DoorEvent, DoorStation, DoorVendor};
 use talkops_core::tenant::TenantId;
 use talkops_doorbell::{Config, Event, Vto};
 use uuid::Uuid;
@@ -60,16 +60,20 @@ impl From<DoorError> for crate::error::ApiError {
 pub use talkops_doorbell::ensure_tls_provider;
 
 impl DoorCtx {
+    /// The HTTP client for the station's vendor (ADR 0026). A second vendor
+    /// adds its client here behind a common interface.
     async fn vto(&self, station: Uuid) -> Result<Vto, DoorError> {
         let conn = doors::connection(&self.db, &self.secrets, station)
             .await?
             .ok_or(DoorError::NoApi)?;
-        Ok(Vto::new(Config {
-            host: conn.host,
-            port: conn.port,
-            username: conn.username,
-            password: conn.password,
-        })?)
+        match conn.vendor {
+            DoorVendor::Dahua => Ok(Vto::new(Config {
+                host: conn.host,
+                port: conn.port,
+                username: conn.username,
+                password: conn.password,
+            })?),
+        }
     }
 
     /// Opens door `door` (1 or 2); `by` says who asked (logged).

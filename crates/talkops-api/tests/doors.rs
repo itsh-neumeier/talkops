@@ -162,7 +162,7 @@ async fn door_station(db: PgPool) {
     admin
         .post(
             &format!("/api/v1/extensions/{}/devices", id(&ext20)),
-            json!({"name": "Desk", "kind": "desk"}),
+            json!({"name": "Desk", "kind": "desk", "sip_username": "200-1"}),
         )
         .await;
     let (_, ext21) = admin
@@ -180,7 +180,8 @@ async fn door_station(db: PgPool) {
     let (status, _) = admin
         .post(
             &format!("/api/v1/extensions/{}/devices", id(&door_ext)),
-            json!({"name": "VTO", "kind": "door"}),
+            // Dahua: a SIP username with digits only, free of the extension.
+            json!({"name": "VTO", "kind": "door", "sip_username": "6578"}),
         )
         .await;
     assert_eq!(status, StatusCode::OK);

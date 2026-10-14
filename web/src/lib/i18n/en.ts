@@ -188,9 +188,9 @@ export default {
 	'ext.addDevice': 'Add device',
 	'ext.kind': 'Type',
 	'ext.sipUsername': 'SIP username',
-	'ext.sipSuffixAuto': 'automatic',
-	'ext.sipSuffixHint':
-		"The extension number plus a free ending, e.g. vto, vth or -2 (letters, digits, '.', '_', '-'; not a digit first). Empty: generated (door stations: vto, without '-').",
+	'ext.sipUsernameAuto': 'automatic (random, e.g. 28x1js)',
+	'ext.sipUsernameHint':
+		"Free name, independent of the extension number, e.g. 6578 or 123 (3–64 letters, digits, '.', '_', '-'). Each name can be used only once. Dahua VTO/VTH: use digits only. Empty: TalkOps generates a random name.",
 	'ext.sipRenameHint': 'After a change the device must register again with the new username.',
 	'ext.sipPassword': 'SIP password',
 	'ext.sipServer': 'SIP server',
@@ -372,15 +372,6 @@ export default {
 	'settings.sipUriDialing': 'Allow dialing SIP addresses (name@domain)',
 	'settings.sipUriDialingHint':
 		'Extensions can call SIP addresses: through a trunk account of the same domain, otherwise directly over the internet (enter the external IP above for good audio).',
-	'diag.testCalls': 'Test calls',
-	'diag.testCallsHint':
-		'Public test targets: check audio and NAT to the internet without a trunk provider. Opens the softphone with the address – then "Call".',
-	'diag.testCallsSource':
-		'Test targets by sip5060.net. Needs "Allow dialing SIP addresses" (Settings → Telephony).',
-	'diag.test.echo': 'Echo (you hear yourself)',
-	'diag.test.dtmf': 'Key test (reads keys back, end with #)',
-	'diag.test.time': 'Time announcement',
-	'diag.test.ring': 'Ring only (never answers)',
 	'diag.download': 'Download',
 	'diag.clear': 'Clear',
 	'diag.empty': 'No log yet. Start debug logging and reproduce the problem.',
@@ -1384,7 +1375,7 @@ export default {
 	'doorGuide.dahua.vto.talkops.ext':
 		'Open Settings → Extensions and create an extension for the VTO, for example 8000 "Front door".',
 	'doorGuide.dahua.vto.talkops.device':
-		'In the extension, select Add device. Set the type to Door station and the SIP user name ending to vto (SIP user name 8000vto).',
+		'In the extension, select Add device. Set the type to Door station. Enter a SIP user name with digits only, for example 8000. The name does not have to match the extension number (for example 6578). It must be unique.',
 	'doorGuide.dahua.talkops.format':
 		'Set the SIP password format to Compatible (15 characters). TalkOps selects this format for new door station devices.',
 	'doorGuide.dahua.talkops.copy':
@@ -1403,7 +1394,7 @@ export default {
 	'doorGuide.dahua.web.host': '{host} (IP address or host name of the TalkOps server)',
 	'doorGuide.dahua.web.port': '{port}',
 	'doorGuide.dahua.vto.web.user':
-		'Select Enable. Enter the SIP user name from TalkOps, for example 8000vto. Without Enable the VTO uses its own VTO number.',
+		'Select Enable. Enter the SIP user name from TalkOps, for example 8000. Without Enable the VTO uses its own VTO number.',
 	'doorGuide.dahua.web.password': 'The SIP password from TalkOps.',
 	'doorGuide.dahua.web.domain': '{domain} or the Dahua default VDP. TalkOps accepts each domain.',
 	'doorGuide.dahua.vto.web.serverUser': 'The same SIP user name as in Username. Do not use admin.',
@@ -1427,7 +1418,7 @@ export default {
 	'doorGuide.dahua.vto.check.restart':
 		'Restart the VTO when the registration state does not change after one minute (for example Maintenance → Reboot).',
 	'doorGuide.dahua.vto.check.dashboard':
-		'In TalkOps, open the Dashboard. Registered devices shows 8000vto. The extension shows the device as online.',
+		'In TalkOps, open the Dashboard. Registered devices shows 8000. The extension shows the device as online.',
 	'doorGuide.dahua.vto.check.ring':
 		'Push the button on the VTO. The ring target rings. With HTTP access, the Door page shows the ring in the event log.',
 	'doorGuide.dahua.vth.label': 'VTH (indoor monitor)',
@@ -1442,14 +1433,14 @@ export default {
 	'doorGuide.dahua.vth.talkops.ext':
 		'Open Settings → Extensions and create an extension for each VTH, for example 8001 "Indoor monitor hall".',
 	'doorGuide.dahua.vth.talkops.device':
-		'In the extension, select Add device. Set the type to Door station and the SIP user name ending to vth (SIP user name 8001vth). TalkOps has no separate type for indoor monitors. The type only sets the default user name and the password format.',
+		'In the extension, select Add device. Set the type to Door station. Enter a SIP user name with digits only, for example 8001. This is the Room No. of the VTH. TalkOps has no separate type for indoor monitors. The type only sets the password format.',
 	'doorGuide.dahua.vth.talkops.existing':
 		'Device with a 20-character password: select New password and then Compatible (15 characters). The old password stops working immediately. Enter the new password in the VTH.',
 	'doorGuide.dahua.vth.config.title': 'Settings in ConfigTool',
 	'doorGuide.dahua.vth.config.intro':
 		'Open ConfigTool → Device Config. Select the IP address of the VTH and Get Device Info. Sign in with the device login of the VTH, not with the SIP password.',
 	'doorGuide.dahua.vth.config.room':
-		'The SIP user name from TalkOps, exactly, for example 8001vth. Use the same upper-case and lower-case letters.',
+		'The SIP user name from TalkOps, exactly, for example 8001. Use digits only.',
 	'doorGuide.dahua.vth.config.main':
 		'Main VTH. Use a main VTH for each VTH that registers to TalkOps.',
 	'doorGuide.dahua.vth.config.mode':
@@ -1488,7 +1479,7 @@ export default {
 	'doorGuide.dahua.vth.check.save': 'Select OK in ConfigTool.',
 	'doorGuide.dahua.vth.check.restart': 'Restart the VTH (ConfigTool or power supply).',
 	'doorGuide.dahua.vth.check.dashboard':
-		'In TalkOps, open the Dashboard. Registered devices shows the SIP user name, for example 8001vth.',
+		'In TalkOps, open the Dashboard. Registered devices shows the SIP user name, for example 8001.',
 	'doorGuide.dahua.vth.check.call': 'Call the extension of the VTH from a phone. The VTH rings.',
 	'doorGuide.dahua.vth.check.trouble': 'If the VTH gets 403 Forbidden, read "Troubleshooting".',
 	'doorGuide.dahua.models.title': 'Models and firmware',

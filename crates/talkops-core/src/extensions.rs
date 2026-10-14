@@ -423,10 +423,11 @@ pub struct Device {
 pub struct DeviceInput {
     pub name: String,
     pub kind: DeviceKind,
-    /// SIP username: the extension number plus an optional suffix that does
-    /// not start with a digit (`8000vto`, `8001-2`). Generated when empty:
-    /// `<extension>vto` for door stations, else `<extension>-<n>`. On update,
-    /// a different value renames the device; empty keeps the current name.
+    /// SIP username: any free name of 3 to 64 letters, digits, `.`, `_` and
+    /// `-`, independent of the extension number (`6578`, `8000vto`).
+    /// Generated when empty: 6 random lower-case letters and digits
+    /// (`28x1js`). On update, a different value renames the device; empty
+    /// keeps the current name.
     #[serde(default)]
     pub sip_username: Option<String>,
     /// Place the device on a provisioned phone as account `account_index`
@@ -466,11 +467,11 @@ impl DeviceInput {
     }
 }
 
-/// Checks a chosen SIP username: the extension number followed by an optional
-/// suffix (`8000`, `8000vto`, `8001vth`, `8000-1`). The suffix must not start
-/// with a digit, so `800` + `0vto` cannot take the name of extension `8000`.
-/// Some devices (e.g. Dahua VTO/VTH) do not accept `-`; a letter suffix works.
-pub fn validate_sip_username(extension_number: &str, username: &str) -> CoreResult<()> {
+/// Checks a chosen SIP username. The name does not depend on the extension
+/// number: extension `8000` can use `6578`, `123` or `8000vto`. Some devices
+/// (e.g. Dahua VTO/VTH) work best with digits only. The name must be unique
+/// (see [`ensure_username_free`]). `web-` is reserved for browser devices.
+pub fn validate_sip_username(username: &str) -> CoreResult<()> {
     let invalid = |msg: &str| Err(CoreError::Validation(format!("SIP username: {msg}")));
     if !(3..=64).contains(&username.len()) {
         return invalid("3 to 64 characters");
@@ -481,41 +482,59 @@ pub fn validate_sip_username(extension_number: &str, username: &str) -> CoreResu
     {
         return invalid("only letters, digits, '.', '_' and '-'");
     }
-    let Some(suffix) = username.strip_prefix(extension_number) else {
-        return invalid(&format!(
-            "must start with the extension number {extension_number}"
-        ));
-    };
-    if suffix.starts_with(|c: char| c.is_ascii_digit()) {
-        return invalid("the part after the extension number must not start with a digit");
+    if username.to_ascii_lowercase().starts_with("web-") {
+        return invalid("'web-' is reserved for browser devices");
     }
     Ok(())
 }
 
-/// Generated SIP username: `<extension>vto` (then `vto2`, `vto3`, …) for door
-/// stations, which do not accept `-`, else `<extension>-<n>` with the lowest
-/// free `n`. User names are unique across all tenants, case-insensitively.
-async fn default_username(
+/// Fails with a conflict when another device (any tenant) already uses the
+/// SIP username, without regard to case. The unique index stays the final
+/// check for concurrent requests.
+async fn ensure_username_free(
     pool: &sqlx::PgPool,
-    extension: &Extension,
-    kind: DeviceKind,
-) -> CoreResult<String> {
-    let taken: Vec<String> = sqlx::query_scalar(
-        "SELECT lower(sip_username) FROM devices WHERE starts_with(lower(sip_username), $1)",
+    username: &str,
+    except: Option<Uuid>,
+) -> CoreResult<()> {
+    let taken: bool = sqlx::query_scalar(
+        "SELECT EXISTS (SELECT 1 FROM devices WHERE lower(sip_username) = lower($1)
+                        AND id IS DISTINCT FROM $2)",
     )
-    .bind(&extension.number)
-    .fetch_all(pool)
+    .bind(username)
+    .bind(except)
+    .fetch_one(pool)
     .await?;
-    let number = &extension.number;
-    let candidate = |n: usize| match (kind, n) {
-        (DeviceKind::Door, 1) => format!("{number}vto"),
-        (DeviceKind::Door, n) => format!("{number}vto{n}"),
-        (_, n) => format!("{number}-{n}"),
-    };
-    Ok((1..)
-        .map(candidate)
-        .find(|name| !taken.contains(name))
-        .expect("an unbounded range has a free name"))
+    if taken {
+        return Err(CoreError::Conflict(format!(
+            "SIP username {username} is already in use"
+        )));
+    }
+    Ok(())
+}
+
+/// Length of a generated SIP username.
+const GENERATED_USERNAME_LEN: usize = 6;
+
+/// Generated SIP username: 6 random lower-case letters and digits with at
+/// least one letter (`28x2js`), so that it never looks like an extension
+/// number. It does not depend on the extension. Existing devices keep their
+/// names.
+async fn default_username(pool: &sqlx::PgPool) -> CoreResult<String> {
+    // The large name space makes collisions rare; retry names already in use.
+    for _ in 0..16 {
+        let name = crypto::random_lowercase(GENERATED_USERNAME_LEN)?;
+        if !name.chars().any(|c| c.is_ascii_lowercase()) {
+            continue;
+        }
+        match ensure_username_free(pool, &name, None).await {
+            Ok(()) => return Ok(name),
+            Err(CoreError::Conflict(_)) => continue,
+            Err(err) => return Err(err),
+        }
+    }
+    Err(CoreError::Conflict(
+        "no free SIP username found, try again".into(),
+    ))
 }
 
 fn phone_texts<'a>(label: &'a str, display: &'a str) -> CoreResult<(&'a str, &'a str)> {
@@ -793,10 +812,11 @@ pub async fn create_device(
     let slot = phone_slot(pool, tenant, input.phone_id, input.account_index, None).await?;
     let username = match input.requested_username() {
         Some(u) => {
-            validate_sip_username(&extension.number, u)?;
+            validate_sip_username(u)?;
+            ensure_username_free(pool, u, None).await?;
             u.to_owned()
         }
-        None => default_username(pool, extension, input.kind).await?,
+        None => default_username(pool).await?,
     };
     let format = input.sip_password_format.unwrap_or_default();
     check_password_format(input.kind, format)?;
@@ -855,11 +875,8 @@ pub async fn update_device(
                 "SIP username: browser devices cannot be renamed".into(),
             ));
         }
-        let number: String = sqlx::query_scalar("SELECT number FROM extensions WHERE id = $1")
-            .bind(current.extension_id)
-            .fetch_one(pool)
-            .await?;
-        validate_sip_username(&number, username)?;
+        validate_sip_username(username)?;
+        ensure_username_free(pool, username, Some(id)).await?;
     }
     if let Some(format) = input.sip_password_format {
         check_password_format(current.kind, format)?;
@@ -972,30 +989,46 @@ mod tests {
         assert_eq!(CodecProfile::parse("opus"), None);
     }
 
+    #[tokio::test]
+    async fn generated_username_keeps_database_errors() {
+        let pool = sqlx::postgres::PgPoolOptions::new()
+            .connect_lazy("postgres://localhost/talkops")
+            .unwrap();
+        pool.close().await;
+        assert!(matches!(
+            default_username(&pool).await,
+            Err(CoreError::Db(sqlx::Error::PoolClosed))
+        ));
+    }
+
     #[test]
     fn sip_username_validation() {
-        for ok in ["8000", "8000vto", "8001vth", "8000-1", "8000VTO.2", "20_a"] {
-            let number = if ok.starts_with("20") { "20" } else { &ok[..4] };
-            assert!(validate_sip_username(number, ok).is_ok(), "{ok}");
+        for ok in [
+            "8000",
+            "6578",
+            "123",
+            "8000vto",
+            "8001-1",
+            "8000VTO.2",
+            "20_a",
+            "28x1js",
+        ] {
+            assert!(validate_sip_username(ok).is_ok(), "{ok}");
         }
         for bad in [
-            "80",       // too short (extension 80)
+            "80",       // too short
             "8000 vto", // space
             "8000vtö",  // non-ASCII
-            "8001vto",  // other extension
-            "80001vto", // suffix starts with a digit
-            "web-8000", // not the extension prefix
+            "web-8000", // reserved for browser devices
+            "WEB-x1",   // reserved, any case
         ] {
-            let number = if bad == "80" { "80" } else { "8000" };
             assert!(
-                matches!(
-                    validate_sip_username(number, bad),
-                    Err(CoreError::Validation(_))
-                ),
+                matches!(validate_sip_username(bad), Err(CoreError::Validation(_))),
                 "{bad}"
             );
         }
-        assert!(validate_sip_username("8000", &format!("8000{}", "a".repeat(61))).is_err());
+        assert!(validate_sip_username(&"a".repeat(64)).is_ok());
+        assert!(validate_sip_username(&"a".repeat(65)).is_err());
     }
 
     #[test]

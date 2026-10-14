@@ -356,15 +356,25 @@ async fn extensions_and_devices(pool: PgPool) {
     let (dev, password) = extensions::create_device(&pool, T, &sb, &e, &input)
         .await
         .unwrap();
-    assert_eq!(dev.sip_username, "200-1");
+    // Generated names: 6 random lower-case letters and digits, independent
+    // of the extension number.
+    let generated = |name: &str| {
+        name.len() == 6
+            && name.chars().any(|c| c.is_ascii_lowercase())
+            && name
+                .chars()
+                .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit())
+    };
+    assert!(generated(&dev.sip_username), "{}", dev.sip_username);
     assert_eq!(sb.decrypt(&dev.sip_password_enc).unwrap(), password);
     let (dev2, _) = extensions::create_device(&pool, T, &sb, &e, &input)
         .await
         .unwrap();
-    assert_eq!(dev2.sip_username, "200-2");
+    assert!(generated(&dev2.sip_username), "{}", dev2.sip_username);
+    assert_ne!(dev.sip_username, dev2.sip_username);
 
-    // SIP usernames: extension number plus a free suffix. Door stations get
-    // a name without '-' (Dahua VTO does not accept it).
+    // SIP usernames are free: digits only (Dahua VTO/VTH), any number, also
+    // the number of another extension. Only uniqueness is checked.
     let named = |kind, name: Option<&str>| DeviceInput {
         kind,
         sip_username: name.map(Into::into),
@@ -373,22 +383,28 @@ async fn extensions_and_devices(pool: PgPool) {
     let (vto, _) = extensions::create_device(&pool, T, &sb, &e, &named(DeviceKind::Door, None))
         .await
         .unwrap();
-    assert_eq!(vto.sip_username, "200vto");
-    let (vto2, _) = extensions::create_device(&pool, T, &sb, &e, &named(DeviceKind::Door, None))
-        .await
-        .unwrap();
-    assert_eq!(vto2.sip_username, "200vto2");
+    assert!(generated(&vto.sip_username), "{}", vto.sip_username);
+    let (vto2, _) =
+        extensions::create_device(&pool, T, &sb, &e, &named(DeviceKind::Door, Some("6578")))
+            .await
+            .unwrap();
+    assert_eq!(vto2.sip_username, "6578");
     let (vth, _) = extensions::create_device(
         &pool,
         T,
         &sb,
         &e,
-        &named(DeviceKind::Other, Some(" 200vth ")),
+        &named(DeviceKind::Other, Some(" Hall1 ")),
     )
     .await
     .unwrap();
-    assert_eq!(vth.sip_username, "200vth");
-    for bad in ["201vth", "2001", "200 x", "200-ä", "web-200"] {
+    assert_eq!(vth.sip_username, "Hall1");
+    let (short, _) =
+        extensions::create_device(&pool, T, &sb, &e, &named(DeviceKind::Desk, Some("123")))
+            .await
+            .unwrap();
+    assert_eq!(short.sip_username, "123");
+    for bad in ["12", "200 x", "200-ä", "web-200", "WEB-x"] {
         assert!(
             matches!(
                 extensions::create_device(&pool, T, &sb, &e, &named(DeviceKind::Desk, Some(bad)))
@@ -398,49 +414,64 @@ async fn extensions_and_devices(pool: PgPool) {
             "{bad}"
         );
     }
-    // Unique without regard to case.
-    assert!(matches!(
-        extensions::create_device(&pool, T, &sb, &e, &named(DeviceKind::Desk, Some("200VTH")))
-            .await,
-        Err(CoreError::Conflict(_))
-    ));
-    // Rename; an empty name keeps the current one.
+    // Unique without regard to case, across extensions.
+    let other = extensions::create(&pool, T, &ext("201"), &emergency())
+        .await
+        .unwrap();
+    for taken in ["HALL1", "6578", "123"] {
+        assert!(
+            matches!(
+                extensions::create_device(
+                    &pool,
+                    T,
+                    &sb,
+                    &other,
+                    &named(DeviceKind::Desk, Some(taken))
+                )
+                .await,
+                Err(CoreError::Conflict(m)) if m.contains("already in use")
+            ),
+            "{taken}"
+        );
+    }
+    // Rename; an empty name keeps the current one. The own name is no
+    // conflict; the name of another device is.
     let renamed =
-        extensions::update_device(&pool, T, vto2.id, &named(DeviceKind::Door, Some("200gate")))
+        extensions::update_device(&pool, T, vto2.id, &named(DeviceKind::Door, Some("6579")))
             .await
             .unwrap();
-    assert_eq!(renamed.sip_username, "200gate");
+    assert_eq!(renamed.sip_username, "6579");
     let kept = extensions::update_device(&pool, T, vto2.id, &named(DeviceKind::Door, Some("")))
         .await
         .unwrap();
-    assert_eq!(kept.sip_username, "200gate");
-    assert!(
-        extensions::update_device(&pool, T, vto2.id, &named(DeviceKind::Door, Some("200vto")))
+    assert_eq!(kept.sip_username, "6579");
+    let same_case =
+        extensions::update_device(&pool, T, vto2.id, &named(DeviceKind::Door, Some("6579")))
             .await
-            .is_err()
-    );
+            .unwrap();
+    assert_eq!(same_case.sip_username, "6579");
+    assert!(matches!(
+        extensions::update_device(&pool, T, vto2.id, &named(DeviceKind::Door, Some("hall1"))).await,
+        Err(CoreError::Conflict(_))
+    ));
     assert!(
-        extensions::device_auth(&pool, "200gate")
+        extensions::device_auth(&pool, "6579")
             .await
             .unwrap()
             .is_some()
     );
-    // The lowest free number is used after a device is deleted.
-    for d in [vto.id, vto2.id, vth.id] {
+    for d in [vto.id, vto2.id, vth.id, short.id] {
         extensions::delete_device(&pool, T, d).await.unwrap();
     }
-    extensions::delete_device(&pool, T, dev.id).await.unwrap();
-    let (again, _) = extensions::create_device(&pool, T, &sb, &e, &input)
-        .await
-        .unwrap();
-    assert_eq!(again.sip_username, "200-1");
+    extensions::delete(&pool, T, other.id).await.unwrap();
+    // A deleted name is free again.
+    let (again, _) =
+        extensions::create_device(&pool, T, &sb, &e, &named(DeviceKind::Desk, Some("6578")))
+            .await
+            .unwrap();
     extensions::delete_device(&pool, T, again.id).await.unwrap();
-    let (dev, _) = extensions::create_device(&pool, T, &sb, &e, &input)
-        .await
-        .unwrap();
-    assert_eq!(dev.sip_username, "200-1");
 
-    let auth = extensions::device_auth(&pool, "200-1")
+    let auth = extensions::device_auth(&pool, &dev.sip_username)
         .await
         .unwrap()
         .unwrap();
@@ -452,7 +483,11 @@ async fn extensions_and_devices(pool: PgPool) {
             .into_iter()
             .map(|t| t.sip_username)
             .collect::<Vec<_>>(),
-        vec!["200-1", "200-2"]
+        {
+            let mut names = vec![dev.sip_username.clone(), dev2.sip_username.clone()];
+            names.sort();
+            names
+        }
     );
     // Codec profile: automatic from the kind until one is set.
     assert_eq!(auth.codec_profile, None);
@@ -464,7 +499,7 @@ async fn extensions_and_devices(pool: PgPool) {
     extensions::update_device(&pool, T, dev2.id, &handset)
         .await
         .unwrap();
-    let auth = extensions::device_auth(&pool, "200-2")
+    let auth = extensions::device_auth(&pool, &dev2.sip_username)
         .await
         .unwrap()
         .unwrap();
@@ -478,7 +513,7 @@ async fn extensions_and_devices(pool: PgPool) {
         .await
         .unwrap();
     assert_eq!(updated.codec_profile, Some(CodecProfile::Robust));
-    let auth = extensions::device_auth(&pool, "200-2")
+    let auth = extensions::device_auth(&pool, &dev2.sip_username)
         .await
         .unwrap()
         .unwrap();
@@ -489,7 +524,7 @@ async fn extensions_and_devices(pool: PgPool) {
         .unwrap();
     assert_eq!(format, SipPasswordFormat::Standard);
     assert_eq!(new_pw.len(), 20);
-    let auth = extensions::device_auth(&pool, "200-1")
+    let auth = extensions::device_auth(&pool, &dev.sip_username)
         .await
         .unwrap()
         .unwrap();
@@ -509,7 +544,7 @@ async fn extensions_and_devices(pool: PgPool) {
     .await
     .unwrap();
     assert!(
-        extensions::device_auth(&pool, "200-1")
+        extensions::device_auth(&pool, &dev.sip_username)
             .await
             .unwrap()
             .is_none()

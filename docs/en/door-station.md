@@ -24,22 +24,26 @@ type: **Settings → Door stations → Setup guide**.
 
 **Settings → Extensions → New extension**, e.g. `8000` "Front door". Inside it,
 **Add device**, type **Door station**. The device needs the SIP credentials
-shown (user name `8000vto`, password).
+shown (user name, password).
 
-The SIP user name is the extension number plus an ending. For a door station
-TalkOps uses `vto` if you do not enter an ending. Dahua VTO and VTH devices do
-not accept `-` in the user name. You can set the ending yourself, e.g. one
-extension for each device:
+The SIP user name is free. It does not have to contain the extension number:
+extension `8000` can use `8000`, `6578` or `123`. Dahua VTO and VTH devices
+work best with digits only. If you do not enter a user name, TalkOps
+generates a random one, e.g. `28x1js`. Example with one extension for each
+device:
 
 | Device | Extension | SIP user name |
 |---|---|---|
-| Outdoor station (VTO) | `8000` | `8000vto` |
-| Indoor monitor 1 (VTH) | `8001` | `8001vth` |
-| Indoor monitor 2 (VTH) | `8002` | `8002vth` |
+| Outdoor station (VTO) | `8000` | `8000` |
+| Indoor monitor 1 (VTH) | `8001` | `8001` |
+| Indoor monitor 2 (VTH) | `8002` | `9902` |
 
-Permitted: letters, digits, `.`, `_` and `-`. The ending must not start with a
-digit. An admin can change the user name of a device later (**Edit**). After
-the change, the device must register again with the new user name.
+Permitted: 3 to 64 letters, digits, `.`, `_` and `-`. Each user name can be
+used only once (upper-case and lower-case letters are the same). The user
+name can be the number of a different extension. Calls still go to the
+extension number, not to the SIP user name. `web-` is reserved for browser
+phones. An admin can change the user name of a device later (**Edit**).
+After the change, the device must register again with the new user name.
 
 ### SIP password format
 
@@ -201,10 +205,10 @@ necessary to switch it off for a door station.
   page has the device-specific checks.
 - **Station does not register:** "SIP Server" on the station off?
   *Username* (with *Enable*) and *SIP Server Username* both set to the SIP
-  user name (e.g. `8001vto`) and both passwords set? Is the PBX's SIP port
+  user name (e.g. `8000`) and both passwords set? Is the PBX's SIP port
   reachable?
-- **The station rejects the user name:** use a user name without `-`, e.g.
-  `8001vto` (device **Edit** → SIP user name).
+- **The station rejects the user name:** use a user name with digits only,
+  e.g. `8000` (device **Edit** → SIP user name).
 - **Unlock code does nothing:** is the HTTP access configured (**Test
   connection**)? Does the phone send DTMF as RFC 2833? The event log shows
   every opening with the source `dtmf`. For an external call: is the number

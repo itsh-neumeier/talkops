@@ -125,12 +125,20 @@ impl Directory {
             .strip_prefix("**")
             .or_else(|| raw.strip_prefix('*'))
             .unwrap_or(raw);
-        let device = self.devices.iter().find(|d| d.sip_username == raw);
-        self.extensions.iter().find(|e| {
-            id == Some(e.id)
-                || (id.is_none()
-                    && (e.number == number || device.is_some_and(|d| d.extension_id == e.id)))
-        })
+        if let Some(id) = id {
+            return self.extensions.iter().find(|e| e.id == id);
+        }
+        // Caller IDs and dialed numbers are extension numbers. A SIP username
+        // is free (`6578` on extension 8000) and can look like another
+        // extension's number, so it is only the fallback (bridged legs).
+        if let Some(ext) = self.extensions.iter().find(|e| e.number == number) {
+            return Some(ext);
+        }
+        let device = self
+            .devices
+            .iter()
+            .find(|d| d.sip_username.eq_ignore_ascii_case(raw))?;
+        self.extensions.iter().find(|e| e.id == device.extension_id)
     }
 
     fn external(&self, raw: &str) -> String {
@@ -451,6 +459,46 @@ mod tests {
         let ambiguous = dir.party("+4995458589", "Caller supplied name", None);
         assert!(ambiguous.ambiguous);
         assert!(ambiguous.name.is_empty());
+    }
+
+    #[test]
+    fn extension_numbers_come_before_device_usernames() {
+        let mut dir = directory();
+        let door = Extension {
+            id: Uuid::new_v4(),
+            number: "8000".into(),
+            display_name: "Front door".into(),
+            ..dir.extensions[0].clone()
+        };
+        dir.devices.push(Device {
+            id: Uuid::new_v4(),
+            extension_id: door.id,
+            browser_user_id: None,
+            name: "VTO".into(),
+            kind: talkops_core::extensions::DeviceKind::Door,
+            sip_username: "101".into(),
+            sip_password_enc: String::new(),
+            phone_id: None,
+            account_index: None,
+            phone_label: String::new(),
+            phone_display_name: String::new(),
+            codec_profile: None,
+            sip_password_format: Default::default(),
+            enabled: true,
+        });
+        // The door extension is first, so a device match cannot hide behind
+        // the list order.
+        dir.extensions.insert(0, door.clone());
+        let family = dir.extensions[1].id;
+        // `101` is extension 101, although the VTO's SIP username is also `101`.
+        assert_eq!(dir.party("101", "", None).extension_id, Some(family));
+        assert_eq!(dir.party("8000", "", None).extension_id, Some(door.id));
+        dir.devices[0].sip_username = "6578".into();
+        assert_eq!(dir.party("6578", "", None).extension_id, Some(door.id));
+        assert_eq!(
+            dir.party("6578", "", Some(family)).extension_id,
+            Some(family)
+        );
     }
 
     #[test]

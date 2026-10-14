@@ -92,8 +92,9 @@ not drafts. There are no source dependencies or new migration IDs.
   Smoke output shows `talkops 1.7.12` and `talkops-media-worker 1.7.12`.
 - Passed: merge commit tree equals candidate tree; both sources are ancestors.
   All source PRs closed as merged. No other open PR remains.
-- Main CI 38619610046 and E2E 38619610127: pending on the exact main commit.
-  Publication remains blocked until both pass.
+- Passed: exact-main CI 38619610046 and E2E 38619610127 on
+  `6276e7d5e1b3bbe2a97e0fe237758b3f3a0e44b4`. Main smoke output reports
+  server and media worker version 1.7.12. Release publication is next.
 - STE review: manual review with `docs/documentation-style.md`. The full
   official standard is unavailable; the full language review is pending.
 - CodeRabbit CLI is unavailable. Focused integration review used the actual
@@ -111,8 +112,8 @@ not drafts. There are no source dependencies or new migration IDs.
 
 ## Next action
 
-Wait for exact-main CI 38619610046 and E2E 38619610127. Then recheck scope,
-main, versions and unused tag before publication. Keep the PR ledger current.
+Recheck scope, main, versions and the unused tag. Publish `v1.7.12` on the
+tested main commit. Verify the release, manifests, labels and moving tags.
 
 ## References
 

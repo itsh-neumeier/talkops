@@ -5,10 +5,11 @@
 - Task ID: 20261014-codex-release-1.7.12
 - Date: 2026-10-14, Europe/Berlin
 - Tool: Codex
-- Status: In progress
+- Status: Completed
 - Branch: `codex/release-1.7.12`
 - Base commit: `7b6e51f612475fc4473880f8a2f818c49147e9e2` (`origin/main`, 1.7.11)
 - Integration PR: [#25](https://github.com/itsh-neumeier/talkops/pull/25)
+- Final summary reference: `audit/release-1.7.12` (a non-release tag)
 
 ## Goal
 
@@ -24,7 +25,27 @@ Both source PRs and integration PR #25 are merged. Main is
 No source history was rewritten. Annotated tag `v1.7.12` was pushed once on
 the tested main commit. Its tag object is
 `9cd0b56cc32a3adf98ef206b77270bf3decac4ae`. Release workflow 38621735634
-is in progress. GitHub release and registry verification are still pending.
+passed. [TalkOps 1.7.12](https://github.com/itsh-neumeier/talkops/releases/tag/v1.7.12)
+was published at 2026-10-14T19:18:54Z. It is neither a draft nor a prerelease.
+The remote tag still resolves to the exact tested main commit.
+
+All three versioned manifests, their six OCI configs, and the moving `1.7`
+and `latest` tags are verified. Each config reports version `v1.7.12` and
+the release commit as its revision. Moving tags have the same platform digests.
+
+| Image | amd64 digest | arm64 digest |
+| --- | --- | --- |
+| `talkops-server` | `sha256:15bc52affb2319e09bb7dc6467d24771693609bf10da9d6f955258aff4467974` | `sha256:fc21667b29217dfa48100ceb72eb3de8cf2a8c4b525883019893b52fab90cb74` |
+| `talkops-media-worker` | `sha256:cdc9c659abb7654f5fd3dbc2617d0b70614b85502b773dfe80a4ed1ace1558b8` | `sha256:dd47575cafff146eda2689317acb24f2aac097fb4569e0fc4f1a1be05eae314c` |
+| `talkops-freeswitch` | `sha256:9417cdf5734c5750b95104b7fd3bb16fda6a3b5ae19b640995918b7ae27a762e` | `sha256:2d1253ded74dbae74bb4608f213dd6514765408e8a9af73a94ba9a5c5a78c4cc` |
+
+The unchanged source and release remote branches were deleted in one atomic
+push after ancestry and head checks. GitHub has only `main` and no open PR.
+Foreign local worktrees, local branches and primary-checkout work remain.
+The final audit changes only this summary. Its tag does not run the Release
+workflow. Audit CI/E2E checks are documentation checks, not release gates.
+The owned release worktree is left detached at the audit commit. Only its
+local release branch is removed.
 
 | Source | Contributor | Head commit | State |
 | --- | --- | --- | --- |
@@ -99,8 +120,13 @@ not drafts. There are no source dependencies or new migration IDs.
   `6276e7d5e1b3bbe2a97e0fe237758b3f3a0e44b4`. Main smoke output reports
   server and media worker version 1.7.12.
 - Passed before tag push: fresh main/scope/unused-tag/version/source gates.
-- In progress: Release 38621735634; additional tag CI 38621735931,
-  FreeSWITCH image 38621735848, and E2E 38621736102.
+- Passed: Release 38621735634, all six builds, three manifests and GitHub release.
+- Passed: additional tag CI 38621735931 and FreeSWITCH image 38621735848.
+- Passed: three registry verification scripts; all versioned and moving tags,
+  both architectures, and all version/revision labels match.
+- Passed: release metadata, remote peeled tag, safe remote branch cleanup,
+  and the final open-PR inventory.
+- Passed: additional tag E2E 38621736102 on the exact released commit.
 - STE review: manual review with `docs/documentation-style.md`. The full
   official standard is unavailable; the full language review is pending.
 - CodeRabbit CLI is unavailable. Focused integration review used the actual
@@ -118,9 +144,8 @@ not drafts. There are no source dependencies or new migration IDs.
 
 ## Next action
 
-Wait for Release 38621735634 and additional tag checks. Verify the GitHub
-release, manifests, labels and moving tags. Then clean up unchanged branches
-and save the final summary through a non-release audit tag.
+None for this release. Future release tasks must read the final audit summary.
+The hardware checks and separate CDR spool work remain with development.
 
 ## References
 

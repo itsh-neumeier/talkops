@@ -524,3 +524,174 @@ async fn two_factor_login(db: PgPool) {
     let res = raw(&router, login_raw("admin", "correct-horse")).await;
     assert!(res.headers().get(header::SET_COOKIE).is_some());
 }
+
+/// SIP password formats: the standard stays 20 characters, `compact15` gives
+/// 15. Only admins choose the format; owners reset with the stored one. The
+/// audit names the format, never the password.
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn sip_password_formats(db: PgPool) {
+    let router = router(db);
+    let admin = setup_admin(&router).await;
+    for (name, role) in [("bob", "user"), ("olga", "operator")] {
+        admin
+            .post(
+                "/api/v1/users",
+                json!({"username": name, "display_name": name, "role": role,
+                       "password": format!("{name}-password-1")}),
+            )
+            .await;
+    }
+    let (_, users) = admin.get("/api/v1/users").await;
+    let bob = users
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|u| u["username"] == "bob")
+        .unwrap()
+        .clone();
+    let (_, ext) = admin
+        .post(
+            "/api/v1/extensions",
+            json!({"number": "8001", "display_name": "Hall", "user_id": bob["id"]}),
+        )
+        .await;
+    let devices = format!("/api/v1/extensions/{}/devices", ext["id"].as_str().unwrap());
+
+    // Unchanged default for clients without the field.
+    let (status, desk) = admin
+        .post(&devices, json!({"name": "Desk", "kind": "desk"}))
+        .await;
+    assert_eq!(status, StatusCode::OK, "{desk}");
+    assert_eq!(desk["sip_password"].as_str().unwrap().len(), 20);
+
+    let (status, vth) = admin
+        .post(
+            &devices,
+            json!({"name": "VTH", "kind": "door", "sip_username": "8001vth",
+                   "sip_password_format": "compact15"}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{vth}");
+    let pw = vth["sip_password"].as_str().unwrap().to_owned();
+    assert_eq!(pw.len(), 15);
+    assert!(pw.chars().all(|c| c.is_ascii_alphanumeric()));
+    let vth_id = vth["device_id"].as_str().unwrap().to_owned();
+    let (_, list) = admin.get(&devices).await;
+    let stored = list
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|d| d["id"] == vth_id.as_str())
+        .unwrap();
+    assert_eq!(stored["sip_password_format"], "compact15");
+    assert!(stored.get("sip_password_enc").is_none());
+    let (status, _) = admin
+        .post(
+            &devices,
+            json!({"name": "X", "kind": "desk", "sip_password_format": "short"}),
+        )
+        .await;
+    assert!(status.is_client_error(), "{status}");
+
+    // FreeSWITCH gets the 15-character password.
+    let (status, xml) = fs_post(
+        &router,
+        "/fs/xml",
+        &[
+            ("section", "directory"),
+            ("action", "sip_auth"),
+            ("user", "8001vth"),
+            ("domain", "VDP"),
+        ],
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(xml.contains(&format!("value=\"{pw}\"")), "{xml}");
+
+    // The owner resets with the stored format (no body, as before).
+    let bob_client = login(&router, "bob", "bob-password-1").await.unwrap();
+    let reset = format!("/api/v1/devices/{vth_id}/reset-password");
+    let (status, creds) = bob_client.call("POST", &reset, None).await;
+    assert_eq!(status, StatusCode::OK, "{creds}");
+    let pw2 = creds["sip_password"].as_str().unwrap().to_owned();
+    assert_eq!(pw2.len(), 15);
+    assert_ne!(pw2, pw);
+    let (status, creds) = bob_client.post(&reset, json!({})).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(creds["sip_password"].as_str().unwrap().len(), 15);
+    // The same format in the body is no change.
+    let (status, _) = bob_client
+        .post(&reset, json!({"sip_password_format": "compact15"}))
+        .await;
+    assert_eq!(status, StatusCode::OK);
+    // Only an admin changes the format.
+    let (status, _) = bob_client
+        .post(&reset, json!({"sip_password_format": "standard"}))
+        .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    let olga = login(&router, "olga", "olga-password-1").await.unwrap();
+    let (status, _) = olga.call("POST", &reset, None).await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    // Only an admin edits the device (and its stored format).
+    let (status, _) = bob_client
+        .put(
+            &format!("/api/v1/devices/{vth_id}"),
+            json!({"name": "VTH", "kind": "door", "sip_password_format": "standard"}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+
+    let (status, creds) = admin
+        .post(&reset, json!({"sip_password_format": "standard"}))
+        .await;
+    assert_eq!(status, StatusCode::OK);
+    let pw3 = creds["sip_password"].as_str().unwrap().to_owned();
+    assert_eq!(pw3.len(), 20);
+
+    // Editing the format keeps the current password.
+    let (status, dev) = admin
+        .put(
+            &format!("/api/v1/devices/{vth_id}"),
+            json!({"name": "VTH", "kind": "door", "sip_password_format": "compact15"}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{dev}");
+    assert_eq!(dev["sip_password_format"], "compact15");
+    let (_, creds) = admin
+        .get(&format!("/api/v1/devices/{vth_id}/credentials"))
+        .await;
+    assert_eq!(creds["sip_password"], pw3.as_str());
+
+    let (_, audit) = admin.get("/api/v1/audit").await;
+    let audit_text = audit.to_string();
+    for secret in [&pw, &pw2, &pw3] {
+        assert!(!audit_text.contains(secret.as_str()), "password in audit");
+    }
+    let entries = audit.as_array().unwrap();
+    let has = |action: &str, f: &dyn Fn(&serde_json::Value) -> bool| {
+        entries
+            .iter()
+            .any(|e| e["action"] == action && e["entity_id"] == vth_id.as_str() && f(&e["details"]))
+    };
+    assert!(
+        has("create", &|d| d["sip_password_format"] == "compact15"),
+        "{audit}"
+    );
+    assert!(
+        has("reset_password", &|d| d["sip_password_format"]
+            == "compact15"
+            && d.get("previous_sip_password_format").is_none()),
+        "{audit}"
+    );
+    assert!(
+        has("reset_password", &|d| d["sip_password_format"]
+            == "standard"
+            && d["previous_sip_password_format"] == "compact15"),
+        "{audit}"
+    );
+    assert!(
+        has("update", &|d| d["sip_password_format"] == "compact15"
+            && d["previous_sip_password_format"] == "standard"),
+        "{audit}"
+    );
+}

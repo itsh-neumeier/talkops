@@ -146,6 +146,13 @@ pub fn spawn(db: PgPool, esl: EslHandle) {
                                 }
                                 let ip = ev.headers.get("network-ip").and_then(|v| v.parse().ok());
                                 let user = ev.headers.get("to-user").unwrap_or_default();
+                                // Wrong password, unknown user or a user name
+                                // that differs from the authentication name.
+                                tracing::info!(
+                                    user = %crate::routes::fs::log_value(user),
+                                    ip = ev.headers.get("network-ip").unwrap_or_default(),
+                                    "SIP authentication failed"
+                                );
                                 if let Some(ip) = ip {
                                     guard.failure(ip, user).await;
                                 }

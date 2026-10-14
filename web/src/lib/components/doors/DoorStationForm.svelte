@@ -6,6 +6,7 @@
 	import { loadTargets } from '#lib/destinations.svelte.ts';
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
+	import { doorVendors } from '#lib/doors/vendors.ts';
 
 	let {
 		station = null,
@@ -20,6 +21,7 @@
 	// svelte-ignore state_referenced_locally
 	let form = $state({
 		name: station?.name ?? '',
+		vendor: station?.vendor ?? doorVendors[0].id,
 		extension_id: station?.extension_id ?? '',
 		host: station?.host ?? '',
 		port: station?.port ?? 80,
@@ -86,6 +88,13 @@
 	<div>
 		<label for="d-name">{t('common.name')}</label>
 		<input id="d-name" class="input" bind:value={form.name} required maxlength="64" />
+	</div>
+	<div>
+		<label for="d-vendor">{t('door.vendor')}</label>
+		<select id="d-vendor" class="input" bind:value={form.vendor}>
+			{#each doorVendors as v (v.id)}<option value={v.id}>{v.name}</option>{/each}
+		</select>
+		<p class="hint">{t('door.vendorHint')}</p>
 	</div>
 	<div>
 		<label for="d-ext">{t('door.extension')}</label>

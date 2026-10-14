@@ -7,7 +7,9 @@ use serde_json::json;
 use sqlx::PgPool;
 use talkops_core::crypto::SecretBox;
 use talkops_core::error::CoreError;
-use talkops_core::extensions::{self, CodecProfile, DeviceInput, DeviceKind, ExtensionInput};
+use talkops_core::extensions::{
+    self, CodecProfile, DeviceInput, DeviceKind, ExtensionInput, SipPasswordFormat,
+};
 use talkops_core::phones::{self, ContactInput, MediaKind, PhoneInput, SectionInput};
 use talkops_core::presets::PresetCatalog;
 use talkops_core::tenant::TenantId;
@@ -121,6 +123,184 @@ async fn first_admin_login_and_sessions(pool: PgPool) {
     ));
 }
 
+/// Generated SIP passwords follow the device's format. A format change
+/// never changes a stored password; only a reset generates a new one.
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn sip_password_formats(pool: PgPool) {
+    let sb = SecretBox::from_hex(KEY).unwrap();
+    let e = extensions::create(&pool, T, &ext("800"), &emergency())
+        .await
+        .unwrap();
+    let base = DeviceInput {
+        sip_password_format: None,
+        name: "Desk".into(),
+        kind: DeviceKind::Desk,
+        sip_username: None,
+        phone_id: None,
+        account_index: None,
+        phone_label: String::new(),
+        phone_display_name: String::new(),
+        codec_profile: None,
+        enabled: true,
+    };
+    let stored = |id: Uuid| {
+        let pool = pool.clone();
+        let sb = sb.clone();
+        async move {
+            let enc: String =
+                sqlx::query_scalar("SELECT sip_password_enc FROM devices WHERE id = $1")
+                    .bind(id)
+                    .fetch_one(&pool)
+                    .await
+                    .unwrap();
+            (enc.clone(), sb.decrypt(&enc).unwrap())
+        }
+    };
+
+    // Default: unchanged standard format with 20 characters.
+    let (desk, pw) = extensions::create_device(&pool, T, &sb, &e, &base)
+        .await
+        .unwrap();
+    assert_eq!(desk.sip_password_format, SipPasswordFormat::Standard);
+    assert_eq!(pw.len(), 20);
+    assert_eq!(stored(desk.id).await.1, pw);
+
+    // Compact format: 15 letters and digits, stored encrypted.
+    let compact = DeviceInput {
+        sip_password_format: Some(SipPasswordFormat::Compact15),
+        kind: DeviceKind::Door,
+        sip_username: Some("800vth".into()),
+        ..base.clone()
+    };
+    let (vth, pw) = extensions::create_device(&pool, T, &sb, &e, &compact)
+        .await
+        .unwrap();
+    assert_eq!(vth.sip_password_format, SipPasswordFormat::Compact15);
+    assert_eq!(pw.len(), 15);
+    assert!(pw.chars().all(|c| c.is_ascii_alphanumeric()));
+    let (enc, plain) = stored(vth.id).await;
+    assert_eq!(plain, pw);
+    assert!(!enc.contains(&pw));
+    let auth = extensions::device_auth(&pool, "800vth")
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(sb.decrypt(&auth.sip_password_enc).unwrap(), pw);
+
+    // A reset keeps the stored format.
+    let (pw2, format) = extensions::reset_device_password(&pool, T, &sb, vth.id, None)
+        .await
+        .unwrap();
+    assert_eq!(format, SipPasswordFormat::Compact15);
+    assert_eq!(pw2.len(), 15);
+    assert_ne!(pw2, pw);
+    assert_eq!(stored(vth.id).await.1, pw2);
+
+    // An update changes the stored format, not the password.
+    let (enc_before, _) = stored(desk.id).await;
+    let updated = extensions::update_device(
+        &pool,
+        T,
+        desk.id,
+        &DeviceInput {
+            sip_password_format: Some(SipPasswordFormat::Compact15),
+            ..base.clone()
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(updated.sip_password_format, SipPasswordFormat::Compact15);
+    assert_eq!(stored(desk.id).await.0, enc_before);
+    // Omitted on update: the stored format stays.
+    let kept = extensions::update_device(&pool, T, desk.id, &base)
+        .await
+        .unwrap();
+    assert_eq!(kept.sip_password_format, SipPasswordFormat::Compact15);
+    let (pw3, _) = extensions::reset_device_password(&pool, T, &sb, desk.id, None)
+        .await
+        .unwrap();
+    assert_eq!(pw3.len(), 15);
+
+    // Changing the kind must not carry a compact format into a browser.
+    for format in [None, Some(SipPasswordFormat::Compact15)] {
+        assert!(matches!(
+            extensions::update_device(
+                &pool,
+                T,
+                desk.id,
+                &DeviceInput {
+                    kind: DeviceKind::Browser,
+                    sip_password_format: format,
+                    ..base.clone()
+                }
+            )
+            .await,
+            Err(CoreError::Validation(_))
+        ));
+    }
+    let unchanged = extensions::get_device(&pool, T, desk.id).await.unwrap();
+    assert_eq!(unchanged.kind, DeviceKind::Desk);
+    assert_eq!(unchanged.sip_password_format, SipPasswordFormat::Compact15);
+    assert_eq!(stored(desk.id).await.1, pw3);
+
+    // A reset with a format stores the new format.
+    let (pw4, format) = extensions::reset_device_password(
+        &pool,
+        T,
+        &sb,
+        desk.id,
+        Some(SipPasswordFormat::Standard),
+    )
+    .await
+    .unwrap();
+    assert_eq!((pw4.len(), format), (20, SipPasswordFormat::Standard));
+    assert_eq!(
+        extensions::get_device(&pool, T, desk.id)
+            .await
+            .unwrap()
+            .sip_password_format,
+        SipPasswordFormat::Standard
+    );
+
+    // Browser devices keep the standard format.
+    let browser = DeviceInput {
+        kind: DeviceKind::Browser,
+        sip_password_format: Some(SipPasswordFormat::Compact15),
+        ..base.clone()
+    };
+    assert!(matches!(
+        extensions::create_device(&pool, T, &sb, &e, &browser).await,
+        Err(CoreError::Validation(_))
+    ));
+    let (web, _) = extensions::create_device(
+        &pool,
+        T,
+        &sb,
+        &e,
+        &DeviceInput {
+            sip_password_format: None,
+            ..browser.clone()
+        },
+    )
+    .await
+    .unwrap();
+    assert!(matches!(
+        extensions::reset_device_password(
+            &pool,
+            T,
+            &sb,
+            web.id,
+            Some(SipPasswordFormat::Compact15)
+        )
+        .await,
+        Err(CoreError::Validation(_))
+    ));
+    assert!(matches!(
+        extensions::reset_device_password(&pool, T, &sb, Uuid::new_v4(), None).await,
+        Err(CoreError::NotFound)
+    ));
+}
+
 #[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
 async fn extensions_and_devices(pool: PgPool) {
     let sb = SecretBox::from_hex(KEY).unwrap();
@@ -162,6 +342,7 @@ async fn extensions_and_devices(pool: PgPool) {
     extensions::delete(&pool, T, legacy.id).await.unwrap();
 
     let input = DeviceInput {
+        sip_password_format: None,
         name: "Desk".into(),
         kind: DeviceKind::Desk,
         sip_username: None,
@@ -303,9 +484,11 @@ async fn extensions_and_devices(pool: PgPool) {
         .unwrap();
     assert_eq!(auth.effective_codec_profile(), CodecProfile::Robust);
 
-    let new_pw = extensions::reset_device_password(&pool, T, &sb, dev.id)
+    let (new_pw, format) = extensions::reset_device_password(&pool, T, &sb, dev.id, None)
         .await
         .unwrap();
+    assert_eq!(format, SipPasswordFormat::Standard);
+    assert_eq!(new_pw.len(), 20);
     let auth = extensions::device_auth(&pool, "200-1")
         .await
         .unwrap()
@@ -666,6 +849,7 @@ async fn phones_accounts_firmware_contacts(pool: PgPool) {
         .await
         .unwrap();
     let on_phone = |name: &str| DeviceInput {
+        sip_password_format: None,
         name: name.into(),
         kind: DeviceKind::Desk,
         sip_username: None,
@@ -1476,6 +1660,7 @@ async fn door_stations_and_events(pool: PgPool) {
         .await
         .unwrap();
     let input = DoorStationInput {
+        vendor: None,
         name: "Gate".into(),
         extension_id: door.id,
         host: "192.168.1.20".into(),
@@ -1496,6 +1681,13 @@ async fn door_stations_and_events(pool: PgPool) {
     };
     let s = doors::create(&pool, T, &secrets, &input).await.unwrap();
     assert!(s.has_unlock_code_1 && !s.has_unlock_code_2);
+    // Omitted vendor: Dahua (ADR 0026).
+    assert_eq!(s.vendor, doors::DoorVendor::Dahua);
+    let conn = doors::connection(&pool, &secrets, s.id)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(conn.vendor, doors::DoorVendor::Dahua);
     // The codes are stored encrypted, never in plain text.
     let raw: Option<String> =
         sqlx::query_scalar("SELECT unlock_code_1_enc FROM door_stations WHERE id = $1")

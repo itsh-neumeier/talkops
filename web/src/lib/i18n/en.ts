@@ -198,7 +198,8 @@ export default {
 	'ext.credentials': 'SIP credentials',
 	'ext.showCredentials': 'Show credentials',
 	'ext.resetPassword': 'New password',
-	'ext.resetConfirm': 'Generate a new SIP password? The phone must then be reconfigured.',
+	'ext.resetConfirm':
+		'TalkOps generates a new SIP password. The current password stops working immediately. Enter the new password in the device, then restart the device if necessary.',
 	'ext.online': 'online',
 	'ext.offline': 'offline',
 	'ext.codecProfile': 'Codec profile',
@@ -1325,5 +1326,235 @@ export default {
 	'phone.callNumber': 'Call {number}',
 	'phone.noIdentity': 'No active extension is available for this account.',
 	'phone.identityUnavailable':
-		'This extension is no longer available. Refresh the list and select an available extension.'
+		'This extension is no longer available. Refresh the list and select an available extension.',
+	'ext.pwFormat': 'SIP password format',
+	'ext.pwFormat.standard': 'Standard (20 characters)',
+	'ext.pwFormat.compact15': 'Compatible (15 characters)',
+	'ext.pwFormatHint':
+		'Compatible: for devices that accept at most 15 characters, for example Dahua VTO and VTH. The format applies when TalkOps generates a password.',
+	'ext.pwFormatKeep':
+		'The current password stays valid. The new format applies to the next new password.',
+	'ext.pwFormatBadge': '15-character password',
+	'ext.resetTitle': 'New SIP password',
+	'ext.resetFormatCurrent': 'Password format: {format}',
+	'ext.resetGenerate': 'Generate new password',
+	'ext.credsDoorHint':
+		'Dahua VTO: enter the password in Password and in SIP Server Password. Dahua VTH: enter it in ConfigTool → Sip Register Pwd. The Room No. of the VTH must be the SIP user name.',
+	'door.tabStations': 'Door stations',
+	'door.tabGuide': 'Setup guide',
+	'door.vendor': 'Manufacturer',
+	'door.vendorHint':
+		'Selects the HTTP integration (door opener, pictures, events) and the setup guide. TalkOps supports Dahua at the moment.',
+	'doorGuide.intro':
+		'Step-by-step setup for door stations and indoor monitors. Select the manufacturer and the device type. Menu names can differ between models and firmware versions.',
+	'doorGuide.vendor': 'Manufacturer',
+	'doorGuide.device': 'Device type',
+	'doorGuide.values':
+		'Values for this TalkOps server: SIP server {host}, port {port}, domain {domain}.',
+	'doorGuide.commonHeading': 'For all door stations',
+	'doorGuide.unconfirmed': 'Not confirmed',
+	'doorGuide.colField': 'Field',
+	'doorGuide.colValue': 'Value',
+	'doorGuide.colDevice': 'Device',
+	'doorGuide.colExtension': 'Extension',
+	'doorGuide.colSipUser': 'SIP user name',
+	'doorGuide.colPassword': 'Password',
+	'doorGuide.colWhere': 'Where to enter it',
+	'doorGuide.colUse': 'Purpose',
+	'doorGuide.colSymptom': 'What you see',
+	'doorGuide.colCheck': 'What to do',
+	'doorGuide.colModel': 'Model and firmware',
+	'doorGuide.colState': 'State',
+	'doorGuide.colFunction': 'Function',
+	'doorGuide.colRequirement': 'Requirement',
+	'doorGuide.pw.sip': 'SIP password (from TalkOps)',
+	'doorGuide.pw.sipUse': 'SIP registration and calls to TalkOps.',
+	'doorGuide.dahua.vto.label': 'VTO (door station)',
+	'doorGuide.dahua.vto.summary':
+		'The VTO registers to TalkOps as a SIP device. A ring calls the ring target that you set in TalkOps.',
+	'doorGuide.dahua.prereq.title': 'Before you start',
+	'doorGuide.dahua.prereq.ownAccount':
+		'Give each device its own extension and its own SIP user name. Do not use one SIP account on two devices.',
+	'doorGuide.dahua.prereq.separate':
+		'Keep the SIP password and the device login (web login) separate. The section "SIP password and device password" shows the difference.',
+	'doorGuide.dahua.prereq.network':
+		'Make sure that the device can reach the TalkOps server on UDP port {port}.',
+	'doorGuide.dahua.prereq.plan': 'Example plan',
+	'doorGuide.dahua.vto.talkops.title': 'Settings in TalkOps',
+	'doorGuide.dahua.vto.talkops.ext':
+		'Open Settings → Extensions and create an extension for the VTO, for example 8000 "Front door".',
+	'doorGuide.dahua.vto.talkops.device':
+		'In the extension, select Add device. Set the type to Door station and the SIP user name ending to vto (SIP user name 8000vto).',
+	'doorGuide.dahua.talkops.format':
+		'Set the SIP password format to Compatible (15 characters). TalkOps selects this format for new door station devices.',
+	'doorGuide.dahua.talkops.copy':
+		'Save. TalkOps shows the SIP user name and the SIP password. Copy both values. Show credentials shows them again later.',
+	'doorGuide.dahua.vto.talkops.station':
+		'Open Settings → Door stations → New door station. Set the manufacturer to Dahua and select the extension of the VTO.',
+	'doorGuide.dahua.vto.talkops.target':
+		'Select the ring target in Ring goes to. For the door opener, pictures and the event log, enter the HTTP access of the VTO (IP address, port, web login).',
+	'doorGuide.dahua.vto.talkops.test': 'Select Test connection. TalkOps shows the model of the VTO.',
+	'doorGuide.dahua.vto.web.title': 'Settings in the VTO web interface',
+	'doorGuide.dahua.vto.web.intro':
+		'Open the web interface of the VTO and sign in with the web login. Go to Network → SIP Server (some firmware: Network Settings → SIP Server).',
+	'doorGuide.dahua.vto.web.enable':
+		'Off. TalkOps is the SIP server. When this setting is on, the VTO operates as its own SIP server.',
+	'doorGuide.dahua.vto.web.type': 'Third party server (some firmware: Asterisk).',
+	'doorGuide.dahua.web.host': '{host} (IP address or host name of the TalkOps server)',
+	'doorGuide.dahua.web.port': '{port}',
+	'doorGuide.dahua.vto.web.user':
+		'Select Enable. Enter the SIP user name from TalkOps, for example 8000vto. Without Enable the VTO uses its own VTO number.',
+	'doorGuide.dahua.web.password': 'The SIP password from TalkOps.',
+	'doorGuide.dahua.web.domain': '{domain} or the Dahua default VDP. TalkOps accepts each domain.',
+	'doorGuide.dahua.vto.web.serverUser': 'The same SIP user name as in Username. Do not use admin.',
+	'doorGuide.dahua.vto.web.serverPassword': 'The same SIP password.',
+	'doorGuide.dahua.vto.web.match':
+		'TalkOps accepts a registration only when the authentication user name is the same as the SIP user name. Thus Username and SIP Server Username must be identical.',
+	'doorGuide.dahua.vto.web.callNo':
+		'Local Settings → Basic → Call No. is the number that the VTO calls when a person pushes the button (default 9901). TalkOps sends each call from the VTO to the ring target. For a station with more buttons, set a ring target for each button number under Buttons.',
+	'doorGuide.dahua.vto.web.dtmf':
+		'Optional: an unlock code in the VTO. Select only RFC 2833 as the DTMF method, not RFC 2833 and SIP INFO together.',
+	'doorGuide.dahua.pw.title': 'SIP password and device password',
+	'doorGuide.dahua.vto.pw.sipWhere': 'VTO: Password and SIP Server Password',
+	'doorGuide.dahua.vto.pw.web': 'Web login of the VTO',
+	'doorGuide.dahua.vto.pw.webWhere': 'TalkOps: door station → HTTP access',
+	'doorGuide.dahua.vto.pw.webUse':
+		'Door opener, pictures and event log through the HTTP interface. TalkOps never uses it for SIP.',
+	'doorGuide.dahua.pw.separate':
+		'Use different passwords. A new SIP password in TalkOps does not change the device login. A new device login does not change the SIP password.',
+	'doorGuide.dahua.check.title': 'Save, restart and check',
+	'doorGuide.dahua.vto.check.save': 'Select OK or Save in the VTO web interface.',
+	'doorGuide.dahua.vto.check.restart':
+		'Restart the VTO when the registration state does not change after one minute (for example Maintenance → Reboot).',
+	'doorGuide.dahua.vto.check.dashboard':
+		'In TalkOps, open the Dashboard. Registered devices shows 8000vto. The extension shows the device as online.',
+	'doorGuide.dahua.vto.check.ring':
+		'Push the button on the VTO. The ring target rings. With HTTP access, the Door page shows the ring in the event log.',
+	'doorGuide.dahua.vth.label': 'VTH (indoor monitor)',
+	'doorGuide.dahua.vth.summary':
+		'Each VTH registers to TalkOps as its own SIP device. Then the VTO and all phones can call the VTH.',
+	'doorGuide.dahua.vth.prereq.activate':
+		'Activate the VTH with ConfigTool and set its device login.',
+	'doorGuide.dahua.vth.prereq.room':
+		'The Room No. of the VTH is its SIP user name. Thus the Room No. must be identical to the SIP user name in TalkOps.',
+	'doorGuide.dahua.vth.prereq.limit':
+		'Field report: a VTH5422H with firmware V4.800.0.2 got 403 Forbidden with a 20-character password; a softphone registered with the same account. The Yeastar guide for Dahua VTH devices sets a password length of 8–15 characters. This limit is not confirmed for this model and firmware.',
+	'doorGuide.dahua.vth.talkops.ext':
+		'Open Settings → Extensions and create an extension for each VTH, for example 8001 "Indoor monitor hall".',
+	'doorGuide.dahua.vth.talkops.device':
+		'In the extension, select Add device. Set the type to Door station and the SIP user name ending to vth (SIP user name 8001vth). TalkOps has no separate type for indoor monitors. The type only sets the default user name and the password format.',
+	'doorGuide.dahua.vth.talkops.existing':
+		'Device with a 20-character password: select New password and then Compatible (15 characters). The old password stops working immediately. Enter the new password in the VTH.',
+	'doorGuide.dahua.vth.config.title': 'Settings in ConfigTool',
+	'doorGuide.dahua.vth.config.intro':
+		'Open ConfigTool → Device Config. Select the IP address of the VTH and Get Device Info. Sign in with the device login of the VTH, not with the SIP password.',
+	'doorGuide.dahua.vth.config.room':
+		'The SIP user name from TalkOps, exactly, for example 8001vth. Use the same upper-case and lower-case letters.',
+	'doorGuide.dahua.vth.config.main':
+		'Main VTH. Use a main VTH for each VTH that registers to TalkOps.',
+	'doorGuide.dahua.vth.config.mode':
+		'On. The VTH registers to the SIP server. The Yeastar guide calls this field "Initiale Mode".',
+	'doorGuide.dahua.vth.config.login':
+		'Not the SIP password. ConfigTool fills in these values for a main VTH. Do not change them for TalkOps.',
+	'doorGuide.dahua.vth.config.ok':
+		'Select OK. ConfigTool shows a message when the VTH accepts the settings.',
+	'doorGuide.dahua.vth.screen.title': 'Settings on the VTH screen',
+	'doorGuide.dahua.vth.screen.intro':
+		'Some firmware versions show the same values on the VTH: Settings → project password → Network or SIP Server. Menu names differ.',
+	'doorGuide.dahua.vth.screen.one':
+		'Make a change in ConfigTool or on the VTH screen, not in both at the same time.',
+	'doorGuide.dahua.vth.screen.same':
+		'Make sure that the VTH screen shows the same Room No., SIP server and port as ConfigTool.',
+	'doorGuide.dahua.vth.screen.unconfirmed':
+		'The menus on the VTH screen for firmware V4.800.0.2 are not confirmed with TalkOps.',
+	'doorGuide.dahua.vth.main.title': 'Main and extension devices',
+	'doorGuide.dahua.vth.main.own':
+		'Set each VTH to Main VTH with its own Room No. and its own SIP account.',
+	'doorGuide.dahua.vth.main.group':
+		'To ring more than one VTH, use a ring group in TalkOps (see "Ring target and ring group").',
+	'doorGuide.dahua.vth.main.ext':
+		'A Dahua extension VTH (Room No. with -1, #1 or similar) connects to its main VTH in the Dahua system, not to TalkOps.',
+	'doorGuide.dahua.vth.main.unconfirmed':
+		'Extension VTH devices that connect through a main VTH are not tested with TalkOps.',
+	'doorGuide.dahua.vth.pw.sipWhere': 'ConfigTool: Sip Register Pwd',
+	'doorGuide.dahua.vth.pw.device': 'Device login of the VTH',
+	'doorGuide.dahua.vth.pw.deviceWhere': 'ConfigTool sign-in, web interface',
+	'doorGuide.dahua.vth.pw.deviceUse': 'Configuration of the VTH. TalkOps does not use it.',
+	'doorGuide.dahua.vth.pw.login': 'Login Password (main VTH)',
+	'doorGuide.dahua.vth.pw.loginWhere': 'ConfigTool: Local Info',
+	'doorGuide.dahua.vth.pw.loginUse': 'Connection between Dahua devices. Not the SIP password.',
+	'doorGuide.dahua.vth.pw.mask':
+		'The number of masking characters (•••) in ConfigTool does not show the real length of a stored password.',
+	'doorGuide.dahua.vth.check.save': 'Select OK in ConfigTool.',
+	'doorGuide.dahua.vth.check.restart': 'Restart the VTH (ConfigTool or power supply).',
+	'doorGuide.dahua.vth.check.dashboard':
+		'In TalkOps, open the Dashboard. Registered devices shows the SIP user name, for example 8001vth.',
+	'doorGuide.dahua.vth.check.call': 'Call the extension of the VTH from a phone. The VTH rings.',
+	'doorGuide.dahua.vth.check.trouble': 'If the VTH gets 403 Forbidden, read "Troubleshooting".',
+	'doorGuide.dahua.models.title': 'Models and firmware',
+	'doorGuide.dahua.models.vto4202': 'Registers to TalkOps (field report).',
+	'doorGuide.dahua.models.vth5422':
+		'403 Forbidden with a 20-character password. The test with Compatible (15 characters) is open.',
+	'doorGuide.dahua.models.other':
+		'Tested with a SIP simulator and a re-created HTTP API, not with real hardware. Menu names can differ.',
+	'doorGuide.dahua.models.note':
+		'The limit of 8–15 characters comes from the Yeastar guide for other VTH models. A successful softphone test (for example MicroSIP) does not replace a test with the real device.',
+	'doorGuide.common.ring.title': 'Ring target and ring group',
+	'doorGuide.common.ring.group':
+		'Open Call routing → Ring groups and create a ring group with the extensions of all indoor monitors, for example 8001 and 8002. Add other phones if necessary.',
+	'doorGuide.common.ring.target':
+		'Open Settings → Door stations → Edit and set Ring goes to to this ring group.',
+	'doorGuide.common.ring.buttons':
+		'For a station with more buttons, set a ring target for each button number under Buttons.',
+	'doorGuide.common.video.title': 'Video',
+	'doorGuide.common.video.local':
+		'Calls from the door station send H.264 video to each called device that supports video. The extension flag Video calls is not necessary for this.',
+	'doorGuide.common.video.limits':
+		'Queues and Wi-Fi handsets with the codec profile HD or Robust get audio only.',
+	'doorGuide.common.video.audio':
+		'Audio always works. If there is no picture, make sure that the receiving device supports H.264.',
+	'doorGuide.common.dtmf.title': 'Door opening with DTMF',
+	'doorGuide.common.dtmf.http':
+		'Set the HTTP access of the door station in TalkOps and select Test connection. TalkOps opens the door through this access.',
+	'doorGuide.common.dtmf.code':
+		'Enter an unlock code for each lock in the door station form (2 to 8 keys of 0–9, * and #).',
+	'doorGuide.common.dtmf.use':
+		'Type the code on the phone or on the indoor monitor during the call. The device must send DTMF as RFC 2833.',
+	'doorGuide.common.dtmf.external':
+		'External callers can use the codes only from the numbers in External numbers for unlock codes.',
+	'doorGuide.common.dtmf.twice':
+		'An unlock code in the door station itself works without TalkOps. Use a different code than in TalkOps, else the door opens two times.',
+	'doorGuide.common.http.title': 'Optional HTTP functions',
+	'doorGuide.common.http.opener': 'Door opener from TalkOps (Door page, *85, Home Assistant)',
+	'doorGuide.common.http.openerReq': 'HTTP access with the web login of the door station',
+	'doorGuide.common.http.picture': 'Live picture and a picture with each ring',
+	'doorGuide.common.http.pictureReq': 'HTTP access; Save a picture with every ring',
+	'doorGuide.common.http.events': 'Event log (door open or closed, alarm)',
+	'doorGuide.common.http.eventsReq': 'HTTP access; Event log on',
+	'doorGuide.common.http.webhook': 'Webhook (Home Assistant)',
+	'doorGuide.common.http.webhookReq': 'Webhook URL in the door station form',
+	'doorGuide.common.guard.title': 'SIP login protection',
+	'doorGuide.common.guard.keep':
+		'Keep the SIP login protection on. It is not necessary to switch it off for a door station.',
+	'doorGuide.common.guard.unban':
+		'If TalkOps banned the address of a device during the setup, open Settings → Sign-in & security → SIP login protection and select Unban for this address.',
+	'doorGuide.common.guard.trust':
+		'If a device fails often during the setup, add only its IP address to Trusted networks, for example 192.168.1.50. Do not add the full network.',
+	'doorGuide.common.guard.remove':
+		'Remove the exception after a successful setup if you do not need it.',
+	'doorGuide.common.trouble.title': 'Troubleshooting',
+	'doorGuide.common.trouble.none': 'No SIP packets reach TalkOps',
+	'doorGuide.common.trouble.noneCheck':
+		'Check the SIP server address and port in the device. Check network, VLAN and firewall between the device and TalkOps. VTO: SIP Server (Enable) must be off. Restart the device after a change.',
+	'doorGuide.common.trouble.401': '401 Unauthorized only',
+	'doorGuide.common.trouble.401Check':
+		'This is the normal first answer: TalkOps asks for the password. The device must then send a second REGISTER with the password. If it does not, enter the SIP password in the device again and restart it.',
+	'doorGuide.common.trouble.403': '401, then 403 Forbidden',
+	'doorGuide.common.trouble.403Check':
+		'TalkOps rejected the login. Possible causes: (1) wrong or shortened password: select New password with the format Compatible (15 characters) and enter it in the device; (2) unknown SIP user name: a Dahua VTH sends its Room No., which must be identical to the SIP user name; (3) the authentication name is different from the SIP user name (VTO: SIP Server Username); (4) a banned address (see SIP login protection).',
+	'doorGuide.common.trouble.ok': '200 OK, but a function does not work',
+	'doorGuide.common.trouble.okCheck':
+		'The registration is correct. No ring: check the extension and the ring target of the door station, and that extension and device are enabled. No picture: see Video. The door does not open: check the HTTP access with Test connection and the DTMF method (RFC 2833).',
+	'doorGuide.common.trouble.log':
+		'The TalkOps log names the SIP user name and the address of each failed login: "SIP authentication failed" and "SIP authentication for unknown or disabled user". Command: docker compose logs -f talkops | grep "SIP authentication"'
 } as const;

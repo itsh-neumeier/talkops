@@ -9,6 +9,10 @@
 	import DoorStationForm from '#lib/components/doors/DoorStationForm.svelte';
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
+	import Tabs from '#lib/components/Tabs.svelte';
+	import DoorSetupGuide from '#lib/components/doors/DoorSetupGuide.svelte';
+	import { guideHash, parseGuideHash, type GuideLocation } from '#lib/doors/guide.ts';
+	import { vendorGuides } from '#lib/doors/vendors.ts';
 
 	// Setting up door stations (admin); opening, live view and events are on
 	// the Door page.
@@ -28,6 +32,37 @@
 		}
 	}
 	onMount(load);
+
+	// Tabs: the station list and the setup guide. The URL hash keeps the
+	// guide selection (`#guide/dahua/vth`), so a link opens it directly.
+	type Tab = 'stations' | 'guide';
+	let tab = $state<Tab>('stations');
+	let guide = $state<GuideLocation>({
+		vendor: vendorGuides[0].id,
+		device: vendorGuides[0].devices[0].id
+	});
+
+	function readHash() {
+		const loc = parseGuideHash(location.hash, vendorGuides);
+		tab = loc ? 'guide' : 'stations';
+		if (loc) guide = loc;
+	}
+	onMount(() => {
+		readHash();
+		window.addEventListener('hashchange', readHash);
+		return () => window.removeEventListener('hashchange', readHash);
+	});
+
+	function setHash(hash: string) {
+		history.replaceState(history.state, '', `${location.pathname}${location.search}${hash}`);
+	}
+	function selectTab(id: Tab) {
+		setHash(id === 'guide' ? guideHash(guide) : '');
+	}
+	function selectGuide(loc: GuideLocation) {
+		guide = loc;
+		setHash(guideHash(loc));
+	}
 
 	async function test(s: DoorStation) {
 		error = '';
@@ -85,51 +120,75 @@
 			<button class="btn btn-primary" onclick={() => edit(null)}>{t('door.new')}</button>
 		{/snippet}
 	</PageHeader>
-	<p class="hint">
-		{t('door.setupHint')} <a class="underline" href="/doors">{t('door.toDoorPage')}</a>
-	</p>
-	<ErrorBox {error} />
-	{#if info}<p class="text-sm text-emerald-700 dark:text-emerald-400" role="status">{info}</p>{/if}
+	<Tabs
+		label={t('nav.doorStations')}
+		tabs={[
+			{ id: 'stations', label: t('door.tabStations') },
+			{ id: 'guide', label: t('door.tabGuide') }
+		]}
+		bind:value={tab}
+		onchange={selectTab}
+	/>
+	{#if tab === 'guide'}
+		<DoorSetupGuide location={guide} onselect={selectGuide} />
+	{:else}
+		<p class="hint">
+			{t('door.setupHint')} <a class="underline" href="/doors">{t('door.toDoorPage')}</a>
+		</p>
+		<ErrorBox {error} />
+		{#if info}<p class="text-sm text-emerald-700 dark:text-emerald-400" role="status">
+				{info}
+			</p>{/if}
 
-	{#if stations && stations.length === 0}
-		<div class="card text-sm text-slate-600 dark:text-slate-300">{t('door.none')}</div>
-	{/if}
+		{#if stations && stations.length === 0}
+			<div class="card space-y-2 text-sm text-slate-600 dark:text-slate-300">
+				<p>{t('door.none')}</p>
+				<button
+					class="btn btn-sm"
+					onclick={() => {
+						tab = 'guide';
+						selectTab('guide');
+					}}>{t('door.tabGuide')}</button
+				>
+			</div>
+		{/if}
 
-	<div class="grid grid-cols-1 gap-4 @3xl:grid-cols-2">
-		{#each stations ?? [] as s (s.id)}
-			<div class="card space-y-3">
-				<div class="flex flex-wrap items-center justify-between gap-2">
-					<div>
-						<h2>{s.name}</h2>
-						{#if s.model}<p class="text-xs text-slate-500">{s.model}</p>{/if}
+		<div class="grid grid-cols-1 gap-4 @3xl:grid-cols-2">
+			{#each stations ?? [] as s (s.id)}
+				<div class="card space-y-3">
+					<div class="flex flex-wrap items-center justify-between gap-2">
+						<div>
+							<h2>{s.name}</h2>
+							{#if s.model}<p class="text-xs text-slate-500">{s.model}</p>{/if}
+						</div>
+						<div class="flex gap-1">
+							{#if s.events_enabled}
+								<span class="badge {s.online ? 'badge-ok' : 'badge-bad'}"
+									>{s.online ? t('door.online') : t('door.offline')}</span
+								>
+							{/if}
+							{#if !s.enabled}<span class="badge badge-muted">{t('common.disabled')}</span>{/if}
+						</div>
 					</div>
-					<div class="flex gap-1">
-						{#if s.events_enabled}
-							<span class="badge {s.online ? 'badge-ok' : 'badge-bad'}"
-								>{s.online ? t('door.online') : t('door.offline')}</span
+					<div class="flex flex-wrap gap-1">
+						<button class="btn btn-sm" onclick={() => edit(s)}>{t('common.edit')}</button>
+						<button class="btn btn-sm" onclick={() => test(s)}>{t('door.test')}</button>
+						<button class="btn btn-sm" onclick={() => newToken(s)}>{t('door.token')}</button>
+						{#if s.has_api_token}
+							<button class="btn btn-sm" onclick={() => revokeToken(s)}
+								>{t('door.tokenRevoke')}</button
 							>
 						{/if}
-						{#if !s.enabled}<span class="badge badge-muted">{t('common.disabled')}</span>{/if}
+						<button class="btn btn-sm btn-danger" onclick={() => remove(s)}
+							>{t('common.delete')}</button
+						>
 					</div>
 				</div>
-				<div class="flex flex-wrap gap-1">
-					<button class="btn btn-sm" onclick={() => edit(s)}>{t('common.edit')}</button>
-					<button class="btn btn-sm" onclick={() => test(s)}>{t('door.test')}</button>
-					<button class="btn btn-sm" onclick={() => newToken(s)}>{t('door.token')}</button>
-					{#if s.has_api_token}
-						<button class="btn btn-sm" onclick={() => revokeToken(s)}
-							>{t('door.tokenRevoke')}</button
-						>
-					{/if}
-					<button class="btn btn-sm btn-danger" onclick={() => remove(s)}
-						>{t('common.delete')}</button
-					>
-				</div>
-			</div>
-		{:else}
-			{#if !net.settled}<section class="card"><Skeleton lines={3} /></section>{/if}
-		{/each}
-	</div>
+			{:else}
+				{#if !net.settled}<section class="card"><Skeleton lines={3} /></section>{/if}
+			{/each}
+		</div>
+	{/if}
 </div>
 
 <Modal title={editing ? t('common.edit') : t('door.new')} bind:open={formOpen}>

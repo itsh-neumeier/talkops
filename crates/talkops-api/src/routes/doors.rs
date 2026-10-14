@@ -68,7 +68,7 @@ pub async fn create_station(
         "create",
         "door_station",
         Some(station.id.to_string()),
-        json!({"name": station.name, "host": station.host,
+        json!({"name": station.name, "vendor": station.vendor, "host": station.host,
                "unlock_codes": [station.has_unlock_code_1, station.has_unlock_code_2],
                "dtmf_allowed_numbers": station.dtmf_allowed_numbers}),
     )
@@ -104,7 +104,7 @@ pub async fn update_station(
         "update",
         "door_station",
         Some(id.to_string()),
-        json!({"name": station.name, "host": station.host,
+        json!({"name": station.name, "vendor": station.vendor, "host": station.host,
                "password_changed": input.password.is_some(),
                "webhook_changed": input.webhook_url.is_some(),
                // Never the codes themselves.

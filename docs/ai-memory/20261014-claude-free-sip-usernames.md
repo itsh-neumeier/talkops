@@ -52,6 +52,7 @@ that each name is unique.
 - Tests: `crates/talkops-core/tests/domain.rs`,
   `crates/talkops-api/tests/{http,doors,freeswitch,phones}.rs`. Fixtures that
   check dialplan strings now set explicit names (`200-1`, `210-1`, `220-1`).
+- `tests/e2e/run.sh`: Yealink check uses the returned SIP user name.
 - `web/src/lib/components/DeviceList.svelte`, `web/src/lib/i18n/{en,de}.ts`.
 - `docs/en/door-station.md`, `docs/de/tuersprechstelle.md`,
   `docs/en/door-station-dahua.md`, `docs/de/tuersprechstelle-dahua.md`.
@@ -76,7 +77,9 @@ that each name is unique.
 - Passed: `cargo clippy --workspace --all-targets -- -D warnings`.
 - Passed: `cargo test --workspace --no-fail-fast` with local PostgreSQL 16.
 - Passed: `npm run lint`, `npm run check`, `npm run build` in `web/`.
-- Not run: `tests/e2e/run.sh` (Docker/SIPp stack).
+- CI `sipp` (first run): failed at the Yealink step. `tests/e2e/run.sh`
+  expected the generated name `210-2`. Fixed: the script reads the
+  `sip_username` from the API response. Not run locally (no SIPp here).
 - Not run: hardware test with Dahua VTO and VTH and numeric names.
 - STE review: manual review against `docs/documentation-style.md`.
 

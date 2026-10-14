@@ -634,3 +634,70 @@ async fn door_station(db: PgPool) {
         "{a:?}"
     );
 }
+
+/// Dahua stations do not handle UTF-8 caller names (a VTO ignores the ACK
+/// and drops the call after 30 s): door calls carry ASCII names in both
+/// directions, the call record keeps the real name.
+#[sqlx::test(migrations = "../../migrations")]
+async fn door_calls_use_ascii_caller_names(db: PgPool) {
+    let router = talkops_api::app(state(db), None);
+    let admin = setup_admin(&router).await;
+    let id = |v: &Value| v["id"].as_str().unwrap().to_owned();
+    let (_, office) = admin
+        .post(
+            "/api/v1/extensions",
+            json!({"number": "200", "display_name": "Büro Süd"}),
+        )
+        .await;
+    let (_, door_ext) = admin
+        .post(
+            "/api/v1/extensions",
+            json!({"number": "8001", "display_name": "Türsprechstelle Außen"}),
+        )
+        .await;
+    let (status, station) = admin
+        .post(
+            "/api/v1/door-stations",
+            json!({"name": "Tür", "extension_id": id(&door_ext),
+                   "destination_type": "extension", "destination_id": id(&office)}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{station}");
+
+    // The station rings the office.
+    let a = call(&router, &door_ext, "9901").await;
+    assert!(
+        has(
+            &a,
+            "set",
+            "effective_caller_id_name=Tuersprechstelle Aussen"
+        ),
+        "{a:?}"
+    );
+    assert!(
+        has(&a, "set", "talkops_caller_name=Türsprechstelle Außen"),
+        "{a:?}"
+    );
+
+    // The office calls the station.
+    let a = call(&router, &office, "8001").await;
+    assert!(
+        has(&a, "set", "effective_caller_id_name=Buero Sued"),
+        "{a:?}"
+    );
+    assert!(has(&a, "set", "talkops_caller_name=Büro Süd"), "{a:?}");
+
+    // Other calls keep the UTF-8 name.
+    let (_, lab) = admin
+        .post(
+            "/api/v1/extensions",
+            json!({"number": "210", "display_name": "Lab"}),
+        )
+        .await;
+    let a = call(&router, &office, "210").await;
+    assert!(
+        !a.iter()
+            .any(|(_, d)| d.starts_with("effective_caller_id_name=")),
+        "{a:?} {lab}"
+    );
+}

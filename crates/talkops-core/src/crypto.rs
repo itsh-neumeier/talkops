@@ -128,18 +128,30 @@ pub fn random_token(bytes: usize) -> Result<String, CryptoError> {
 /// Random SIP password: letters and digits only, because some phones and
 /// provisioning formats choke on special characters.
 pub fn random_password(len: usize) -> Result<String, CryptoError> {
-    const ALPHABET: &[u8] = b"abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    random_string(
+        b"abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789",
+        len,
+    )
+}
+
+/// Random lower-case letters and digits without look-alikes (`l`, `o`, `0`,
+/// `1`), for generated SIP user names that admins type into devices.
+pub fn random_lowercase(len: usize) -> Result<String, CryptoError> {
+    random_string(b"abcdefghijkmnpqrstuvwxyz23456789", len)
+}
+
+fn random_string(alphabet: &[u8], len: usize) -> Result<String, CryptoError> {
     let mut out = String::with_capacity(len);
     let mut buf = [0u8; 64];
     while out.len() < len {
         getrandom::fill(&mut buf).map_err(|_| CryptoError::Rng)?;
         // Rejection sampling keeps the distribution uniform.
-        let limit = 256 - (256 % ALPHABET.len());
+        let limit = 256 - (256 % alphabet.len());
         for b in buf.iter().map(|&b| b as usize).filter(|&b| b < limit) {
             if out.len() == len {
                 break;
             }
-            out.push(ALPHABET[b % ALPHABET.len()] as char);
+            out.push(alphabet[b % alphabet.len()] as char);
         }
     }
     Ok(out)
@@ -197,6 +209,13 @@ mod tests {
         let p = random_password(20).unwrap();
         assert_eq!(p.len(), 20);
         assert!(p.chars().all(|c| c.is_ascii_alphanumeric()));
+        let u = random_lowercase(6).unwrap();
+        assert_eq!(u.len(), 6);
+        assert!(
+            u.chars()
+                .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit())
+        );
+        assert!(!u.contains(['l', 'o', '0', '1']));
         assert_ne!(random_token(32).unwrap(), random_token(32).unwrap());
         assert_eq!(token_digest("abc").len(), 64);
     }

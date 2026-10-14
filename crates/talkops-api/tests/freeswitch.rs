@@ -33,14 +33,14 @@ async fn fixture(router: &axum::Router) -> Fixture {
             json!({"number": "210", "display_name": "Lab"}),
         )
         .await;
-    for name in ["Desk", "DECT"] {
+    for (name, user) in [("Desk", "200-1"), ("DECT", "200-2")] {
         admin
             .post(
                 &format!(
                     "/api/v1/extensions/{}/devices",
                     ext20["id"].as_str().unwrap()
                 ),
-                json!({"name": name, "kind": "desk"}),
+                json!({"name": name, "kind": "desk", "sip_username": user}),
             )
             .await;
     }
@@ -1754,7 +1754,7 @@ async fn video_only_where_enabled(db: PgPool) {
     f.admin
         .post(
             &format!("/api/v1/extensions/{}/devices", id(&ext22)),
-            json!({"name": "Desk", "kind": "desk"}),
+            json!({"name": "Desk", "kind": "desk", "sip_username": "220-1"}),
         )
         .await;
     let (s, g) = f
@@ -2513,7 +2513,7 @@ async fn number_rings_several_extensions(db: PgPool) {
         .admin
         .post(
             &format!("/api/v1/extensions/{}/devices", id(&f.ext21)),
-            json!({"name": "Lab", "kind": "desk"}),
+            json!({"name": "Lab", "kind": "desk", "sip_username": "210-1"}),
         )
         .await;
     assert_eq!(status, StatusCode::OK, "{dev}");

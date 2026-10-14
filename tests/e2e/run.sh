@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # End-to-end test against a running TalkOps + FreeSWITCH stack.
 #
-# Creates an admin, two extensions with one device each, registers device
-# 210-1 with SIPp, calls it from 200-1 and checks the call record. Also checks
+# Creates an admin, two extensions with one device each, registers the
+# device of 210 with SIPp, calls it from the device of 200 and checks the
+# call record. Also checks
 # that a wrong SIP password is rejected, that DND rejects calls as busy and
 # that a provisioned Yealink phone gets its configuration and that an
 # unreachable extension's voicemail answers and stores the message, that a
@@ -140,7 +141,8 @@ api PUT "/api/v1/extensions/$EXT21/call-settings" '{"dnd":false}' >/dev/null
 log "Yealink provisioning"
 PHONE=$(api POST /api/v1/phones '{"mac":"80:5e:c0:00:e2:e2","model":"t54w","name":"E2E","line_keys":[{"key":3,"type":"blf","value":"210","label":"E2E 210"}]}' | jq -r .id) \
     || fail "create phone"
-api POST "/api/v1/extensions/$EXT21/devices" "{\"name\":\"Yealink\",\"kind\":\"desk\",\"phone_id\":\"$PHONE\"}" >/dev/null || fail "place device on phone"
+YEALINK_USER=$(api POST "/api/v1/extensions/$EXT21/devices" "{\"name\":\"Yealink\",\"kind\":\"desk\",\"phone_id\":\"$PHONE\"}" | jq -r .sip_username) \
+    || fail "place device on phone"
 PROV=$(api GET /api/v1/provisioning)
 PUSER=$(echo "$PROV" | jq -r .username)
 PPASS=$(echo "$PROV" | jq -r .password)
@@ -148,7 +150,7 @@ curl -sf -u "$PUSER:$PPASS" "$BASE/provisioning/y000000000068.cfg" | grep -q '^a
     || fail "common configuration"
 CFG=$(curl -sf -u "$PUSER:$PPASS" -A "Yealink SIP-T54W 96.86.0.100 80:5e:c0:00:e2:e2" "$BASE/provisioning/805ec000e2e2.cfg") \
     || fail "phone configuration"
-echo "$CFG" | grep -q '^account.1.user_name = 210-2$' || fail "account missing in phone configuration"
+echo "$CFG" | grep -qx "account.1.user_name = $YEALINK_USER" || fail "account missing in phone configuration"
 echo "$CFG" | grep -q '^linekey.3.type = 16$' || fail "BLF key missing in phone configuration"
 echo "$CFG" | grep -Fq 'linekey.3.pickup_value = *8*210' || fail "BLF pickup code"
 [ "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/provisioning/805ec000e2e2.cfg")" = 401 ] \

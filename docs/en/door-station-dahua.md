@@ -27,9 +27,13 @@ Example plan:
 
 | Device | Extension | SIP user name |
 |---|---|---|
-| VTO | `8000` | `8000vto` |
-| VTH 1 | `8001` | `8001vth` |
-| VTH 2 | `8002` | `8002vth` |
+| VTO | `8000` | `8000` |
+| VTH 1 | `8001` | `8001` |
+| VTH 2 | `8002` | `9902` |
+
+Use SIP user names with digits only. Dahua devices work best with them. The
+SIP user name does not have to contain the extension number, but it must be
+unique.
 
 ## SIP password format
 
@@ -58,8 +62,7 @@ replace a test with the real device.
 1. Open **Settings → Extensions** and create an extension for the VTO, for
    example `8000` "Front door".
 2. In the extension, select **Add device**. Set the type to **Door
-   station** and the SIP user name ending to `vto` (SIP user name
-   `8000vto`).
+   station**. Enter a SIP user name with digits only, for example `8000`.
 3. Keep the SIP password format **Compatible (15 characters)**.
 4. Save. Copy the SIP user name and the SIP password.
 5. Open **Settings → Door stations → New door station**. Set the
@@ -81,7 +84,7 @@ Dahua guides (VTO quick start guide v4.5, VTO2311R-WP manual).
 | Server Type | *ThirdParty* (some firmware: *Asterisk*) |
 | IP Addr. | IP address or host name of the TalkOps server |
 | Port | `5060` |
-| Username + **Enable** | Select **Enable**. Enter the SIP user name from TalkOps, for example `8000vto`. Without *Enable* the VTO uses its own VTO number. |
+| Username + **Enable** | Select **Enable**. Enter the SIP user name from TalkOps, for example `8000`. Without *Enable* the VTO uses its own VTO number. |
 | Password | the SIP password from TalkOps |
 | SIP Domain | `talkops.local` or the Dahua default `VDP`. TalkOps accepts each domain. |
 | SIP Server Username | **the same** SIP user name as in *Username*, not `admin` |
@@ -105,7 +108,7 @@ must be identical.
 2. Restart the VTO when the registration state does not change after one
    minute (for example **Maintenance → Reboot**).
 3. In TalkOps, open the **Dashboard**. *Registered devices* shows
-   `8000vto`.
+   `8000`.
 4. Push the button on the VTO. The ring target rings.
 
 ## VTH (indoor monitor)
@@ -115,16 +118,16 @@ can then call the VTH.
 
 **Important:** the VTH sends its **Room No.** as the SIP user name. Thus the
 Room No. must be identical to the SIP user name in TalkOps, for example
-`8001vth`. Use the same upper-case and lower-case letters.
+`8001`. Use digits only.
 
 ### Settings in TalkOps
 
 1. Open **Settings → Extensions** and create an extension for each VTH, for
    example `8001` "Indoor monitor hall".
 2. In the extension, select **Add device**. Set the type to **Door
-   station** and the SIP user name ending to `vth` (SIP user name
-   `8001vth`). TalkOps has no separate type for indoor monitors. The type
-   only sets the default user name and the password format.
+   station**. Enter the Room No. of the VTH as the SIP user name, for
+   example `8001`. TalkOps has no separate type for indoor monitors. The
+   type only sets the password format.
 3. Keep the SIP password format **Compatible (15 characters)**.
 4. Save. Copy the SIP user name and the SIP password.
 
@@ -138,7 +141,7 @@ Room No. must be identical to the SIP user name in TalkOps, for example
 
    | ConfigTool field | Value |
    |---|---|
-   | Room No. | the SIP user name from TalkOps, exactly, for example `8001vth` |
+   | Room No. | the SIP user name from TalkOps, exactly, for example `8001` |
    | VTH | **Main VTH**. Each VTH that registers to TalkOps is a main VTH. |
    | Sip Server IP | IP address or host name of the TalkOps server |
    | Sip Server Port | `5060` |
@@ -179,7 +182,7 @@ not tested with TalkOps.
 1. Select **OK** in ConfigTool.
 2. Restart the VTH (ConfigTool or power supply).
 3. In TalkOps, open the **Dashboard**. *Registered devices* shows the SIP
-   user name, for example `8001vth`.
+   user name, for example `8001`.
 4. Call the extension of the VTH from a phone. The VTH rings.
 
 ## SIP password and device password

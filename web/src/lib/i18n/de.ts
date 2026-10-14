@@ -188,9 +188,9 @@ const de: Record<keyof typeof en, string> = {
 	'ext.addDevice': 'Gerät hinzufügen',
 	'ext.kind': 'Typ',
 	'ext.sipUsername': 'SIP-Benutzername',
-	'ext.sipSuffixAuto': 'automatisch',
-	'ext.sipSuffixHint':
-		"Nebenstellennummer plus freie Endung, z. B. vto, vth oder -2 (Buchstaben, Ziffern, '.', '_', '-'; nicht mit einer Ziffer beginnen). Leer: automatisch (Türstationen: vto, ohne '-').",
+	'ext.sipUsernameAuto': 'automatisch (zufällig, z. B. 28x1js)',
+	'ext.sipUsernameHint':
+		"Freier Name, unabhängig von der Nebenstellennummer, z. B. 6578 oder 123 (3–64 Buchstaben, Ziffern, '.', '_', '-'). Jeder Name darf nur einmal vorkommen. Dahua VTO/VTH: nur Ziffern verwenden. Leer: TalkOps erzeugt einen zufälligen Namen.",
 	'ext.sipRenameHint':
 		'Nach einer Änderung muss sich das Gerät mit dem neuen Benutzernamen neu registrieren.',
 	'ext.sipPassword': 'SIP-Passwort',
@@ -1396,7 +1396,7 @@ const de: Record<keyof typeof en, string> = {
 	'doorGuide.dahua.vto.talkops.ext':
 		'Öffne Einstellungen → Nebenstellen und lege eine Nebenstelle für die VTO an, zum Beispiel 8000 „Haustür“.',
 	'doorGuide.dahua.vto.talkops.device':
-		'Wähle in der Nebenstelle Gerät hinzufügen. Setze den Typ auf Türsprechstelle und die Endung des SIP-Benutzernamens auf vto (SIP-Benutzername 8000vto).',
+		'Wähle in der Nebenstelle Gerät hinzufügen. Setze den Typ auf Türsprechstelle. Trage einen SIP-Benutzernamen nur aus Ziffern ein, zum Beispiel 8000. Der Name muss nicht der Nebenstellennummer entsprechen (zum Beispiel 6578). Er muss eindeutig sein.',
 	'doorGuide.dahua.talkops.format':
 		'Setze das SIP-Passwortformat auf Kompatibel (15 Zeichen). TalkOps wählt dieses Format für neue Türsprechstellen-Geräte vor.',
 	'doorGuide.dahua.talkops.copy':
@@ -1415,7 +1415,7 @@ const de: Record<keyof typeof en, string> = {
 	'doorGuide.dahua.web.host': '{host} (IP-Adresse oder Hostname des TalkOps-Servers)',
 	'doorGuide.dahua.web.port': '{port}',
 	'doorGuide.dahua.vto.web.user':
-		'Enable aktivieren. Den SIP-Benutzernamen aus TalkOps eintragen, zum Beispiel 8000vto. Ohne Enable nutzt die VTO ihre eigene VTO-Nummer.',
+		'Enable aktivieren. Den SIP-Benutzernamen aus TalkOps eintragen, zum Beispiel 8000. Ohne Enable nutzt die VTO ihre eigene VTO-Nummer.',
 	'doorGuide.dahua.web.password': 'Das SIP-Passwort aus TalkOps.',
 	'doorGuide.dahua.web.domain':
 		'{domain} oder die Dahua-Vorgabe VDP. TalkOps akzeptiert jede Domain.',
@@ -1441,7 +1441,7 @@ const de: Record<keyof typeof en, string> = {
 	'doorGuide.dahua.vto.check.restart':
 		'Starte die VTO neu, wenn sich der Registrierungsstatus nach einer Minute nicht ändert (zum Beispiel Maintenance → Reboot).',
 	'doorGuide.dahua.vto.check.dashboard':
-		'Öffne in TalkOps die Übersicht. Registrierte Geräte zeigt 8000vto. Die Nebenstelle zeigt das Gerät als online.',
+		'Öffne in TalkOps die Übersicht. Registrierte Geräte zeigt 8000. Die Nebenstelle zeigt das Gerät als online.',
 	'doorGuide.dahua.vto.check.ring':
 		'Drücke die Taste an der VTO. Das Klingelziel klingelt. Mit HTTP-Zugang zeigt die Seite Tür das Klingeln im Ereignisprotokoll.',
 	'doorGuide.dahua.vth.label': 'VTH (Innenstation)',
@@ -1456,14 +1456,14 @@ const de: Record<keyof typeof en, string> = {
 	'doorGuide.dahua.vth.talkops.ext':
 		'Öffne Einstellungen → Nebenstellen und lege für jeden VTH eine Nebenstelle an, zum Beispiel 8001 „Innenstation Flur“.',
 	'doorGuide.dahua.vth.talkops.device':
-		'Wähle in der Nebenstelle Gerät hinzufügen. Setze den Typ auf Türsprechstelle und die Endung des SIP-Benutzernamens auf vth (SIP-Benutzername 8001vth). TalkOps hat keinen eigenen Typ für Innenstationen. Der Typ bestimmt nur den vorgegebenen Benutzernamen und das Passwortformat.',
+		'Wähle in der Nebenstelle Gerät hinzufügen. Setze den Typ auf Türsprechstelle. Trage einen SIP-Benutzernamen nur aus Ziffern ein, zum Beispiel 8001. Das ist die Room No. des VTH. TalkOps hat keinen eigenen Typ für Innenstationen. Der Typ bestimmt nur das Passwortformat.',
 	'doorGuide.dahua.vth.talkops.existing':
 		'Gerät mit 20-stelligem Passwort: Wähle Neues Passwort und dann Kompatibel (15 Zeichen). Das alte Passwort gilt sofort nicht mehr. Trage das neue Passwort im VTH ein.',
 	'doorGuide.dahua.vth.config.title': 'Einstellungen in ConfigTool',
 	'doorGuide.dahua.vth.config.intro':
 		'Öffne ConfigTool → Device Config. Wähle die IP-Adresse des VTH und Get Device Info. Melde dich mit dem Geräte-Login des VTH an, nicht mit dem SIP-Passwort.',
 	'doorGuide.dahua.vth.config.room':
-		'Der SIP-Benutzername aus TalkOps, exakt, zum Beispiel 8001vth. Groß- und Kleinschreibung gleich übernehmen.',
+		'Der SIP-Benutzername aus TalkOps, exakt, zum Beispiel 8001. Nur Ziffern verwenden.',
 	'doorGuide.dahua.vth.config.main':
 		'Main VTH. Jeder VTH, der sich bei TalkOps registriert, ist ein Haupt-VTH.',
 	'doorGuide.dahua.vth.config.mode':
@@ -1502,7 +1502,7 @@ const de: Record<keyof typeof en, string> = {
 	'doorGuide.dahua.vth.check.save': 'Wähle OK in ConfigTool.',
 	'doorGuide.dahua.vth.check.restart': 'Starte den VTH neu (ConfigTool oder Stromversorgung).',
 	'doorGuide.dahua.vth.check.dashboard':
-		'Öffne in TalkOps die Übersicht. Registrierte Geräte zeigt den SIP-Benutzernamen, zum Beispiel 8001vth.',
+		'Öffne in TalkOps die Übersicht. Registrierte Geräte zeigt den SIP-Benutzernamen, zum Beispiel 8001.',
 	'doorGuide.dahua.vth.check.call':
 		'Rufe die Nebenstelle des VTH von einem Telefon an. Der VTH klingelt.',
 	'doorGuide.dahua.vth.check.trouble': 'Erhält der VTH 403 Forbidden, lies „Fehlersuche“.',

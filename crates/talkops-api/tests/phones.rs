@@ -169,7 +169,11 @@ async fn phones_and_provisioning(db: PgPool) {
     )
     .await;
     assert_eq!(status, StatusCode::OK);
-    assert!(cfg.contains("account.1.user_name = 200-1"), "{cfg}");
+    let sip_user = cred["sip_username"].as_str().unwrap();
+    assert!(
+        cfg.contains(&format!("account.1.user_name = {sip_user}")),
+        "{cfg}"
+    );
     assert!(cfg.contains(&format!(
         "account.1.password = {}",
         cred["sip_password"].as_str().unwrap()

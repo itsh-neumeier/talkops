@@ -59,9 +59,8 @@
 		phone_display_name: '',
 		codec_profile: '' as CodecProfile | '',
 		sip_password_format: 'standard' as SipPasswordFormat,
-		// Part of the SIP username after the extension number; empty = generated
-		// (new device) or unchanged (edit).
-		sip_suffix: '',
+		// Free SIP username; empty = generated (new device) or unchanged (edit).
+		sip_username: '',
 		enabled: true
 	});
 	let form = $state(empty());
@@ -96,10 +95,7 @@
 			phone_display_name: d.phone_display_name,
 			codec_profile: d.codec_profile ?? '',
 			sip_password_format: d.sip_password_format,
-			sip_suffix:
-				extensionNumber && d.sip_username.startsWith(extensionNumber)
-					? d.sip_username.slice(extensionNumber.length)
-					: '',
+			sip_username: d.sip_username,
 			enabled: d.enabled
 		};
 		addOpen = true;
@@ -108,11 +104,10 @@
 	async function add(e: SubmitEvent) {
 		e.preventDefault();
 		error = '';
-		const { sip_suffix, ...fields } = form;
-		const suffix = sip_suffix.trim();
+		const username = form.sip_username.trim();
 		const body = {
-			...fields,
-			sip_username: suffix ? extensionNumber + suffix : null,
+			...form,
+			sip_username: username || null,
 			phone_id: form.phone_id || null,
 			codec_profile: form.codec_profile || null,
 			account_index: form.phone_id && form.account_index !== '' ? Number(form.account_index) : null
@@ -258,20 +253,19 @@
 		{#if extensionNumber && editing?.kind !== 'browser'}
 			<div>
 				<label for="d-sip">{t('ext.sipUsername')}</label>
-				<div class="flex items-center gap-1">
-					<span class="font-mono text-slate-500">{extensionNumber}</span>
-					<input
-						id="d-sip"
-						class="input mt-0 font-mono"
-						bind:value={form.sip_suffix}
-						maxlength={64 - extensionNumber.length}
-						pattern="[A-Za-z._\-][A-Za-z0-9._\-]*"
-						autocomplete="off"
-						placeholder={editing ? '' : form.kind === 'door' ? 'vto' : t('ext.sipSuffixAuto')}
-					/>
-				</div>
+				<input
+					id="d-sip"
+					class="input font-mono"
+					bind:value={form.sip_username}
+					minlength={3}
+					maxlength={64}
+					pattern="[A-Za-z0-9._\-]+"
+					autocomplete="off"
+					spellcheck="false"
+					placeholder={editing ? '' : t('ext.sipUsernameAuto')}
+				/>
 				<p class="hint">
-					{t('ext.sipSuffixHint')}
+					{t('ext.sipUsernameHint')}
 					{#if editing}{t('ext.sipRenameHint')}{/if}
 				</p>
 			</div>

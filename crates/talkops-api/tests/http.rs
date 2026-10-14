@@ -236,14 +236,17 @@ async fn extensions_devices_and_self_service(db: PgPool) {
         )
         .await;
     assert_eq!(status, StatusCode::OK);
-    assert_eq!(creds["sip_username"], "200-1");
+    // Generated: random, not derived from the extension number.
+    let generated = creds["sip_username"].as_str().unwrap().to_owned();
+    assert_eq!(generated.len(), 6, "{generated}");
+    assert!(!generated.starts_with("200"), "{generated}");
     assert_eq!(creds["sip_password"].as_str().unwrap().len(), 20);
 
     // Bob sees his phone and may read his credentials; not someone else's.
     let bob_client = login(&router, "bob", "bob-password-1").await.unwrap();
     let (status, phones) = bob_client.get("/api/v1/me/phones").await;
     assert_eq!(status, StatusCode::OK);
-    assert_eq!(phones[0]["devices"][0]["sip_username"], "200-1");
+    assert_eq!(phones[0]["devices"][0]["sip_username"], generated.as_str());
     assert!(phones[0]["devices"][0].get("sip_password_enc").is_none());
     let device_id = creds["device_id"].as_str().unwrap();
     let (status, again) = bob_client
@@ -252,32 +255,36 @@ async fn extensions_devices_and_self_service(db: PgPool) {
     assert_eq!(status, StatusCode::OK);
     assert_eq!(again["sip_password"], creds["sip_password"]);
 
-    // A free SIP username: extension number plus suffix. Only admins rename;
-    // the rename is audited.
+    // A free SIP username, independent of the extension number (Dahua:
+    // digits only). Only admins rename; the rename is audited.
     let (status, vth) = admin
         .post(
             &format!("/api/v1/extensions/{ext_id}/devices"),
-            json!({"name": "VTH", "kind": "other", "sip_username": "200vth"}),
+            json!({"name": "VTH", "kind": "other", "sip_username": "Hall6578"}),
         )
         .await;
     assert_eq!(status, StatusCode::OK, "{vth}");
-    assert_eq!(vth["sip_username"], "200vth");
+    assert_eq!(vth["sip_username"], "Hall6578");
     let (status, err) = admin
         .post(
             &format!("/api/v1/extensions/{ext_id}/devices"),
-            json!({"name": "X", "kind": "desk", "sip_username": "201-x"}),
+            json!({"name": "X", "kind": "desk", "sip_username": "web-x"}),
         )
         .await;
     assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
-    assert!(err["message"].as_str().unwrap().contains("200"), "{err}");
-    let (status, _) = admin
+    assert!(err["message"].as_str().unwrap().contains("web-"), "{err}");
+    let (status, err) = admin
         .post(
             &format!("/api/v1/extensions/{ext_id}/devices"),
-            json!({"name": "X", "kind": "desk", "sip_username": "200VTH"}),
+            json!({"name": "X", "kind": "desk", "sip_username": "HALL6578"}),
         )
         .await;
     assert_eq!(status, StatusCode::CONFLICT);
-    let rename = json!({"name": "VTH", "kind": "other", "sip_username": "200hall"});
+    assert!(
+        err["message"].as_str().unwrap().contains("already in use"),
+        "{err}"
+    );
+    let rename = json!({"name": "VTH", "kind": "other", "sip_username": "123"});
     let vth_id = vth["device_id"].as_str().unwrap();
     let (status, _) = bob_client
         .put(&format!("/api/v1/devices/{vth_id}"), rename.clone())
@@ -287,15 +294,15 @@ async fn extensions_devices_and_self_service(db: PgPool) {
         .put(&format!("/api/v1/devices/{vth_id}"), rename)
         .await;
     assert_eq!(status, StatusCode::OK, "{renamed}");
-    assert_eq!(renamed["sip_username"], "200hall");
+    assert_eq!(renamed["sip_username"], "123");
     let (_, audit) = admin.get("/api/v1/audit").await;
     assert!(
         audit
             .as_array()
             .unwrap()
             .iter()
-            .any(|e| e["details"]["previous_sip_username"] == "200vth"
-                && e["details"]["sip_username"] == "200hall"),
+            .any(|e| e["details"]["previous_sip_username"] == "Hall6578"
+                && e["details"]["sip_username"] == "123"),
         "{audit}"
     );
     admin

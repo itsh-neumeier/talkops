@@ -29,9 +29,13 @@ Beispielplan:
 
 | Gerät | Nebenstelle | SIP-Benutzername |
 |---|---|---|
-| VTO | `8000` | `8000vto` |
-| VTH 1 | `8001` | `8001vth` |
-| VTH 2 | `8002` | `8002vth` |
+| VTO | `8000` | `8000` |
+| VTH 1 | `8001` | `8001` |
+| VTH 2 | `8002` | `9902` |
+
+Verwende SIP-Benutzernamen nur aus Ziffern. Dahua-Geräte arbeiten damit am
+besten. Der SIP-Benutzername muss die Nebenstellennummer nicht enthalten, er
+muss aber eindeutig sein.
 
 ## SIP-Passwortformat
 
@@ -60,8 +64,8 @@ keinen Test mit dem echten Gerät.
 1. Öffne **Einstellungen → Nebenstellen** und lege eine Nebenstelle für die
    VTO an, zum Beispiel `8000` „Haustür“.
 2. Wähle in der Nebenstelle **Gerät hinzufügen**. Setze den Typ auf
-   **Türsprechstelle** und die Endung des SIP-Benutzernamens auf `vto`
-   (SIP-Benutzername `8000vto`).
+   **Türsprechstelle**. Trage einen SIP-Benutzernamen nur aus Ziffern ein,
+   zum Beispiel `8000`.
 3. Behalte das SIP-Passwortformat **Kompatibel (15 Zeichen)**.
 4. Speichere. Kopiere SIP-Benutzernamen und SIP-Passwort.
 5. Öffne **Einstellungen → Türsprechstellen → Neue Türsprechstelle**. Setze
@@ -83,7 +87,7 @@ Dahuas Anleitungen (VTO-Kurzanleitung v4.5, Handbuch VTO2311R-WP).
 | Server Type | *ThirdParty* (manche Firmware: *Asterisk*) |
 | IP Addr. | IP-Adresse oder Hostname des TalkOps-Servers |
 | Port | `5060` |
-| Username + **Enable** | **Enable** aktivieren. Den SIP-Benutzernamen aus TalkOps eintragen, zum Beispiel `8000vto`. Ohne *Enable* nutzt die VTO ihre eigene VTO-Nummer. |
+| Username + **Enable** | **Enable** aktivieren. Den SIP-Benutzernamen aus TalkOps eintragen, zum Beispiel `8000`. Ohne *Enable* nutzt die VTO ihre eigene VTO-Nummer. |
 | Password | das SIP-Passwort aus TalkOps |
 | SIP Domain | `talkops.local` oder die Dahua-Vorgabe `VDP`. TalkOps akzeptiert jede Domain. |
 | SIP Server Username | **derselbe** SIP-Benutzername wie bei *Username*, nicht `admin` |
@@ -107,7 +111,7 @@ müssen daher identisch sein.
 2. Starte die VTO neu, wenn sich der Registrierungsstatus nach einer Minute
    nicht ändert (zum Beispiel **Maintenance → Reboot**).
 3. Öffne in TalkOps die **Übersicht**. *Registrierte Geräte* zeigt
-   `8000vto`.
+   `8000`.
 4. Drücke die Taste an der VTO. Das Klingelziel klingelt.
 
 ## VTH (Innenstation)
@@ -117,18 +121,17 @@ die VTO und alle Telefone den VTH anrufen.
 
 **Wichtig:** Der VTH sendet seine **Room No.** (Raumnummer) als
 SIP-Benutzernamen. Die Room No. muss daher identisch mit dem
-SIP-Benutzernamen in TalkOps sein, zum Beispiel `8001vth`. Groß- und
-Kleinschreibung gleich übernehmen.
+SIP-Benutzernamen in TalkOps sein, zum Beispiel `8001`. Nur Ziffern
+verwenden.
 
 ### Einstellungen in TalkOps
 
 1. Öffne **Einstellungen → Nebenstellen** und lege für jeden VTH eine
    Nebenstelle an, zum Beispiel `8001` „Innenstation Flur“.
 2. Wähle in der Nebenstelle **Gerät hinzufügen**. Setze den Typ auf
-   **Türsprechstelle** und die Endung des SIP-Benutzernamens auf `vth`
-   (SIP-Benutzername `8001vth`). TalkOps hat keinen eigenen Typ für
-   Innenstationen. Der Typ bestimmt nur den vorgegebenen Benutzernamen und
-   das Passwortformat.
+   **Türsprechstelle**. Trage die Room No. des VTH als SIP-Benutzernamen
+   ein, zum Beispiel `8001`. TalkOps hat keinen eigenen Typ für
+   Innenstationen. Der Typ bestimmt nur das Passwortformat.
 3. Behalte das SIP-Passwortformat **Kompatibel (15 Zeichen)**.
 4. Speichere. Kopiere SIP-Benutzernamen und SIP-Passwort.
 
@@ -142,7 +145,7 @@ Kleinschreibung gleich übernehmen.
 
    | Feld in ConfigTool | Wert |
    |---|---|
-   | Room No. | der SIP-Benutzername aus TalkOps, exakt, zum Beispiel `8001vth` |
+   | Room No. | der SIP-Benutzername aus TalkOps, exakt, zum Beispiel `8001` |
    | VTH | **Main VTH**. Jeder VTH, der sich bei TalkOps registriert, ist ein Haupt-VTH. |
    | Sip Server IP | IP-Adresse oder Hostname des TalkOps-Servers |
    | Sip Server Port | `5060` |
@@ -183,7 +186,7 @@ mit TalkOps nicht getestet.
 1. Wähle **OK** in ConfigTool.
 2. Starte den VTH neu (ConfigTool oder Stromversorgung).
 3. Öffne in TalkOps die **Übersicht**. *Registrierte Geräte* zeigt den
-   SIP-Benutzernamen, zum Beispiel `8001vth`.
+   SIP-Benutzernamen, zum Beispiel `8001`.
 4. Rufe die Nebenstelle des VTH von einem Telefon an. Der VTH klingelt.
 
 ## SIP-Passwort und Gerätepasswort

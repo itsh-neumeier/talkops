@@ -26,23 +26,27 @@ und Gerätetyp: **Einstellungen → Türsprechstellen → Einrichtungsanleitung*
 
 **Einstellungen → Nebenstellen → Neue Nebenstelle**, z. B. `8000` „Haustür“. Darin
 **Gerät hinzufügen**, Typ **Türsprechstelle**. Die angezeigten SIP-Zugangsdaten
-(Benutzername `8000vto`, Passwort) braucht das Gerät.
+(Benutzername, Passwort) braucht das Gerät.
 
-Der SIP-Benutzername ist die Nebenstellennummer plus eine Endung. Ohne eigene
-Endung verwendet TalkOps bei Türsprechstellen `vto`. Dahua-VTO- und
--VTH-Geräte akzeptieren kein `-` im Benutzernamen. Die Endung ist frei wählbar,
-z. B. eine Nebenstelle je Gerät:
+Der SIP-Benutzername ist frei wählbar. Er muss die Nebenstellennummer nicht
+enthalten: Nebenstelle `8000` kann `8000`, `6578` oder `123` verwenden.
+Dahua-VTO- und -VTH-Geräte arbeiten am besten mit reinen Ziffern. Ohne
+eigenen Namen erzeugt TalkOps einen zufälligen Namen, z. B. `28x1js`.
+Beispiel mit einer Nebenstelle je Gerät:
 
 | Gerät | Nebenstelle | SIP-Benutzername |
 |---|---|---|
-| Außenstation (VTO) | `8000` | `8000vto` |
-| Innenstation 1 (VTH) | `8001` | `8001vth` |
-| Innenstation 2 (VTH) | `8002` | `8002vth` |
+| Außenstation (VTO) | `8000` | `8000` |
+| Innenstation 1 (VTH) | `8001` | `8001` |
+| Innenstation 2 (VTH) | `8002` | `9902` |
 
-Erlaubt sind Buchstaben, Ziffern, `.`, `_` und `-`. Die Endung darf nicht mit
-einer Ziffer beginnen. Ein Admin kann den Benutzernamen eines Geräts später
-ändern (**Bearbeiten**). Danach muss sich das Gerät mit dem neuen Namen neu
-registrieren.
+Erlaubt sind 3 bis 64 Buchstaben, Ziffern, `.`, `_` und `-`. Jeder
+Benutzername darf nur einmal vorkommen (Groß- und Kleinschreibung gelten als
+gleich). Der Name darf auch die Nummer einer anderen Nebenstelle sein. Anrufe
+gehen weiter an die Nebenstellennummer, nicht an den SIP-Benutzernamen. `web-`
+ist für Browser-Telefone reserviert. Ein Admin kann den Benutzernamen eines
+Geräts später ändern (**Bearbeiten**). Danach muss sich das Gerät mit dem
+neuen Namen neu registrieren.
 
 ### SIP-Passwortformat
 
@@ -209,10 +213,10 @@ Türsprechstelle muss er nicht ausgeschaltet werden.
   Herstellerseite nennt die gerätespezifischen Prüfungen.
 - **Station registriert sich nicht:** „SIP Server“ an der Station aus?
   *Username* (mit *Enable*) und *SIP Server Username* beide auf den
-  SIP-Benutzernamen (z. B. `8001vto`) und beide Passwörter gesetzt? Ist der
+  SIP-Benutzernamen (z. B. `8000`) und beide Passwörter gesetzt? Ist der
   SIP-Port der Anlage erreichbar?
-- **Station lehnt den Benutzernamen ab:** einen Namen ohne `-` verwenden,
-  z. B. `8001vto` (Gerät **Bearbeiten** → SIP-Benutzername).
+- **Station lehnt den Benutzernamen ab:** einen Namen nur aus Ziffern
+  verwenden, z. B. `8000` (Gerät **Bearbeiten** → SIP-Benutzername).
 - **Öffnungscode bewirkt nichts:** HTTP-Zugang eingerichtet (**Verbindung
   testen**)? Sendet das Telefon DTMF als RFC 2833? Das Ereignisprotokoll
   zeigt jede Öffnung mit der Quelle `dtmf`. Bei externen Gesprächen: Steht

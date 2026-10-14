@@ -204,6 +204,8 @@ not tested with TalkOps.
 | `401 Unauthorized` only | This is the normal first answer. The device must send a second REGISTER with the password. If it does not, enter the SIP password again and restart the device. |
 | `401`, then `403 Forbidden` | (1) Wrong or shortened password: generate a new password with the format **Compatible (15 characters)** and enter it. (2) Unknown SIP user name: the Room No. of the VTH is different from the SIP user name. (3) VTO: *SIP Server Username* is different from *Username*. (4) TalkOps banned the address (see [SIP login protection](door-station.md#sip-login-protection)). |
 | `200 OK`, but a function does not work | See [Troubleshooting](door-station.md#troubleshooting). |
+| Call from the VTO: audio works, the VTH shows no picture | TalkOps offers only the video codec of the VTO (H264) to the called devices. FreeSWITCH does not convert video. A device that supports only VP8 gets no picture. Make sure that the VTO sends H264. |
+| Call to the VTO ends after 30 seconds | An umlaut in the caller name is a suspected cause of ACK rejection on VTO V4.600. A hardware test must confirm it. TalkOps sends caller names in ASCII on calls to and from door stations (`ü` → `ue`). The call history keeps the full name. Older TalkOps versions: use a name without umlauts. |
 
 The TalkOps log shows the SIP user name and the address of each failed
 login. A line `SIP authentication for unknown or disabled user` with the

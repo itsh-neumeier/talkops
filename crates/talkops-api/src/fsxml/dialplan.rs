@@ -24,7 +24,7 @@ use talkops_core::{queues, time_conditions};
 use uuid::Uuid;
 
 use super::{
-    CONTEXT_INTERNAL, CONTEXT_PUBLIC, CONTEXT_TRANSFER, SIP_DOMAIN, XmlWriter, codecs,
+    CONTEXT_INTERNAL, CONTEXT_PUBLIC, CONTEXT_TRANSFER, SIP_DOMAIN, XmlWriter, ascii_name, codecs,
     sanitize_value,
 };
 
@@ -415,10 +415,17 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
         actions.push(set("talkops_direction", "internal"));
         actions.push(set("talkops_door_id", station.id.to_string()));
         actions.push(set("talkops_door_dialed", dest.clone()));
+        // The called devices may not handle UTF-8 names (Dahua indoor
+        // stations); the call record keeps the real name.
+        actions.push(set(
+            "effective_caller_id_name",
+            ascii_name(&sanitize_value(&caller.display_name)),
+        ));
         let mut video = CallVideo::Off;
         if !has_codec_profile(req) && offers_video(req) {
-            actions.extend(video_media(AUDIO_CODECS, AUDIO_VIDEO_CODECS));
-            video = CallVideo::All(AUDIO_VIDEO_CODECS);
+            let codecs = door_codecs(req);
+            actions.extend(video_media(AUDIO_CODECS, codecs));
+            video = CallVideo::All(codecs);
         }
         let r = &Routing { video, ..*r };
         if station.detects_unlock_codes() {
@@ -429,8 +436,14 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
                 format!("nolocal:{}={}", crate::door_dtmf::MARK, station.id),
             ));
         }
-        let name = sanitize_value(&station.name);
+        let name = ascii_name(&sanitize_value(&station.name));
         actions.extend(route_to(r, tenant, kind, id, &name, 0).await?);
+        // Routing can add a ring-group prefix after the initial name.
+        for (app, data) in &mut actions {
+            if let ("set", Some(name)) = (*app, data.strip_prefix("effective_caller_id_name=")) {
+                *data = format!("effective_caller_id_name={}", ascii_name(name));
+            }
+        }
         return Ok(actions);
     }
 
@@ -477,13 +490,18 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
             ..*r
         };
         // A direct call to a door station: the caller's leg listens for the
-        // DTMF unlock code (`door_dtmf`).
+        // DTMF unlock code (`door_dtmf`). The station gets an ASCII name: a
+        // Dahua VTO may reject ACKs when the `From` name has an umlaut.
+        // This workaround still needs a hardware test.
         if kind == NumberDestination::Extension {
-            if let Some(station) = doors::for_extension(pool, id)
-                .await?
-                .filter(|s| s.detects_unlock_codes())
-            {
-                actions.push(set(crate::door_dtmf::MARK, station.id.to_string()));
+            if let Some(station) = doors::for_extension(pool, id).await? {
+                actions.push(set(
+                    "effective_caller_id_name",
+                    ascii_name(&sanitize_value(&caller.display_name)),
+                ));
+                if station.detects_unlock_codes() {
+                    actions.push(set(crate::door_dtmf::MARK, station.id.to_string()));
+                }
             }
         }
         let name = sanitize_value(&caller.display_name);
@@ -696,6 +714,54 @@ const TRUNK_TO_PHONE_VIDEO_CODECS: &str = "G722,PCMA,PCMU,OPUS,H264,VP8";
 const TRUNK_VIDEO_CODECS: &str = "G722,PCMA,PCMU,H264,VP8";
 /// Video codecs added where video is allowed.
 const VIDEO_CODECS: &str = "H264,VP8";
+/// [`AUDIO_CODECS`] and H264 or VP8: legs of a door station call. FreeSWITCH
+/// relays video without transcoding, so only the codec the station sends
+/// can show its picture (Dahua stations send H264 only).
+const AUDIO_H264_CODECS: &str = "OPUS,G722,PCMA,PCMU,H264";
+const AUDIO_VP8_CODECS: &str = "OPUS,G722,PCMA,PCMU,VP8";
+
+/// Codec list with the video codecs the door station offers (see
+/// [`AUDIO_H264_CODECS`]). H264 if the offer names neither.
+fn door_codecs(req: &CallRequest) -> &'static str {
+    let sdp = req.var("switch_r_sdp").unwrap_or_default();
+    let mut in_video = false;
+    let mut payloads: Vec<&str> = Vec::new();
+    let (mut h264, mut vp8) = (false, false);
+    for line in sdp.lines() {
+        if let Some(media) = line.strip_prefix("m=") {
+            let mut media = media.split_whitespace();
+            let kind = media.next();
+            let port = media.next().unwrap_or_default().split('/').next();
+            in_video = kind == Some("video")
+                && port
+                    .and_then(|p| p.parse::<u16>().ok())
+                    .is_some_and(|p| p != 0);
+            let _ = media.next(); // Transport protocol; remaining tokens are payload IDs.
+            payloads = if in_video {
+                media.collect()
+            } else {
+                Vec::new()
+            };
+            continue;
+        }
+        let Some(map) = line.strip_prefix("a=rtpmap:").filter(|_| in_video) else {
+            continue;
+        };
+        let mut mapping = map.split_whitespace();
+        if !mapping.next().is_some_and(|p| payloads.contains(&p)) {
+            continue;
+        }
+        let name = mapping.next().unwrap_or_default();
+        let name = name.split('/').next().unwrap_or_default();
+        h264 |= name.eq_ignore_ascii_case("H264");
+        vp8 |= name.eq_ignore_ascii_case("VP8");
+    }
+    match (h264, vp8) {
+        (true, true) => AUDIO_VIDEO_CODECS,
+        (false, true) => AUDIO_VP8_CODECS,
+        _ => AUDIO_H264_CODECS,
+    }
+}
 
 /// Codecs offered to participants dialled into a conference.
 const CONFERENCE_CODECS: &str = "OPUS,G722,PCMA,PCMU";
@@ -1958,6 +2024,30 @@ mod tests {
         assert!(!offers_video(&req(&format!(
             "{audio}m=video 0 RTP/AVP 96\r\n"
         ))));
+    }
+
+    #[test]
+    fn door_calls_offer_the_video_codec_of_the_station() {
+        let req = |sdp: &str| CallRequest::default().with_var("switch_r_sdp", sdp);
+        // Offer of a Dahua VTO4202F (firmware V4.600).
+        let dahua = "v=0\r\nm=audio 20000 RTP/AVP 0 97 101\r\na=rtpmap:97 PCM/16000\r\n\
+                     m=video 20001 RTP/AVP 96\r\na=framerate:25.000000\r\n\
+                     a=rtpmap:96 H264/90000\r\na=sendrecv\r\n";
+        assert_eq!(door_codecs(&req(dahua)), "OPUS,G722,PCMA,PCMU,H264");
+        let vp8 = "v=0\r\nm=video 4002 RTP/AVP 100\r\na=rtpmap:100 VP8/90000\r\n";
+        assert_eq!(door_codecs(&req(vp8)), "OPUS,G722,PCMA,PCMU,VP8");
+        let both = "v=0\r\nm=video 4002 RTP/AVP 96 100\r\na=rtpmap:96 H264/90000\r\n\
+                    a=rtpmap:100 VP8/90000\r\n";
+        assert_eq!(door_codecs(&req(both)), AUDIO_VIDEO_CODECS);
+        // A VP8 name in the audio section does not count.
+        let audio_only = "v=0\r\nm=audio 4000 RTP/AVP 100\r\na=rtpmap:100 VP8/90000\r\n\
+                          m=video 4002 RTP/AVP 96\r\n";
+        assert_eq!(door_codecs(&req(audio_only)), AUDIO_H264_CODECS);
+        // Rejected streams and unadvertised payloads must not add VP8.
+        let rejected = format!("{dahua}m=video 0 RTP/AVP 100\r\na=rtpmap:100 VP8/90000\r\n");
+        assert_eq!(door_codecs(&req(&rejected)), AUDIO_H264_CODECS);
+        let unlisted = format!("{dahua}a=rtpmap:100 VP8/90000\r\n");
+        assert_eq!(door_codecs(&req(&unlisted)), AUDIO_H264_CODECS);
     }
 
     #[test]

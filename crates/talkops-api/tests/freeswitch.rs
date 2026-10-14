@@ -1894,15 +1894,13 @@ async fn video_from_trunks_and_door_stations(db: PgPool) {
     assert_eq!(s, StatusCode::OK, "{station}");
     let a = internal_call(&router, &door, "9901").await;
     assert!(!a.iter().any(|(_, d)| d.contains("H264")), "{a:?}");
+    // Only the station's codec: FreeSWITCH does not transcode video.
     let a = internal_call_with(&router, &door, "9901", &VIDEO_OFFER).await;
     assert!(
-        has(
-            &a,
-            "set",
-            "absolute_codec_string=OPUS,G722,PCMA,PCMU,H264,VP8"
-        ),
+        has(&a, "set", "absolute_codec_string=OPUS,G722,PCMA,PCMU,H264"),
         "{a:?}"
     );
+    assert!(!a.iter().any(|(_, d)| d.contains("VP8")), "{a:?}");
     assert!(
         has(
             &a,
@@ -1913,7 +1911,7 @@ async fn video_from_trunks_and_door_stations(db: PgPool) {
     );
     let bridge = a.iter().find(|(app, _)| app == "bridge").unwrap().1.clone();
     assert!(
-        bridge.contains(&video_leg("OPUS,G722,PCMA,PCMU,H264,VP8", "200-1")),
+        bridge.contains(&video_leg("OPUS,G722,PCMA,PCMU,H264", "200-1")),
         "{bridge}"
     );
 }

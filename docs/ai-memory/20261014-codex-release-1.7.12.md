@@ -21,7 +21,10 @@ publication if the source branches contain no new work.
 Both source PRs and integration PR #25 are merged. Main is
 `6276e7d5e1b3bbe2a97e0fe237758b3f3a0e44b4`. Its tree equals tested candidate
 `45121e6c1e6c425f05dfd96b4618bd719be5a5d4`. Both source heads are ancestors.
-No source history was rewritten. No release has been published yet.
+No source history was rewritten. Annotated tag `v1.7.12` was pushed once on
+the tested main commit. Its tag object is
+`9cd0b56cc32a3adf98ef206b77270bf3decac4ae`. Release workflow 38621735634
+is in progress. GitHub release and registry verification are still pending.
 
 | Source | Contributor | Head commit | State |
 | --- | --- | --- | --- |
@@ -94,7 +97,10 @@ not drafts. There are no source dependencies or new migration IDs.
   All source PRs closed as merged. No other open PR remains.
 - Passed: exact-main CI 38619610046 and E2E 38619610127 on
   `6276e7d5e1b3bbe2a97e0fe237758b3f3a0e44b4`. Main smoke output reports
-  server and media worker version 1.7.12. Release publication is next.
+  server and media worker version 1.7.12.
+- Passed before tag push: fresh main/scope/unused-tag/version/source gates.
+- In progress: Release 38621735634; additional tag CI 38621735931,
+  FreeSWITCH image 38621735848, and E2E 38621736102.
 - STE review: manual review with `docs/documentation-style.md`. The full
   official standard is unavailable; the full language review is pending.
 - CodeRabbit CLI is unavailable. Focused integration review used the actual
@@ -112,8 +118,9 @@ not drafts. There are no source dependencies or new migration IDs.
 
 ## Next action
 
-Recheck scope, main, versions and the unused tag. Publish `v1.7.12` on the
-tested main commit. Verify the release, manifests, labels and moving tags.
+Wait for Release 38621735634 and additional tag checks. Verify the GitHub
+release, manifests, labels and moving tags. Then clean up unchanged branches
+and save the final summary through a non-release audit tag.
 
 ## References
 

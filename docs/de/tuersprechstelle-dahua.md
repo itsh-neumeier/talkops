@@ -181,6 +181,38 @@ Projektpasswort → Netzwerk** oder **SIP-Server**).
 *Nicht bestätigt:* Neben-VTH, die über einen Haupt-VTH verbunden sind, sind
 mit TalkOps nicht getestet.
 
+### Video am VTH
+
+Ein Dahua-VTH kann das Bild der VTO auf zwei Wegen bekommen:
+
+- **Direkt von der VTO.** Der VTH braucht die VTO als **Haupt-VTO**: am
+  VTH-Bildschirm **Setting → Project Settings → VTO** öffnen (das
+  Projektpasswort ist das Passwort aus der Ersteinrichtung des VTH). IP-Adresse
+  der VTO, Benutzer `admin` und das **Web-Login-Passwort der VTO** eintragen
+  und den Eintrag aktivieren. Dahua und die Yeastar-Anleitung nutzen diesen
+  Weg für das Live-Bild. Ruft die VTO an, antwortet der VTH mit dem Header
+  `DependentInfo: <VTO-Adresse>`.
+- **Über TalkOps (SIP-Video).** Der VTH beantwortet das Video-Angebot mit
+  `recvonly` und nur H264.
+
+TalkOps-Einstellungen je Gerät (**Nebenstellen → Gerät → Bearbeiten**), um
+beide Wege zu testen:
+
+| Einstellung | Wirkung am VTH |
+|---|---|
+| **Video: Nur H264** | Der VTH erhält SIP-Video nur mit H264. Für Anrufe vom Browser oder von Telefonen mit VP8. |
+| **Video: Aus** | Der VTH erhält kein SIP-Video, nur Ton. Für den Fall, dass der VTH das Bild direkt von der VTO zeigt. |
+| **Codec-Profil: Nur G.711** | Der VTH erhält nur PCMA und PCMU. |
+
+Ob Video fließt, zeigt ein Mitschnitt unter **Einstellungen → System →
+Diagnose** während eines Anrufs. Am Ende jedes Gesprächszweigs zeigt der
+Mitschnitt eine Zeile `--- TalkOps: media …: audio … in … out … pkts; video
+… in … out … pkts ---`. Bei einem Ruf von der VTO muss der Zweig der VTO
+Video-Pakete *in* zeigen und der Zweig des VTH Video-Pakete *out*.
+
+*Nicht bestätigt:* welcher Weg an einem VTH5422H mit Firmware V4.800.0.2 und
+einer VTO4202F-P-S2 mit V4.600.0.3 das Bild zeigt.
+
 ### Speichern, neu starten und prüfen
 
 1. Wähle **OK** in ConfigTool.
@@ -212,7 +244,9 @@ mit TalkOps nicht getestet.
 | Nur `401 Unauthorized` | Das ist die normale erste Antwort. Das Gerät muss ein zweites REGISTER mit Passwort senden. Fehlt es, SIP-Passwort neu eintragen und Gerät neu starten. |
 | `401`, danach `403 Forbidden` | (1) Falsches oder gekürztes Passwort: neues Passwort im Format **Kompatibel (15 Zeichen)** erzeugen und eintragen. (2) Unbekannter SIP-Benutzername: Die Room No. des VTH weicht vom SIP-Benutzernamen ab. (3) VTO: *SIP Server Username* weicht von *Username* ab. (4) TalkOps hat die Adresse gesperrt (siehe [SIP-Anmeldeschutz](tuersprechstelle.md#sip-anmeldeschutz)). |
 | `200 OK`, aber eine Funktion fehlt | Siehe [Fehlersuche](tuersprechstelle.md#fehlersuche). |
-| Ruf von der VTO: Ton geht, der VTH zeigt kein Bild | TalkOps bietet den gerufenen Geräten nur den Video-Codec der VTO an (H264). FreeSWITCH wandelt Video nicht um. Ein Gerät, das nur VP8 kann, bekommt kein Bild. Prüfe, dass die VTO H264 sendet. |
+| Ruf von der VTO: Ton geht, der VTH zeigt kein Bild | Die VTO als Haupt-VTO im VTH eintragen und die Video-Einstellungen testen, siehe [Video am VTH](#video-am-vth). TalkOps bietet den gerufenen Geräten nur den Video-Codec der VTO an (H264). FreeSWITCH wandelt Video nicht um. |
+| Ruf vom Browser zum VTH: kein Bild | Der VTH kann nur H264. TalkOps lässt den Browser den Codec des VTH nutzen (`inherit_codec`). Ältere TalkOps-Versionen: beim Browser-Gerät **Video: Nur H264** einstellen. |
+| Ein Türruf klingelt nur am VTH, andere Ziele hören sofort auf | Der VTH sendet Early Media. TalkOps ignoriert Early Media bei Türrufen, daher klingeln alle Ziele. Ältere TalkOps-Versionen: keine Abhilfe. |
 | Ruf zur VTO endet nach 30 Sekunden | Umlaute im Anrufernamen sind eine vermutete Ursache dafür, dass die VTO V4.600 das ACK ablehnt. Ein Hardwaretest muss das bestätigen. TalkOps sendet bei Rufen von und zu Türstationen die Anrufernamen in ASCII (`ü` → `ue`). Der Anrufverlauf zeigt den vollen Namen. Ältere TalkOps-Versionen: einen Namen ohne Umlaute verwenden. |
 
 Das TalkOps-Log zeigt SIP-Benutzernamen und Adresse jeder fehlgeschlagenen
@@ -230,3 +264,8 @@ docker compose logs -f talkops | grep "SIP authentication"
   (Room No. = Nebenstellennummer, *Sip Register Pwd*, 8–15 Zeichen; die
   getesteten Modelle sind nicht genannt)
 - Dahua VTO-Kurzanleitung v4.5, Handbuch VTO2311R-WP
+- [Dahua Video Door Phone (Version 4.8.1) Quick Start Guide V1.0.2](https://materialfile.dahuasecurity.com/uploads/cpq/42487/user_manual/Video_Door_Phone_(Version_4.8.1)_(VTO_2c_VTS_2c_DSS_Agile_VDP_2c_DMSS_2c_DoLynk_Care_2c_and_DoLynk_Pro)_Quick_Start_Guide_V1.0.2.pdf)
+  (Abschnitt 3.2.4: Haupt-VTO mit dem Web-Login der VTO; das Projektpasswort
+  wird bei der Ersteinrichtung des VTH gesetzt)
+- [Yeastar: Dahua Video Intercom Integration Guide](https://help.yeastar.com/download/docs/dahua-video-intercom-integration-guide-p-series-appliance-edition-en.pdf)
+  (VTH: *Master VTO IP, User, Pwd*; das Live-Bild kommt von der VTO)

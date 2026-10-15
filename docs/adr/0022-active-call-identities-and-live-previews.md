@@ -4,6 +4,8 @@
 - Date: 2026-10-12
 - Extends: [0012](0012-aufzeichnung-und-transkription.md) and
   [0019](0019-transkription-in-zwei-durchgaengen-und-ki-api.md)
+- Superseded in part by: [0027](0027-shared-phonebook-numbers-in-active-calls.md)
+  (name selection for a number in more than one phonebook entry)
 
 ## Context
 

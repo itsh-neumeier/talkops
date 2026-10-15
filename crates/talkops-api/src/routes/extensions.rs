@@ -249,7 +249,11 @@ pub async fn update_device(
     check_phone_slot(&state, &auth, &input).await?;
     let before = extensions::get_device(&state.db, auth.tenant, id).await?;
     let device = extensions::update_device(&state.db, auth.tenant, id, &input).await?;
-    let mut detail = json!({"enabled": device.enabled, "codec_profile": device.codec_profile});
+    let mut detail = json!({
+        "enabled": device.enabled,
+        "codec_profile": device.codec_profile,
+        "video": device.video,
+    });
     if device.sip_username != before.sip_username {
         // The device must register again with the new name.
         detail["sip_username"] = json!(device.sip_username);

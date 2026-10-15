@@ -177,6 +177,38 @@ project password → Network** or **SIP Server**).
 *Not confirmed:* extension VTH devices that connect through a main VTH are
 not tested with TalkOps.
 
+### Video on the VTH
+
+A Dahua VTH can get the VTO picture in two ways:
+
+- **Directly from the VTO.** The VTH needs the VTO as **main VTO**: on the
+  VTH screen, open **Setting → Project Settings → VTO** (the project
+  password is the password from the first start of the VTH). Enter the IP
+  address of the VTO, the user `admin` and the **web login password of the
+  VTO**, and enable the entry. Dahua and the Yeastar guide use this way for
+  the live picture. When the VTO calls, the VTH answers with the header
+  `DependentInfo: <VTO address>`.
+- **Through TalkOps (SIP video).** The VTH answers the video offer with
+  `recvonly` and H264 only.
+
+TalkOps settings per device (**Extensions → device → Edit**) to test both
+ways:
+
+| Setting | Effect on the VTH |
+|---|---|
+| **Video: H264 only** | The VTH gets SIP video with H264 only. Use it when a browser or a phone with VP8 calls the VTH. |
+| **Video: Off** | The VTH gets no SIP video, only audio. Use it when the VTH shows the picture directly from the VTO. |
+| **Codec profile: G.711 only** | The VTH gets PCMA and PCMU only. |
+
+To see if video flows, start a capture in **Settings → System →
+Diagnostics** and make a call. At the end of each call leg, the capture
+shows a line `--- TalkOps: media …: audio … in … out … pkts; video … in …
+out … pkts ---`. On a call from the VTO, the VTO leg must show video
+packets *in*, and the VTH leg video packets *out*.
+
+*Not confirmed:* which way shows the picture on a VTH5422H with firmware
+V4.800.0.2 and a VTO4202F-P-S2 with V4.600.0.3.
+
 ### Save, restart and check
 
 1. Select **OK** in ConfigTool.
@@ -207,7 +239,9 @@ not tested with TalkOps.
 | `401 Unauthorized` only | This is the normal first answer. The device must send a second REGISTER with the password. If it does not, enter the SIP password again and restart the device. |
 | `401`, then `403 Forbidden` | (1) Wrong or shortened password: generate a new password with the format **Compatible (15 characters)** and enter it. (2) Unknown SIP user name: the Room No. of the VTH is different from the SIP user name. (3) VTO: *SIP Server Username* is different from *Username*. (4) TalkOps banned the address (see [SIP login protection](door-station.md#sip-login-protection)). |
 | `200 OK`, but a function does not work | See [Troubleshooting](door-station.md#troubleshooting). |
-| Call from the VTO: audio works, the VTH shows no picture | TalkOps offers only the video codec of the VTO (H264) to the called devices. FreeSWITCH does not convert video. A device that supports only VP8 gets no picture. Make sure that the VTO sends H264. |
+| Call from the VTO: audio works, the VTH shows no picture | Enter the VTO as main VTO in the VTH and test the video settings, see [Video on the VTH](#video-on-the-vth). TalkOps offers only the video codec of the VTO (H264) to the called devices. FreeSWITCH does not convert video. |
+| Call from the browser to the VTH: no picture | The VTH accepts H264 only. TalkOps lets the browser use the codec of the VTH (`inherit_codec`). Older TalkOps versions: set the video of the browser device to **H264 only**. |
+| A door call rings only the VTH, other targets stop at once | The VTH sends early media. TalkOps ignores early media on door calls, so all targets ring. Older TalkOps versions: no workaround. |
 | Call to the VTO ends after 30 seconds | An umlaut in the caller name is a suspected cause of ACK rejection on VTO V4.600. A hardware test must confirm it. TalkOps sends caller names in ASCII on calls to and from door stations (`ü` → `ue`). The call history keeps the full name. Older TalkOps versions: use a name without umlauts. |
 
 The TalkOps log shows the SIP user name and the address of each failed
@@ -225,3 +259,8 @@ docker compose logs -f talkops | grep "SIP authentication"
   (Room No. = extension number, *Sip Register Pwd*, 8–15 characters; the
   tested models are not named)
 - Dahua VTO quick start guide v4.5, VTO2311R-WP manual
+- [Dahua Video Door Phone (Version 4.8.1) Quick Start Guide V1.0.2](https://materialfile.dahuasecurity.com/uploads/cpq/42487/user_manual/Video_Door_Phone_(Version_4.8.1)_(VTO_2c_VTS_2c_DSS_Agile_VDP_2c_DMSS_2c_DoLynk_Care_2c_and_DoLynk_Pro)_Quick_Start_Guide_V1.0.2.pdf)
+  (section 3.2.4: main VTO with the web login of the VTO; the project
+  password is set at the first start of the VTH)
+- [Yeastar: Dahua Video Intercom Integration Guide](https://help.yeastar.com/download/docs/dahua-video-intercom-integration-guide-p-series-appliance-edition-en.pdf)
+  (VTH: *Master VTO IP, User, Pwd*; the live picture comes from the VTO)

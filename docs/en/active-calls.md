@@ -4,7 +4,24 @@ The dashboard shows direction and local extension in the first line.
 The second line shows the remote party. Names come from all phonebook sections
 and all three number fields. National and international formats match the
 same contact. Numbers use square brackets:
-`Family Vollmeier (Maria) [+4995458589]`. Ambiguous matches show a label.
+`Family Vollmeier (Maria) [+4995458589]`. Select a name from the phonebook
+to open the phonebook. The phonebook shows the section of the entry and
+highlights the entry.
+
+### Numbers in more than one phonebook entry
+
+One number can be in more than one phonebook section. The row then shows one
+name and the button **+N more**. TalkOps selects the name in this sequence:
+
+1. An entry in a phonebook section of the local extension in the call.
+   These are the sections that the provisioned phones of the extension show,
+   and a section with the same name as the extension.
+2. The first entry in alphabetical order.
+
+Put the pointer on the party or select **+N more** to see all entries.
+The card has three columns: **Phonebook**, **Entry (name)** and
+**Go to entry**. The label **shown** identifies the entry in the row.
+Press Esc to close the card.
 
 Status and duration remain on the right. Talk time starts at answer.
 Before answer, the timer shows waiting time. Long names wrap on small screens.

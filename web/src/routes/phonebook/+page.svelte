@@ -2,7 +2,8 @@
 	import PageHeader from '#lib/components/PageHeader.svelte';
 	import SkeletonRows from '#lib/components/SkeletonRows.svelte';
 	import { net } from '#lib/net.svelte.ts';
-	import { onMount } from 'svelte';
+	import { onMount, tick, untrack } from 'svelte';
+	import { page } from '$app/state';
 	import { api, type Contact, type PhonebookSection } from '#lib/api.ts';
 	import ContactImport from '#lib/components/ContactImport.svelte';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
@@ -31,6 +32,9 @@
 		section_id: '' as string
 	});
 	let form = $state(empty());
+	/** Contact from `?contact=<id>` (live call overview): shown and highlighted. */
+	let highlighted = $state('');
+	let loaded = $state(false);
 
 	const filtered = $derived(
 		contacts.filter(
@@ -51,11 +55,32 @@
 				api.get<Contact[]>('/contacts'),
 				api.get<PhonebookSection[]>('/phonebook-sections')
 			]);
+			loaded = true;
 		} catch (err) {
 			error = errorMessage(err);
 		}
 	}
 	onMount(load);
+
+	$effect(() => {
+		const id = page.url.searchParams.get('contact') ?? '';
+		if (!loaded || !id) return;
+		// Runs once per address, not again after a reload of the list.
+		untrack(() => {
+			const target = contacts.find((c) => c.id === id);
+			if (!target) return;
+			// Show the phone book of the entry, so that it is visible.
+			shown = sections.length > 0 ? (target.section_id ?? 'global') : '';
+			search = '';
+			highlighted = id;
+			const smooth = !matchMedia('(prefers-reduced-motion: reduce)').matches;
+			tick().then(() =>
+				document
+					.getElementById(`contact-${id}`)
+					?.scrollIntoView({ block: 'center', behavior: smooth ? 'smooth' : 'auto' })
+			);
+		});
+	});
 
 	function open(c: Contact | null) {
 		editing = c;
@@ -160,7 +185,13 @@
 				</thead>
 				<tbody>
 					{#each filtered as c (c.id)}
-						<tr>
+						<tr
+							id="contact-{c.id}"
+							class={highlighted === c.id
+								? 'bg-teal-50 outline-2 -outline-offset-2 outline-teal-500 dark:bg-teal-950/60'
+								: ''}
+							aria-current={highlighted === c.id ? 'true' : undefined}
+						>
 							<td
 								>{c.name}{#if c.company}<span class="text-sm text-slate-500">
 										· {c.company}</span

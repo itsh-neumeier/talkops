@@ -141,6 +141,7 @@ async fn sip_password_formats(pool: PgPool) {
         phone_label: String::new(),
         phone_display_name: String::new(),
         codec_profile: None,
+        video: None,
         enabled: true,
     };
     let stored = |id: Uuid| {
@@ -351,6 +352,7 @@ async fn extensions_and_devices(pool: PgPool) {
         phone_label: String::new(),
         phone_display_name: String::new(),
         codec_profile: None,
+        video: None,
         enabled: true,
     };
     let (dev, password) = extensions::create_device(&pool, T, &sb, &e, &input)
@@ -893,6 +895,7 @@ async fn phones_accounts_firmware_contacts(pool: PgPool) {
         phone_label: String::new(),
         phone_display_name: String::new(),
         codec_profile: None,
+        video: None,
         enabled: true,
     };
     let (d1, _) = extensions::create_device(&pool, T, &sb, &e20, &on_phone("A"))

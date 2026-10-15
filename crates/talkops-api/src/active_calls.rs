@@ -7,7 +7,7 @@ use serde::Serialize;
 use talkops_core::cdr::Direction;
 use talkops_core::dialing::DialPlanSettings;
 use talkops_core::extensions::{self, Device, Extension};
-use talkops_core::phones::{self, Contact};
+use talkops_core::phones::{self, Contact, PhonebookSection};
 use talkops_core::settings;
 use talkops_core::tenant::TenantId;
 use talkops_core::trunks::{self, PhoneNumber};
@@ -23,7 +23,24 @@ pub struct Party {
     pub name: String,
     pub number: String,
     pub extension_id: Option<Uuid>,
+    /// Phone book entry that supplies `name`, if any.
+    pub contact_id: Option<Uuid>,
+    /// More than one phone book entry has this number; see `matches`.
     pub ambiguous: bool,
+    /// All phone book entries with this number when `ambiguous`, ordered by
+    /// phone book (global first) and name; empty otherwise.
+    pub matches: Vec<ContactMatch>,
+}
+
+/// One phone book entry that has the number of a call party.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, utoipa::ToSchema)]
+pub struct ContactMatch {
+    pub contact_id: Uuid,
+    pub name: String,
+    /// Phone book section; none = global phone book.
+    pub section_id: Option<Uuid>,
+    /// Name of the section; empty for the global phone book.
+    pub section_name: String,
 }
 
 #[derive(Debug, Clone, Serialize, utoipa::ToSchema)]
@@ -117,6 +134,9 @@ pub struct Directory {
     pub devices: Vec<Device>,
     pub numbers: Vec<PhoneNumber>,
     pub contacts: Vec<Contact>,
+    pub sections: Vec<PhonebookSection>,
+    /// Phone book sections that each provisioned phone shows, by phone ID.
+    pub phone_sections: HashMap<Uuid, Vec<Uuid>>,
 }
 
 impl Directory {
@@ -170,70 +190,136 @@ impl Directory {
                 name: ext.display_name.clone(),
                 number: ext.number.clone(),
                 extension_id: Some(ext.id),
-                ambiguous: false,
+                ..Party::default()
             };
         }
-        self.external_party(raw, fallback)
+        self.external_party(raw, fallback, None)
     }
 
-    fn external_party(&self, raw: &str, fallback: &str) -> Party {
+    /// Phone book sections that belong to an extension: the sections shown
+    /// on its provisioned phones, and a section with its display name.
+    fn own_sections(&self, extension: Uuid) -> Vec<Uuid> {
+        let mut own: Vec<Uuid> = self
+            .devices
+            .iter()
+            .filter(|d| d.extension_id == extension)
+            .filter_map(|d| d.phone_id.and_then(|p| self.phone_sections.get(&p)))
+            .flatten()
+            .copied()
+            .collect();
+        if let Some(ext) = self.extensions.iter().find(|e| e.id == extension) {
+            own.extend(
+                self.sections
+                    .iter()
+                    .filter(|s| s.name.trim().eq_ignore_ascii_case(ext.display_name.trim()))
+                    .map(|s| s.id),
+            );
+        }
+        own
+    }
+
+    /// Resolves an external number against all phone books. `local` is the
+    /// own extension in the call: when several entries have the number, an
+    /// entry from a phone book of that extension supplies the name.
+    fn external_party(&self, raw: &str, fallback: &str, local: Option<Uuid>) -> Party {
         let number = self.external(raw);
-        let mut matches = self.contacts.iter().filter(|c| {
-            [&c.phone_work, &c.phone_mobile, &c.phone_other]
-                .iter()
-                .any(|n| !n.is_empty() && !n.starts_with('*') && self.external(n) == number)
-        });
-        let first = matches.next();
-        let ambiguous = matches.next().is_some();
-        // An ambiguous number must not be attributed to one arbitrary person.
-        let name = if ambiguous {
-            String::new()
-        } else {
-            first.map(Contact::display_name).unwrap_or_else(|| {
-                if fallback.is_empty()
-                    || fallback == raw
-                    || matches!(fallback, "Outbound Call" | "Inbound Call")
-                {
-                    String::new()
-                } else {
-                    fallback.to_owned()
-                }
+        let found: Vec<&Contact> = self
+            .contacts
+            .iter()
+            .filter(|c| {
+                [&c.phone_work, &c.phone_mobile, &c.phone_other]
+                    .iter()
+                    .any(|n| !n.is_empty() && !n.starts_with('*') && self.external(n) == number)
             })
+            .collect();
+        let ambiguous = found.len() > 1;
+        let own = local.map(|e| self.own_sections(e)).unwrap_or_default();
+        let by_name = |a: &&&Contact, b: &&&Contact| {
+            a.display_name()
+                .to_lowercase()
+                .cmp(&b.display_name().to_lowercase())
         };
+        // Several entries: prefer the own phone book, else the first name.
+        let chosen = found
+            .iter()
+            .filter(|c| c.section_id.is_some_and(|s| own.contains(&s)))
+            .min_by(by_name)
+            .or_else(|| found.iter().min_by(by_name))
+            .copied();
+        let name = chosen.map(Contact::display_name).unwrap_or_else(|| {
+            if fallback.is_empty()
+                || fallback == raw
+                || matches!(fallback, "Outbound Call" | "Inbound Call")
+            {
+                String::new()
+            } else {
+                fallback.to_owned()
+            }
+        });
+        let mut matches: Vec<ContactMatch> = if ambiguous {
+            found
+                .iter()
+                .map(|c| ContactMatch {
+                    contact_id: c.id,
+                    name: c.display_name(),
+                    section_id: c.section_id,
+                    section_name: c
+                        .section_id
+                        .and_then(|id| self.sections.iter().find(|s| s.id == id))
+                        .map(|s| s.name.clone())
+                        .unwrap_or_default(),
+                })
+                .collect()
+        } else {
+            Vec::new()
+        };
+        matches.sort_by_cached_key(|m| {
+            (
+                m.section_id.is_some(),
+                m.section_name.to_lowercase(),
+                m.name.to_lowercase(),
+            )
+        });
         Party {
             name,
             number,
             extension_id: None,
+            contact_id: chosen.map(|c| c.id),
             ambiguous,
+            matches,
         }
     }
 
     pub fn resolve(&self, call: ActiveCall, meta: Metadata) -> OverviewCall {
         let raw_caller = if meta.caller_number.is_empty() {
-            &call.caller_number
+            call.caller_number.clone()
         } else {
-            &meta.caller_number
+            meta.caller_number.clone()
         };
         let raw_called = if !meta.destination.is_empty() {
-            &meta.destination
+            meta.destination.clone()
         } else if !call.callee_number.is_empty() {
-            &call.callee_number
+            call.callee_number.clone()
         } else {
-            &call.destination
+            call.destination.clone()
         };
         let (caller_ext, called_ext) = match meta.direction {
             Some(Direction::Inbound) => (None, meta.dest_extension.or(meta.extension)),
             _ => (meta.extension, meta.dest_extension),
         };
         let caller = if meta.direction == Some(Direction::Inbound) {
-            self.external_party(raw_caller, &call.caller_name)
+            self.external_party(&raw_caller, &call.caller_name, None)
         } else {
-            self.party(raw_caller, &call.caller_name, caller_ext)
+            self.party(&raw_caller, &call.caller_name, caller_ext)
         };
         // A bridge's caller ID can still identify the original caller. Use the
         // peer's dialed destination, then the routing target, instead.
         let peer_extension = self.extension(&meta.peer_number, None).map(|e| e.id);
-        let called = self.party(raw_called, &call.callee_name, peer_extension.or(called_ext));
+        let called = self.party(
+            &raw_called,
+            &call.callee_name,
+            peer_extension.or(called_ext),
+        );
         let mut resolved = OverviewCall {
             call,
             direction: meta.direction,
@@ -259,7 +345,31 @@ impl Directory {
             && !resolved.metadata.destination.is_empty()
             && peer_extension.is_none()
         {
-            resolved.called = self.external_party(&resolved.metadata.destination, "");
+            resolved.called = self.external_party(&resolved.metadata.destination, "", None);
+        }
+        // Several phone book entries share the number: resolve the external
+        // party again, so that a phone book of the own extension supplies
+        // the name. Only the contact choice changes, not the number.
+        if resolved.caller.ambiguous
+            && let Some(own) = resolved.called.extension_id
+        {
+            let again = self.external_party(&raw_caller, "", Some(own));
+            resolved.caller.name = again.name;
+            resolved.caller.contact_id = again.contact_id;
+        }
+        if resolved.called.ambiguous
+            && let Some(own) = resolved.caller.extension_id
+        {
+            let raw = if resolved.direction == Some(Direction::Outbound)
+                && !resolved.metadata.destination.is_empty()
+            {
+                &resolved.metadata.destination
+            } else {
+                &raw_called
+            };
+            let again = self.external_party(raw, "", Some(own));
+            resolved.called.name = again.name;
+            resolved.called.contact_id = again.contact_id;
         }
         resolved
     }
@@ -281,12 +391,14 @@ pub async fn load(
     if raw.is_empty() {
         return Ok(Vec::new());
     }
-    let (settings, extensions, devices, numbers, contacts) = tokio::try_join!(
+    let (settings, extensions, devices, numbers, contacts, sections, phone_list) = tokio::try_join!(
         settings::get(&state.db, tenant),
         extensions::list(&state.db, tenant),
         extensions::list_all_devices(&state.db, tenant),
         trunks::list_numbers(&state.db, tenant),
-        phones::list_contacts(&state.db, tenant)
+        phones::list_contacts(&state.db, tenant),
+        phones::list_sections(&state.db, tenant),
+        phones::list(&state.db, tenant)
     )?;
     let directory = Directory {
         dial: settings.dial_plan(),
@@ -294,6 +406,11 @@ pub async fn load(
         devices,
         numbers,
         contacts,
+        sections,
+        phone_sections: phone_list
+            .into_iter()
+            .map(|p| (p.id, p.phonebook_sections))
+            .collect(),
     };
     let mut dumps: HashMap<String, Metadata> = HashMap::new();
     let mut result = Vec::new();
@@ -404,6 +521,8 @@ mod tests {
                 phone_other: "".into(),
                 section_id: Some(Uuid::new_v4()),
             }],
+            sections: vec![],
+            phone_sections: HashMap::new(),
         }
     }
 
@@ -458,7 +577,120 @@ mod tests {
         dir.contacts.push(duplicate);
         let ambiguous = dir.party("+4995458589", "Caller supplied name", None);
         assert!(ambiguous.ambiguous);
-        assert!(ambiguous.name.is_empty());
+        assert_eq!(ambiguous.name, "Family Vollmeier (Maria)");
+        assert_eq!(ambiguous.matches.len(), 2);
+    }
+
+    fn shared_number() -> (Directory, Uuid, Uuid) {
+        let mut dir = directory();
+        let neumeier = PhonebookSection {
+            id: Uuid::new_v4(),
+            name: "Familie Neumeier".into(),
+        };
+        let zweig = PhonebookSection {
+            id: Uuid::new_v4(),
+            name: "Familie Zweig".into(),
+        };
+        let entry = |name: &str, company: &str, section: Option<Uuid>| Contact {
+            id: Uuid::new_v4(),
+            name: name.into(),
+            company: company.into(),
+            phone_work: "".into(),
+            phone_mobile: "0170 123".into(),
+            phone_other: "".into(),
+            section_id: section,
+        };
+        dir.contacts = vec![
+            entry("Max Mustermann", "Mustermann GmbH", Some(neumeier.id)),
+            entry("Maxi", "", Some(zweig.id)),
+            entry("Anna", "", None),
+        ];
+        dir.sections = vec![neumeier.clone(), zweig.clone()];
+        (dir, neumeier.id, zweig.id)
+    }
+
+    #[test]
+    fn lists_all_entries_of_a_shared_number_by_phone_book() {
+        let (dir, neumeier, zweig) = shared_number();
+        let party = dir.party("+49170123", "", None);
+        assert!(party.ambiguous);
+        // Without an own extension, the alphabetically first name is shown.
+        assert_eq!(party.name, "Anna");
+        assert_eq!(party.contact_id, Some(dir.contacts[2].id));
+        let rows: Vec<_> = party
+            .matches
+            .iter()
+            .map(|m| (m.section_id, m.section_name.as_str(), m.name.as_str()))
+            .collect();
+        assert_eq!(
+            rows,
+            [
+                (None, "", "Anna"),
+                (
+                    Some(neumeier),
+                    "Familie Neumeier",
+                    "Max Mustermann (Mustermann GmbH)"
+                ),
+                (Some(zweig), "Familie Zweig", "Maxi"),
+            ]
+        );
+        let single = dir.party("+4995458589", "", None);
+        assert!(single.matches.is_empty());
+        assert!(single.contact_id.is_none());
+    }
+
+    #[test]
+    fn prefers_the_phone_book_of_the_own_extension() {
+        let (mut dir, neumeier, zweig) = shared_number();
+        dir.extensions[0].display_name = "Familie Zweig".into();
+        let incoming = dir.resolve(
+            call(),
+            Metadata {
+                direction: Some(Direction::Inbound),
+                caller_number: "0170123".into(),
+                extension: Some(dir.extensions[0].id),
+                ..Default::default()
+            },
+        );
+        // The phone book with the extension's name supplies the name.
+        assert_eq!(incoming.caller.name, "Maxi");
+        assert_eq!(incoming.caller.contact_id, Some(dir.contacts[1].id));
+        assert_eq!(incoming.caller.matches.len(), 3);
+        // A phone of the extension that shows another phone book has the
+        // same effect for an outbound call.
+        dir.extensions[0].display_name = "Office".into();
+        let phone = Uuid::new_v4();
+        dir.phone_sections.insert(phone, vec![neumeier]);
+        dir.devices.push(Device {
+            id: Uuid::new_v4(),
+            extension_id: dir.extensions[0].id,
+            browser_user_id: None,
+            name: "Desk".into(),
+            kind: talkops_core::extensions::DeviceKind::Desk,
+            sip_username: "desk101".into(),
+            sip_password_enc: String::new(),
+            phone_id: Some(phone),
+            account_index: Some(1),
+            phone_label: String::new(),
+            phone_display_name: String::new(),
+            codec_profile: None,
+            video: None,
+            sip_password_format: Default::default(),
+            enabled: true,
+        });
+        let outgoing = dir.resolve(
+            call(),
+            Metadata {
+                direction: Some(Direction::Outbound),
+                caller_number: "101".into(),
+                destination: "0170123".into(),
+                extension: Some(dir.extensions[0].id),
+                ..Default::default()
+            },
+        );
+        assert_eq!(outgoing.called.name, "Max Mustermann (Mustermann GmbH)");
+        assert_eq!(outgoing.called.number, "+49170123");
+        assert!(!dir.own_sections(dir.extensions[0].id).contains(&zweig));
     }
 
     #[test]
@@ -483,6 +715,7 @@ mod tests {
             phone_label: String::new(),
             phone_display_name: String::new(),
             codec_profile: None,
+            video: None,
             sip_password_format: Default::default(),
             enabled: true,
         });

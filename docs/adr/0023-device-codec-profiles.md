@@ -1,6 +1,7 @@
 # 0023 - Codec profiles per device and transcoding in FreeSWITCH
 
-- Status: Accepted
+- Status: Accepted (amended by [ADR 0028](0028-device-media-settings.md):
+  profile `g711`, video setting per device)
 - Date: 2026-10-12
 
 ## Context

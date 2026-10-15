@@ -58,6 +58,11 @@ pub fn render_user(device: &DeviceAuth, password: &str) -> String {
         ),
         // Calls from the device: the dialplan pins the caller's leg to it.
         ("talkops_codec_profile", profile.as_str().to_owned()),
+        // Video codecs of the device on its calls (ADR 0027).
+        (
+            "talkops_video",
+            device.effective_video().as_str().to_owned(),
+        ),
     ];
     for (name, value) in &vars {
         w.empty("variable", &[("name", name), ("value", value)]);
@@ -87,6 +92,7 @@ mod tests {
             display_name: "Büro ${evil}".into(),
             kind,
             codec_profile,
+            video: None,
         }
     }
 

@@ -1914,6 +1914,91 @@ async fn video_from_trunks_and_door_stations(db: PgPool) {
         bridge.contains(&video_leg("OPUS,G722,PCMA,PCMU,H264", "200-1")),
         "{bridge}"
     );
+    // All targets ring: early media of one target must not cancel the
+    // others (ADR 0027). The caller's leg takes over the answering codec.
+    assert!(has(&a, "set", "ignore_early_media=true"), "{a:?}");
+    assert!(has(&a, "ring_ready", ""), "{a:?}");
+    assert!(has(&a, "set", "inherit_codec=true"), "{a:?}");
+    let ring_ready = a.iter().position(|(app, _)| app == "ring_ready").unwrap();
+    let bridge_at = a.iter().position(|(app, _)| app == "bridge").unwrap();
+    assert!(ring_ready < bridge_at, "{a:?}");
+
+    // Video per device: 200-1 off (e.g. a Dahua indoor station), 200-2
+    // keeps the station's codec.
+    let (_, devices) = f
+        .admin
+        .get(&format!("/api/v1/extensions/{}/devices", id(&f.ext20)))
+        .await;
+    let desk = devices
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|d| d["sip_username"] == "200-1")
+        .unwrap()
+        .clone();
+    let (s, updated) = f
+        .admin
+        .put(
+            &format!("/api/v1/devices/{}", id(&desk)),
+            json!({"name": "Desk", "kind": "desk", "video": "off"}),
+        )
+        .await;
+    assert_eq!(s, StatusCode::OK, "{updated}");
+    assert_eq!(updated["video"], "off");
+    let a = internal_call_with(&router, &door, "9901", &VIDEO_OFFER).await;
+    let bridge = a.iter().find(|(app, _)| app == "bridge").unwrap().1.clone();
+    assert!(
+        bridge.contains(&video_leg("OPUS,G722,PCMA,PCMU", "200-1")),
+        "{bridge}"
+    );
+    assert!(
+        bridge.contains(&video_leg("OPUS,G722,PCMA,PCMU,H264", "200-2")),
+        "{bridge}"
+    );
+    assert_eq!(
+        directory_value(&router, "200-1", "variable", "talkops_video")
+            .await
+            .as_deref(),
+        Some("off")
+    );
+    // A VP8-only device gets no video from an H264 station.
+    let (s, _) = f
+        .admin
+        .put(
+            &format!("/api/v1/devices/{}", id(&desk)),
+            json!({"name": "Desk", "kind": "desk", "video": "vp8"}),
+        )
+        .await;
+    assert_eq!(s, StatusCode::OK);
+    let a = internal_call_with(&router, &door, "9901", &VIDEO_OFFER).await;
+    let bridge = a.iter().find(|(app, _)| app == "bridge").unwrap().1.clone();
+    assert!(
+        bridge.contains(&video_leg("OPUS,G722,PCMA,PCMU", "200-1")),
+        "{bridge}"
+    );
+    // G.711 profile with H264: the leg gets G.711 and H264.
+    let (s, updated) = f
+        .admin
+        .put(
+            &format!("/api/v1/devices/{}", id(&desk)),
+            json!({"name": "Desk", "kind": "desk", "codec_profile": "g711", "video": "h264"}),
+        )
+        .await;
+    assert_eq!(s, StatusCode::OK, "{updated}");
+    let a = internal_call_with(&router, &door, "9901", &VIDEO_OFFER).await;
+    let bridge = a.iter().find(|(app, _)| app == "bridge").unwrap().1.clone();
+    assert!(
+        bridge.contains(&video_leg("PCMA,PCMU,H264", "200-1")),
+        "{bridge}"
+    );
+    let (s, _) = f
+        .admin
+        .put(
+            &format!("/api/v1/devices/{}", id(&desk)),
+            json!({"name": "Desk", "kind": "desk", "video": "sometimes"}),
+        )
+        .await;
+    assert!(s.is_client_error(), "unknown video setting is rejected");
 }
 
 /// Directory `param` or `variable` value of a SIP user.

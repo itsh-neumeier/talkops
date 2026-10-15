@@ -322,6 +322,9 @@ pub enum CodecProfile {
     /// iLBC for networks with packet loss, G.711 as fallback, plus a jitter
     /// buffer.
     Robust,
+    /// G.711 only (PCMA, PCMU), no jitter buffer: devices that support
+    /// only G.711 well (e.g. Dahua door stations).
+    G711,
 }
 
 impl CodecProfile {
@@ -339,6 +342,7 @@ impl CodecProfile {
             CodecProfile::Standard => "standard",
             CodecProfile::Hd => "hd",
             CodecProfile::Robust => "robust",
+            CodecProfile::G711 => "g711",
         }
     }
 
@@ -347,9 +351,70 @@ impl CodecProfile {
             CodecProfile::Standard,
             CodecProfile::Hd,
             CodecProfile::Robust,
+            CodecProfile::G711,
         ]
         .into_iter()
         .find(|p| p.as_str() == value)
+    }
+}
+
+/// Video on the leg of a device (ADR 0027). The video policy of the call
+/// (ADR 0025) decides if a call can have video; this setting decides which
+/// video codecs the device gets on such a call.
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, utoipa::ToSchema,
+)]
+#[sqlx(type_name = "device_video", rename_all = "lowercase")]
+#[serde(rename_all = "lowercase")]
+pub enum DeviceVideo {
+    /// The video codecs the call allows (H264 and VP8).
+    Auto,
+    /// No video.
+    Off,
+    /// H264 only.
+    H264,
+    /// VP8 only.
+    Vp8,
+}
+
+impl DeviceVideo {
+    /// The setting in use: the configured one, else `Auto` for the standard
+    /// codec profile and `Off` for all other profiles.
+    pub fn effective(profile: CodecProfile, configured: Option<DeviceVideo>) -> DeviceVideo {
+        configured.unwrap_or(match profile {
+            CodecProfile::Standard => DeviceVideo::Auto,
+            _ => DeviceVideo::Off,
+        })
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            DeviceVideo::Auto => "auto",
+            DeviceVideo::Off => "off",
+            DeviceVideo::H264 => "h264",
+            DeviceVideo::Vp8 => "vp8",
+        }
+    }
+
+    pub fn parse(value: &str) -> Option<DeviceVideo> {
+        [
+            DeviceVideo::Auto,
+            DeviceVideo::Off,
+            DeviceVideo::H264,
+            DeviceVideo::Vp8,
+        ]
+        .into_iter()
+        .find(|v| v.as_str() == value)
+    }
+
+    /// The device accepts the video codec `name` (`H264`, `VP8`).
+    pub fn allows(self, name: &str) -> bool {
+        match self {
+            DeviceVideo::Auto => true,
+            DeviceVideo::Off => false,
+            DeviceVideo::H264 => name.eq_ignore_ascii_case("H264"),
+            DeviceVideo::Vp8 => name.eq_ignore_ascii_case("VP8"),
+        }
     }
 }
 
@@ -414,6 +479,8 @@ pub struct Device {
     pub phone_display_name: String,
     /// Configured codec profile; `None` = automatic from the device kind.
     pub codec_profile: Option<CodecProfile>,
+    /// Configured video setting; `None` = automatic from the codec profile.
+    pub video: Option<DeviceVideo>,
     /// Format of the next generated SIP password.
     pub sip_password_format: SipPasswordFormat,
     pub enabled: bool,
@@ -443,6 +510,9 @@ pub struct DeviceInput {
     /// Codec profile; omitted or `null` = automatic from the device kind.
     #[serde(default)]
     pub codec_profile: Option<CodecProfile>,
+    /// Video setting; omitted or `null` = automatic from the codec profile.
+    #[serde(default)]
+    pub video: Option<DeviceVideo>,
     /// Format of generated SIP passwords. On create, omitted = `standard`.
     /// On update, omitted keeps the stored format. A changed format does not
     /// change the current password; it applies to the next reset.
@@ -575,7 +645,7 @@ pub async fn set_phone_texts(
         .await?)
 }
 
-const DEV_COLUMNS: &str = "id, extension_id, browser_user_id, name, kind, sip_username, sip_password_enc, phone_id, account_index, phone_label, phone_display_name, codec_profile, sip_password_format, enabled";
+const DEV_COLUMNS: &str = "id, extension_id, browser_user_id, name, kind, sip_username, sip_password_enc, phone_id, account_index, phone_label, phone_display_name, codec_profile, video, sip_password_format, enabled";
 
 /// Resolves the account slot for a device on a phone: the requested one, or
 /// the lowest free slot. Checks that the phone exists.
@@ -664,12 +734,18 @@ pub struct DeviceAuth {
     pub display_name: String,
     pub kind: DeviceKind,
     pub codec_profile: Option<CodecProfile>,
+    pub video: Option<DeviceVideo>,
 }
 
 impl DeviceAuth {
     /// The codec profile in use for this device.
     pub fn effective_codec_profile(&self) -> CodecProfile {
         CodecProfile::effective(self.kind, self.codec_profile)
+    }
+
+    /// The video setting in use for this device.
+    pub fn effective_video(&self) -> DeviceVideo {
+        DeviceVideo::effective(self.effective_codec_profile(), self.video)
     }
 }
 
@@ -681,7 +757,7 @@ pub async fn device_auth<'e>(
     Ok(sqlx::query_as(
         "SELECT d.id AS device_id, d.tenant_id, d.sip_username, d.sip_password_enc,
                 e.id AS extension_id, e.number AS extension_number, e.display_name,
-                d.kind, d.codec_profile
+                d.kind, d.codec_profile, d.video
          FROM devices d JOIN extensions e ON e.id = d.extension_id
          WHERE lower(d.sip_username) = lower($1) AND d.enabled AND e.enabled
            AND (d.browser_user_id IS NULL OR EXISTS (
@@ -700,12 +776,18 @@ pub struct RingTarget {
     pub sip_username: String,
     pub kind: DeviceKind,
     pub codec_profile: Option<CodecProfile>,
+    pub video: Option<DeviceVideo>,
 }
 
 impl RingTarget {
     /// The codec profile in use for the device.
     pub fn effective_codec_profile(&self) -> CodecProfile {
         CodecProfile::effective(self.kind, self.codec_profile)
+    }
+
+    /// The video setting in use for the device.
+    pub fn effective_video(&self) -> DeviceVideo {
+        DeviceVideo::effective(self.effective_codec_profile(), self.video)
     }
 }
 
@@ -715,7 +797,7 @@ pub async fn ring_targets<'e>(
     extension: Uuid,
 ) -> CoreResult<Vec<RingTarget>> {
     Ok(sqlx::query_as(
-        "SELECT d.sip_username, d.kind, d.codec_profile
+        "SELECT d.sip_username, d.kind, d.codec_profile, d.video
          FROM devices d JOIN extensions e ON e.id = d.extension_id
          WHERE d.extension_id = $1 AND d.enabled
            AND (d.browser_user_id IS NULL OR EXISTS (
@@ -824,8 +906,8 @@ pub async fn create_device(
     let sql = format!(
         "INSERT INTO devices (tenant_id, extension_id, name, kind, sip_username, sip_password_enc,
                               phone_id, account_index, enabled, phone_label, phone_display_name,
-                              codec_profile, sip_password_format)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING {DEV_COLUMNS}"
+                              codec_profile, sip_password_format, video)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING {DEV_COLUMNS}"
     );
     let device = sqlx::query_as(&sql)
         .bind(tenant)
@@ -841,6 +923,7 @@ pub async fn create_device(
         .bind(display)
         .bind(input.codec_profile)
         .bind(format)
+        .bind(input.video)
         .fetch_one(pool)
         .await?;
     Ok((device, password))
@@ -895,7 +978,8 @@ pub async fn update_device(
         "UPDATE devices SET name = $3, kind = $4, phone_id = $5, account_index = $6, enabled = $7,
              phone_label = $8, phone_display_name = $9, codec_profile = $10,
              sip_username = COALESCE($11, sip_username),
-             sip_password_format = COALESCE($12, sip_password_format), updated_at = now()
+             sip_password_format = COALESCE($12, sip_password_format), video = $13,
+             updated_at = now()
          WHERE tenant_id = $1 AND id = $2 RETURNING {DEV_COLUMNS}"
     );
     Ok(sqlx::query_as(&sql)
@@ -911,6 +995,7 @@ pub async fn update_device(
         .bind(input.codec_profile)
         .bind(rename)
         .bind(input.sip_password_format)
+        .bind(input.video)
         .fetch_one(pool)
         .await?)
 }
@@ -983,10 +1068,31 @@ mod tests {
             CodecProfile::effective(DeviceKind::Wifi, Some(Standard)),
             Standard
         );
-        for p in [Standard, Hd, Robust] {
+        for p in [Standard, Hd, Robust, G711] {
             assert_eq!(CodecProfile::parse(p.as_str()), Some(p));
         }
         assert_eq!(CodecProfile::parse("opus"), None);
+    }
+
+    #[test]
+    fn device_video_defaults_by_profile() {
+        use DeviceVideo::*;
+        assert_eq!(DeviceVideo::effective(CodecProfile::Standard, None), Auto);
+        for p in [CodecProfile::Hd, CodecProfile::Robust, CodecProfile::G711] {
+            assert_eq!(DeviceVideo::effective(p, None), Off);
+            assert_eq!(DeviceVideo::effective(p, Some(H264)), H264);
+        }
+        assert_eq!(
+            DeviceVideo::effective(CodecProfile::Standard, Some(Off)),
+            Off
+        );
+        for v in [Auto, Off, H264, Vp8] {
+            assert_eq!(DeviceVideo::parse(v.as_str()), Some(v));
+        }
+        assert!(Auto.allows("VP8") && Auto.allows("h264"));
+        assert!(H264.allows("H264") && !H264.allows("VP8"));
+        assert!(Vp8.allows("vp8") && !Vp8.allows("H264"));
+        assert!(!Off.allows("H264"));
     }
 
     #[tokio::test]

@@ -60,6 +60,29 @@ enum Command {
         #[arg(long, default_value_t = 68_719_476_736)]
         max_bytes: u64,
     },
+    /// List or download archives on a backup target, without a database.
+    /// The target file is JSON: `{"config": {"kind": "s3", ...}, "path":
+    /// "bucket/talkops", "allow_insecure": false, "secret": {...}}`.
+    Fetch {
+        #[arg(long)]
+        target_file: std::path::PathBuf,
+        /// List the archives on the target.
+        #[arg(long, conflicts_with = "name")]
+        list: bool,
+        /// Archive to download.
+        #[arg(long, requires = "output")]
+        name: Option<String>,
+        /// Directory for the downloaded archive.
+        #[arg(long)]
+        output: Option<std::path::PathBuf>,
+        /// SFTP: accept the host key of the server on first use.
+        #[arg(long)]
+        trust_host_key: bool,
+        #[arg(long, env = "TALKOPS_RCLONE", default_value = "rclone")]
+        rclone: std::path::PathBuf,
+        #[arg(long, default_value_t = 68_719_476_736)]
+        max_bytes: u64,
+    },
     /// Print the host recovery script. No database or secrets are required.
     RecoveryScript,
     /// Probe the local server's readiness endpoint (container healthcheck).
@@ -131,6 +154,26 @@ async fn main() -> anyhow::Result<()> {
             }
             println!("{}", serde_json::to_string_pretty(&prepared.manifest)?);
             Ok(())
+        }
+        Command::Fetch {
+            target_file,
+            list,
+            name,
+            output,
+            trust_host_key,
+            rclone,
+            max_bytes,
+        } => {
+            fetch(
+                &target_file,
+                list,
+                name,
+                output,
+                trust_host_key,
+                rclone,
+                max_bytes,
+            )
+            .await
         }
         Command::RecoveryScript => {
             print!("{}", include_str!("../../../scripts/recover.sh"));
@@ -253,7 +296,7 @@ async fn serve(config: Config) -> anyhow::Result<()> {
     }
     talkops_api::sip_guard::spawn(db.clone(), state.telephony.esl.clone());
     if let Some(cfg) = &state.backup {
-        backup::spawn(db.clone(), cfg.clone());
+        backup::spawn(db.clone(), cfg.clone(), state.secrets.clone());
     }
     talkops_api::ldap::spawn_sync(state.db.clone(), state.secrets.clone());
     talkops_api::doors::spawn_listeners(talkops_api::doors::DoorCtx::from(&state));
@@ -274,6 +317,48 @@ async fn serve(config: Config) -> anyhow::Result<()> {
     .with_graceful_shutdown(shutdown_signal())
     .await?;
     tracing::info!("TalkOps stopped");
+    Ok(())
+}
+
+async fn fetch(
+    target_file: &std::path::Path,
+    list: bool,
+    name: Option<String>,
+    output: Option<std::path::PathBuf>,
+    trust_host_key: bool,
+    rclone: std::path::PathBuf,
+    max_bytes: u64,
+) -> anyhow::Result<()> {
+    use talkops_core::backup_targets::{TargetConfig, TargetConnection};
+    let text = std::fs::read_to_string(target_file)
+        .with_context(|| format!("cannot read {}", target_file.display()))?;
+    let mut conn: TargetConnection = serde_json::from_str(&text).context("invalid target file")?;
+    conn.validate(true)?;
+    let rclone = talkops_api::rclone::Rclone::new(rclone);
+    if matches!(&conn.config, TargetConfig::Sftp { host_keys, .. } if host_keys.is_empty()) {
+        let (keys, print) = rclone.pin_host_key(&conn).await?;
+        eprintln!("SFTP host key: {print}");
+        if !trust_host_key {
+            anyhow::bail!(
+                "compare the fingerprint, then add \"host_keys\": \"{keys}\" to the target file or run again with --trust-host-key"
+            );
+        }
+        if let TargetConfig::Sftp { host_keys, .. } = &mut conn.config {
+            *host_keys = keys;
+        }
+    }
+    if list || name.is_none() {
+        for entry in talkops_api::backup_targets::archives(&rclone, &conn).await? {
+            println!("{}\t{}", entry.name, entry.size);
+        }
+        return Ok(());
+    }
+    let (Some(name), Some(output)) = (name, output) else {
+        anyhow::bail!("--name needs --output");
+    };
+    let path =
+        talkops_api::backup_targets::fetch(&rclone, &conn, &name, &output, max_bytes).await?;
+    println!("{}", path.display());
     Ok(())
 }
 

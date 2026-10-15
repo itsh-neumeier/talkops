@@ -4,6 +4,7 @@
 pub mod attendant;
 pub mod audio;
 pub mod audit;
+pub mod backup_targets;
 pub mod backups;
 pub mod blocking;
 pub mod cdr;

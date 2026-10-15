@@ -1,6 +1,7 @@
 pub mod attendants;
 pub mod audio;
 pub mod auth;
+pub mod backup_targets;
 pub mod backups;
 pub mod blocking;
 pub mod dashboard;

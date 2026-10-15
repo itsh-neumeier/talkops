@@ -50,6 +50,14 @@ jobs:
         run: |
           sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq postgresql-client-17
+      - name: Install rclone (backup target tests)
+        run: |
+          # Same pinned release and checksum as docker/talkops/Dockerfile.
+          curl -fsSLo /tmp/rclone.zip https://downloads.rclone.org/v1.75.2/rclone-v1.75.2-linux-amd64.zip
+          echo "349ac8fba6ff65d6247043f1750cdcb518ec5d500ef91463a10d37c0ccdf3702  /tmp/rclone.zip" | sha256sum -c -
+          unzip -q /tmp/rclone.zip -d /tmp
+          sudo install -m 0755 /tmp/rclone-v1.75.2-linux-amd64/rclone /usr/local/bin/rclone
+          rclone version
       - run: cargo test --workspace --locked
         env:
           TALKOPS_TEST_PG_BIN_DIR: /usr/lib/postgresql/17/bin
@@ -117,6 +125,7 @@ jobs:
       - name: Validate backup override and host recovery workflow
         run: |
           docker compose --env-file ci.env -f docker-compose.yml -f docker-compose.backup.yml config -q
+          TALKOPS_NFS_HOST=nas.local docker compose --env-file ci.env -f docker-compose.yml -f docker-compose.targets.yml config -q
           bash -n scripts/recover.sh
           bash tests/recovery/host.sh
 

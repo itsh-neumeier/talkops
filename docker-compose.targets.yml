@@ -1,0 +1,20 @@
+# Optional: an NFS share as a local backup target (ADR 0029). The Docker
+# daemon of the host mounts the share; the container needs no capabilities.
+# The export must allow writes for UID/GID 10001.
+# Use with: docker compose -f docker-compose.yml -f docker-compose.targets.yml up -d
+# In TalkOps, add a target of type "Local folder" with the folder
+# /var/lib/talkops/targets/nfs.
+services:
+  talkops:
+    volumes:
+      - nfs-backup:/var/lib/talkops/targets/nfs
+      # A USB disk or another host folder (owned by UID 10001):
+      # - /mnt/usb-backup:/var/lib/talkops/targets/usb
+
+volumes:
+  nfs-backup:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=${TALKOPS_NFS_HOST:?set TALKOPS_NFS_HOST},rw,nfsvers=4.1
+      device: ":${TALKOPS_NFS_EXPORT:-/export/talkops}"

@@ -22,6 +22,26 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     cargo build --release --locked -p talkops-api --bin talkops \
     && cp target/release/talkops /usr/local/bin/talkops
 
+# rclone for backup targets (ADR 0029): https://rclone.org/downloads/
+# Checksums from https://downloads.rclone.org/v1.75.2/SHA256SUMS.
+FROM debian:${DEBIAN_RELEASE}-slim AS rclone
+ARG TARGETARCH
+ARG RCLONE_VERSION=v1.75.2
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl unzip \
+    && rm -rf /var/lib/apt/lists/*
+RUN set -eux; \
+    case "$TARGETARCH" in \
+      amd64) sum=349ac8fba6ff65d6247043f1750cdcb518ec5d500ef91463a10d37c0ccdf3702 ;; \
+      arm64) sum=7e1e8d69654941b7b7df84ee74c5f7fb09cce7d5496947fb7bf16b55ff427d10 ;; \
+      *) echo "unsupported architecture $TARGETARCH" >&2; exit 1 ;; \
+    esac; \
+    name="rclone-$RCLONE_VERSION-linux-$TARGETARCH"; \
+    curl -fsSLo /tmp/rclone.zip "https://downloads.rclone.org/$RCLONE_VERSION/$name.zip"; \
+    echo "$sum  /tmp/rclone.zip" | sha256sum -c -; \
+    unzip -q /tmp/rclone.zip -d /tmp; \
+    install -m 0755 "/tmp/$name/rclone" /usr/local/bin/rclone; \
+    /usr/local/bin/rclone version
+
 FROM debian:${DEBIAN_RELEASE}-slim
 LABEL org.opencontainers.image.title="talkops-server" \
       org.opencontainers.image.description="TalkOps PBX control plane and web UI" \
@@ -34,10 +54,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
     && useradd --system --uid 10001 --gid talkops --no-create-home --shell /usr/sbin/nologin talkops \
     && mkdir -p /var/lib/talkops/recordings /var/lib/talkops/voicemail /var/lib/talkops/sounds \
                 /var/lib/talkops/provisioning /var/lib/talkops/snapshots /var/lib/talkops/backups \
-                /var/lib/talkops/cdr-spool \
+                /var/lib/talkops/cdr-spool /var/lib/talkops/targets \
     && chown -R talkops:talkops /var/lib/talkops
 
 COPY --from=build /usr/local/bin/talkops /usr/local/bin/talkops
+COPY --from=rclone /usr/local/bin/rclone /usr/local/bin/rclone
 COPY --from=web /src/web/build /usr/share/talkops/web
 COPY presets/ /usr/share/talkops/presets/
 

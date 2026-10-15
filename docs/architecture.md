@@ -307,6 +307,10 @@ Loopback-Quellen (bzw. `TALKOPS_FS_PEERS`), nie über einen Reverse-Proxy
 | `freeswitch-db` | `/usr/local/freeswitch/var/lib/freeswitch/db` | FreeSWITCH-interne SQLite (Registrierungen) |
 | `cdr-spool` | `/var/lib/talkops/cdr-spool` | nicht zugestellte Anrufdatensätze (freeswitch schreibt, talkops liest ein) |
 
+Sicherungsziele (SMB, S3, WebDAV, SFTP, FTP, lokale Ordner) erhalten Kopien der
+Archive mit eigenem Zeitplan und eigener Aufbewahrung; die Übertragung macht
+rclone ([ADR 0029](adr/0029-backup-targets-with-rclone.md)).
+
 Alle Images nutzen UID/GID **10001**, damit die gemeinsamen Volumes ohne
 `chmod 777` beschreibbar sind.
 

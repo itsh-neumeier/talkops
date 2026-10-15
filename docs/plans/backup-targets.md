@@ -1,8 +1,35 @@
 # Backup targets proposal
 
-Status: Proposal. Waiting for user review. No implementation yet.
+Status: Accepted by the user on 2026-10-15 with changes (see "Accepted
+decisions"). Part 1 (targets, schedules, retention, restore) is implemented.
+Part 2 (automatic deployment capture, Portainer API) follows in a second PR.
 Date: 2026-10-15.
 Base: `702507b39fb1cf80db4ce5a0f9dd3d339b9da68c` (`main`, release 1.7.13).
+
+## Accepted decisions
+
+The user answered the open questions on 2026-10-15:
+
+1. rclone in the server image: yes (pinned v1.75.2 with SHA-256 checks).
+2. Remote targets require encrypted archives: yes.
+3. NFS through a Docker volume of the host: yes.
+4. SFTP as an extra protocol: yes.
+5. Default read-only bind of the Compose directory and the Portainer API
+   connection: yes. This is part 2.
+6. Changed: each target has a flexible schedule (weekdays, first run,
+   repeat every N hours) and a smart retention similar to Synology:
+   latest N, then one archive per day, week, month and year for given
+   periods. This replaces the single `keep` count in section 2.
+7. Two PRs: part 1 = sections 1 to 5 and 7 to 9; part 2 = section 6.
+
+Implementation changes against the proposal:
+
+- SFTP host keys: rclone pins the key on the first test or browse (trust on
+  first use). The UI shows the SHA-256 fingerprint. A saved SFTP target
+  needs a pinned key.
+- The setup token rate limit counts wrong tokens only. A failed setup
+  request releases the setup lock at once.
+- E-mail alerts for failed targets are not part of this work.
 
 ## Requested result
 

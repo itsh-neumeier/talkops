@@ -18,8 +18,10 @@ GitHub after safe cleanup of unchanged, fully integrated source branches.
 
 ## Result
 
-Both open source PRs are ready and integrated with merge commits. Neither
-source head was already in the base. No contribution is omitted or pending.
+Both source PRs and integration PR #28 are merged. Main is
+`702507b39fb1cf80db4ce5a0f9dd3d339b9da68c`; its tree equals tested candidate
+`5f9116b6b391d0141439187048df8b7c2118c523`. Both source heads are ancestors.
+Neither head was in the base. No contribution is omitted or pending.
 No separate Codex feature PR is assigned. Publication has not started.
 
 | Source | Contributor | Exact head | Dependencies | Migration IDs |
@@ -83,7 +85,14 @@ the PR in its summary. The selected actual head has all green checks.
 - Not run locally: Compose, container execution, SIPp and browser E2E. The
   Linux Docker daemon is unavailable. Use Linux CI and E2E as the evidence.
 - FreeSWITCH source and workflow files are unchanged. E2E builds the image.
-- Final candidate, main and publication checks: pending.
+- Passed: final candidate PR CI 38745692299 and E2E 38745692279;
+  push CI 38745684540 and E2E 38745684301. All 12 final-head checks passed.
+  Logs confirm the phonebook priority, media settings and RTP summary tests.
+  Image smoke output reports server and media worker version 1.7.13.
+- Passed: main tree equals candidate; both source heads are ancestors.
+  All three PRs are closed as merged. No open contribution remains.
+- Main CI 38748755531 and E2E 38748755542: pending on the exact main commit.
+  Publication remains blocked until both pass.
 - STE review: manual review with `docs/documentation-style.md`. The official
   full standard is unavailable; full language review remains pending.
 - CodeRabbit CLI is unavailable. Focused integration review used the actual
@@ -101,9 +110,8 @@ the PR in its summary. The selected actual head has all green checks.
 
 ## Next action
 
-Wait for final-head CI/E2E on PR #28. Merge it, verify the resulting main
-commit, and wait for main CI/E2E
-before the tag push. Verify all release images and moving tags after publication.
+Wait for exact-main CI 38748755531 and E2E 38748755542. Recheck scope,
+main, versions and unused tag. Then publish and verify all release artifacts.
 
 ## References
 

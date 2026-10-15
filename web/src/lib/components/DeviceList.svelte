@@ -3,10 +3,12 @@
 	import {
 		api,
 		effectiveCodecProfile,
+		effectiveDeviceVideo,
 		type CodecProfile,
 		type Device,
 		type DeviceCredentials,
 		type DeviceKind,
+		type DeviceVideo,
 		type Phone,
 		type Registration,
 		type SipPasswordFormat
@@ -35,7 +37,11 @@
 	} = $props();
 
 	const kinds: DeviceKind[] = ['desk', 'dect', 'wifi', 'softphone', 'mobile', 'door', 'other'];
-	const codecProfiles: CodecProfile[] = ['standard', 'hd', 'robust'];
+	const codecProfiles: CodecProfile[] = ['standard', 'hd', 'robust', 'g711'];
+	const videoModes: DeviceVideo[] = ['auto', 'off', 'h264', 'vp8'];
+	/** Video in use for a profile setting ('' = automatic from the kind). */
+	const videoFor = (kind: DeviceKind, profile: CodecProfile | '', video: DeviceVideo | '') =>
+		effectiveDeviceVideo(effectiveCodecProfile(kind, profile || null), video || null);
 	const pwFormats: SipPasswordFormat[] = ['standard', 'compact15'];
 	// Door stations (e.g. Dahua VTO/VTH) accept at most 15 characters.
 	const defaultPwFormat = (kind: DeviceKind): SipPasswordFormat =>
@@ -58,6 +64,7 @@
 		phone_label: '',
 		phone_display_name: '',
 		codec_profile: '' as CodecProfile | '',
+		video: '' as DeviceVideo | '',
 		sip_password_format: 'standard' as SipPasswordFormat,
 		// Free SIP username; empty = generated (new device) or unchanged (edit).
 		sip_username: '',
@@ -94,6 +101,7 @@
 			phone_label: d.phone_label,
 			phone_display_name: d.phone_display_name,
 			codec_profile: d.codec_profile ?? '',
+			video: d.video ?? '',
 			sip_password_format: d.sip_password_format,
 			sip_username: d.sip_username,
 			enabled: d.enabled
@@ -110,6 +118,7 @@
 			sip_username: username || null,
 			phone_id: form.phone_id || null,
 			codec_profile: form.codec_profile || null,
+			video: form.video || null,
 			account_index: form.phone_id && form.account_index !== '' ? Number(form.account_index) : null
 		};
 		try {
@@ -194,6 +203,15 @@
 							{#if effectiveCodecProfile(d.kind, d.codec_profile) !== 'standard'}
 								<span class="badge badge-muted"
 									>{t(`codecProfiles.${effectiveCodecProfile(d.kind, d.codec_profile)}`)}</span
+								>
+							{/if}
+							{#if videoFor(d.kind, d.codec_profile ?? '', d.video ?? '') !== 'auto'}
+								<span class="badge badge-muted"
+									>{t('ext.deviceVideoBadge', {
+										video: t(
+											`deviceVideo.${videoFor(d.kind, d.codec_profile ?? '', d.video ?? '')}`
+										)
+									})}</span
 								>
 							{/if}
 							{#if d.sip_password_format === 'compact15'}
@@ -303,6 +321,18 @@
 				{#each codecProfiles as p (p)}<option value={p}>{t(`codecProfiles.${p}`)}</option>{/each}
 			</select>
 			<p class="hint">{t('ext.codecHint')}</p>
+		</div>
+		<div>
+			<label for="d-video">{t('ext.deviceVideo')}</label>
+			<select id="d-video" class="input" bind:value={form.video}>
+				<option value=""
+					>{t('ext.deviceVideoAuto', {
+						video: t(`deviceVideo.${videoFor(form.kind, form.codec_profile, '')}`)
+					})}</option
+				>
+				{#each videoModes as v (v)}<option value={v}>{t(`deviceVideo.${v}`)}</option>{/each}
+			</select>
+			<p class="hint">{t('ext.deviceVideoHint')}</p>
 		</div>
 		{#if editing?.kind !== 'browser' && form.kind !== 'browser'}
 			<div>

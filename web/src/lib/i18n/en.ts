@@ -209,6 +209,16 @@ export default {
 	'codecProfiles.standard': 'Standard',
 	'codecProfiles.hd': 'HD (G.722)',
 	'codecProfiles.robust': 'Robust (iLBC)',
+	'codecProfiles.g711': 'G.711 only',
+	'ext.deviceVideo': 'Video',
+	'ext.deviceVideoAuto': 'Automatic ({video})',
+	'ext.deviceVideoHint':
+		'Video codecs of this device on calls that allow video. Use H264 only for devices without VP8 (e.g. Dahua indoor stations); use Off for devices that show door video another way.',
+	'deviceVideo.auto': 'H264 and VP8',
+	'deviceVideo.off': 'Off',
+	'deviceVideo.h264': 'H264 only',
+	'deviceVideo.vp8': 'VP8 only',
+	'ext.deviceVideoBadge': 'Video: {video}',
 	'kinds.desk': 'Desk phone',
 	'kinds.dect': 'DECT handset',
 	'kinds.softphone': 'Softphone',
@@ -1474,6 +1484,19 @@ export default {
 		'A Dahua extension VTH (Room No. with -1, #1 or similar) connects to its main VTH in the Dahua system, not to TalkOps.',
 	'doorGuide.dahua.vth.main.unconfirmed':
 		'Extension VTH devices that connect through a main VTH are not tested with TalkOps.',
+	'doorGuide.dahua.vth.video.title': 'Video on the VTH',
+	'doorGuide.dahua.vth.video.intro':
+		'The VTH can get the VTO picture directly from the VTO or through TalkOps (SIP video, H264 only).',
+	'doorGuide.dahua.vth.video.mainVto':
+		'On the VTH screen, open Setting → Project Settings → VTO (project password from the first start). Enter the VTO as main VTO: IP address, user admin and the web login password of the VTO. Enable the entry.',
+	'doorGuide.dahua.vth.video.h264':
+		'In TalkOps, edit the device of the VTH and set Video to "H264 only". Calls from browsers and VP8 phones then use H264.',
+	'doorGuide.dahua.vth.video.off':
+		'If the VTH shows the picture directly from the VTO, you can set Video to "Off". The VTH then gets audio only from TalkOps.',
+	'doorGuide.dahua.vth.video.capture':
+		'To check the video, start a capture in Settings → System → Diagnostics. Each call leg shows its audio and video packets at the end of the call.',
+	'doorGuide.dahua.vth.video.unconfirmed':
+		'Which way shows the picture on a VTH5422H (V4.800.0.2) with a VTO4202F-P-S2 (V4.600.0.3).',
 	'doorGuide.dahua.vth.pw.sipWhere': 'ConfigTool: Sip Register Pwd',
 	'doorGuide.dahua.vth.pw.device': 'Device login of the VTH',
 	'doorGuide.dahua.vth.pw.deviceWhere': 'ConfigTool sign-in, web interface',

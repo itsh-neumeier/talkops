@@ -126,6 +126,8 @@ export interface Device {
 	phone_display_name: string;
 	/** Codec profile; null = automatic from the device kind. */
 	codec_profile: CodecProfile | null;
+	/** Video on the device's calls; null = automatic from the codec profile. */
+	video: DeviceVideo | null;
 	/** Format of the next generated SIP password; never changes the current one. */
 	sip_password_format: SipPasswordFormat;
 	enabled: boolean;
@@ -135,7 +137,19 @@ export interface Device {
 export type SipPasswordFormat = 'standard' | 'compact15';
 
 /** Codecs TalkOps uses with a device (ADR 0023). */
-export type CodecProfile = 'standard' | 'hd' | 'robust';
+export type CodecProfile = 'standard' | 'hd' | 'robust' | 'g711';
+
+/** Video codecs of a device on calls with video (ADR 0028). */
+export type DeviceVideo = 'auto' | 'off' | 'h264' | 'vp8';
+
+/** Video setting in use: the configured one, else `auto` with the standard
+ * codec profile and `off` with every other profile. */
+export function effectiveDeviceVideo(
+	profile: CodecProfile,
+	configured: DeviceVideo | null
+): DeviceVideo {
+	return configured ?? (profile === 'standard' ? 'auto' : 'off');
+}
 
 /** Profile in use: the configured one, else the default of the device kind. */
 export function effectiveCodecProfile(

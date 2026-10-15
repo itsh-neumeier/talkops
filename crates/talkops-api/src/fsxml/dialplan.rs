@@ -12,7 +12,7 @@ use talkops_core::attendant::{self, Node, RingStrategy};
 use talkops_core::cdr::Direction;
 use talkops_core::dialing::{DialPlanSettings, Dialed, NumberFormat};
 use talkops_core::error::CoreResult;
-use talkops_core::extensions::{self, CodecProfile, Extension};
+use talkops_core::extensions::{self, CodecProfile, DeviceVideo, Extension};
 use talkops_core::presets::{CallerIdHeader, Dtmf, PresetCatalog, Srtp};
 use talkops_core::ring_groups::{self, RingGroup};
 use talkops_core::settings::{self, TenantSettings};
@@ -153,31 +153,109 @@ pub async fn plan(r: &Routing<'_>, req: &CallRequest) -> Vec<Action> {
     })
 }
 
-/// Pins the caller's leg to the codec profile of its device (ADR 0023). The
-/// codec lists the plan sets for the call then apply to the called legs only;
-/// FreeSWITCH transcodes between the two.
+/// Applies the media settings of the caller's device to the caller's leg.
+///
+/// A codec profile pins the caller's leg to the profile's audio codecs (ADR
+/// 0023). The codec lists the plan sets for the call then apply to the called
+/// legs only; FreeSWITCH transcodes between the two. The video setting of the
+/// device (ADR 0028) keeps only the video codecs the device accepts.
 fn with_caller_codecs(req: &CallRequest, actions: Vec<Action>) -> Vec<Action> {
+    let video = caller_device_video(req);
     let Some(media) = req
         .var("talkops_codec_profile")
         .and_then(CodecProfile::parse)
         .and_then(codecs::leg_media)
     else {
-        return actions;
+        if video == DeviceVideo::Auto {
+            return actions;
+        }
+        // Lists for the caller's leg: `set` and `export` without `nolocal:`.
+        return actions
+            .into_iter()
+            .map(
+                |(app, data)| match data.strip_prefix("absolute_codec_string=") {
+                    Some(list) if app == "set" || app == "export" => (
+                        app,
+                        format!("absolute_codec_string={}", with_video(list, list, video)),
+                    ),
+                    _ => (app, data),
+                },
+            )
+            .collect();
     };
+    // Video codecs of the caller's own list (the last `set`), if any.
+    let caller_list = actions
+        .iter()
+        .rev()
+        .filter(|(app, _)| *app == "set")
+        .find_map(|(_, data)| data.strip_prefix("absolute_codec_string="))
+        .unwrap_or_default();
+    let codecs = with_video(media.codecs, caller_list, video);
     let mut pinned: Vec<Action> = media
-        .vars()
+        .vars_with_codecs(&codecs)
         .iter()
         .map(|(name, value)| set(name, *value))
         .collect();
-    pinned.extend(actions.into_iter().map(|(app, data)| {
-        match data.strip_prefix("absolute_codec_string=") {
-            Some(list) if app == "set" || app == "export" => {
-                ("export", format!("nolocal:absolute_codec_string={list}"))
-            }
-            _ => (app, data),
-        }
-    }));
+    pinned.extend(
+        actions
+            .into_iter()
+            // The caller's leg keeps the profile's codecs (`inherit_codec`
+            // would take over the codec of the answering device).
+            .filter(|(app, data)| !(*app == "set" && data.starts_with("inherit_codec=")))
+            .map(
+                |(app, data)| match data.strip_prefix("absolute_codec_string=") {
+                    // The caller's list with video: the called legs get its audio
+                    // codecs; devices with video have their own list.
+                    Some(list) if app == "set" => (
+                        "export",
+                        format!(
+                            "nolocal:absolute_codec_string={}",
+                            with_video(list, "", DeviceVideo::Off)
+                        ),
+                    ),
+                    Some(list) if app == "export" => {
+                        ("export", format!("nolocal:absolute_codec_string={list}"))
+                    }
+                    _ => (app, data),
+                },
+            ),
+    );
     pinned
+}
+
+/// Video codec names TalkOps offers (see [`VIDEO_CODECS`]).
+fn is_video_codec(name: &str) -> bool {
+    VIDEO_CODECS
+        .split(',')
+        .any(|v| v.eq_ignore_ascii_case(name))
+}
+
+/// The audio codecs of `audio` plus the video codecs of `video_from` that
+/// `video` accepts.
+fn with_video(audio: &str, video_from: &str, video: DeviceVideo) -> String {
+    audio
+        .split(',')
+        .filter(|c| !c.is_empty() && !is_video_codec(c))
+        .chain(
+            video_from
+                .split(',')
+                .filter(|c| is_video_codec(c) && video.allows(c)),
+        )
+        .collect::<Vec<_>>()
+        .join(",")
+}
+
+/// Video setting of the caller's device (ADR 0028). Without the directory
+/// variable (older registration data), a device with a codec profile has no
+/// video, as before.
+fn caller_device_video(req: &CallRequest) -> DeviceVideo {
+    req.var("talkops_video")
+        .and_then(DeviceVideo::parse)
+        .unwrap_or(if has_codec_profile(req) {
+            DeviceVideo::Off
+        } else {
+            DeviceVideo::Auto
+        })
 }
 
 /// The caller's device has a codec profile (ADR 0023): a Wi-Fi handset,
@@ -229,10 +307,16 @@ async fn video_destination(
 /// Media of a call that can carry video (ADR 0025): the caller's leg
 /// accepts `with_video`. The called legs get `audio`, unless their own
 /// per-leg codec list has video (see [`device_endpoint`]).
-fn video_media(audio: &str, with_video: &str) -> [Action; 2] {
+///
+/// `inherit_codec`: when the called device answers (or sends early media),
+/// the caller's leg takes over its audio and video codec, so FreeSWITCH
+/// relays video without transcoding (it cannot transcode H264). A browser
+/// that lists VP8 first thus gets H264 when the called device has H264 only.
+fn video_media(audio: &str, with_video: &str) -> [Action; 3] {
     [
         set("absolute_codec_string", with_video),
         ("export", format!("nolocal:absolute_codec_string={audio}")),
+        set("inherit_codec", "true"),
     ]
 }
 
@@ -346,7 +430,8 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
     let settings = settings::get(pool, tenant).await?;
     // Video only from an extension with video that offers it; a device with
     // a codec profile (a Wi-Fi handset) stays audio-only (ADR 0025).
-    let caller_video = caller.video_enabled && !has_codec_profile(req) && offers_video(req);
+    let caller_video =
+        caller.video_enabled && caller_device_video(req) != DeviceVideo::Off && offers_video(req);
     // BLF keys monitoring a park slot dial `park+*51`.
     let raw_dest = req
         .destination
@@ -422,11 +507,19 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
             ascii_name(&sanitize_value(&caller.display_name)),
         ));
         let mut video = CallVideo::Off;
-        if !has_codec_profile(req) && offers_video(req) {
+        if caller_device_video(req) != DeviceVideo::Off && offers_video(req) {
             let codecs = door_codecs(req);
             actions.extend(video_media(AUDIO_CODECS, codecs));
             video = CallVideo::All(codecs);
         }
+        // All targets ring until one answers. Without this, the first
+        // target with early media wins and FreeSWITCH cancels the others:
+        // a Dahua indoor station answers a call from its own door station
+        // with `180 Ringing` and SDP at once. Its preview picture comes from
+        // the door station directly, not through TalkOps. `ring_ready` sends
+        // `180 Ringing` to the station.
+        actions.push(set("ignore_early_media", "true"));
+        actions.push(("ring_ready", String::new()));
         let r = &Routing { video, ..*r };
         if station.detects_unlock_codes() {
             // The answering leg (not the station's own) listens for the
@@ -1801,12 +1894,25 @@ async fn ring_legs(
 /// codec list. `^^;` keeps the commas of the codec list in the variable.
 ///
 /// `video` is the codec list with video if the call allows video to this
-/// device (ADR 0025). A device with a codec profile stays audio-only.
+/// device (ADR 0025). The device gets the video codecs of this list that its
+/// video setting accepts (ADR 0028).
 fn device_endpoint(target: &extensions::RingTarget, video: Option<&str>) -> String {
     let user = format!("user/{}@{SIP_DOMAIN}", sanitize_value(&target.sip_username));
+    let device_video = target.effective_video();
     match (codecs::leg_media(target.effective_codec_profile()), video) {
-        (Some(m), _) => format!("[^^;{}]{user}", m.joined(";")),
-        (None, Some(list)) => format!("[^^;absolute_codec_string={list}]{user}"),
+        (Some(m), _) => {
+            let list = with_video(m.codecs, video.unwrap_or_default(), device_video);
+            let vars: Vec<String> = m
+                .vars_with_codecs(&list)
+                .iter()
+                .map(|(name, value)| format!("{name}={value}"))
+                .collect();
+            format!("[^^;{}]{user}", vars.join(";"))
+        }
+        (None, Some(list)) => format!(
+            "[^^;absolute_codec_string={}]{user}",
+            with_video(list, list, device_video)
+        ),
         (None, None) => user,
     }
 }
@@ -1940,6 +2046,7 @@ mod tests {
             sip_username: user.into(),
             kind,
             codec_profile: profile,
+            video: None,
         }
     }
 
@@ -1985,6 +2092,85 @@ mod tests {
         // The per-leg list must win over the exported audio list.
         let legs = vec![vec![device_endpoint(&desk, Some(AUDIO_VIDEO_CODECS))]];
         assert!(dial_string(&legs, false, 20).starts_with("{local_var_clobber=true}"));
+    }
+
+    #[test]
+    fn device_video_settings_select_the_video_codecs() {
+        let with = |video: Option<DeviceVideo>, profile: Option<CodecProfile>| {
+            let mut t = target("8002", DeviceKind::Door, profile);
+            t.video = video;
+            device_endpoint(&t, Some(AUDIO_VIDEO_CODECS))
+        };
+        assert_eq!(
+            with(Some(DeviceVideo::H264), None),
+            "[^^;absolute_codec_string=OPUS,G722,PCMA,PCMU,H264]user/8002@talkops.local"
+        );
+        assert_eq!(
+            with(Some(DeviceVideo::Vp8), None),
+            "[^^;absolute_codec_string=OPUS,G722,PCMA,PCMU,VP8]user/8002@talkops.local"
+        );
+        // Off: an explicit audio list, so the exported list cannot add video.
+        assert_eq!(
+            with(Some(DeviceVideo::Off), None),
+            "[^^;absolute_codec_string=OPUS,G722,PCMA,PCMU]user/8002@talkops.local"
+        );
+        // A codec profile with video switched on keeps its audio codecs.
+        assert_eq!(
+            with(Some(DeviceVideo::H264), Some(CodecProfile::G711)),
+            "[^^;absolute_codec_string=PCMA,PCMU,H264]user/8002@talkops.local"
+        );
+        // A codec profile without a video setting stays audio-only.
+        assert_eq!(
+            with(None, Some(CodecProfile::G711)),
+            "[^^;absolute_codec_string=PCMA,PCMU]user/8002@talkops.local"
+        );
+        // A call without video gets no video, whatever the setting.
+        let mut t = target("8002", DeviceKind::Door, Some(CodecProfile::G711));
+        t.video = Some(DeviceVideo::H264);
+        assert_eq!(
+            device_endpoint(&t, None),
+            "[^^;absolute_codec_string=PCMA,PCMU]user/8002@talkops.local"
+        );
+    }
+
+    #[test]
+    fn caller_device_settings_apply_to_the_caller_leg() {
+        let plan = || {
+            let mut a = vec![set("talkops_direction", "internal")];
+            a.extend(video_media(AUDIO_CODECS, AUDIO_VIDEO_CODECS));
+            a.push(("bridge", "user/20@talkops.local".to_owned()));
+            a
+        };
+        // Standard device, automatic video: unchanged.
+        let req = CallRequest::default().with_var("talkops_codec_profile", "standard");
+        assert_eq!(with_caller_codecs(&req, plan()), plan());
+        // A browser set to H264 only.
+        let req = req.with_var("talkops_video", "h264");
+        let out = with_caller_codecs(&req, plan());
+        assert_eq!(
+            planned_var(&out, "absolute_codec_string"),
+            Some("OPUS,G722,PCMA,PCMU,H264")
+        );
+        assert_eq!(planned_var(&out, "inherit_codec"), Some("true"));
+        // A G.711 device with H264: profile audio plus H264, no
+        // `inherit_codec`, and the called legs get audio only.
+        let req = CallRequest::default()
+            .with_var("talkops_codec_profile", "g711")
+            .with_var("talkops_video", "h264");
+        let out = with_caller_codecs(&req, plan());
+        assert_eq!(out[0], set("absolute_codec_string", "PCMA,PCMU,H264"));
+        assert_eq!(planned_var(&out, "inherit_codec"), None);
+        assert!(!out.iter().any(|(app, data)| *app == "export"
+            && data.starts_with("nolocal:absolute_codec_string=")
+            && data.contains("H264")));
+        // Older directory data without `talkops_video`: a profile means no
+        // video, as before.
+        let req = CallRequest::default().with_var("talkops_codec_profile", "hd");
+        assert_eq!(caller_device_video(&req), DeviceVideo::Off);
+        assert_eq!(
+            caller_device_video(&CallRequest::default()),
+            DeviceVideo::Auto
+        );
     }
 
     #[test]

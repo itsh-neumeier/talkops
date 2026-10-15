@@ -173,7 +173,11 @@ impl Diagnostics {
         self.stop();
         let client = EslClient::connect(&addr, &password, Duration::from_secs(5)).await?;
         let mut logs = client.logs();
+        let mut events = client.events();
         client.log(level).await?;
+        // A media summary per call leg at hangup: shows if audio and video
+        // packets came in and went out (e.g. door station video).
+        client.subscribe(&["CHANNEL_HANGUP_COMPLETE"]).await?;
         if sip_trace {
             client.api("sofia global siptrace on").await?;
         }
@@ -211,6 +215,15 @@ impl Diagnostics {
                             break;
                         }
                     },
+                    event = events.recv() => match event {
+                        Ok(ev) => {
+                            if let Some(line) = media_summary(&ev) {
+                                this.lock().push(line);
+                            }
+                        }
+                        Err(RecvError::Lagged(_)) => {}
+                        Err(RecvError::Closed) => break,
+                    },
                     () = &mut deadline => break,
                     () = stop.notified() => break,
                 }
@@ -239,6 +252,28 @@ impl Diagnostics {
             s.stop.notify_one();
         }
     }
+}
+
+/// One line with the RTP packet counters of a call leg that ended, from its
+/// `CHANNEL_HANGUP_COMPLETE` event. `None` for other events.
+pub fn media_summary(ev: &talkops_esl::Event) -> Option<String> {
+    if ev.name()? != "CHANNEL_HANGUP_COMPLETE" {
+        return None;
+    }
+    let h = &ev.headers;
+    let var = |name: &str| h.get(&format!("variable_{name}")).unwrap_or("-");
+    Some(format!(
+        "--- TalkOps: media {} [{}]: audio {} in {} out {} pkts; video {} in {} out {} pkts; cause {} ---\n",
+        h.get("Channel-Name").unwrap_or("-"),
+        h.get("Unique-ID").unwrap_or("-"),
+        var("rtp_use_codec_name"),
+        var("rtp_audio_in_media_packet_count"),
+        var("rtp_audio_out_media_packet_count"),
+        var("rtp_use_video_codec_name"),
+        var("rtp_video_in_media_packet_count"),
+        var("rtp_video_out_media_packet_count"),
+        h.get("Hangup-Cause").unwrap_or("-"),
+    ))
 }
 
 /// A call leg from `show channels as json` (the fields useful for support).
@@ -296,6 +331,40 @@ pub fn parse_channels(json: &str) -> Vec<Channel> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn summarizes_media_at_hangup() {
+        let mut headers = talkops_esl::Headers::default();
+        for (k, v) in [
+            ("Event-Name", "CHANNEL_HANGUP_COMPLETE"),
+            ("Channel-Name", "sofia/internal/8002@192.168.90.13:5062"),
+            ("Unique-ID", "u1"),
+            ("Hangup-Cause", "NORMAL_CLEARING"),
+            ("variable_rtp_use_codec_name", "G722"),
+            ("variable_rtp_audio_in_media_packet_count", "350"),
+            ("variable_rtp_audio_out_media_packet_count", "349"),
+            ("variable_rtp_use_video_codec_name", "H264"),
+            ("variable_rtp_video_in_media_packet_count", "0"),
+            ("variable_rtp_video_out_media_packet_count", "812"),
+        ] {
+            headers.push(k.into(), v.into());
+        }
+        let ev = talkops_esl::Event {
+            headers,
+            body: None,
+        };
+        assert_eq!(
+            media_summary(&ev).unwrap(),
+            "--- TalkOps: media sofia/internal/8002@192.168.90.13:5062 [u1]: audio G722 in 350 \
+             out 349 pkts; video H264 in 0 out 812 pkts; cause NORMAL_CLEARING ---\n"
+        );
+        let mut other = ev.clone();
+        other.headers = talkops_esl::Headers::default();
+        other
+            .headers
+            .push("Event-Name".into(), "CHANNEL_ANSWER".into());
+        assert_eq!(media_summary(&other), None);
+    }
 
     #[test]
     fn ring_buffer_drops_oldest() {

@@ -8,7 +8,7 @@
 - Status: Completed (PR 2 of the backup target task).
 - Branch: claude/backup-deployment-capture
 - Base commit: 702507b39fb1cf80db4ce5a0f9dd3d339b9da68c (main, release 1.7.13)
-- Related commits or PR: Pending. Part 1: https://github.com/itsh-neumeier/talkops/pull/33
+- Related commits or PR: https://github.com/itsh-neumeier/talkops/pull/34 (part 2). Part 1: https://github.com/itsh-neumeier/talkops/pull/33
 
 ## Goal
 

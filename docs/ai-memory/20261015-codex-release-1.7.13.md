@@ -91,8 +91,10 @@ the PR in its summary. The selected actual head has all green checks.
   Image smoke output reports server and media worker version 1.7.13.
 - Passed: main tree equals candidate; both source heads are ancestors.
   All three PRs are closed as merged. No open contribution remains.
-- Main CI 38748755531 and E2E 38748755542: pending on the exact main commit.
-  Publication remains blocked until both pass.
+- The first main CI 38748755531 and E2E 38748755542 were cancelled when
+  new push-event runs started on the same commit. Main did not change.
+  Replacement CI 38749466584 and E2E 38749466804 are in progress.
+  Publication remains blocked until both replacements pass.
 - STE review: manual review with `docs/documentation-style.md`. The official
   full standard is unavailable; full language review remains pending.
 - CodeRabbit CLI is unavailable. Focused integration review used the actual
@@ -110,7 +112,7 @@ the PR in its summary. The selected actual head has all green checks.
 
 ## Next action
 
-Wait for exact-main CI 38748755531 and E2E 38748755542. Recheck scope,
+Wait for exact-main CI 38749466584 and E2E 38749466804. Recheck scope,
 main, versions and unused tag. Then publish and verify all release artifacts.
 
 ## References

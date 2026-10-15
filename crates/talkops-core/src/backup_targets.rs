@@ -450,11 +450,10 @@ impl TargetConnection {
                 Ok(())
             }
         };
-        let needs_root_segment;
-        match &mut self.config {
+        let needs_root_segment = match &mut self.config {
             TargetConfig::Local => {
                 self.path = normalize_path(&self.path, true)?;
-                needs_root_segment = false;
+                false
             }
             TargetConfig::Smb {
                 host,
@@ -469,7 +468,7 @@ impl TargetConnection {
                 if !valid_text(domain, 100) {
                     return Err(CoreError::Validation("invalid domain".into()));
                 }
-                needs_root_segment = true;
+                true
             }
             TargetConfig::S3 {
                 provider,
@@ -511,7 +510,7 @@ impl TargetConnection {
                 if self.secret.secret_access_key.is_none() {
                     return Err(CoreError::Validation("enter the secret access key".into()));
                 }
-                needs_root_segment = true;
+                true
             }
             TargetConfig::Ftp {
                 host,
@@ -527,7 +526,7 @@ impl TargetConnection {
                         "plain FTP sends passwords without encryption; allow insecure transport or use TLS".into(),
                     ));
                 }
-                needs_root_segment = false;
+                false
             }
             TargetConfig::Webdav { url, vendor, user } => {
                 *url = url.trim().trim_end_matches('/').to_owned();
@@ -536,7 +535,7 @@ impl TargetConnection {
                     return Err(CoreError::Validation("unknown WebDAV server type".into()));
                 }
                 check_user(user, false)?;
-                needs_root_segment = false;
+                false
             }
             TargetConfig::Sftp {
                 host,
@@ -580,9 +579,9 @@ impl TargetConnection {
                         "enter a password or a private key".into(),
                     ));
                 }
-                needs_root_segment = false;
+                false
             }
-        }
+        };
         if !matches!(self.config, TargetConfig::Local) {
             // SFTP paths without a leading slash start in the home folder.
             let rooted = matches!(self.config, TargetConfig::Sftp { .. })

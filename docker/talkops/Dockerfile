@@ -26,7 +26,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 # Checksums from https://downloads.rclone.org/v1.75.2/SHA256SUMS.
 FROM debian:${DEBIAN_RELEASE}-slim AS rclone
 ARG TARGETARCH
-ARG RCLONE_VERSION=v1.75.2
+ARG TALKOPS_RCLONE_VERSION=v1.75.2
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl unzip \
     && rm -rf /var/lib/apt/lists/*
 RUN set -eux; \
@@ -35,8 +35,8 @@ RUN set -eux; \
       arm64) sum=7e1e8d69654941b7b7df84ee74c5f7fb09cce7d5496947fb7bf16b55ff427d10 ;; \
       *) echo "unsupported architecture $TARGETARCH" >&2; exit 1 ;; \
     esac; \
-    name="rclone-$RCLONE_VERSION-linux-$TARGETARCH"; \
-    curl -fsSLo /tmp/rclone.zip "https://downloads.rclone.org/$RCLONE_VERSION/$name.zip"; \
+    name="rclone-$TALKOPS_RCLONE_VERSION-linux-$TARGETARCH"; \
+    curl -fsSLo /tmp/rclone.zip "https://downloads.rclone.org/$TALKOPS_RCLONE_VERSION/$name.zip"; \
     echo "$sum  /tmp/rclone.zip" | sha256sum -c -; \
     unzip -q /tmp/rclone.zip -d /tmp; \
     install -m 0755 "/tmp/$name/rclone" /usr/local/bin/rclone; \

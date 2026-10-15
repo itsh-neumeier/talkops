@@ -57,7 +57,7 @@ export default {
 	'backup.configImported': 'Imported configuration must be updated after every stack change.',
 	'backup.encryptionMissing':
 		'No backup password is configured. Complete backups with deployment secrets require TALKOPS_BACKUP_PASSWORD or TALKOPS_BACKUP_PASSWORD_FILE.',
-	'backup.importTitle': 'Import Portainer deployment configuration',
+	'backup.importTitle': 'Manual import (without a Portainer connection)',
 	'backup.importHint':
 		'Select .env and docker-compose*.yml/yaml files. Paste Portainer environment values into a local .env first. Keep the backup password in a separate file. Imported files are stored encrypted.',
 	'backup.importFiles': 'Deployment files',
@@ -1067,6 +1067,37 @@ export default {
 	'backup.none': 'No backups yet.',
 	'backup.restoreHint':
 		'Restore with "talkops restore" (see the backup guide). Without TALKOPS_SECRET_KEY the stored SIP and trunk passwords cannot be decrypted: keep the key with your backups.',
+	'backup.configSource': 'Source',
+	'backup.source.mounted': 'Compose directory (mounted)',
+	'backup.source.portainer': 'Portainer API',
+	'backup.source.imported': 'Manual import',
+	'backup.source.missing': 'None',
+	'backup.configExcluded':
+		'Left out (link, larger than 1 MiB, not readable or contains the backup password):',
+	'backup.portainer.title': 'Portainer',
+	'backup.portainer.hint':
+		'Connect TalkOps to the Portainer API. Before each backup, TalkOps reads the stack file and the stack environment of its stack. This replaces the manual import.',
+	'backup.portainer.connect': 'Connect Portainer',
+	'backup.portainer.url': 'Portainer URL',
+	'backup.portainer.checkCert': 'Check certificate',
+	'backup.portainer.http':
+		'http:// is allowed only for 127.0.0.1. The token goes to the local host only.',
+	'backup.portainer.trusted': 'The certificate is valid. No pin is necessary.',
+	'backup.portainer.selfSigned':
+		'Self-signed certificate. Compare this SHA-256 fingerprint with the certificate of Portainer, then pin it:',
+	'backup.portainer.pin': 'Pin this certificate',
+	'backup.portainer.pinned': 'Pinned certificate',
+	'backup.portainer.token': 'Access token',
+	'backup.portainer.tokenKept': 'Stored – leave empty to keep',
+	'backup.portainer.tokenHint':
+		'Portainer > My account > Access tokens. Use a user that can read the TalkOps stack. TalkOps stores the token encrypted.',
+	'backup.portainer.loadStacks': 'Load stacks',
+	'backup.portainer.stack': 'Stack',
+	'backup.portainer.save': 'Save and read the stack',
+	'backup.portainer.saved': 'Stack configuration read from Portainer.',
+	'backup.portainer.syncNow': 'Read now',
+	'backup.portainer.lastSync': 'Last read',
+	'backup.portainer.confirmRemove': 'Remove the Portainer connection? The last stored copy stays.',
 	'start.title': 'Getting started',
 	'start.progress': '{done} of {total} done',
 	'start.hide': 'Hide',

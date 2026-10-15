@@ -1,11 +1,12 @@
-# Codec-Profile (WLAN-Handsets)
+# Codec-Profile und Video je Gerät
 
 Ein Codec-Profil legt fest, welchen Audio-Codec TalkOps mit einem Gerät
 verwendet. TalkOps (FreeSWITCH) wandelt den Ton für die Gegenseite um; die
 Gegenseite behält ihren Codec. Profile helfen bei Geräten in einem WLAN mit
 Paketverlust oder Jitter.
 
-Architekturentscheidung: [ADR 0023](../adr/0023-device-codec-profiles.md).
+Architekturentscheidungen: [ADR 0023](../adr/0023-device-codec-profiles.md),
+[ADR 0027](../adr/0027-device-media-settings.md).
 
 ## Profile
 
@@ -14,6 +15,7 @@ Architekturentscheidung: [ADR 0023](../adr/0023-device-codec-profiles.md).
 | Standard | Systemcodecs: Opus, G.722, G.711 (Video, wo erlaubt) | Tischtelefone, DECT, Softphones |
 | HD (G.722) | G.722, Rückfall G.711, Jitter-Puffer | WLAN-Handsets in gutem WLAN |
 | Robust (iLBC) | iLBC (20 ms, dann 30 ms), Rückfall G.711, Jitter-Puffer | Geräte in einem Netz mit Paketverlust |
+| Nur G.711 | PCMA, PCMU, kein Jitter-Puffer | Geräte, die nur mit G.711 gut funktionieren (z. B. Türsprechstellen) |
 | Automatisch | WLAN-Handsets: HD. Alle anderen Geräte: Standard | Voreinstellung |
 
 Auswirkungen im Gespräch:
@@ -27,7 +29,8 @@ Auswirkungen im Gespräch:
   etwa 200 ms, kein WLAN-Empfang).
 - Der Jitter-Puffer auf TalkOps-Seite glättet den Ton vom Gerät. Er fügt
   60 bis 200 ms Verzögerung hinzu.
-- Ein Gerät mit HD oder Robust erhält kein Video.
+- Ein Gerät mit HD, Robust oder Nur G.711 erhält kein Video, außer Sie
+  stellen beim Gerät **Video** ein (siehe [Video je Gerät](#video-je-gerät)).
 - Der Codec wechselt nicht während eines Gesprächs. Eine Profiländerung gilt
   ab dem nächsten Anruf.
 
@@ -41,10 +44,35 @@ Auswirkungen im Gespräch:
 Die Geräteliste zeigt „HD (G.722)“ oder „Robust (iLBC)“ neben dem Gerätetyp,
 wenn ein Gerät eines dieser Profile nutzt.
 
+## Video je Gerät
+
+Die Einstellung **Video** legt die Video-Codecs eines Geräts bei Anrufen
+fest, die Video erlauben. Ob ein Anruf Video haben kann, entscheidet weiterhin
+die [Video-Regel](../adr/0025-video-policy.md) (zum Beispiel: Nebenstelle mit
+Video zu Nebenstelle mit Video, Türsprechstelle zu ihrem Ziel).
+
+| Einstellung | Video-Codecs zum Gerät |
+|---|---|
+| Automatisch | Profil Standard: H264 und VP8. Alle anderen Profile: aus |
+| H264 und VP8 | H264 und VP8 |
+| Nur H264 | H264. Für Geräte ohne VP8 (z. B. Dahua-VTH). |
+| Nur VP8 | VP8 |
+| Aus | Kein Video. Das Gerät erhält nur Audio-Codecs. |
+
+Die Einstellung gilt für Anrufe zum Gerät und für Anrufe vom Gerät.
+FreeSWITCH wandelt Video nicht um. Haben die beiden Geräte eines Anrufs keinen
+gemeinsamen Video-Codec, zeigt der Anruf kein Bild.
+
+Bei einem Anruf mit Video übernimmt die Seite des Anrufers den Audio- und
+Video-Codec des Geräts, das abhebt (`inherit_codec`). So nutzt ein Browser,
+der ein Gerät mit nur H264 anruft, H264.
+
+Die Geräteliste zeigt „Video: …“, wenn ein Gerät nicht H264 und VP8 nutzt.
+
 ## Provisionierte Yealink-Telefone
 
-Für ein Gerät mit HD oder Robust schaltet die Telefonkonfiguration auf dem
-Konto des Geräts diese Codecs ein:
+Für ein Gerät mit HD, Robust oder Nur G.711 schaltet die
+Telefonkonfiguration auf dem Konto des Geräts diese Codecs ein:
 
 | Codec | Yealink-Payload | Priorität |
 |---|---|---|

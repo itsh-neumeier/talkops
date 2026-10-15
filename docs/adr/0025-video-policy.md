@@ -65,7 +65,8 @@ TalkOps uses option 2.
   (`[^^;absolute_codec_string=…,H264,VP8]`). `local_var_clobber=true` lets
   this per-leg list win over the exported audio list (see ADR 0023).
 - A device with a codec profile `hd` or `robust` stays audio-only as a
-  caller and as a called device.
+  caller and as a called device. ADR 0027 makes this the default of a new
+  video setting per device.
 - The browser softphone shows *Answer with video* only if the offer of the
   call has an active video stream.
 

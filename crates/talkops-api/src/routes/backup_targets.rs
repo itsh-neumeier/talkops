@@ -1,4 +1,4 @@
-//! Backup targets (admin, ADR 0029): manage targets, test connections,
+//! Backup targets (admin, ADR 0031): manage targets, test connections,
 //! browse folders, run a target now, list, download and delete its archives.
 
 use axum::Json;

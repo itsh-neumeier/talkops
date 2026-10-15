@@ -225,7 +225,7 @@ pub struct Storage {
     )]
     pub restore_max_bytes: u64,
 
-    /// rclone binary for backup targets (ADR 0029).
+    /// rclone binary for backup targets (ADR 0031).
     #[arg(long, env = "TALKOPS_RCLONE", default_value = "rclone")]
     pub rclone: PathBuf,
 

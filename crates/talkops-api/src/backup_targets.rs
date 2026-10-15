@@ -1,4 +1,4 @@
-//! Copies backup archives to backup targets (ADR 0029) and gets archives
+//! Copies backup archives to backup targets (ADR 0031) and gets archives
 //! back for a restore. Each target has its own schedule and retention.
 //!
 //! A target that is due in the same minute as the daily local backup

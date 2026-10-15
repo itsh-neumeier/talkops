@@ -1,4 +1,4 @@
-// Backup targets (ADR 0029): types and helpers shared by the settings page
+// Backup targets (ADR 0031): types and helpers shared by the settings page
 // and the restore assistant.
 
 export type TargetKind = 'local' | 'smb' | 's3' | 'ftp' | 'webdav' | 'sftp';

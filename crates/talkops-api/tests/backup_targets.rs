@@ -1,4 +1,4 @@
-//! Backup targets (ADR 0029): transfers with real rclone servers (WebDAV,
+//! Backup targets (ADR 0031): transfers with real rclone servers (WebDAV,
 //! FTP, SFTP, S3), a local target with retention, and restore from a target
 //! before setup. Needs rclone (TALKOPS_RCLONE or `PATH`); the run test also
 //! needs `pg_dump` (see tests/backup.rs).

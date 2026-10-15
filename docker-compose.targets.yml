@@ -1,4 +1,4 @@
-# Optional: an NFS share as a local backup target (ADR 0029). The Docker
+# Optional: an NFS share as a local backup target (ADR 0031). The Docker
 # daemon of the host mounts the share; the container needs no capabilities.
 # The export must allow writes for UID/GID 10001.
 # Use with: docker compose -f docker-compose.yml -f docker-compose.targets.yml up -d

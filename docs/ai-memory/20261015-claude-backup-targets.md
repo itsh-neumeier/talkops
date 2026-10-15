@@ -50,7 +50,7 @@ Part 1 is implemented, tested and documented:
   `TargetConnectionFields`, `FolderBrowser`, `RestoreAssistant`, i18n en/de.
 - `docker/talkops/Dockerfile`, `.github/workflows/ci.yml`,
   `docker-compose.targets.yml`, `.env.example`.
-- Docs: ADR 0029, `docs/en/backup.md`, `docs/de/datensicherung.md`,
+- Docs: ADR 0031, `docs/en/backup.md`, `docs/de/datensicherung.md`,
   `docs/architecture.md`, `docs/plans/backup-targets.md`.
 
 ## Decisions
@@ -87,6 +87,7 @@ Part 1 is implemented, tested and documented:
 
 ## Dependencies and open work
 
+- ADR number 0031: PR #30 and PR #31 use 0029 and 0030.
 - Migration ID: 20261102000001. Renamed from 20261101000001 because open
   PR #30 (roles_permissions) uses 20261101000001 and PR #31 uses 20261101000002.
 - Part 2 (separate PR): default read-only bind of the Compose directory,
@@ -101,5 +102,5 @@ Watch CI of PR #33. Implement part 2 on its own branch from the target branch.
 ## References
 
 - [Proposal](../plans/backup-targets.md)
-- [ADR 0029](../adr/0029-backup-targets-with-rclone.md)
+- [ADR 0031](../adr/0031-backup-targets-with-rclone.md)
 - [Guided backup and restore](20261012-codex-guided-backup-restore.md)

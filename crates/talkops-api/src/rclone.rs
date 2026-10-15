@@ -1,4 +1,4 @@
-//! rclone as the transfer tool for backup targets (ADR 0029). Each call
+//! rclone as the transfer tool for backup targets (ADR 0031). Each call
 //! starts one rclone process. The connection goes into environment
 //! variables of that process only (`RCLONE_CONFIG_T_*`): passwords never
 //! appear in arguments, in a process list or in a file on disk.

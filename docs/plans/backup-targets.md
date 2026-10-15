@@ -251,7 +251,7 @@ container cannot read host files that are not mounted. So:
   and `serve ftp`). SMB and SFTP: rclone serve where available, else
   documented manual tests.
 - Web: lint, check, build.
-- New ADR 0029 "Backup targets with rclone". It extends ADR 0016 and 0021
+- New ADR 0031 "Backup targets with rclone". It extends ADR 0016 and 0021
   and does not contradict them.
 - User guides `docs/en/backup.md` and `docs/de/backup.md`: targets per
   protocol, NFS/SMB volume example, Portainer API connection, restore from a

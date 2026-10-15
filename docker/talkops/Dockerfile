@@ -22,7 +22,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     cargo build --release --locked -p talkops-api --bin talkops \
     && cp target/release/talkops /usr/local/bin/talkops
 
-# rclone for backup targets (ADR 0029): https://rclone.org/downloads/
+# rclone for backup targets (ADR 0031): https://rclone.org/downloads/
 # Checksums from https://downloads.rclone.org/v1.75.2/SHA256SUMS.
 FROM debian:${DEBIAN_RELEASE}-slim AS rclone
 ARG TARGETARCH

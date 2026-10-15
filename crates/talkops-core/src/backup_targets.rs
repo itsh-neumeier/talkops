@@ -1,4 +1,4 @@
-//! Backup targets (ADR 0029): local folders, SMB shares, S3 buckets, FTP,
+//! Backup targets (ADR 0031): local folders, SMB shares, S3 buckets, FTP,
 //! WebDAV and SFTP servers that receive copies of the backup archives. Each
 //! target has its own schedule and retention. The server copies the archives
 //! with rclone (`talkops_api::backup_targets`). Passwords and keys are stored

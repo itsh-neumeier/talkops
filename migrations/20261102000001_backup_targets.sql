@@ -1,4 +1,4 @@
--- Backup targets (ADR 0029): places that receive copies of backup archives.
+-- Backup targets (ADR 0031): places that receive copies of backup archives.
 -- Each target has its own schedule and retention. The server copies the
 -- archives with rclone.
 

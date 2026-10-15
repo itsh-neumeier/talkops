@@ -8,7 +8,7 @@
 - Status: Part 1 completed (PR 1). Part 2 (deployment capture) open.
 - Branch: claude/lucid-volta-54t5lq (part 1)
 - Base commit: 702507b39fb1cf80db4ce5a0f9dd3d339b9da68c (main, release 1.7.13)
-- Related commits or PR: Pending
+- Related commits or PR: https://github.com/itsh-neumeier/talkops/pull/33 (part 1)
 
 ## Goal
 
@@ -96,7 +96,7 @@ Part 1 is implemented, tested and documented:
 
 ## Next action
 
-Open PR 1. Then implement part 2 on its own branch from the target branch.
+Watch CI of PR #33. Implement part 2 on its own branch from the target branch.
 
 ## References
 

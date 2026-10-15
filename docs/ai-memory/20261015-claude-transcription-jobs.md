@@ -9,7 +9,7 @@
 - Branch: claude/transcription-jobs
 - Base commit: 1d9d28f (claude/role-permissions, itsh-neumeier/talkops#30)
   plus a merge of ef1139b (claude/gifted-rubin-my4qq1, itsh-neumeier/talkops#29)
-- Related commits or PR: Pending
+- Related commits or PR: [itsh-neumeier/talkops#31](https://github.com/itsh-neumeier/talkops/pull/31)
 
 ## Goal
 

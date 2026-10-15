@@ -56,6 +56,9 @@ pub struct DeploymentInfo {
     pub project_name: String,
     pub profiles: String,
     pub postgres_version: String,
+    /// Automatic discovery: files left out (links, too large, backup password).
+    #[serde(default)]
+    pub excluded: Vec<String>,
 }
 
 /// Explicit source files, including secrets. Never log or serialize into audit details.
@@ -66,6 +69,10 @@ pub struct DeploymentInput {
     pub project_name: String,
     #[serde(default)]
     pub profiles: String,
+    /// Set by TalkOps: `portainer` for files read from the Portainer API.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schema(read_only)]
+    pub origin: Option<String>,
 }
 fn default_project() -> String {
     "talkops".into()
@@ -80,8 +87,92 @@ pub fn configuration_name(name: &str) -> bool {
         && !name.starts_with("..")
         && (name == ".env"
             || name.ends_with(".env")
-            || (name.starts_with("docker-compose")
+            || ((name.starts_with("docker-compose") || name.starts_with("compose"))
                 && (name.ends_with(".yml") || name.ends_with(".yaml"))))
+}
+
+/// `TALKOPS_DEPLOYMENT_FILES=auto`: find the files in the directory.
+pub fn auto_discovery(cfg: &BackupConfig) -> bool {
+    cfg.deployment_files.len() == 1 && cfg.deployment_files[0] == "auto"
+}
+
+fn is_compose(name: &str) -> bool {
+    name.ends_with(".yml") || name.ends_with(".yaml")
+}
+
+/// Reads `.env`, `*.env` and Compose files of a mounted directory. Links,
+/// large files and files with the backup password are left out and named
+/// in the second list.
+fn discover(
+    dir: &Path,
+    password: Option<&SecretString>,
+) -> Result<(BTreeMap<String, String>, Vec<String>)> {
+    let mut names: Vec<String> = match std::fs::read_dir(dir) {
+        Ok(entries) => entries
+            .filter_map(|e| e.ok()?.file_name().into_string().ok())
+            .filter(|n| configuration_name(n))
+            .collect(),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Vec::new(),
+        Err(e) => return Err(e.into()),
+    };
+    names.sort();
+    let (mut files, mut excluded, mut total) = (BTreeMap::new(), Vec::new(), 0u64);
+    for name in names {
+        let path = dir.join(&name);
+        let meta = std::fs::symlink_metadata(&path)?;
+        if !meta.is_file() || meta.len() > CONFIG_LIMIT || files.len() >= 32 {
+            excluded.push(name);
+            continue;
+        }
+        let mut contents = String::new();
+        if File::open(&path)
+            .and_then(|f| f.take(CONFIG_LIMIT + 1).read_to_string(&mut contents))
+            .is_err()
+            || total + contents.len() as u64 > CONFIG_LIMIT
+            || env_value(&contents, "TALKOPS_BACKUP_PASSWORD").is_some_and(|p| !p.is_empty())
+            || password.is_some_and(|p| {
+                !p.expose_secret().is_empty() && contents.contains(p.expose_secret())
+            })
+        {
+            excluded.push(name);
+            continue;
+        }
+        total += contents.len() as u64;
+        files.insert(name, contents);
+    }
+    Ok((files, excluded))
+}
+
+/// Mounted deployment files take precedence over imports. With automatic
+/// discovery, a directory without a Compose file does not count (for
+/// example the empty bind of a Portainer stack).
+pub fn mounted_active(cfg: &BackupConfig) -> bool {
+    match &cfg.deployment_dir {
+        None => false,
+        Some(_) if !auto_discovery(cfg) => true,
+        Some(dir) => discover(dir, cfg.password.as_ref())
+            .is_ok_and(|(files, _)| files.keys().any(|n| is_compose(n))),
+    }
+}
+
+/// Stores an imported (or Portainer) configuration, encrypted with the
+/// application key, in the backup directory.
+pub fn store_import(
+    cfg: &BackupConfig,
+    secrets: &SecretBox,
+    input: &DeploymentInput,
+) -> Result<()> {
+    use std::io::Write;
+    let encrypted = secrets
+        .encrypt(&serde_json::to_string(input).expect("configuration"))
+        .map_err(|_| BackupError::Invalid("configuration encryption failed".into()))?;
+    std::fs::create_dir_all(&cfg.dir)?;
+    let mut temp = tempfile::NamedTempFile::new_in(&cfg.dir)?;
+    temp.write_all(encrypted.as_bytes())?;
+    temp.as_file().sync_all()?;
+    temp.persist(cfg.dir.join(IMPORT_FILE))
+        .map_err(|_| BackupError::Invalid("configuration import failed".into()))?;
+    Ok(())
 }
 
 pub fn validate_configuration(input: &DeploymentInput) -> Result<()> {
@@ -151,11 +242,36 @@ pub fn deployment_info(
         project_name: input.project_name.clone(),
         profiles: input.profiles.clone(),
         postgres_version: String::new(),
+        excluded: Vec::new(),
     }
 }
 
 pub fn capture(cfg: &BackupConfig) -> Result<(DeploymentInput, DeploymentInfo)> {
-    let (input, source, captured_at) = if let Some(dir) = &cfg.deployment_dir {
+    let mut excluded = Vec::new();
+    let discovered = match &cfg.deployment_dir {
+        Some(dir) if auto_discovery(cfg) => {
+            let (files, left_out) = discover(dir, cfg.password.as_ref())?;
+            if files.keys().any(|n| is_compose(n)) {
+                excluded = left_out;
+                Some(files)
+            } else {
+                None
+            }
+        }
+        _ => None,
+    };
+    let (input, source, captured_at) = if let Some(files) = discovered {
+        (
+            DeploymentInput {
+                files,
+                project_name: cfg.project_name.clone(),
+                profiles: cfg.profiles.clone(),
+                origin: None,
+            },
+            "mounted",
+            Utc::now(),
+        )
+    } else if let Some(dir) = cfg.deployment_dir.as_ref().filter(|_| !auto_discovery(cfg)) {
         let mut files = BTreeMap::new();
         for name in &cfg.deployment_files {
             if !configuration_name(name) {
@@ -183,6 +299,7 @@ pub fn capture(cfg: &BackupConfig) -> Result<(DeploymentInput, DeploymentInfo)> 
                 files,
                 project_name: cfg.project_name.clone(),
                 profiles: cfg.profiles.clone(),
+                origin: None,
             },
             "mounted",
             Utc::now(),
@@ -199,11 +316,16 @@ pub fn capture(cfg: &BackupConfig) -> Result<(DeploymentInput, DeploymentInfo)> 
             .map_err(|_| BackupError::Invalid("invalid deployment key".into()))?
             .decrypt(&encrypted)
             .map_err(|_| BackupError::Invalid("cannot decrypt imported configuration".into()))?;
-        let input = serde_json::from_str(&plaintext)
+        let input: DeploymentInput = serde_json::from_str(&plaintext)
             .map_err(|_| BackupError::Invalid("invalid imported configuration".into()))?;
+        let source = if input.origin.as_deref() == Some("portainer") {
+            "portainer"
+        } else {
+            "imported"
+        };
         (
             input,
-            "imported",
+            source,
             std::fs::metadata(cfg.dir.join(IMPORT_FILE))?
                 .modified()?
                 .into(),
@@ -214,6 +336,7 @@ pub fn capture(cfg: &BackupConfig) -> Result<(DeploymentInput, DeploymentInfo)> 
                 files: BTreeMap::new(),
                 project_name: cfg.project_name.clone(),
                 profiles: cfg.profiles.clone(),
+                origin: None,
             },
             "missing",
             Utc::now(),
@@ -236,7 +359,8 @@ pub fn capture(cfg: &BackupConfig) -> Result<(DeploymentInput, DeploymentInfo)> 
         }
     }
     let mut info = deployment_info(&input, source, captured_at);
-    if source == "mounted" {
+    info.excluded = excluded;
+    if source == "mounted" && !auto_discovery(cfg) {
         for name in &cfg.deployment_files {
             if !input.files.contains_key(name) {
                 info.missing.push(name.clone());
@@ -669,6 +793,7 @@ mod tests {
             files: data,
             project_name: "talkops".into(),
             profiles: "caddy".into(),
+            origin: None,
         };
         let mut manifest = Manifest {
             format: 2,
@@ -835,6 +960,98 @@ mod tests {
                 .path()
                 .join("files/voicemail/message-08191.wav")
                 .is_file()
+        );
+    }
+
+    fn auto_cfg(root: &Path) -> BackupConfig {
+        BackupConfig {
+            database_url: String::new(),
+            dir: root.join("backups"),
+            pg_bin_dir: None,
+            volumes: vec![],
+            password: Some("separate-long-backup-password".to_owned().into()),
+            deployment_dir: Some(root.join("deployment")),
+            deployment_files: vec!["auto".into()],
+            deployment_key: None,
+            project_name: "talkops".into(),
+            profiles: String::new(),
+            restore_max_bytes: 1 << 20,
+        }
+    }
+
+    #[test]
+    fn automatic_discovery_selects_compose_and_env_files() {
+        let root = tempfile::tempdir().unwrap();
+        let cfg = auto_cfg(root.path());
+        let dir = root.path().join("deployment");
+        std::fs::create_dir_all(&dir).unwrap();
+        // An empty directory (the bind of a Portainer stack) does not count.
+        assert!(!mounted_active(&cfg));
+        assert_eq!(capture(&cfg).unwrap().1.source, "missing");
+
+        std::fs::write(dir.join(".env"), "POSTGRES_PASSWORD=x\n").unwrap();
+        std::fs::write(dir.join("docker-compose.yml"), "services: {}\n").unwrap();
+        std::fs::write(dir.join("compose.override.yaml"), "services: {}\n").unwrap();
+        std::fs::write(dir.join("caddy.env"), "DOMAIN=pbx.example\n").unwrap();
+        std::fs::write(dir.join("notes.txt"), "not configuration").unwrap();
+        std::fs::write(dir.join("backup-password"), "separate-long-backup-password").unwrap();
+        std::fs::write(dir.join("secret.env"), "PW=separate-long-backup-password\n").unwrap();
+        std::fs::write(dir.join("old.env"), "TALKOPS_BACKUP_PASSWORD=x\n").unwrap();
+        std::fs::write(dir.join("big.env"), vec![b'x'; CONFIG_LIMIT as usize + 1]).unwrap();
+        #[cfg(unix)]
+        std::os::unix::fs::symlink("/etc/passwd", dir.join("link.env")).unwrap();
+
+        assert!(mounted_active(&cfg));
+        let (input, info) = capture(&cfg).unwrap();
+        assert_eq!(info.source, "mounted");
+        assert_eq!(
+            input.files.keys().map(String::as_str).collect::<Vec<_>>(),
+            [
+                ".env",
+                "caddy.env",
+                "compose.override.yaml",
+                "docker-compose.yml"
+            ]
+        );
+        let mut excluded = info.excluded.clone();
+        excluded.sort();
+        #[cfg(unix)]
+        assert_eq!(excluded, ["big.env", "link.env", "old.env", "secret.env"]);
+        // Credentials missing from .env are still reported.
+        assert!(info.missing.iter().any(|m| m == "TALKOPS_SECRET_KEY"));
+
+        // An explicit list keeps the old behavior.
+        let mut explicit = cfg.clone();
+        explicit.deployment_files = vec![".env".into(), "docker-compose.backup.yml".into()];
+        let (_, info) = capture(&explicit).unwrap();
+        assert!(
+            info.missing
+                .iter()
+                .any(|m| m == "docker-compose.backup.yml")
+        );
+    }
+
+    #[test]
+    fn portainer_imports_keep_their_origin() {
+        let root = tempfile::tempdir().unwrap();
+        let mut cfg = auto_cfg(root.path());
+        cfg.deployment_dir = None;
+        let key = "11".repeat(32);
+        cfg.deployment_key = Some(key.clone().into());
+        let input = DeploymentInput {
+            files: BTreeMap::from([("docker-compose.yml".into(), "services: {}\n".into())]),
+            project_name: "talkops".into(),
+            profiles: String::new(),
+            origin: Some("portainer".into()),
+        };
+        store_import(&cfg, &SecretBox::from_hex(&key).unwrap(), &input).unwrap();
+        let (read, info) = capture(&cfg).unwrap();
+        assert_eq!(info.source, "portainer");
+        assert_eq!(read.files.len(), 1);
+        assert!(
+            !std::fs::read_to_string(cfg.dir.join(IMPORT_FILE))
+                .unwrap()
+                .contains("services")
         );
     }
 }

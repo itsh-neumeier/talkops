@@ -17,6 +17,7 @@ pub mod fsxml;
 pub mod ldap;
 pub mod mailer;
 pub mod phoneblock;
+pub mod portainer;
 pub mod recovery;
 pub mod retention;
 pub mod routes;

@@ -416,6 +416,8 @@ fn write_archive<W: Write>(
 
 /// Writes a checksum inventory and encrypts the archive when a password is set.
 pub async fn create(cfg: &BackupConfig, db: &PgPool, include_recordings: bool) -> Result<String> {
+    // The stack from Portainer, when connected (ADR 0032).
+    crate::portainer::refresh(cfg, db).await;
     let _guard = BUSY.try_lock().map_err(|_| BackupError::Busy)?;
     let _file_lock = file_lock(&cfg.dir)?;
     let _db_lock = talkops_core::db::operation_guard(&cfg.database_url, false).await?;

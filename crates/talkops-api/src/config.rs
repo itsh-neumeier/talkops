@@ -204,11 +204,13 @@ pub struct Storage {
     #[arg(long, env = "TALKOPS_DEPLOYMENT_DIR")]
     pub deployment_dir: Option<PathBuf>,
 
+    /// `auto` (default): `.env`, `*.env` and Compose files of the directory.
+    /// Otherwise a comma-separated list of file names.
     #[arg(
         long,
         env = "TALKOPS_DEPLOYMENT_FILES",
         value_delimiter = ',',
-        default_value = ".env,docker-compose.yml"
+        default_value = "auto"
     )]
     pub deployment_files: Vec<String>,
 

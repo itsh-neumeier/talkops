@@ -93,8 +93,9 @@ the PR in its summary. The selected actual head has all green checks.
   All three PRs are closed as merged. No open contribution remains.
 - The first main CI 38748755531 and E2E 38748755542 were cancelled when
   new push-event runs started on the same commit. Main did not change.
-  Replacement CI 38749466584 and E2E 38749466804 are in progress.
-  Publication remains blocked until both replacements pass.
+  Replacement CI 38749466584 and E2E 38749466804 both passed on the exact
+  main commit. Main container smoke output reports server and worker 1.7.13.
+  The latest-main validation gate has passed; publication is next.
 - STE review: manual review with `docs/documentation-style.md`. The official
   full standard is unavailable; full language review remains pending.
 - CodeRabbit CLI is unavailable. Focused integration review used the actual
@@ -112,8 +113,8 @@ the PR in its summary. The selected actual head has all green checks.
 
 ## Next action
 
-Wait for exact-main CI 38749466584 and E2E 38749466804. Recheck scope,
-main, versions and unused tag. Then publish and verify all release artifacts.
+Recheck scope, main, versions and unused tag. Publish `v1.7.13` on the tested
+main commit, then verify the workflow, release and all image artifacts.
 
 ## References
 

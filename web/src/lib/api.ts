@@ -332,7 +332,19 @@ export interface CallParty {
 	name: string;
 	number: string;
 	extension_id: string | null;
+	/** Phone book entry that supplies `name`. */
+	contact_id?: string | null;
 	ambiguous: boolean;
+	/** All phone book entries with this number when `ambiguous`. */
+	matches?: ContactMatch[];
+}
+
+export interface ContactMatch {
+	contact_id: string;
+	name: string;
+	/** Null for the global phone book. */
+	section_id: string | null;
+	section_name: string;
 }
 
 export interface LiveTranscript {

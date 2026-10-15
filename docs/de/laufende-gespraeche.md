@@ -4,8 +4,25 @@ Die erste Zeile zeigt Richtung und lokale Nebenstelle, die zweite den
 Gesprächspartner. Namen werden mit allen Telefonbuchbereichen und den drei
 Rufnummernfeldern abgeglichen. Nationale und internationale Schreibweisen
 erkennen denselben Kontakt. Rufnummern stehen in eckigen Klammern:
-`Familie Vollmeier (Maria) [+4995458589]`. Mehrdeutige Treffer erhalten einen
-Hinweis statt eines willkürlich gewählten Namens.
+`Familie Vollmeier (Maria) [+4995458589]`. Ein Klick auf einen Namen aus dem
+Telefonbuch öffnet das Telefonbuch. Es zeigt den Bereich des Eintrags und
+hebt den Eintrag hervor.
+
+### Rufnummern in mehreren Telefonbucheinträgen
+
+Eine Rufnummer kann in mehreren Telefonbuchbereichen stehen. Die Zeile zeigt
+dann einen Namen und die Schaltfläche **+N weitere**. TalkOps wählt den Namen
+in dieser Reihenfolge:
+
+1. Ein Eintrag aus einem Telefonbuchbereich der beteiligten eigenen
+   Nebenstelle. Das sind die Bereiche, die ihre provisionierten Telefone
+   zeigen, und ein Bereich mit demselben Namen wie die Nebenstelle.
+2. Der alphabetisch erste Eintrag.
+
+Mit dem Mauszeiger auf dem Gesprächspartner oder mit **+N weitere** öffnet
+sich eine Übersicht aller Einträge. Sie hat drei Spalten: **Telefonbuch**,
+**Eintrag (Name)** und **Gehe zu Eintrag**. Die Markierung **angezeigt**
+kennzeichnet den Eintrag aus der Zeile. Esc schließt die Übersicht.
 
 Status und Dauer bleiben rechts. Die Gesprächsdauer beginnt bei Annahme;
 vorher wird die Wartezeit angezeigt. Lange Namen umbrechen auf kleinen Geräten.

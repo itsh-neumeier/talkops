@@ -32,6 +32,7 @@ nächste freie Nummer; überholte ADRs werden nicht gelöscht, sondern auf
 | [0024](0024-transcription-engines-per-purpose.md) | Transcription engines per purpose, cloud connections and realtime previews | Accepted |
 | [0025](0025-video-policy.md) | Video only on local calls and trunks with video | Accepted |
 | [0026](0026-door-station-vendors.md) | Door station vendors and SIP password formats | Accepted |
+| [0027](0027-shared-phonebook-numbers-in-active-calls.md) | Shared phonebook numbers in active calls | Accepted |
 
 Vorlage: [`template.md`](template.md)
 

@@ -11,7 +11,19 @@ try {
   const page = await context.newPage();
   const errors = []; page.on('pageerror', error => errors.push(error.message));
   const local = { name: 'Familie Zweig', number: '+4995431241', extension_id: 'local', ambiguous: false };
-  const remote = { name: 'Familie Vollmeier (Maria)', number: '+4995458589', extension_id: null, ambiguous: false };
+  const remote = { name: 'Familie Vollmeier (Maria)', number: '+4995458589', extension_id: null, contact_id: 'c-maria', ambiguous: false };
+  const zweig = 's-zweig', neumeier = 's-neumeier';
+  const shared = { name: 'Maxi', number: '+4995436999124', extension_id: null, contact_id: 'c-maxi', ambiguous: true, matches: [
+    { contact_id: 'c-anna', name: 'Anna', section_id: null, section_name: '' },
+    { contact_id: 'c-max', name: 'Max Mustermann (Mustermann GmbH)', section_id: neumeier, section_name: 'Familie Neumeier' },
+    { contact_id: 'c-maxi', name: 'Maxi', section_id: zweig, section_name: 'Familie Zweig' }
+  ] };
+  const contacts = [
+    { id: 'c-anna', name: 'Anna', company: '', phone_work: '+4995436999124', phone_mobile: '', phone_other: '', section_id: null },
+    { id: 'c-maria', name: 'Familie Vollmeier', company: 'Maria', phone_work: '+4995458589', phone_mobile: '', phone_other: '', section_id: null },
+    { id: 'c-max', name: 'Max Mustermann', company: 'Mustermann GmbH', phone_work: '+4995436999124', phone_mobile: '', phone_other: '', section_id: neumeier },
+    { id: 'c-maxi', name: 'Maxi', company: '', phone_work: '+4995436999124', phone_mobile: '', phone_other: '', section_id: zweig }
+  ];
   const started = new Date(Date.now() - 180_000).toISOString();
   let calls = [
     { uuid: 'outgoing', direction: 'outbound', caller: local, called: remote, started_at: started, answered_at: started, state: 'talking', transcript_available: true },
@@ -28,6 +40,8 @@ try {
     else if (path === '/api/v1/stats/calls') value = { range: '1d', buckets: [], total: 0, missed: 0, avg_talk_secs: 0, answer_rate: null, inbound: 0, outbound: 0, internal: 0 };
     else if (path === '/api/v1/backups') value = { settings: { last_run_at: null } };
     else if (path === '/api/v1/telephony/calls') value = calls;
+    else if (path === '/api/v1/contacts') value = contacts;
+    else if (path === '/api/v1/phonebook-sections') value = [{ id: neumeier, name: 'Familie Neumeier' }, { id: zweig, name: 'Familie Zweig' }];
     else if (path.endsWith('/transcript')) {
       if (route.request().method() === 'DELETE') { closes++; await route.fulfill({ status: 204 }); return; }
       polls++;
@@ -89,6 +103,57 @@ try {
   await dialog.getByText('Das Gespräch oder die Live-Vorschau ist beendet.', { exact: true }).waitFor({ timeout: 15_000 });
   const afterTransfer = polls; await page.waitForTimeout(3300); assert.equal(polls, afterTransfer);
   await dialog.getByRole('button', { name: 'Schließen', exact: true }).click();
+
+  // Shared number: the own phone book name, a hover card with all entries, and jumps.
+  calls = [{ uuid: 'shared', direction: 'inbound', caller: shared, called: local, started_at: started, answered_at: started, state: 'talking', transcript_available: false }];
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.reload();
+  await section.getByText('Eingehender Anruf an Nst:', { exact: false }).waitFor({ timeout: 20_000 });
+  const sharedRow = section.locator('li').first();
+  assert.match(await sharedRow.textContent(), /von\s+Maxi\s*\[\+4995436999124\]\s*\+2 weitere/);
+  assert.doesNotMatch(await sharedRow.textContent(), /Mehrere Telefonbucheinträge/);
+  const more = sharedRow.getByRole('button', { name: 'Alle 3 Telefonbucheinträge zu dieser Nummer anzeigen' });
+  assert.equal(await more.getAttribute('aria-expanded'), 'false');
+  await more.hover();
+  const card = page.getByRole('region', { name: 'Telefonbucheinträge für +4995436999124' });
+  await card.waitFor();
+  assert.deepEqual(await card.locator('thead th').allTextContents().then(h => h.map(x => x.trim())), ['Telefonbuch', 'Eintrag (Name)', 'Gehe zu Eintrag']);
+  const cells = await card.locator('tbody tr').evaluateAll(rows => rows.map(r => [...r.cells].slice(0, 2).map(c => c.innerText.replace(/\s+/g, ' ').trim())));
+  assert.deepEqual(cells, [['Global (alle Telefone)', 'Anna'], ['Familie Neumeier', 'Max Mustermann (Mustermann GmbH)'], ['Familie Zweig', 'Maxi angezeigt']]);
+  const links = await card.getByRole('link', { name: /Gehe zu Eintrag/ }).evaluateAll(a => a.map(l => l.getAttribute('href')));
+  assert.deepEqual(links, ['/phonebook?contact=c-anna', '/phonebook?contact=c-max', '/phonebook?contact=c-maxi']);
+  // The pointer can move into the card; leaving both closes it.
+  await card.hover(); await page.waitForTimeout(400); assert.ok(await card.isVisible());
+  await page.mouse.move(5, 5); await card.waitFor({ state: 'detached' });
+  // Keyboard: Enter opens, Escape closes and returns the focus.
+  await more.focus(); await page.keyboard.press('Enter'); await card.waitFor();
+  assert.equal(await more.getAttribute('aria-expanded'), 'true');
+  await page.keyboard.press('Escape'); await card.waitFor({ state: 'detached' });
+  assert.equal(await page.evaluate(() => document.activeElement?.textContent?.trim()), '+2 weitere');
+  // Narrow screen: a tap opens the card inside the viewport.
+  await page.setViewportSize({ width: 320, height: 780 });
+  await more.click(); await card.waitFor();
+  const box = await card.boundingBox();
+  assert.ok(box.x >= 0 && box.x + box.width <= 320 + 1, JSON.stringify(box));
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  if (process.env.SCREENSHOT_DIR) await page.screenshot({ path: `${process.env.SCREENSHOT_DIR}/active-calls-shared-mobile.png` });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await card.getByRole('link', { name: /Gehe zu Eintrag/ }).nth(1).click();
+  await page.waitForURL('**/phonebook?contact=c-max');
+  const target = page.locator('tr[aria-current="true"]');
+  await target.waitFor();
+  assert.match(await target.textContent(), /Max Mustermann/);
+  assert.equal(await page.locator('select[aria-label="Bereich"]').inputValue(), neumeier);
+  if (process.env.SCREENSHOT_DIR) await page.screenshot({ path: `${process.env.SCREENSHOT_DIR}/phonebook-highlight.png` });
+  // A single entry: the name itself jumps to the entry, without a card.
+  calls = [{ uuid: 'single', direction: 'inbound', caller: remote, called: local, started_at: started, answered_at: started, state: 'talking', transcript_available: false }];
+  await page.goto(process.env.BASE || 'http://127.0.0.1:5184');
+  await section.getByText('Eingehender Anruf an Nst:', { exact: false }).waitFor({ timeout: 20_000 });
+  assert.equal(await section.getByRole('button', { name: /Telefonbucheinträge/ }).count(), 0);
+  await section.getByRole('link', { name: 'Familie Vollmeier (Maria)', exact: true }).click();
+  await page.waitForURL('**/phonebook?contact=c-maria');
+  assert.match(await page.locator('tr[aria-current="true"]').textContent(), /Familie Vollmeier/);
+  assert.deepEqual(errors, []);
   await context.close();
-  console.log('PASS: call brackets, directions, speakers, times, popup, reduced motion, cleanup, mobile layout and errors');
+  console.log('PASS: call brackets, shared numbers, hover card, phone book jumps, directions, speakers, times, popup, reduced motion, cleanup, mobile layout and errors');
 } finally { await browser.close(); }

@@ -39,7 +39,7 @@ checklist that ticks off these steps as they are done.
    *Edit* dialog.
 
 After login, users find their devices and credentials under *Settings → My phones* and
-their calls under *Call log*.
+their calls under *Call log* ([call log](call-log.md)).
 
 ## Dialing
 

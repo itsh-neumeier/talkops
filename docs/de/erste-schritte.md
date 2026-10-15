@@ -42,7 +42,7 @@ Schritte abhakt, sobald sie erledigt sind.
    *Eingehende Rufnummern, die hier klingeln* anhaken.
 
 Benutzer sehen nach dem Login unter *Einstellungen → Meine Telefone* ihre Geräte samt
-Zugangsdaten und unter *Anrufliste* ihre Gespräche.
+Zugangsdaten und unter *Anrufliste* ihre Gespräche ([Anrufliste](anrufliste.md)).
 
 ## Wählen
 

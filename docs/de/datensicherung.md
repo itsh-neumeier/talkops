@@ -19,6 +19,14 @@ kopieren; Backups auf derselben Platte helfen bei einem Plattenausfall nicht.
 
 ## Vollständige Compose-Backups
 
+`docker-compose.yml` bindet das Compose-Verzeichnis nur lesbar unter
+`/var/lib/talkops/deployment` ein. Mit `TALKOPS_DEPLOYMENT_FILES=auto`
+(Standard) sichert TalkOps diese Dateien des Verzeichnisses automatisch:
+`.env`, `*.env`, `docker-compose*.yml`/`.yaml` und `compose*.yml`/`.yaml`.
+TalkOps lässt Links, Dateien über 1 MiB, für UID 10001 nicht lesbare Dateien
+und Dateien mit dem Backup-Passwort aus. **Einstellungen → System → Backups**
+zeigt gesicherte und ausgelassene Dateien.
+
 1. Eine separate Passwortdatei erstellen. Der ausführende Benutzer ist Eigentümer;
    Gruppe 10001 gibt dem Container Leserechte:
 
@@ -28,11 +36,13 @@ kopieren; Backups auf derselben Platte helfen bei einem Plattenausfall nicht.
    sudo chmod 640 backup-password
    ```
 
-2. `TALKOPS_DEPLOYMENT_FILES` in `.env` auf alle tatsächlich verwendeten Dateien
-   setzen, beispielsweise `.env,docker-compose.yml,docker-compose.backup.yml`.
-   Weitere Overrides und benötigte `*.env`-Dateien ergänzen; unbenutzte Namen
-   entfernen. Keine Datei mit dem Backup-Passwort aufnehmen.
-3. Mit dem Backup-Override starten:
+2. Dem Container Leserechte auf `.env` geben, sonst privat halten:
+
+   ```sh
+   sudo chown "$(id -u)":10001 .env && sudo chmod 640 .env
+   ```
+
+3. Mit dem Backup-Override starten. Es bindet nur die Passwortdatei ein:
 
    ```sh
    docker compose -f docker-compose.yml -f docker-compose.backup.yml up -d
@@ -42,11 +52,11 @@ Weitere aktive `-f`-, `--env-file`-, `--project-name`- und `--profile`-Optionen
 bei jedem Befehl angeben. `COMPOSE_PROJECT_NAME` und `COMPOSE_PROFILES` liefern
 die gesicherten Metadaten. Bei Auswahl über CLI-Optionen die Metadaten prüfen.
 
-Das Override bindet das Deployment-Verzeichnis nur lesbar ein. TalkOps liest
-ausschließlich ausgewählte Dateien. Das Passwort wird separat eingebunden.
-Für andere Host-Pfade `TALKOPS_DEPLOYMENT_SOURCE` und
-`TALKOPS_BACKUP_PASSWORD_SOURCE` setzen. `.env` privat halten und UID 10001
-Leserechte auf eingebundene Konfiguration und Passwortdatei geben.
+Für eine feste Auswahl `TALKOPS_DEPLOYMENT_FILES` auf eine kommagetrennte Liste
+setzen, z. B. `.env,docker-compose.yml`. Für andere Host-Pfade
+`TALKOPS_DEPLOYMENT_SOURCE` und `TALKOPS_BACKUP_PASSWORD_SOURCE` setzen. Das
+Compose-Verzeichnis darf keine weiteren privaten Daten enthalten, die UID 10001
+lesen kann.
 
 Unter **Einstellungen → Backups** Uhrzeit, Aufbewahrung und Aufzeichnungen
 festlegen. Fehlende Dateien oder Zugangsdaten werden angezeigt. Geplante,
@@ -62,7 +72,31 @@ verschlüsseltes Backup.
 
 ## Portainer
 
-TalkOps kann den ursprünglichen Stack nicht aus seiner Container-Umgebung ableiten.
+Portainer speichert den Stack in seinem eigenen Datenvolume. Der relative Bind
+aus `docker-compose.yml` bindet dann ein leeres Verzeichnis ein; TalkOps nutzt
+stattdessen die Portainer-API:
+
+1. In Portainer unter **My account → Access tokens** ein Token anlegen. Einen
+   Benutzer verwenden, der den TalkOps-Stack lesen darf.
+2. In TalkOps **Einstellungen → System → Backups** öffnen und auf
+   **Portainer verbinden** klicken.
+3. Die Portainer-URL eingeben, z. B. `https://127.0.0.1:9443`. `http://` ist
+   nur für `127.0.0.1` erlaubt.
+4. Auf **Zertifikat prüfen** klicken. Bei einem selbstsignierten Zertifikat den
+   SHA-256-Fingerabdruck mit dem Zertifikat von Portainer vergleichen und
+   **Dieses Zertifikat festlegen** wählen. Spätere Verbindungen lehnen andere
+   Zertifikate ab.
+5. Token eingeben, auf **Stacks laden** klicken und den TalkOps-Stack wählen.
+6. Auf **Speichern und Stack lesen** klicken.
+
+Vor jeder Sicherung liest TalkOps die Stack-Datei (als `docker-compose.yml`) und
+die Umgebungsvariablen des Stacks (als `.env`) und speichert sie mit dem
+Anwendungsschlüssel verschlüsselt. `TALKOPS_BACKUP_PASSWORD` lässt TalkOps aus.
+Ist Portainer nicht erreichbar, verwendet die Sicherung die zuletzt gespeicherte
+Kopie, und die Anzeige zeigt den Fehler. Das Token wird verschlüsselt gespeichert
+und nie angezeigt.
+
+Ohne Portainer-Verbindung die Dateien manuell importieren:
 
 1. Die tatsächlich verwendete Stack-YAML als `docker-compose.yml` speichern.
 2. Stack-Umgebungswerte in eine lokale `.env` kopieren.
@@ -71,8 +105,8 @@ TalkOps kann den ursprünglichen Stack nicht aus seiner Container-Umgebung ablei
 5. Konfiguration speichern.
 
 Importierte Dateien werden mit dem Anwendungsschlüssel verschlüsselt abgelegt.
-Nach jeder Stack-Änderung erneut importieren. Anzeige und Manifest enthalten das
-Importdatum. Eingebundene Quelldateien haben Vorrang. CLI-Sicherung importierter
+Nach jeder Stack-Änderung erneut importieren. Eingebundene Quelldateien haben
+Vorrang vor Portainer-Verbindung und Import. CLI-Sicherung importierter
 Konfiguration benötigt ebenfalls `TALKOPS_SECRET_KEY`.
 
 `TALKOPS_BACKUP_PASSWORD` separat als Container-Umgebungswert bereitstellen oder

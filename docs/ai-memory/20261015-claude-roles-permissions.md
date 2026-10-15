@@ -8,7 +8,7 @@
 - Status: Completed. The PR records the readiness.
 - Branch: claude/role-permissions
 - Base commit: 702507b (origin/main, TalkOps 1.7.13)
-- Related commits or PR: Pending
+- Related commits or PR: [itsh-neumeier/talkops#30](https://github.com/itsh-neumeier/talkops/pull/30)
 
 ## Goal
 

@@ -34,6 +34,14 @@ export async function request<T>(method: string, path: string, body?: unknown): 
 }
 
 async function send<T>(method: string, path: string, body?: unknown): Promise<T> {
+	return (await sendWithHeaders<T>(method, path, body)).data;
+}
+
+async function sendWithHeaders<T>(
+	method: string,
+	path: string,
+	body?: unknown
+): Promise<{ data: T; headers: Headers }> {
 	const headers: Record<string, string> = { 'X-Requested-With': 'TalkOps' };
 	if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
 	if (body !== undefined) headers['Content-Type'] = 'application/json';
@@ -43,17 +51,31 @@ async function send<T>(method: string, path: string, body?: unknown): Promise<T>
 		body: body === undefined ? undefined : JSON.stringify(body),
 		credentials: 'same-origin'
 	});
-	if (res.status === 204) return undefined as T;
+	if (res.status === 204) return { data: undefined as T, headers: res.headers };
 	const data = await res.json().catch(() => ({}));
 	if (!res.ok) {
 		if (res.status === 401 && !path.startsWith('/auth/login') && path !== '/auth/me')
 			onUnauthorized();
 		throw new ApiError(res.status, data.error ?? 'error', data.message ?? res.statusText);
 	}
-	return data as T;
+	return { data: data as T, headers: res.headers };
+}
+
+/** A GET of a list with the number of all matches in `X-Total-Count`. */
+async function getPage<T>(path: string): Promise<{ items: T[]; total: number }> {
+	requestStarted();
+	try {
+		const { data, headers } = await sendWithHeaders<T[]>('GET', path);
+		const header = headers.get('X-Total-Count');
+		const total = header === null ? NaN : Number(header);
+		return { items: data, total: Number.isFinite(total) ? total : data.length };
+	} finally {
+		requestFinished();
+	}
 }
 
 export const api = {
+	getPage,
 	get: <T>(path: string) => request<T>('GET', path),
 	post: <T>(path: string, body?: unknown) => request<T>('POST', path, body ?? {}),
 	put: <T>(path: string, body: unknown) => request<T>('PUT', path, body),
@@ -373,6 +395,14 @@ export interface Call {
 	billsec: number;
 	hangup_cause: string;
 	recording_id: string | null;
+	dest_extension_id?: string | null;
+	number_id?: string | null;
+	/** Resolved caller (extension or phone book name). */
+	caller?: CallParty;
+	/** Resolved called party; the answering extension of inbound calls. */
+	called?: CallParty;
+	/** Inbound: the own number that the caller dialed. */
+	via_number?: string | null;
 }
 
 export type StatsRange = '1h' | '1d' | '1w' | '1m';

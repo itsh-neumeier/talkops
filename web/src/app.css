@@ -166,3 +166,47 @@
 		@apply bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300;
 	}
 }
+
+/*
+ * Popup panels (column filters) fade and move in when they open.
+ * `@starting-style` gives the values before the first frame.
+ */
+.popover-panel {
+	transition:
+		opacity 150ms ease-out,
+		translate 150ms ease-out;
+	@starting-style {
+		opacity: 0;
+		translate: 0 -4px;
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.popover-panel {
+		transition: none;
+	}
+}
+
+/* New table rows and opened detail rows fade in. */
+@keyframes fade-in {
+	from {
+		opacity: 0;
+	}
+}
+@keyframes expand-in {
+	from {
+		opacity: 0;
+		translate: 0 -4px;
+	}
+}
+.row-in {
+	animation: fade-in 180ms ease-out;
+}
+.expand-in {
+	animation: expand-in 200ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+	.row-in,
+	.expand-in {
+		animation: none;
+	}
+}

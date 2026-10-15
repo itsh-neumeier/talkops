@@ -2,15 +2,18 @@
 
 use axum::Json;
 use axum::extract::{Query, State};
+use axum::http::HeaderName;
+use serde::Serialize;
 use serde_json::json;
 use talkops_core::audit::{self, AuditEntry};
-use talkops_core::cdr::{self, Cdr, CdrQuery};
+use talkops_core::cdr::{self, Cdr, CdrQuery, CdrScope};
 use talkops_core::extensions;
 use talkops_core::settings::{self, TenantSettings};
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
 
 use crate::AppState;
+use crate::active_calls::{Directory, Party};
 use crate::auth::AuthUser;
 use crate::error::{ApiError, ApiResult};
 use crate::telephony::LiveStatus;
@@ -114,33 +117,71 @@ pub async fn telephony_status(
     Ok(Json(state.telephony.snapshot().await))
 }
 
-/// Call log. Operators and admins see all calls, users only their own extensions.
-#[utoipa::path(get, path = "/api/v1/calls", tag = "settings", params(CdrQuery), responses((status = 200, body = [Cdr])))]
+/// A call record with its resolved parties.
+#[derive(Serialize, utoipa::ToSchema)]
+pub struct CallEntry {
+    #[serde(flatten)]
+    pub cdr: Cdr,
+    /// Caller: an extension, or an external number with its phone book name.
+    pub caller: Party,
+    /// Called party; for answered inbound calls the answering extension.
+    pub called: Party,
+    /// Inbound calls: the own number (E.164) that the caller dialed.
+    pub via_number: Option<String>,
+}
+
+/// Call log, filtered and sorted. Operators and admins see all calls, users
+/// only their own extensions. `X-Total-Count` has the number of matches.
+#[utoipa::path(get, path = "/api/v1/calls", tag = "settings", params(CdrQuery), responses((status = 200, body = [CallEntry], headers(("X-Total-Count" = i64, description = "Number of matching calls")))))]
 pub async fn list_calls(
     State(state): State<AppState>,
     auth: AuthUser,
     Query(query): Query<CdrQuery>,
-) -> ApiResult<Json<Vec<Cdr>>> {
-    if auth.can(Permission::CallsViewAll) {
-        return Ok(Json(cdr::list(&state.db, auth.tenant, &query).await?));
-    }
-    let own = extensions::list_for_user(&state.db, auth.tenant, auth.id).await?;
-    let mut out = Vec::new();
-    for ext in own
-        .iter()
-        .filter(|e| query.extension_id.is_none_or(|id| id == e.id))
-    {
-        let q = CdrQuery {
-            extension_id: Some(ext.id),
-            ..query.clone()
-        };
-        out.extend(cdr::list(&state.db, auth.tenant, &q).await?);
-    }
-    // An internal call between two own extensions appears twice.
-    out.sort_by_key(|c| std::cmp::Reverse(c.started_at));
-    out.dedup_by_key(|c| c.id);
-    out.truncate(query.limit.unwrap_or(100).clamp(1, 500) as usize);
-    Ok(Json(out))
+) -> ApiResult<([(HeaderName, String); 1], Json<Vec<CallEntry>>)> {
+    let directory = Directory::load(&state, auth.tenant).await?;
+    let scope = CdrScope {
+        extensions: if auth.can(Permission::CallsViewAll) {
+            None
+        } else {
+            Some(
+                extensions::list_for_user(&state.db, auth.tenant, auth.id)
+                    .await?
+                    .into_iter()
+                    .map(|e| e.id)
+                    .collect(),
+            )
+        },
+        from_numbers: query
+            .from
+            .as_deref()
+            .map(|t| directory.contact_numbers(t))
+            .unwrap_or_default(),
+        to_numbers: query
+            .to
+            .as_deref()
+            .map(|t| directory.contact_numbers(t))
+            .unwrap_or_default(),
+    };
+    let (rows, total) = tokio::try_join!(
+        cdr::list_scoped(&state.db, auth.tenant, &query, &scope),
+        cdr::count(&state.db, auth.tenant, &query, &scope)
+    )?;
+    let entries = rows
+        .into_iter()
+        .map(|cdr| {
+            let (caller, called, via_number) = directory.record_parties(&cdr);
+            CallEntry {
+                cdr,
+                caller,
+                called,
+                via_number,
+            }
+        })
+        .collect();
+    Ok((
+        [(HeaderName::from_static("x-total-count"), total.to_string())],
+        Json(entries),
+    ))
 }
 
 /// Audit log of administrative changes (admin).

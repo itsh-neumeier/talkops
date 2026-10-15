@@ -825,6 +825,198 @@ async fn cdr_and_audit(pool: PgPool) {
     assert_eq!(log[0].action, "create");
 }
 
+/// Call list filters, sort order, pages and the extension scope.
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn cdr_filters_sort_and_scope(pool: PgPool) {
+    let zweig = extensions::create(
+        &pool,
+        T,
+        &ExtensionInput {
+            display_name: "Familie Zweig".into(),
+            ..ext("101")
+        },
+        &emergency(),
+    )
+    .await
+    .unwrap();
+    let other = extensions::create(&pool, T, &ext("102"), &emergency())
+        .await
+        .unwrap();
+    let base = Utc::now() - chrono::Duration::hours(1);
+    let call =
+        |n: i64, direction, caller: &str, dest: &str, ext: Uuid, answered: bool, cause: &str| {
+            let started = base + chrono::Duration::minutes(n);
+            cdr::Cdr {
+                id: Uuid::nil(),
+                call_uuid: format!("call-{n}"),
+                direction,
+                caller_number: caller.into(),
+                caller_name: String::new(),
+                destination: dest.into(),
+                extension_id: Some(ext),
+                dest_extension_id: None,
+                trunk_id: None,
+                number_id: None,
+                started_at: started,
+                answered_at: answered.then_some(started),
+                ended_at: started,
+                duration_secs: 10 * n as i32,
+                billsec: if answered { 10 * n as i32 } else { 0 },
+                hangup_cause: cause.into(),
+                recording_id: None,
+            }
+        };
+    use cdr::Direction::{Inbound, Outbound};
+    for c in [
+        call(
+            1,
+            Inbound,
+            "+4915112345",
+            "101",
+            zweig.id,
+            true,
+            "NORMAL_CLEARING",
+        ),
+        call(2, Inbound, "+4989555", "101", zweig.id, false, "NO_ANSWER"),
+        call(3, Inbound, "+4989555", "102", other.id, false, "USER_BUSY"),
+        call(
+            4,
+            Outbound,
+            "101",
+            "+4930999",
+            zweig.id,
+            true,
+            "NORMAL_CLEARING",
+        ),
+        call(
+            5,
+            Outbound,
+            "102",
+            "+4940888",
+            other.id,
+            true,
+            "NORMAL_CLEARING",
+        ),
+    ] {
+        cdr::insert(&pool, T, &c).await.unwrap();
+    }
+    sqlx::query(
+        "INSERT INTO recordings (tenant_id, call_uuid, file) VALUES ($1, 'call-4', 'a.wav')",
+    )
+    .bind(T)
+    .execute(&pool)
+    .await
+    .unwrap();
+    let uuids = |q: cdr::CdrQuery, scope: cdr::CdrScope| {
+        let pool = pool.clone();
+        async move {
+            let rows = cdr::list_scoped(&pool, T, &q, &scope).await.unwrap();
+            let total = cdr::count(&pool, T, &q, &scope).await.unwrap();
+            assert!(total >= rows.len() as i64);
+            rows.into_iter().map(|c| c.call_uuid).collect::<Vec<_>>()
+        }
+    };
+    let all = cdr::CdrScope::default();
+    assert_eq!(
+        uuids(Default::default(), all.clone()).await,
+        ["call-5", "call-4", "call-3", "call-2", "call-1"],
+        "newest first"
+    );
+    let q = |f: fn(&mut cdr::CdrQuery)| {
+        let mut q = cdr::CdrQuery::default();
+        f(&mut q);
+        q
+    };
+    assert_eq!(
+        uuids(q(|q| q.order = Some("asc".into())), all.clone()).await[0],
+        "call-1"
+    );
+    assert_eq!(
+        uuids(q(|q| q.sort = Some("duration".into())), all.clone()).await,
+        ["call-5", "call-4", "call-1", "call-3", "call-2"],
+        "longest talk time first; ties by time"
+    );
+    assert_eq!(
+        uuids(q(|q| q.direction = Some("outbound".into())), all.clone()).await,
+        ["call-5", "call-4"]
+    );
+    assert_eq!(
+        uuids(q(|q| q.result = Some("missed".into())), all.clone()).await,
+        ["call-2"],
+        "busy is not missed"
+    );
+    assert_eq!(
+        uuids(q(|q| q.result = Some("busy,missed".into())), all.clone()).await,
+        ["call-3", "call-2"]
+    );
+    assert_eq!(
+        uuids(q(|q| q.from = Some("Zweig".into())), all.clone()).await,
+        ["call-4"],
+        "the name of the calling extension"
+    );
+    assert_eq!(
+        uuids(q(|q| q.to = Some("Zweig".into())), all.clone()).await,
+        ["call-2", "call-1"],
+        "the name of the answering extension"
+    );
+    assert_eq!(
+        uuids(
+            q(|q| q.from = Some("Meier".into())),
+            cdr::CdrScope {
+                from_numbers: vec!["+4915112345".into()],
+                ..Default::default()
+            }
+        )
+        .await,
+        ["call-1"],
+        "phone book matches"
+    );
+    assert_eq!(
+        uuids(q(|q| q.recording = Some("with".into())), all.clone()).await,
+        ["call-4"]
+    );
+    assert_eq!(
+        uuids(q(|q| q.recording = Some("transcript".into())), all.clone())
+            .await
+            .len(),
+        0
+    );
+    assert_eq!(
+        uuids(q(|q| q.recording = Some("without".into())), all.clone())
+            .await
+            .len(),
+        4
+    );
+    let page = q(|q| {
+        q.limit = Some(2);
+        q.offset = Some(2);
+    });
+    assert_eq!(uuids(page.clone(), all.clone()).await, ["call-3", "call-2"]);
+    assert_eq!(cdr::count(&pool, T, &page, &all).await.unwrap(), 5);
+    assert_eq!(
+        uuids(
+            q(|q| q.since = Some(Utc::now() - chrono::Duration::minutes(56))),
+            all.clone()
+        )
+        .await,
+        ["call-5"]
+    );
+    // A user sees only the calls of their extensions.
+    let own = cdr::CdrScope {
+        extensions: Some(vec![other.id]),
+        ..Default::default()
+    };
+    assert_eq!(uuids(Default::default(), own).await, ["call-5", "call-3"]);
+    // Wildcards in the input are no patterns.
+    assert_eq!(
+        uuids(q(|q| q.from = Some("%".into())), all.clone())
+            .await
+            .len(),
+        5,
+        "an empty pattern is no filter"
+    );
+}
+
 #[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
 async fn phones_accounts_firmware_contacts(pool: PgPool) {
     let sb = SecretBox::from_hex(KEY).unwrap();

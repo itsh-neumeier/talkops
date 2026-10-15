@@ -8,7 +8,7 @@
 - Status: Completed. The PR records the readiness.
 - Branch: claude/gifted-rubin-my4qq1
 - Base commit: 702507b (origin/main, TalkOps 1.7.13)
-- Related commits or PR: Pending
+- Related commits or PR: [itsh-neumeier/talkops#29](https://github.com/itsh-neumeier/talkops/pull/29)
 
 ## Goal
 

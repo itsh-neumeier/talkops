@@ -5,10 +5,11 @@
 - Task ID: 20261015-codex-release-1.7.13
 - Date: 2026-10-15, Europe/Berlin
 - Tool: Codex
-- Status: In progress
+- Status: Completed
 - Branch: `codex/release-1.7.13`
 - Base commit: `6276e7d5e1b3bbe2a97e0fe237758b3f3a0e44b4` (remote main, 1.7.12)
 - Integration PR: [#28](https://github.com/itsh-neumeier/talkops/pull/28)
+- Final summary reference: `audit/release-1.7.13` (a non-release tag)
 
 ## Goal
 
@@ -25,7 +26,27 @@ Neither head was in the base. No contribution is omitted or pending.
 No separate Codex feature PR is assigned. Annotated tag `v1.7.13` was pushed
 once on the tested main commit. Its tag object is
 `25ecd89dcc546293041ad79d08161c09ae9a0969`. Release workflow 38752127330
-is in progress. GitHub release and registry verification remain pending.
+passed. [TalkOps 1.7.13](https://github.com/itsh-neumeier/talkops/releases/tag/v1.7.13)
+was published at 2026-10-15T14:37:06Z. It is neither a draft nor a prerelease
+and is the latest GitHub release. Its remote tag resolves to the tested main.
+
+All three versioned manifests and six OCI configs are verified. Each image
+contains amd64 and arm64. Every config reports `v1.7.13` and the exact release
+commit as its revision. Moving `1.7` and `latest` tags match these digests.
+
+| Image | amd64 digest | arm64 digest |
+| --- | --- | --- |
+| `talkops-server` | `sha256:7a49d52343b11ceb9680ea222620f448120ed49f3cd121a5df50799bf3a79581` | `sha256:a9010283f7dbaa2926d5ab93882de698b2a8baab43c69295ca8d21cad6a21b58` |
+| `talkops-media-worker` | `sha256:5715c4fc6594c02af9c4d43b0039b056fb86266b5d018410b9350d049be6e182` | `sha256:700bf4e30b1b5ab5b4a92b7e8379b1f018931853d64e8c59f6ff084aaac2a8f7` |
+| `talkops-freeswitch` | `sha256:056388e8c4b3d2704d850bff4331e9baad86014da4207e81f12b3ef6186ad500` | `sha256:cdd3c195d873adda55bd5db3a6514384cc167f8c5cb8ec01753b6c183cb32d9b` |
+
+The unchanged source and release remote branches were deleted in one atomic
+push after ancestry and head checks. GitHub has only `main` and no open PR.
+Foreign local worktrees, branches and unpublished primary-checkout work remain.
+The final audit changes only this summary. Its tag does not run Release.
+Audit CI/E2E runs check this documentation snapshot; they are not release
+gates. The owned release worktree is detached at the audit commit, and its
+local release branch is removed.
 
 | Source | Contributor | Exact head | Dependencies | Migration IDs |
 | --- | --- | --- | --- | --- |
@@ -101,8 +122,14 @@ the PR in its summary. The selected actual head has all green checks.
   The latest-main validation gate passed before the tag push.
 - Passed before publication: latest-main-run, source ancestry, main SHA,
   open-PR scope, code-version and unused-tag gates.
-- In progress: Release 38752127330; tag CI 38752127329,
-  FreeSWITCH image 38752127153, and tag E2E 38752127238.
+- Passed: Release 38752127330, all six platform builds, three manifest jobs
+  and GitHub release creation.
+- Passed: additional tag CI 38752127329 and FreeSWITCH image 38752127153.
+- Passed: three direct GHCR verification scripts, all architectures, all
+  version/revision labels, and matching versioned/moving platform digests.
+- Passed: release metadata, latest release, peeled tag, safe remote branch
+  cleanup and final open-PR inventory.
+- Passed: additional tag E2E 38752127238 on the exact released commit.
 - STE review: manual review with `docs/documentation-style.md`. The official
   full standard is unavailable; full language review remains pending.
 - CodeRabbit CLI is unavailable. Focused integration review used the actual
@@ -120,9 +147,8 @@ the PR in its summary. The selected actual head has all green checks.
 
 ## Next action
 
-Wait for Release 38752127330 and tag checks. Verify the GitHub release,
-all versioned amd64/arm64 manifests, OCI labels and moving tags. Then remove
-only unchanged integrated branches and archive the final summary.
+None for this release. Future release tasks must read the final audit summary.
+The stated hardware tests and CDR spool work remain separate development tasks.
 
 ## References
 

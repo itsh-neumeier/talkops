@@ -9,8 +9,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use talkops_core::audit;
 use talkops_core::backup_targets::{
-    self, BackupTarget, BackupTargetInput, S3_PROVIDERS, TargetConfig, TargetConnection,
-    TargetSecret, WEBDAV_VENDORS,
+    self, BackupTarget, BackupTargetInput, TargetConfig, TargetConnection, TargetSecret,
 };
 use talkops_core::tenant::TenantId;
 use talkops_core::users::Role;
@@ -74,8 +73,6 @@ pub struct TargetsOverview {
     pub encryption_configured: bool,
     /// Allowed directories of local targets.
     pub roots: Vec<String>,
-    pub s3_providers: Vec<String>,
-    pub webdav_vendors: Vec<String>,
 }
 
 fn next_run(target: &BackupTarget) -> Option<DateTime<Utc>> {
@@ -115,8 +112,6 @@ pub async fn list_targets(
             .iter()
             .map(|p| p.display().to_string())
             .collect(),
-        s3_providers: S3_PROVIDERS.iter().map(|s| (*s).to_owned()).collect(),
-        webdav_vendors: WEBDAV_VENDORS.iter().map(|s| (*s).to_owned()).collect(),
     }))
 }
 

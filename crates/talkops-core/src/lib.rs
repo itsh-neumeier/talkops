@@ -28,6 +28,7 @@ pub mod prompts;
 pub mod queues;
 pub mod recordings;
 pub mod ring_groups;
+pub mod roles;
 pub mod settings;
 pub mod sip_guard;
 pub mod speech;

@@ -6,7 +6,7 @@
 	import { errorMessage } from '#lib/util.ts';
 	import { describe } from '#lib/destinations.svelte.ts';
 	import { ringsExtension, saveNumber } from '#lib/numbers.ts';
-	import { hasRole } from '#lib/session.svelte.ts';
+	import { can } from '#lib/session.svelte.ts';
 
 	let {
 		extension = null,
@@ -104,7 +104,7 @@
 			const saved = extension
 				? await api.put<Extension>(`/extensions/${extension.id}`, body)
 				: await api.post<Extension>('/extensions', body);
-			if (hasRole('admin')) await applyNumbers(saved.id);
+			if (can('extensions.manage')) await applyNumbers(saved.id);
 			onsaved(saved);
 		} catch (err) {
 			error = errorMessage(err);
@@ -144,7 +144,7 @@
 			{#each numbers as n (n.id)}<option value={n.id}>{n.e164} {n.label}</option>{/each}
 		</select>
 	</div>
-	{#if hasRole('admin') && numbers.length}
+	{#if can('extensions.manage') && numbers.length}
 		<fieldset class="space-y-1">
 			<legend class="text-sm font-medium">{t('ext.incomingNumbers')}</legend>
 			{#each numbers as n (n.id)}

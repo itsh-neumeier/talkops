@@ -11,7 +11,6 @@ use axum::response::Response;
 use serde::Deserialize;
 use serde_json::json;
 use talkops_core::recordings::{self, Recording, SearchHit, Source, Transcript};
-use talkops_core::users::Role;
 use talkops_core::{audit, extensions};
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
@@ -20,6 +19,7 @@ use uuid::Uuid;
 use crate::AppState;
 use crate::auth::AuthUser;
 use crate::error::{ApiError, ApiResult};
+use talkops_core::roles::Permission;
 
 pub fn router() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
@@ -44,7 +44,7 @@ async fn accessible(state: &AppState, auth: &AuthUser, id: Uuid) -> ApiResult<(R
     let involved = recordings::extensions_of(&state.db, rec.id).await?;
     let own = own_extensions(state, auth).await?;
     let mine = involved.iter().any(|e| own.contains(e));
-    if mine || auth.role >= Role::Admin {
+    if mine || auth.can(Permission::RecordingsAccessAll) {
         Ok((rec, mine))
     } else {
         // Do not reveal that the recording exists.
@@ -111,7 +111,7 @@ pub async fn delete_recording(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<StatusCode> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::RecordingsDelete)?;
     let rec = recordings::delete(&state.db, auth.tenant, id).await?;
     if let Err(err) = tokio::fs::remove_file(state.media.recordings.join(&rec.file)).await {
         tracing::warn!(error = %err, file = %rec.file, "cannot remove recording file");
@@ -136,7 +136,7 @@ pub async fn search(
     Query(q): Query<SearchQuery>,
 ) -> ApiResult<Json<Vec<SearchHit>>> {
     let own;
-    let scope = if auth.role >= Role::Admin {
+    let scope = if auth.can(Permission::RecordingsAccessAll) {
         None
     } else {
         own = own_extensions(&state, &auth).await?;

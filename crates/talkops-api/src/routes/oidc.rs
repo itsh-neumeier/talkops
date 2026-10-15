@@ -356,6 +356,7 @@ pub async fn oidc_callback(
         display_name: text("name").unwrap_or_else(|| username.clone()),
         email: text("email"),
         role,
+        groups,
     };
     let user = match identity::upsert_user(&state.db, tenant, &account).await {
         Ok(u) => u,

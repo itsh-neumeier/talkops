@@ -10,7 +10,6 @@ use serde::Serialize;
 use serde_json::json;
 use talkops_core::audit;
 use talkops_core::backups::{self, BackupSettings, BackupSettingsInput};
-use talkops_core::users::Role;
 use utoipa::ToSchema;
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
@@ -20,6 +19,7 @@ use crate::auth::AuthUser;
 use crate::backup::{self, BackupConfig, BackupError, BackupFile};
 use crate::error::{ApiError, ApiResult};
 use crate::recovery::{self, DeploymentInfo, DeploymentInput};
+use talkops_core::roles::Permission;
 
 pub fn router() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
@@ -80,14 +80,14 @@ pub async fn list_backups(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> ApiResult<Json<BackupOverview>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::BackupsManage)?;
     Ok(Json(overview(&state, &auth).await?))
 }
 
 /// Starts a backup in the background (`202`); poll the list for the result.
 #[utoipa::path(post, path = "/api/v1/backups", tag = "system", responses((status = 202), (status = 409)))]
 pub async fn start_backup(State(state): State<AppState>, auth: AuthUser) -> ApiResult<StatusCode> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::BackupsManage)?;
     let cfg = config(&state)?.clone();
     let (deployment, _) = recovery::capture(&cfg)?;
     if !deployment.files.is_empty() && cfg.password.is_none() {
@@ -124,7 +124,7 @@ pub async fn update_backup_settings(
     auth: AuthUser,
     Json(input): Json<BackupSettingsInput>,
 ) -> ApiResult<Json<BackupSettings>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::BackupsManage)?;
     let settings = backups::update(&state.db, auth.tenant, &input).await?;
     let _ = audit::record(
         &state.db,
@@ -151,7 +151,7 @@ pub async fn import_deployment(
     Json(input): Json<DeploymentInput>,
 ) -> ApiResult<Json<DeploymentInfo>> {
     use std::io::Write;
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::BackupsManage)?;
     let cfg = config(&state)?;
     if cfg.deployment_dir.is_some() {
         return Err(ApiError::Conflict(
@@ -211,7 +211,7 @@ pub async fn download_backup(
     auth: AuthUser,
     Path(name): Path<String>,
 ) -> ApiResult<Response> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::BackupsManage)?;
     let cfg = config(&state)?;
     let name = checked_name(&name)?;
     let file = tokio::fs::File::open(cfg.dir.join(name))
@@ -261,7 +261,7 @@ pub async fn delete_backup(
     auth: AuthUser,
     Path(name): Path<String>,
 ) -> ApiResult<StatusCode> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::BackupsManage)?;
     let cfg = config(&state)?;
     let name = checked_name(&name)?;
     tokio::fs::remove_file(cfg.dir.join(name))

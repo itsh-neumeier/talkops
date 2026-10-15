@@ -22,7 +22,7 @@
 	import { loadTargets } from '#lib/destinations.svelte.ts';
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import { presetHint, presetLabel, presetNotes, statusClass, statusKey } from '#lib/presets.ts';
-	import { hasRole } from '#lib/session.svelte.ts';
+	import { can } from '#lib/session.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
 
 	let trunk = $state<TrunkDetail | null>(null);
@@ -30,7 +30,7 @@
 	let extensions = $state<Extension[]>([]);
 	let error = $state('');
 	const id = $derived(page.params.id);
-	const admin = $derived(hasRole('admin'));
+	const admin = $derived(can('trunks.manage'));
 
 	// edit trunk
 	let editOpen = $state(false);

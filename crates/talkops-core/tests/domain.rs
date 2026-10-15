@@ -54,6 +54,7 @@ async fn first_admin_login_and_sessions(pool: PgPool) {
         display_name: "Admin".into(),
         email: None,
         role: Role::User, // forced to admin
+        role_id: None,
         password: Some("supersecret1".into()),
     };
     let admin = users::create_first_admin(&pool, T, &new).await.unwrap();
@@ -96,6 +97,7 @@ async fn first_admin_login_and_sessions(pool: PgPool) {
         display_name: "Admin".into(),
         email: None,
         role: Role::Admin,
+        role_id: None,
         enabled: false,
     };
     users::update(&pool, T, user.id, &upd).await.unwrap();
@@ -115,6 +117,7 @@ async fn first_admin_login_and_sessions(pool: PgPool) {
                 display_name: "x".into(),
                 email: None,
                 role: Role::User,
+                role_id: None,
                 password: Some("short".into())
             }
         )
@@ -1889,4 +1892,62 @@ async fn door_stations_and_events(pool: PgPool) {
     // Deleting the extension removes the station.
     extensions::delete(&pool, T, door.id).await.unwrap();
     assert!(doors::list(&pool, T).await.unwrap().is_empty());
+}
+
+/// Directory users get an own role through its directory group; admins
+/// keep the admin role, and users without a matching group the built-in one.
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn directory_groups_select_own_roles(pool: PgPool) {
+    use talkops_core::identity::{self, ExternalAccount};
+    use talkops_core::roles::{self, Permission, RoleInput};
+    let reception = roles::create(
+        &pool,
+        T,
+        &RoleInput {
+            name: "Reception".into(),
+            description: String::new(),
+            permissions: vec![Permission::CallsActive],
+            directory_group: "PBX-Reception".into(),
+        },
+    )
+    .await
+    .unwrap();
+    let account = |role, groups: &[&str]| ExternalAccount {
+        source: "ldap",
+        external_id: "cn=anna".into(),
+        username: "anna".into(),
+        display_name: "Anna".into(),
+        email: None,
+        role,
+        groups: groups.iter().map(|g| g.to_string()).collect(),
+    };
+    let anna = identity::upsert_user(&pool, T, &account(Role::User, &["pbx-reception"]))
+        .await
+        .unwrap();
+    assert_eq!((anna.role, anna.role_id), (Role::User, Some(reception.id)));
+    let perms = roles::of_user(&pool, T, anna.role, anna.role_id)
+        .await
+        .unwrap();
+    assert!(perms.has(Permission::CallsActive));
+    assert!(!perms.has(Permission::CallsViewAll));
+    // The group is gone: back to the built-in role from the directory.
+    let anna = identity::upsert_user(&pool, T, &account(Role::Operator, &["staff"]))
+        .await
+        .unwrap();
+    assert_eq!((anna.role, anna.role_id), (Role::Operator, None));
+    // Admins are never limited by an own role.
+    let anna = identity::upsert_user(
+        &pool,
+        T,
+        &account(Role::Admin, &["pbx-reception", "pbx-admins"]),
+    )
+    .await
+    .unwrap();
+    assert_eq!((anna.role, anna.role_id), (Role::Admin, None));
+    assert!(
+        roles::of_user(&pool, T, Role::Admin, None)
+            .await
+            .unwrap()
+            .is_all()
+    );
 }

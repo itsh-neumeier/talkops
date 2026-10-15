@@ -146,7 +146,8 @@ pub async fn authenticate(
     if !ok {
         return Err(LdapError::Invalid);
     }
-    let role = map_role(s, &group_names(&user.groups)).ok_or(LdapError::Forbidden)?;
+    let groups = group_names(&user.groups);
+    let role = map_role(s, &groups).ok_or(LdapError::Forbidden)?;
     Ok(ExternalAccount {
         source: "ldap",
         external_id: user.dn.to_lowercase(),
@@ -154,6 +155,7 @@ pub async fn authenticate(
         display_name: user.display_name,
         email: user.email,
         role,
+        groups,
     })
 }
 
@@ -199,8 +201,8 @@ pub async fn sync_users(
     let (_, bind_password) = identity::secrets(pool, tenant, secrets)
         .await
         .map_err(|e| LdapError::Config(e.to_string()))?;
-    let accounts: Vec<(uuid::Uuid, String, users::Role)> = sqlx::query_as(
-        "SELECT id, username, role FROM users
+    let accounts: Vec<(uuid::Uuid, String, users::Role, Option<uuid::Uuid>)> = sqlx::query_as(
+        "SELECT id, username, role, role_id FROM users
          WHERE tenant_id = $1 AND auth_source = 'ldap' AND enabled",
     )
     .bind(tenant)
@@ -212,9 +214,25 @@ pub async fn sync_users(
     }
     let mut ldap = connect(&s).await?;
     let (mut disabled, mut changed) = (0, 0);
-    for (id, username, role) in accounts {
+    for (id, username, role, role_id) in accounts {
         let wanted = match find(&mut ldap, &s, bind_password.as_deref(), &username).await {
-            Ok(u) => map_role(&s, &group_names(&u.groups)),
+            Ok(u) => {
+                let groups = group_names(&u.groups);
+                match map_role(&s, &groups) {
+                    Some(users::Role::Admin) => Some((users::Role::Admin, None)),
+                    Some(r) => {
+                        let own = talkops_core::roles::directory_role(pool, tenant, &groups)
+                            .await
+                            .map_err(|e| LdapError::Config(e.to_string()))?;
+                        Some(if own.is_some() {
+                            (users::Role::User, own)
+                        } else {
+                            (r, None)
+                        })
+                    }
+                    None => None,
+                }
+            }
             Err(LdapError::Invalid) => None,
             // Directory unreachable or misconfigured: change nothing.
             Err(err) => return Err(err),
@@ -229,19 +247,22 @@ pub async fn sync_users(
                     .await
                     .map(|_| ())
             }
-            Some(r) if r != role => {
+            Some((r, own)) if r != role || own != role_id => {
                 changed += 1;
-                sqlx::query("UPDATE users SET role = $2, updated_at = now() WHERE id = $1")
-                    .bind(id)
-                    .bind(r)
-                    .execute(pool)
-                    .await
-                    .map(|_| ())
+                sqlx::query(
+                    "UPDATE users SET role = $2, role_id = $3, updated_at = now() WHERE id = $1",
+                )
+                .bind(id)
+                .bind(r)
+                .bind(own)
+                .execute(pool)
+                .await
+                .map(|_| ())
             }
             Some(_) => Ok(()),
         };
         result.map_err(|e| LdapError::Config(e.to_string()))?;
-        if wanted.is_none() || wanted != Some(role) {
+        if wanted.is_none() || wanted != Some((role, role_id)) {
             // A changed role or a disabled account needs a fresh login.
             let _ = users::delete_user_sessions(pool, id).await;
         }

@@ -6,7 +6,6 @@ use serde::Deserialize;
 use talkops_core::extensions;
 use talkops_core::settings;
 use talkops_core::stats::{self, CallStats, Range};
-use talkops_core::users::Role;
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
 
@@ -14,6 +13,7 @@ use crate::AppState;
 use crate::active_calls::{self, OverviewCall};
 use crate::auth::AuthUser;
 use crate::error::ApiResult;
+use talkops_core::roles::Permission;
 
 pub fn router() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
@@ -36,7 +36,7 @@ pub async fn call_stats(
     auth: AuthUser,
     Query(q): Query<StatsQuery>,
 ) -> ApiResult<Json<CallStats>> {
-    auth.require(Role::Operator)?;
+    auth.require_perm(Permission::CallsActive)?;
     let zone = settings::get(&state.db, auth.tenant).await?.timezone;
     Ok(Json(
         stats::calls(
@@ -56,9 +56,9 @@ pub async fn active_calls(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> ApiResult<Json<Vec<OverviewCall>>> {
-    auth.require(Role::Operator)?;
+    auth.require_perm(Permission::CallsActive)?;
     let mut calls = active_calls::list(&state, auth.tenant).await?;
-    if auth.role < Role::Admin {
+    if !auth.can(Permission::CallsLiveTranscriptAll) {
         let own = extensions::list_for_user(&state.db, auth.tenant, auth.id).await?;
         for call in &mut calls {
             call.transcript_available &= own.iter().any(|e| {

@@ -251,6 +251,7 @@ pub fn api_router() -> (Router<AppState>, utoipa::openapi::OpenApi) {
         .merge(routes::oidc::router())
         .merge(routes::identity::router())
         .merge(routes::users::router())
+        .merge(routes::roles::router())
         .merge(routes::extensions::router())
         .merge(routes::trunks::router())
         .merge(routes::settings::router())

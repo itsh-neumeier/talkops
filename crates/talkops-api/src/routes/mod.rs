@@ -19,6 +19,7 @@ pub mod provisioning;
 pub mod queues;
 pub mod recordings;
 pub mod recovery;
+pub mod roles;
 pub mod security;
 pub mod settings;
 pub mod time_conditions;

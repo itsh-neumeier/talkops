@@ -10,7 +10,7 @@
 	import Modal from '#lib/components/Modal.svelte';
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import { presetLabel, presetNotes, statusClass, statusKey } from '#lib/presets.ts';
-	import { hasRole } from '#lib/session.svelte.ts';
+	import { can } from '#lib/session.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
 
 	let trunks = $state<TrunkDetail[]>([]);
@@ -66,7 +66,7 @@
 <div class="space-y-4">
 	<PageHeader title={t('nav.trunks')}>
 		{#snippet actions()}
-			{#if hasRole('admin')}<button class="btn btn-primary" onclick={() => (open = true)}
+			{#if can('trunks.manage')}<button class="btn btn-primary" onclick={() => (open = true)}
 					>{t('trunks.new')}</button
 				>{/if}
 		{/snippet}

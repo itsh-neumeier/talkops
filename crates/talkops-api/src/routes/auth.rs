@@ -108,6 +108,17 @@ pub struct Me {
     pub user: User,
     /// Send as `X-CSRF-Token` on state-changing requests.
     pub csrf_token: String,
+    /// Permission keys of the user's role; admins get all keys.
+    pub permissions: Vec<&'static str>,
+}
+
+/// Permission keys of a user for the UI.
+async fn permission_keys(state: &AppState, user: &User) -> ApiResult<Vec<&'static str>> {
+    Ok(
+        talkops_core::roles::of_user(&state.db, user.tenant_id, user.role, user.role_id)
+            .await?
+            .keys(),
+    )
 }
 
 #[derive(Deserialize, ToSchema)]
@@ -140,6 +151,7 @@ pub async fn setup(
         display_name: req.display_name,
         email: None,
         role: Role::Admin,
+        role_id: None,
         password: Some(req.password),
     };
     let user = users::create_first_admin(&state.db, TenantId::DEFAULT, &new).await?;
@@ -175,11 +187,13 @@ pub(crate) async fn new_session(
     .await?;
     let cookie = HeaderValue::from_str(&session::session_cookie(&s.token, meta.https))
         .map_err(|e| ApiError::Internal(e.to_string()))?;
+    let permissions = permission_keys(state, &user).await?;
     Ok((
         cookie,
         Me {
             user,
             csrf_token: s.csrf_token,
+            permissions,
         },
     ))
 }
@@ -448,6 +462,7 @@ pub async fn me(State(state): State<AppState>, auth: AuthUser) -> ApiResult<Json
     Ok(Json(Me {
         user,
         csrf_token: auth.csrf_token,
+        permissions: auth.permissions.keys(),
     }))
 }
 

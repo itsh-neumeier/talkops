@@ -19,7 +19,7 @@
 	import Modal from '#lib/components/Modal.svelte';
 	import VoicemailSettings from '#lib/components/VoicemailSettings.svelte';
 	import { t } from '#lib/i18n/index.svelte.ts';
-	import { hasRole } from '#lib/session.svelte.ts';
+	import { can } from '#lib/session.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
 	import { loadTargets } from '#lib/destinations.svelte.ts';
 
@@ -33,10 +33,10 @@
 
 	async function load() {
 		// Names of number destinations ("now: group …") in the edit dialog.
-		if (hasRole('admin')) loadTargets().catch(() => {});
+		if (can('extensions.manage')) loadTargets().catch(() => {});
 		try {
 			ext = await api.get<ExtensionWithDevices>(`/extensions/${id}`);
-			if (hasRole('operator')) {
+			if (can('extensions.view')) {
 				[users, numbers, live] = await Promise.all([
 					api.get<User[]>('/users'),
 					api.get<PhoneNumber[]>('/numbers'),
@@ -65,7 +65,7 @@
 	<PageHeader
 		back={{ href: '/extensions', label: t('nav.extensions') }}
 		heading={ext ? heading : undefined}
-		actions={ext && hasRole('admin') ? actions : undefined}
+		actions={ext && can('extensions.manage') ? actions : undefined}
 	/>
 	{#snippet heading()}<span class="font-mono">{ext!.number}</span> · {ext!.display_name}{/snippet}
 	{#snippet actions()}
@@ -77,7 +77,7 @@
 		<section class="card">
 			<CallSettings extension={ext} onchange={load} />
 		</section>
-		{#if hasRole('admin')}
+		{#if can('extensions.manage')}
 			<section class="card">
 				<VoicemailSettings extensionId={ext.id} displayName={ext.display_name} />
 			</section>
@@ -88,7 +88,7 @@
 				extensionNumber={ext.number}
 				devices={ext.devices}
 				registrations={live?.registrations ?? null}
-				admin={hasRole('admin')}
+				admin={can('extensions.manage')}
 				onchange={load}
 			/>
 		</section>

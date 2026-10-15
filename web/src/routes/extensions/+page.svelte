@@ -9,7 +9,7 @@
 	import ExtensionForm from '#lib/components/ExtensionForm.svelte';
 	import Modal from '#lib/components/Modal.svelte';
 	import { t } from '#lib/i18n/index.svelte.ts';
-	import { hasRole } from '#lib/session.svelte.ts';
+	import { can } from '#lib/session.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
 	import { loadTargets } from '#lib/destinations.svelte.ts';
 
@@ -21,7 +21,7 @@
 
 	async function load() {
 		// Names of number destinations ("now: group …") in the edit dialog.
-		if (hasRole('admin')) loadTargets().catch(() => {});
+		if (can('extensions.manage')) loadTargets().catch(() => {});
 		try {
 			[extensions, users, numbers] = await Promise.all([
 				api.get<Extension[]>('/extensions'),
@@ -41,7 +41,7 @@
 <div class="space-y-4">
 	<PageHeader title={t('nav.extensions')}>
 		{#snippet actions()}
-			{#if hasRole('admin')}<button class="btn btn-primary" onclick={() => (open = true)}
+			{#if can('extensions.manage')}<button class="btn btn-primary" onclick={() => (open = true)}
 					>{t('ext.new')}</button
 				>{/if}
 		{/snippet}

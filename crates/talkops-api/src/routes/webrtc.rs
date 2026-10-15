@@ -15,7 +15,6 @@ use serde_json::json;
 use talkops_core::audit;
 use talkops_core::extensions::{self, Extension};
 use talkops_core::turn::{self, IceServer};
-use talkops_core::users::Role;
 use talkops_core::{cdr, settings, trunks};
 use tokio_tungstenite::tungstenite::{self, client::IntoClientRequest};
 use utoipa::ToSchema;
@@ -27,6 +26,7 @@ use crate::AppState;
 use crate::auth::AuthUser;
 use crate::error::{ApiError, ApiResult};
 use crate::fsxml::SIP_DOMAIN;
+use talkops_core::roles::Permission;
 
 pub fn router() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
@@ -44,7 +44,7 @@ pub struct AccountRequest {
 }
 
 async fn allowed_extensions(state: &AppState, auth: &AuthUser) -> ApiResult<Vec<Extension>> {
-    let extensions = if auth.role == Role::Admin {
+    let extensions = if auth.can(Permission::SoftphoneAnyExtension) {
         extensions::list(&state.db, auth.tenant).await?
     } else {
         extensions::list_for_user(&state.db, auth.tenant, auth.id).await?
@@ -57,7 +57,7 @@ async fn selected_extension(
     auth: &AuthUser,
     id: Option<Uuid>,
 ) -> ApiResult<Extension> {
-    if auth.role == Role::Admin && id.is_none() {
+    if auth.can(Permission::SoftphoneAnyExtension) && id.is_none() {
         return Err(ApiError::BadRequest("select an extension".into()));
     }
     allowed_extensions(state, auth)

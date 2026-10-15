@@ -13,6 +13,7 @@ use utoipa_axum::routes;
 use crate::AppState;
 use crate::auth::AuthUser;
 use crate::error::{ApiError, ApiResult};
+use talkops_core::roles::Permission;
 
 pub fn router() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
@@ -26,7 +27,7 @@ pub async fn get_identity(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> ApiResult<Json<IdentitySettings>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::IdentityManage)?;
     Ok(Json(identity::get(&state.db, auth.tenant).await?))
 }
 
@@ -37,7 +38,7 @@ pub async fn update_identity(
     auth: AuthUser,
     Json(input): Json<IdentityInput>,
 ) -> ApiResult<Json<IdentitySettings>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::IdentityManage)?;
     let s = identity::update(&state.db, auth.tenant, &state.secrets, &input).await?;
     audit::record(
         &state.db,
@@ -83,7 +84,7 @@ pub async fn test_ldap(
     auth: AuthUser,
     Json(req): Json<LdapTest>,
 ) -> ApiResult<Json<LdapTestResult>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::IdentityManage)?;
     let tenant: TenantId = auth.tenant;
     let s = identity::get(&state.db, tenant).await?;
     let (_, bind_password) = identity::secrets(&state.db, tenant, &state.secrets).await?;

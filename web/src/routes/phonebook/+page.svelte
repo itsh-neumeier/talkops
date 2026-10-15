@@ -9,7 +9,7 @@
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
 	import Modal from '#lib/components/Modal.svelte';
 	import { t } from '#lib/i18n/index.svelte.ts';
-	import { hasRole } from '#lib/session.svelte.ts';
+	import { can } from '#lib/session.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
 
 	let contacts = $state<Contact[]>([]);
@@ -152,7 +152,7 @@
 <div class="space-y-4">
 	<PageHeader title={t('nav.phonebook')} intro={t('contacts.hint')}>
 		{#snippet actions()}
-			{#if hasRole('operator')}
+			{#if can('phonebook.edit')}
 				<button class="btn" onclick={() => (sectionsOpen = true)}>{t('contacts.sections')}</button>
 				<button class="btn" onclick={() => (importOpen = true)}>{t('contacts.import')}</button>
 				<button class="btn btn-primary" onclick={() => open(null)}>{t('contacts.new')}</button>
@@ -202,7 +202,7 @@
 							<td class="col-opt-lg font-mono text-sm">{c.phone_other}</td>
 							<td class="col-opt text-sm text-slate-500">{sectionName(c.section_id)}</td>
 							<td class="space-x-1 text-right whitespace-nowrap">
-								{#if hasRole('operator')}
+								{#if can('phonebook.edit')}
 									<button class="btn btn-sm" onclick={() => open(c)}>{t('common.edit')}</button>
 									<button class="btn btn-sm btn-danger" onclick={() => remove(c)}
 										>{t('common.delete')}</button

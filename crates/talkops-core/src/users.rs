@@ -39,6 +39,8 @@ pub struct User {
     pub display_name: String,
     pub email: Option<String>,
     pub role: Role,
+    /// Own role (see `roles`); none: the built-in role in `role`.
+    pub role_id: Option<Uuid>,
     pub enabled: bool,
     pub auth_source: String,
     pub last_login_at: Option<DateTime<Utc>>,
@@ -55,6 +57,9 @@ pub struct NewUser {
     #[serde(default)]
     pub email: Option<String>,
     pub role: Role,
+    /// Any role, built-in or own; replaces `role` when set.
+    #[serde(default)]
+    pub role_id: Option<Uuid>,
     /// Initial web password; `None` creates an account without local login.
     #[serde(default)]
     pub password: Option<String>,
@@ -66,10 +71,13 @@ pub struct UserUpdate {
     #[serde(default)]
     pub email: Option<String>,
     pub role: Role,
+    /// Any role, built-in or own; replaces `role` when set.
+    #[serde(default)]
+    pub role_id: Option<Uuid>,
     pub enabled: bool,
 }
 
-const COLUMNS: &str = "id, tenant_id, username, display_name, email, role, enabled, auth_source, last_login_at, \
+const COLUMNS: &str = "id, tenant_id, username, display_name, email, role, role_id, enabled, auth_source, last_login_at, \
      password_hash, totp_secret_enc IS NOT NULL AS totp_enabled";
 
 /// Minimum length for web passwords.
@@ -97,8 +105,10 @@ pub async fn create<'e>(
         None => None,
     };
     let sql = format!(
-        "INSERT INTO users (tenant_id, username, display_name, email, role, password_hash)
-         VALUES ($1, $2, $3, NULLIF($4, ''), $5, $6) RETURNING {COLUMNS}"
+        "INSERT INTO users (tenant_id, username, display_name, email, role, password_hash, role_id)
+         VALUES ($1, $2, $3, NULLIF($4, ''), $5, $6,
+                 (SELECT id FROM roles WHERE tenant_id = $1 AND id = $7 AND builtin IS NULL))
+         RETURNING {COLUMNS}"
     );
     Ok(sqlx::query_as(&sql)
         .bind(tenant)
@@ -107,6 +117,7 @@ pub async fn create<'e>(
         .bind(new.email.as_deref().map(str::trim))
         .bind(new.role)
         .bind(hash)
+        .bind(new.role_id)
         .fetch_one(db)
         .await?)
 }
@@ -131,6 +142,7 @@ pub async fn create_first_admin(
     }
     let admin = NewUser {
         role: Role::Admin,
+        role_id: None,
         ..new.clone()
     };
     if admin.password.is_none() {
@@ -186,7 +198,9 @@ pub async fn update<'e>(
     u: &UserUpdate,
 ) -> CoreResult<User> {
     let sql = format!(
-        "UPDATE users SET display_name = $3, email = NULLIF($4, ''), role = $5, enabled = $6, updated_at = now()
+        "UPDATE users SET display_name = $3, email = NULLIF($4, ''), role = $5, enabled = $6,
+                role_id = (SELECT id FROM roles WHERE tenant_id = $1 AND id = $7 AND builtin IS NULL),
+                updated_at = now()
          WHERE tenant_id = $1 AND id = $2 RETURNING {COLUMNS}"
     );
     Ok(sqlx::query_as(&sql)
@@ -196,6 +210,7 @@ pub async fn update<'e>(
         .bind(u.email.as_deref().map(str::trim))
         .bind(u.role)
         .bind(u.enabled)
+        .bind(u.role_id)
         .fetch_one(db)
         .await?)
 }
@@ -299,6 +314,8 @@ pub struct SessionUser {
     pub display_name: String,
     pub role: Role,
     pub csrf_token: String,
+    /// Permission keys of the user's role (empty for admins: they have all).
+    pub permissions: Vec<String>,
 }
 
 pub async fn create_session(
@@ -330,7 +347,10 @@ pub async fn session_user(pool: &PgPool, token: &str) -> CoreResult<Option<Sessi
         "UPDATE sessions s SET last_seen_at = now(), expires_at = now() + make_interval(hours => $2)
          FROM users u
          WHERE s.token_digest = $1 AND s.expires_at > now() AND u.id = s.user_id AND u.enabled
-         RETURNING u.id AS user_id, u.tenant_id, u.username, u.display_name, u.role, s.csrf_token",
+         RETURNING u.id AS user_id, u.tenant_id, u.username, u.display_name, u.role, s.csrf_token,
+                   COALESCE((SELECT r.permissions FROM roles r WHERE r.tenant_id = u.tenant_id
+                             AND (r.id = u.role_id OR (u.role_id IS NULL AND r.builtin = u.role))),
+                            '{}') AS permissions",
     )
     .bind(crypto::token_digest(token))
     .bind(SESSION_TTL_HOURS as i32)

@@ -3,7 +3,7 @@
 	import { api } from '#lib/api.ts';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
 	import { formatDateTime, t } from '#lib/i18n/index.svelte.ts';
-	import { hasRole } from '#lib/session.svelte.ts';
+	import { can } from '#lib/session.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
 
 	type Block = { id: string; pattern: string; label: string; created_at: string };
@@ -170,7 +170,7 @@
 				><input
 					type="checkbox"
 					bind:checked={settings.block_anonymous}
-					disabled={!hasRole('admin')}
+					disabled={!can('blocking.settings')}
 				/>
 				{t('block.anonymous')}</label
 			>
@@ -189,7 +189,7 @@
 					><input
 						type="checkbox"
 						bind:checked={settings.phoneblock_enabled}
-						disabled={!hasRole('admin')}
+						disabled={!can('blocking.settings')}
 					/>
 					{t('block.phoneblockEnable')}</label
 				>
@@ -203,9 +203,9 @@
 							autocomplete="off"
 							placeholder={settings.phoneblock_token_set ? t('block.tokenKeep') : ''}
 							bind:value={token}
-							disabled={!hasRole('admin')}
+							disabled={!can('blocking.settings')}
 						/>
-						{#if settings.phoneblock_token_set && hasRole('admin')}
+						{#if settings.phoneblock_token_set && can('blocking.settings')}
 							<button
 								type="button"
 								class="mt-1 text-xs text-red-600 underline"
@@ -222,13 +222,13 @@
 							min="1"
 							max="100"
 							bind:value={settings.phoneblock_min_votes}
-							disabled={!hasRole('admin')}
+							disabled={!can('blocking.settings')}
 						/>
 						<p class="hint">{t('block.minVotesHint')}</p>
 					</div>
 				</div>
 			</fieldset>
-			{#if hasRole('admin')}
+			{#if can('blocking.settings')}
 				<div class="flex justify-end">
 					<button class="btn btn-primary">{t('common.save')}</button>
 				</div>

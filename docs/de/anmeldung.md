@@ -86,6 +86,9 @@ OIDC: Gruppennamen aus dem Claim. LDAP: Gruppen-DN oder nur der CN
 spielt keine Rolle. Die Rolle wird bei jeder Anmeldung aus dem Verzeichnis
 übernommen – in TalkOps geänderte Rollen dieser Konten gelten nur bis dahin.
 
+Eine eigene Rolle kann Verzeichnis-Benutzer zusätzlich über eine Gruppe
+wählen (siehe [Benutzer und Rollen](benutzer-und-rollen.md)).
+
 **Sicherheit:** Ein Verzeichnis- oder SSO-Login übernimmt nie ein lokales
 Konto mit demselben Namen; dann erscheint eine Fehlermeldung und ein Admin
 muss das lokale Konto umbenennen oder löschen.

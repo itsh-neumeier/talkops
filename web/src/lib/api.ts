@@ -64,12 +64,74 @@ export const api = {
 
 export type Role = 'admin' | 'operator' | 'user';
 
+/** Permission keys (see talkops_core::roles). */
+export type Permission =
+	| 'calls.active'
+	| 'calls.view_all'
+	| 'calls.live_transcript'
+	| 'calls.live_transcript_all'
+	| 'recordings.access_all'
+	| 'recordings.delete'
+	| 'voicemail.access_all'
+	| 'voicemail.settings'
+	| 'phonebook.edit'
+	| 'extensions.view'
+	| 'extensions.manage'
+	| 'softphone.any_extension'
+	| 'users.view'
+	| 'users.manage'
+	| 'routing.view'
+	| 'routing.manage'
+	| 'routing.override'
+	| 'blocking.manage'
+	| 'blocking.settings'
+	| 'trunks.view'
+	| 'trunks.manage'
+	| 'phones.view'
+	| 'phones.manage'
+	| 'doors.manage'
+	| 'settings.manage'
+	| 'transcription.settings'
+	| 'security.manage'
+	| 'identity.manage'
+	| 'backups.manage'
+	| 'diagnostics.manage'
+	| 'audit.view';
+
+export interface PermissionInfo {
+	key: Permission;
+	/** Group in the editor, e.g. `calls` or `system`. */
+	area: string;
+	/** Gives access to secrets, the system or more rights. */
+	sensitive: boolean;
+}
+
+export interface RoleRecord {
+	id: string;
+	/** Built-in role, or null for an own role. */
+	builtin: Role | null;
+	name: string;
+	description: string;
+	/** Empty for the admin role, which has all permissions. */
+	permissions: Permission[];
+	directory_group: string;
+	users: number;
+	updated_at: string;
+}
+
+export interface RolesOverview {
+	permissions: PermissionInfo[];
+	roles: RoleRecord[];
+}
+
 export interface User {
 	id: string;
 	username: string;
 	display_name: string;
 	email: string | null;
 	role: Role;
+	/** Own role; null: the built-in role in `role`. */
+	role_id: string | null;
 	enabled: boolean;
 	auth_source: string;
 	last_login_at: string | null;
@@ -79,6 +141,8 @@ export interface User {
 export interface Me {
 	user: User;
 	csrf_token: string;
+	/** Permission keys of the user's role; admins get all keys. */
+	permissions: Permission[];
 }
 
 export interface Component {

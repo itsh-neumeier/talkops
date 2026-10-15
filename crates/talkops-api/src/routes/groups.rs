@@ -5,7 +5,6 @@ use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use serde_json::json;
 use talkops_core::ring_groups::{self, RingGroup, RingGroupInput};
-use talkops_core::users::Role;
 use talkops_core::{audit, settings};
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
@@ -14,6 +13,7 @@ use uuid::Uuid;
 use crate::AppState;
 use crate::auth::AuthUser;
 use crate::error::ApiResult;
+use talkops_core::roles::Permission;
 
 pub fn router() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
@@ -27,7 +27,7 @@ pub async fn list_groups(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> ApiResult<Json<Vec<RingGroup>>> {
-    auth.require(Role::Operator)?;
+    auth.require_perm(Permission::RoutingView)?;
     Ok(Json(ring_groups::list(&state.db, auth.tenant).await?))
 }
 
@@ -38,7 +38,7 @@ pub async fn create_group(
     auth: AuthUser,
     Json(input): Json<RingGroupInput>,
 ) -> ApiResult<Json<RingGroup>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::RoutingManage)?;
     let emergency = settings::get(&state.db, auth.tenant)
         .await?
         .emergency_numbers;
@@ -62,7 +62,7 @@ pub async fn get_group(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<Json<RingGroup>> {
-    auth.require(Role::Operator)?;
+    auth.require_perm(Permission::RoutingView)?;
     Ok(Json(ring_groups::get(&state.db, auth.tenant, id).await?))
 }
 
@@ -74,7 +74,7 @@ pub async fn update_group(
     Path(id): Path<Uuid>,
     Json(input): Json<RingGroupInput>,
 ) -> ApiResult<Json<RingGroup>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::RoutingManage)?;
     let emergency = settings::get(&state.db, auth.tenant)
         .await?
         .emergency_numbers;
@@ -98,7 +98,7 @@ pub async fn delete_group(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<StatusCode> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::RoutingManage)?;
     let group = ring_groups::get(&state.db, auth.tenant, id).await?;
     ring_groups::delete(&state.db, auth.tenant, id).await?;
     audit::record(

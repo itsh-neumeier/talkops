@@ -15,6 +15,7 @@ use axum::extract::{ConnectInfo, FromRequestParts};
 use axum::http::request::Parts;
 use axum::http::{HeaderMap, Method, header};
 use talkops_core::audit::Actor;
+use talkops_core::roles::{Permission, Permissions};
 use talkops_core::tenant::TenantId;
 use talkops_core::users::{self, Role, SessionUser};
 use uuid::Uuid;
@@ -34,6 +35,8 @@ pub struct AuthUser {
     pub username: String,
     pub display_name: String,
     pub role: Role,
+    /// Permissions of the user's role (all for admins).
+    pub permissions: Permissions,
     pub csrf_token: String,
     pub ip: Option<String>,
 }
@@ -41,6 +44,23 @@ pub struct AuthUser {
 impl AuthUser {
     pub fn require(&self, role: Role) -> Result<(), ApiError> {
         if self.role >= role {
+            Ok(())
+        } else {
+            Err(ApiError::Forbidden)
+        }
+    }
+
+    pub fn is_admin(&self) -> bool {
+        self.role == Role::Admin
+    }
+
+    pub fn can(&self, permission: Permission) -> bool {
+        self.permissions.has(permission)
+    }
+
+    /// Fails with 403 when the user's role lacks the permission.
+    pub fn require_perm(&self, permission: Permission) -> Result<(), ApiError> {
+        if self.can(permission) {
             Ok(())
         } else {
             Err(ApiError::Forbidden)
@@ -134,6 +154,11 @@ impl FromRequestParts<AppState> for AuthUser {
             username: su.username,
             display_name: su.display_name,
             role: su.role,
+            permissions: if su.role == Role::Admin {
+                Permissions::all()
+            } else {
+                Permissions::from_keys(&su.permissions)
+            },
             csrf_token: su.csrf_token,
             ip: client_ip(parts),
         })

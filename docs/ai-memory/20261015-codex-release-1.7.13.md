@@ -22,7 +22,10 @@ Both source PRs and integration PR #28 are merged. Main is
 `702507b39fb1cf80db4ce5a0f9dd3d339b9da68c`; its tree equals tested candidate
 `5f9116b6b391d0141439187048df8b7c2118c523`. Both source heads are ancestors.
 Neither head was in the base. No contribution is omitted or pending.
-No separate Codex feature PR is assigned. Publication has not started.
+No separate Codex feature PR is assigned. Annotated tag `v1.7.13` was pushed
+once on the tested main commit. Its tag object is
+`25ecd89dcc546293041ad79d08161c09ae9a0969`. Release workflow 38752127330
+is in progress. GitHub release and registry verification remain pending.
 
 | Source | Contributor | Exact head | Dependencies | Migration IDs |
 | --- | --- | --- | --- | --- |
@@ -95,7 +98,11 @@ the PR in its summary. The selected actual head has all green checks.
   new push-event runs started on the same commit. Main did not change.
   Replacement CI 38749466584 and E2E 38749466804 both passed on the exact
   main commit. Main container smoke output reports server and worker 1.7.13.
-  The latest-main validation gate has passed; publication is next.
+  The latest-main validation gate passed before the tag push.
+- Passed before publication: latest-main-run, source ancestry, main SHA,
+  open-PR scope, code-version and unused-tag gates.
+- In progress: Release 38752127330; tag CI 38752127329,
+  FreeSWITCH image 38752127153, and tag E2E 38752127238.
 - STE review: manual review with `docs/documentation-style.md`. The official
   full standard is unavailable; full language review remains pending.
 - CodeRabbit CLI is unavailable. Focused integration review used the actual
@@ -113,8 +120,9 @@ the PR in its summary. The selected actual head has all green checks.
 
 ## Next action
 
-Recheck scope, main, versions and unused tag. Publish `v1.7.13` on the tested
-main commit, then verify the workflow, release and all image artifacts.
+Wait for Release 38752127330 and tag checks. Verify the GitHub release,
+all versioned amd64/arm64 manifests, OCI labels and moving tags. Then remove
+only unchanged integrated branches and archive the final summary.
 
 ## References
 

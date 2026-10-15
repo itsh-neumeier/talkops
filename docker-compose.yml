@@ -65,7 +65,9 @@ services:
       TALKOPS_SECRET_KEY: ${TALKOPS_SECRET_KEY:?set TALKOPS_SECRET_KEY}
       TALKOPS_BACKUP_PASSWORD: ${TALKOPS_BACKUP_PASSWORD:-}
       TALKOPS_SETUP_TOKEN: ${TALKOPS_SETUP_TOKEN:-}
-      TALKOPS_DEPLOYMENT_FILES: ${TALKOPS_DEPLOYMENT_FILES:-.env,docker-compose.yml}
+      # Recovery backups capture the Compose directory (read-only bind below).
+      TALKOPS_DEPLOYMENT_DIR: /var/lib/talkops/deployment
+      TALKOPS_DEPLOYMENT_FILES: ${TALKOPS_DEPLOYMENT_FILES:-auto}
       TALKOPS_COMPOSE_PROJECT: ${COMPOSE_PROJECT_NAME:-talkops}
       TALKOPS_COMPOSE_PROFILES: ${COMPOSE_PROFILES:-}
       TALKOPS_SIP_PORT: ${TALKOPS_SIP_PORT:-5060}
@@ -82,6 +84,10 @@ services:
       - snapshots:/var/lib/talkops/snapshots
       - backups:/var/lib/talkops/backups
       - cdr-spool:/var/lib/talkops/cdr-spool
+      - type: bind
+        source: ${TALKOPS_DEPLOYMENT_SOURCE:-.}
+        target: /var/lib/talkops/deployment
+        read_only: true
 
   freeswitch:
     image: ghcr.io/itsh-neumeier/talkops-freeswitch:${TALKOPS_VERSION:-latest}

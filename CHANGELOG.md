@@ -6,6 +6,55 @@ All notable changes to TalkOps. The format follows
 
 ## [Unreleased]
 
+## [1.7.13] – 2026-10-15
+
+### Added
+
+- Select video per device: follow the codec profile, allow H264 and VP8,
+  allow H264 only, allow VP8 only, or disable video. The call video policy
+  still applies. Add the G.711-only audio profile (PCMA and PCMU, no jitter
+  buffer). A device can combine an audio profile with an explicit video mode.
+- Show audio and video codecs and RTP packet counters for each call leg at
+  hangup in diagnostics captures. Extend the Dahua guides with video settings
+  and tests for VTH indoor monitors.
+- Show all phonebook entries for a shared number in active calls. Select a
+  name from the local extension's phonebooks first, then use alphabetical
+  order. A "+N more" card lists the phonebook, name and entry link. A name
+  link opens the phonebook section and highlights the entry. Keyboard, touch
+  and narrow-screen use are supported.
+
+### Fixed
+
+- Let the caller inherit the answering device's codecs on video calls when
+  the caller has no fixed audio profile. This permits H264 for browser calls
+  to H264-only devices instead of selecting VP8 on the browser leg.
+- Keep all door-call targets ringing until a device answers. Ignore early
+  media on door calls and send ringing to the station before the bridge.
+  A VTH early-media response no longer selects a winner on its own.
+
+### Upgrade notes
+
+- Migration `20261031000001_device_video_and_g711` adds the device video
+  column and the new codec values. Update the server and worker together.
+  Back up the database before the update. No dependency upgrade is included.
+- Existing device settings keep their defaults: standard audio permits
+  video, and other audio profiles default to video off. A call must still
+  permit video. Existing SIP names and passwords stay.
+- Door calls no longer provide SIP early-media previews. On video calls,
+  callers without a fixed audio profile inherit the answering leg's audio
+  codec too. For example, a browser can use G.722 instead of Opus.
+- Active-call party objects add `contact_id` and `matches`. The `ambiguous`
+  field stays. The displayed name for a shared number is a selection; the
+  card shows the other possible entries.
+
+### Known limitations
+
+- The VTO-to-VTH missing-picture cause remains open. Configure the main VTO
+  on the VTH, compare the device video modes, and inspect the new RTP counters.
+  This release does not claim a verified Dahua hardware fix.
+- The percent-encoded FreeSWITCH CDR spool import defect remains separate
+  work. Preserve files in `cdr-spool/rejected/` for a later recovery.
+
 ## [1.7.12] – 2026-10-14
 
 ### Changed

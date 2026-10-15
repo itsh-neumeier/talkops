@@ -674,6 +674,7 @@ mod tests {
             phone_label: String::new(),
             phone_display_name: String::new(),
             codec_profile: None,
+            video: None,
             sip_password_format: Default::default(),
             enabled: true,
         });

@@ -90,14 +90,14 @@ Part 1 is implemented, tested and documented:
 - ADR number 0031: PR #30 and PR #31 use 0029 and 0030.
 - Migration ID: 20261102000001. Renamed from 20261101000001 because open
   PR #30 (roles_permissions) uses 20261101000001 and PR #31 uses 20261101000002.
-- Part 2 (separate PR): default read-only bind of the Compose directory,
+- Part 2: https://github.com/itsh-neumeier/talkops/pull/34 (branch claude/backup-deployment-capture). Default read-only bind of the Compose directory,
   `TALKOPS_DEPLOYMENT_FILES=auto` discovery, optional Portainer API
   connection that reads the stack file and environment.
 - Not included: e-mail alerts for failed targets.
 
 ## Next action
 
-Watch CI of PR #33. Implement part 2 on its own branch from the target branch.
+Watch CI of PR #33 and PR #34. The release chat integrates both (see PR #34 for the refresh call in create_in).
 
 ## References
 

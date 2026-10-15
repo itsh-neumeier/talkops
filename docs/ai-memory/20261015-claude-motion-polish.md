@@ -8,7 +8,7 @@
 - Status: Completed. The PR records the readiness.
 - Branch: claude/motion-polish
 - Base commit: c783658 (claude/transcription-jobs, itsh-neumeier/talkops#31)
-- Related commits or PR: Pending
+- Related commits or PR: [itsh-neumeier/talkops#32](https://github.com/itsh-neumeier/talkops/pull/32)
 
 ## Goal
 

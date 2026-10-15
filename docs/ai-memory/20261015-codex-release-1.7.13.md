@@ -8,7 +8,7 @@
 - Status: In progress
 - Branch: `codex/release-1.7.13`
 - Base commit: `6276e7d5e1b3bbe2a97e0fe237758b3f3a0e44b4` (remote main, 1.7.12)
-- Integration PR: Pending
+- Integration PR: [#28](https://github.com/itsh-neumeier/talkops/pull/28)
 
 ## Goal
 
@@ -101,8 +101,8 @@ the PR in its summary. The selected actual head has all green checks.
 
 ## Next action
 
-Create the integration PR and wait for final-head
-CI/E2E. Merge it, verify the resulting main commit, and wait for main CI/E2E
+Wait for final-head CI/E2E on PR #28. Merge it, verify the resulting main
+commit, and wait for main CI/E2E
 before the tag push. Verify all release images and moving tags after publication.
 
 ## References

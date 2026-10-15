@@ -46,6 +46,8 @@ Who may access what?
 - Admins: everything; listening to other people's calls, reading their
   transcripts and deleting are written to the audit log.
 - Operators see all calls in the call log, but recordings only like users.
+- Transcribe again and the transcription jobs page: see
+  [transcription jobs](transcriptions.md).
 - These are the defaults. Admins can change them per role: see
   [users and roles](users-and-roles.md).
 

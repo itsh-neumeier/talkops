@@ -12,7 +12,7 @@ use talkops_core::recordings::Segment;
 
 /// One recognised word with its time in the recording, in seconds. The
 /// text includes punctuation (`"Ja,"`).
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub(crate) struct Word {
     pub start: f32,
     pub end: f32,

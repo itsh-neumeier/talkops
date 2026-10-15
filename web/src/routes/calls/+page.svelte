@@ -9,6 +9,7 @@
 	import { api, type Call, type CallParty, type Recording } from '#lib/api.ts';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
 	import TranscriptView from '#lib/components/TranscriptView.svelte';
+	import RetranscribeDialog from '#lib/components/RetranscribeDialog.svelte';
 	import { can } from '#lib/session.svelte.ts';
 	import { formatDateTime, formatDuration, t } from '#lib/i18n/index.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
@@ -35,6 +36,7 @@
 	let loadingMore = $state(false);
 	let error = $state('');
 	let open = $state<Recording | null>(null);
+	let again = $state(false);
 	let filters = $state<CallFilters>(parseFilters(page.url.searchParams));
 	let phonebook = $state(true);
 	/** Number of the latest list request; older answers are ignored. */
@@ -491,7 +493,12 @@
 									url="/recordings/{open.id}/transcript"
 									status={open.transcript_status}
 								/>
-								<div class="flex justify-end gap-1">
+								<div class="flex flex-wrap justify-end gap-1">
+									{#if can('recordings.retranscribe')}
+										<button class="btn btn-sm" onclick={() => (again = true)}
+											>{t('tx.again')}</button
+										>
+									{/if}
 									<a class="btn btn-sm" href="/api/v1/recordings/{open.id}/audio" download
 										>{t('vm.download')}</a
 									>
@@ -540,3 +547,7 @@
 		{/if}
 	</div>
 </div>
+
+{#if open}
+	<RetranscribeDialog recording={open.id} bind:open={again} />
+{/if}

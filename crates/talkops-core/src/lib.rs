@@ -37,6 +37,7 @@ pub mod telemetry;
 pub mod tenant;
 pub mod time_conditions;
 pub mod transcription_api;
+pub mod transcription_jobs;
 pub mod transcription_profiles;
 pub mod trunks;
 pub mod turn;

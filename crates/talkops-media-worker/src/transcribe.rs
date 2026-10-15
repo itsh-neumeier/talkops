@@ -19,11 +19,13 @@ use std::io::Read;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, bail};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use talkops_core::recordings::Segment;
 use talkops_core::settings::TranscriptionQuality;
+use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
+use tokio::sync::watch;
 
 use crate::utterances::{self, Word};
 
@@ -251,6 +253,25 @@ impl Whisper {
         language: &str,
         opts: &Options,
     ) -> anyhow::Result<Vec<Segment>> {
+        match self
+            .transcribe_with(wav, language, opts, None, None)
+            .await?
+        {
+            Outcome::Done(segments) => Ok(segments),
+            Outcome::Paused(_) | Outcome::Stopped => bail!("transcription interrupted"),
+        }
+    }
+
+    /// Like [Whisper::transcribe], with progress reports, pause and stop
+    /// requests, and a resume point from an earlier pause.
+    pub async fn transcribe_with(
+        &self,
+        wav: &Path,
+        language: &str,
+        opts: &Options,
+        control: Option<&Control>,
+        resume: Option<Checkpoint>,
+    ) -> anyhow::Result<Outcome> {
         let model = self.ensure_model(self.model_name(opts.quality)).await?;
         let args = self.decode_args(&model, language, opts).await?;
         let vad = args.iter().any(|a| a == "--vad");
@@ -259,43 +280,258 @@ impl Whisper {
             let (wav, work) = (wav.to_owned(), work.path.clone());
             tokio::task::spawn_blocking(move || prepare(&wav, &work)).await??
         };
-        let mut parties = Vec::new();
-        for (speaker, file, samples) in channels {
-            let out = file.with_extension("");
-            let output = Command::new(&self.bin)
-                .kill_on_drop(true)
-                .args(&args)
-                .arg("-f")
-                .arg(&file)
-                // No `-np`: the log has the VAD time map.
-                .args(["-ojf", "-of"])
-                .arg(&out)
-                .output()
-                .await
-                .with_context(|| format!("run {}", self.bin.display()))?;
-            if !output.status.success() {
-                bail!(
-                    "whisper failed ({}): {}",
-                    output.status,
-                    String::from_utf8_lossy(&output.stderr)
-                        .lines()
-                        .last()
-                        .unwrap_or_default()
-                );
-            }
-            let json = tokio::fs::read(out.with_extension("json"))
-                .await
-                .context("whisper output")?;
-            let map = VadMap::parse(&String::from_utf8_lossy(&output.stderr));
-            if vad && map.is_none() {
-                tracing::warn!("whisper log without VAD time map; using segment times");
-            }
-            let map = if vad { map } else { Some(VadMap::NONE) };
-            let words = parse_output(&json, map.as_ref())?;
-            parties.push((speaker, words, samples));
+        let lengths: Vec<f32> = channels
+            .iter()
+            .map(|(_, _, s)| s.len() as f32 / SAMPLE_RATE as f32)
+            .collect();
+        let total: f32 = lengths.iter().sum::<f32>().max(0.001);
+        let mut resume = resume.unwrap_or_default();
+        if resume.channel > channels.len() || resume.done.len() != resume.channel {
+            // A resume point of other audio: start again.
+            resume = Checkpoint::default();
         }
-        Ok(to_lines(&parties))
+        let mut parties = Vec::new();
+        for (i, (speaker, file, samples)) in channels.into_iter().enumerate() {
+            if i < resume.channel {
+                parties.push((speaker, resume.done[i].clone(), samples));
+                continue;
+            }
+            let (offset, mut words) = if i == resume.channel {
+                (resume.offset, std::mem::take(&mut resume.partial))
+            } else {
+                (0.0, Vec::new())
+            };
+            let input = if offset > 0.0 {
+                let rest = file.with_file_name(format!("ch{i}-rest.wav"));
+                let from = ((offset * SAMPLE_RATE as f32) as usize).min(samples.len());
+                write_wav(&rest, &samples[from..])?;
+                rest
+            } else {
+                file.clone()
+            };
+            let before: f32 = lengths[..i].iter().sum();
+            let report = |share: f32| {
+                if let Some(c) = control {
+                    let channel = offset + (lengths[i] - offset).max(0.0) * share;
+                    let _ = c
+                        .progress
+                        .send(((before + channel) / total).clamp(0.0, 1.0));
+                }
+            };
+            report(0.0);
+            let rest = (lengths[i] - offset).max(0.001);
+            let run = self
+                .run_channel(&args, &input, vad, offset, rest, control, &report)
+                .await?;
+            match run {
+                ChannelRun::Done(mut more) => {
+                    words.append(&mut more);
+                    parties.push((speaker, words, samples));
+                }
+                ChannelRun::Interrupted(Interrupt::Stop, _) => return Ok(Outcome::Stopped),
+                ChannelRun::Interrupted(Interrupt::Pause, mut partial) => {
+                    words.append(&mut partial);
+                    let at = words.last().map_or(offset, |w| w.end.max(offset));
+                    let done = parties.into_iter().map(|(_, w, _)| w).collect();
+                    let share = (before + at) / total;
+                    return Ok(Outcome::Paused(Checkpoint {
+                        channel: i,
+                        offset: at,
+                        done,
+                        partial: words,
+                        progress: share.clamp(0.0, 1.0),
+                    }));
+                }
+            }
+        }
+        if let Some(c) = control {
+            let _ = c.progress.send(1.0);
+        }
+        Ok(Outcome::Done(to_lines(&parties)))
     }
+
+    /// Runs whisper-cli on one channel file. Reads the progress from its
+    /// log and the finished word segments from its output, so that a pause
+    /// keeps the words up to that point. Times are shifted by `offset`.
+    #[allow(clippy::too_many_arguments)]
+    async fn run_channel(
+        &self,
+        args: &[String],
+        file: &Path,
+        vad: bool,
+        offset: f32,
+        duration: f32,
+        control: Option<&Control>,
+        report: &(dyn Fn(f32) + Sync),
+    ) -> anyhow::Result<ChannelRun> {
+        let out = file.with_extension("");
+        let mut child = Command::new(&self.bin)
+            .kill_on_drop(true)
+            .args(args)
+            .arg("-f")
+            .arg(file)
+            // No `-np`: the log has the VAD time map. `-pp`: progress.
+            .args(["-pp", "-ojf", "-of"])
+            .arg(&out)
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+            .with_context(|| format!("run {}", self.bin.display()))?;
+        let mut stdout = BufReader::new(child.stdout.take().context("stdout")?).lines();
+        let mut stderr = BufReader::new(child.stderr.take().context("stderr")?).lines();
+        let mut interrupt = control.map(|c| c.interrupt.clone());
+        let mut log = String::new();
+        let mut partial = Vec::new();
+        let (mut out_open, mut err_open) = (true, true);
+        // whisper.cpp reports progress per 30 s window; the time of the
+        // last word gives steps in between.
+        let mut share = 0.0f32;
+        while out_open || err_open {
+            tokio::select! {
+                line = stdout.next_line(), if out_open => match line? {
+                    Some(line) => {
+                        if let Some(mut w) = parse_segment_line(&line) {
+                            let heard = (w.end / duration).min(0.99);
+                            if heard > share {
+                                share = heard;
+                                report(share);
+                            }
+                            w.start += offset;
+                            w.end += offset;
+                            partial.push(w);
+                        }
+                    }
+                    None => out_open = false,
+                },
+                line = stderr.next_line(), if err_open => match line? {
+                    Some(line) => {
+                        if let Some(p) = parse_progress(&line)
+                            && p > share
+                        {
+                            share = p;
+                            report(share);
+                        }
+                        log.push_str(&line);
+                        log.push('\n');
+                    }
+                    None => err_open = false,
+                },
+                changed = async {
+                    match interrupt.as_mut() {
+                        Some(rx) => rx.changed().await.ok().and_then(|_| *rx.borrow()),
+                        None => std::future::pending().await,
+                    }
+                } => {
+                    if let Some(kind) = changed {
+                        let _ = child.kill().await;
+                        return Ok(ChannelRun::Interrupted(kind, partial));
+                    }
+                    // The sender is gone: no more requests.
+                    if interrupt.as_ref().is_some_and(|rx| rx.has_changed().is_err()) {
+                        interrupt = None;
+                    }
+                }
+            }
+        }
+        let status = child.wait().await?;
+        if !status.success() {
+            bail!(
+                "whisper failed ({status}): {}",
+                log.lines().last().unwrap_or_default()
+            );
+        }
+        let json = tokio::fs::read(out.with_extension("json"))
+            .await
+            .context("whisper output")?;
+        let map = VadMap::parse(&log);
+        if vad && map.is_none() {
+            tracing::warn!("whisper log without VAD time map; using segment times");
+        }
+        let map = if vad { map } else { Some(VadMap::NONE) };
+        let mut words = parse_output(&json, map.as_ref())?;
+        for w in &mut words {
+            w.start += offset;
+            w.end += offset;
+        }
+        Ok(ChannelRun::Done(words))
+    }
+}
+
+/// A request to a running transcription.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Interrupt {
+    Pause,
+    Stop,
+}
+
+/// The link between a running transcription and its job: progress out
+/// (0 to 1), pause and stop requests in.
+pub struct Control {
+    pub progress: watch::Sender<f32>,
+    pub interrupt: watch::Receiver<Option<Interrupt>>,
+}
+
+/// The state of a paused transcription: finished channels, the words of
+/// the current channel and the time where it stopped.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+pub(crate) struct Checkpoint {
+    /// Index of the current channel (silent channels do not count).
+    pub channel: usize,
+    /// Time in the current channel where it continues, in seconds.
+    pub offset: f32,
+    /// Words of the finished channels.
+    pub done: Vec<Vec<Word>>,
+    /// Words of the current channel before `offset`.
+    pub partial: Vec<Word>,
+    /// Share of the work done.
+    pub progress: f32,
+}
+
+pub(crate) enum Outcome {
+    Done(Vec<Segment>),
+    Paused(Checkpoint),
+    Stopped,
+}
+
+enum ChannelRun {
+    Done(Vec<Word>),
+    Interrupted(Interrupt, Vec<Word>),
+}
+
+/// The progress in a whisper-cli log line
+/// (`whisper_print_progress_callback: progress =  40%`), from 0 to 1.
+fn parse_progress(line: &str) -> Option<f32> {
+    let rest = &line[line.find("progress =")? + "progress =".len()..];
+    let pct: f32 = rest.trim().trim_end_matches('%').trim().parse().ok()?;
+    Some((pct / 100.0).clamp(0.0, 1.0))
+}
+
+/// A word segment of whisper-cli's output
+/// (`[00:00:01.230 --> 00:00:01.560]   Hallo`). whisper.cpp maps segment
+/// times back to the recording also with VAD.
+fn parse_segment_line(line: &str) -> Option<Word> {
+    let line = line.trim();
+    let rest = line.strip_prefix('[')?;
+    let (times, text) = rest.split_once(']')?;
+    let (from, to) = times.split_once("-->")?;
+    let secs = |t: &str| -> Option<f32> {
+        let mut parts = t.trim().split(':').rev();
+        let s: f32 = parts.next()?.parse().ok()?;
+        let m: f32 = parts.next().map_or(Some(0.0), |p| p.parse().ok())?;
+        let h: f32 = parts.next().map_or(Some(0.0), |p| p.parse().ok())?;
+        Some(h * 3600.0 + m * 60.0 + s)
+    };
+    let text = text.trim();
+    if text.is_empty() {
+        return None;
+    }
+    let start = secs(from)?;
+    let end = secs(to)?.max(start);
+    Some(Word {
+        start,
+        end: end.min(start + MAX_WORD_SECS),
+        text: text.to_owned(),
+    })
 }
 
 /// Lines of all parties (speaker, words, 16 kHz samples), merged by time.
@@ -668,6 +904,27 @@ fn parse_output(json: &[u8], map: Option<&VadMap>) -> anyhow::Result<Vec<Word>> 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reads_progress_and_word_lines() {
+        assert_eq!(
+            parse_progress("whisper_print_progress_callback: progress =  40%"),
+            Some(0.4)
+        );
+        assert_eq!(
+            parse_progress("whisper_init_from_file: loading model"),
+            None
+        );
+        let w = parse_segment_line("[00:01:02.500 --> 00:01:03.000]   Hallo,").unwrap();
+        assert_eq!((w.start, w.end, w.text.as_str()), (62.5, 63.0, "Hallo,"));
+        assert_eq!(
+            parse_segment_line("[00:00:01.000 --> 00:00:01.500]   "),
+            None
+        );
+        assert_eq!(parse_segment_line("system_info: n_threads = 4"), None);
+        let long = parse_segment_line("[00:00:00.000 --> 00:00:09.000]  Pause").unwrap();
+        assert_eq!(long.end, MAX_WORD_SECS, "a word does not take the pause");
+    }
 
     #[test]
     fn prompts_and_normalizes() {

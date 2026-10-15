@@ -29,7 +29,7 @@ appear in arguments, in the process list or in a file on disk. rclone gets
 an empty configuration and a private temporary home folder.
 
 - Targets: local folder, SMB, S3, WebDAV, SFTP and FTP in table
-  `backup_targets` (migration `20261101000001`). Secrets are JSON encrypted
+  `backup_targets` (migration `20261102000001`). Secrets are JSON encrypted
   with `TALKOPS_SECRET_KEY` (ADR 0008). The API returns `has_secret` only.
 - NFS and kernel SMB mounts: the host Docker daemon mounts them as volumes.
   TalkOps uses them as local targets below `TALKOPS_BACKUP_TARGET_ROOTS`.

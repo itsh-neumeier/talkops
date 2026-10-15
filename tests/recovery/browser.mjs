@@ -35,7 +35,7 @@ try {
       assert.equal(body.name, 'talkops-20261015-033000.tar.gz.age');
       assert.equal(body.connection.path, 'talkops');
       assert.equal(body.password, 'backup-password');
-      return route.fulfill({json:{manifest:{format:2,talkops_version:'1.7.13',created_at:'2026-10-15T03:30:00Z',schema_version:20261101000001,volumes:['voicemail','recordings'],deployment:null},deployment_bundle:null,archive:body.name}});
+      return route.fulfill({json:{manifest:{format:2,talkops_version:'1.7.13',created_at:'2026-10-15T03:30:00Z',schema_version:20261102000001,volumes:['voicemail','recordings'],deployment:null},deployment_bundle:null,archive:body.name}});
     }
     if (path === '/api/v1/setup') return route.fulfill({json:{needs_setup:!restored}});
     return route.fulfill({status:401,json:{error:'unauthorized',message:'login required'}});

@@ -104,7 +104,7 @@ and Portainer steps. SMB can use the same method as an alternative.
 
 ### 2. Data model (one migration)
 
-Migration ID: `20261101000001_backup_targets.sql` (after the current last
+Migration ID: `20261102000001_backup_targets.sql` (after the current last
 ID `20261031000001`).
 
 ```sql

@@ -34,7 +34,7 @@ Part 1 is implemented, tested and documented:
 
 ## Changes
 
-- `migrations/20261101000001_backup_targets.sql`: table `backup_targets`.
+- `migrations/20261102000001_backup_targets.sql`: table `backup_targets`.
 - `crates/talkops-core/src/backup_targets.rs`: types, validation, schedule,
   retention, queries.
 - `crates/talkops-api/src/rclone.rs`: rclone process wrapper.
@@ -87,7 +87,8 @@ Part 1 is implemented, tested and documented:
 
 ## Dependencies and open work
 
-- Migration ID: 20261101000001. Check for collisions at integration.
+- Migration ID: 20261102000001. Renamed from 20261101000001 because open
+  PR #30 (roles_permissions) uses 20261101000001 and PR #31 uses 20261101000002.
 - Part 2 (separate PR): default read-only bind of the Compose directory,
   `TALKOPS_DEPLOYMENT_FILES=auto` discovery, optional Portainer API
   connection that reads the stack file and environment.

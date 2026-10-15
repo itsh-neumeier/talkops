@@ -164,6 +164,18 @@ const vth: GuideSection[] = [
 		unconfirmed: ['doorGuide.dahua.vth.main.unconfirmed']
 	},
 	{
+		id: 'video',
+		title: 'doorGuide.dahua.vth.video.title',
+		intro: 'doorGuide.dahua.vth.video.intro',
+		steps: [
+			'doorGuide.dahua.vth.video.mainVto',
+			'doorGuide.dahua.vth.video.h264',
+			'doorGuide.dahua.vth.video.off',
+			'doorGuide.dahua.vth.video.capture'
+		],
+		unconfirmed: ['doorGuide.dahua.vth.video.unconfirmed']
+	},
+	{
 		id: 'passwords',
 		title: 'doorGuide.dahua.pw.title',
 		table: {

@@ -210,6 +210,16 @@ const de: Record<keyof typeof en, string> = {
 	'codecProfiles.standard': 'Standard',
 	'codecProfiles.hd': 'HD (G.722)',
 	'codecProfiles.robust': 'Robust (iLBC)',
+	'codecProfiles.g711': 'Nur G.711',
+	'ext.deviceVideo': 'Video',
+	'ext.deviceVideoAuto': 'Automatisch ({video})',
+	'ext.deviceVideoHint':
+		'Video-Codecs dieses Geräts bei Anrufen, die Video erlauben. Nur H264 für Geräte ohne VP8 (z. B. Dahua-Innenstationen); Aus für Geräte, die das Türbild auf anderem Weg zeigen.',
+	'deviceVideo.auto': 'H264 und VP8',
+	'deviceVideo.off': 'Aus',
+	'deviceVideo.h264': 'Nur H264',
+	'deviceVideo.vp8': 'Nur VP8',
+	'ext.deviceVideoBadge': 'Video: {video}',
 	'kinds.desk': 'Tischtelefon',
 	'kinds.dect': 'DECT-Mobilteil',
 	'kinds.softphone': 'Softphone',
@@ -1481,6 +1491,19 @@ const de: Record<keyof typeof en, string> = {
 		'Ein Dahua-Neben-VTH (Room No. mit -1, #1 oder ähnlich) verbindet sich im Dahua-System mit seinem Haupt-VTH, nicht mit TalkOps.',
 	'doorGuide.dahua.vth.main.unconfirmed':
 		'Neben-VTH, die über einen Haupt-VTH verbunden sind, sind mit TalkOps nicht getestet.',
+	'doorGuide.dahua.vth.video.title': 'Video am VTH',
+	'doorGuide.dahua.vth.video.intro':
+		'Der VTH kann das Bild der VTO direkt von der VTO oder über TalkOps bekommen (SIP-Video, nur H264).',
+	'doorGuide.dahua.vth.video.mainVto':
+		'Am VTH-Bildschirm Setting → Project Settings → VTO öffnen (Projektpasswort aus der Ersteinrichtung). Die VTO als Haupt-VTO eintragen: IP-Adresse, Benutzer admin und das Web-Login-Passwort der VTO. Den Eintrag aktivieren.',
+	'doorGuide.dahua.vth.video.h264':
+		'In TalkOps das Gerät des VTH bearbeiten und Video auf „Nur H264“ stellen. Anrufe von Browsern und VP8-Telefonen nutzen dann H264.',
+	'doorGuide.dahua.vth.video.off':
+		'Zeigt der VTH das Bild direkt von der VTO, kann Video auf „Aus“ stehen. Der VTH erhält dann von TalkOps nur Ton.',
+	'doorGuide.dahua.vth.video.capture':
+		'Zur Prüfung unter Einstellungen → System → Diagnose einen Mitschnitt starten. Jeder Gesprächszweig zeigt am Ende des Anrufs seine Audio- und Video-Pakete.',
+	'doorGuide.dahua.vth.video.unconfirmed':
+		'Welcher Weg an einem VTH5422H (V4.800.0.2) mit einer VTO4202F-P-S2 (V4.600.0.3) das Bild zeigt.',
 	'doorGuide.dahua.vth.pw.sipWhere': 'ConfigTool: Sip Register Pwd',
 	'doorGuide.dahua.vth.pw.device': 'Geräte-Login des VTH',
 	'doorGuide.dahua.vth.pw.deviceWhere': 'Anmeldung in ConfigTool, Weboberfläche',

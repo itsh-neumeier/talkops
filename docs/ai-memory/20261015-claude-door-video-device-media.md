@@ -8,7 +8,7 @@
 - Status: Completed (PR submitted for review)
 - Branch: `claude/jolly-curie-t4126j`
 - Base commit: `6276e7d` (origin/main, TalkOps 1.7.12)
-- Related commits or PR: Pending
+- Related commits or PR: https://github.com/itsh-neumeier/talkops/pull/27
 
 ## Goal
 

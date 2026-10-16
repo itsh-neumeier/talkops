@@ -22,7 +22,7 @@ All current open contributions are integrated with their source history.
 PR46 and PR47 are ready, not drafts. Both are from Codex. No Claude Code
 contribution is assigned to this batch. None was already in main. No agreed
 contribution is omitted or pending. Both source PRs and integration PR48 are merged. Publication is pending
-exact-main checks and artifact verification.
+artifact verification. Exact-main CI/E2E passed before tagging.
 
 | PR | Exact source head | Dependency | Migration ID |
 | --- | --- | --- | --- |
@@ -66,8 +66,9 @@ exact-main checks and artifact verification.
   and placeholders with no duplicates, all 12 browser suites retained once,
   both source ancestors and version-only metadata against merged baseline
   b747d9fb092f78b935afb8de67710edf0b6c1720.
-- Passed: final candidate CI/E2E. Exact-main CI/E2E and publication remain
-  pending. Immutable workflow run IDs and the first failure are below.
+- Passed: final candidate CI/E2E. Exact-main CI/E2E also
+  passed. Release and artifact verification remain pending. Immutable workflow
+  run IDs and the first failure are below.
 - Cargo metadata offline first stopped because a locked cross-platform crate
   was not cached. Online metadata downloaded the existing locked crates.
   Cargo.lock changes only the six workspace package versions.
@@ -95,9 +96,10 @@ exact-main checks and artifact verification.
 
 ## Next action
 
-Wait for exact-main CI38956465215 and E2E38956465225. Recheck current main,
-scope, versions and unused tag. Push one v1.8.1 tag to the tested main commit.
-Verify Release, GitHub release and all three two-platform image manifests.
+Wait for Release38958752273 and additional tag checks. Verify the GitHub
+release, three versioned two-platform manifests, all six OCI version/revision
+labels and moving 1.8/latest tags. Then archive the final record and clean
+only unchanged integrated branches.
 
 ## References
 
@@ -129,3 +131,18 @@ Verify Release, GitHub release and all three two-platform image manifests.
 - Do not push the batch branch after merge. Local checkpoint commits change
   only this task record. Archive the final record under audit/release-1.8.1
   after publication, without changing released code or creating another release.
+
+## Tag checkpoint
+
+- Exact-main CI38956465215 and E2E38956465225 passed on the release commit.
+  Main E2E passed on its first attempt. Rechecked latest-main run IDs, current
+  remote main, empty open-PR list, both source ancestors, versions and unused
+  tag immediately before publication.
+- Annotated v1.8.1 was pushed once at 2026-10-16T19:57:47Z. Tag object:
+  b62c6350a56682917e6f9136389fd8a3243258e1. Peeled target:
+  86772ec0c31990f7a29a639ffb90db6ebef217e2. No published tag moved.
+- The first local pre-tag helper stopped before tag creation because PowerShell
+  needed -AsHashtable for the empty npm lock root key. Corrected the helper,
+  repeated all guards, and pushed one new tag. This did not change code or CI.
+- Publication run38958752273. Additional tag CI38958752284,
+  E2E38958752093 and FreeSWITCH38958752047 are in progress.

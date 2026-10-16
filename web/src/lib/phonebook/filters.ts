@@ -1,6 +1,6 @@
 // Filter and sort state of the phone book page, kept in the address bar.
 // The page loads all contacts, so the filters and the sort run in the browser.
-import { parseOrder, queryString, textCompare, type Order } from '../list/sort.ts';
+import { digitsMatch, parseOrder, queryString, textCompare, type Order } from '../list/sort.ts';
 
 export type SortKey = 'name' | 'company' | 'section';
 /** Phone number fields of a contact. */
@@ -101,8 +101,6 @@ export function anyFilter(f: PhonebookFilters): boolean {
 	return Object.values(activeFilters(f)).some(Boolean) || !!f.search.trim();
 }
 
-const digits = (v: string) => v.replace(/\D/g, '');
-
 /** True if the contact matches the free text (name, company or a number). */
 export function matchesSearch(c: ContactRow, search: string, sectionName = ''): boolean {
 	const q = search.trim().toLowerCase();
@@ -111,9 +109,8 @@ export function matchesSearch(c: ContactRow, search: string, sectionName = ''): 
 	if ([c.name, c.company, sectionName, ...numbers].some((v) => v.toLowerCase().includes(q))) {
 		return true;
 	}
-	// "0951 123" also finds "+49951123…" when the text is a number.
-	const qd = digits(q);
-	return /^[\d\s+()/.-]+$/.test(q) && qd.length >= 3 && numbers.some((n) => digits(n).includes(qd));
+	// "0951 123" also finds "+49 951 123…" when the text is a number.
+	return digitsMatch(q, numbers);
 }
 
 function hasNumber(value: string, want: Presence): boolean {

@@ -1001,7 +1001,14 @@ export interface TranscriptionJob {
 	voicemail_id: string | null;
 	audio_secs: number;
 	caller_number: string | null;
+	caller_name: string | null;
 	destination: string | null;
+	/** Direction of the call; in the history also for voicemails. */
+	direction: Call['direction'] | null;
+	/** History only: parties resolved through the phone book. */
+	caller?: CallParty | null;
+	called?: CallParty | null;
+	via_number?: string | null;
 	call_started_at: string | null;
 	requested_by: string | null;
 	attempts: number;

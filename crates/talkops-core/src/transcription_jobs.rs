@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, PgPool};
 use uuid::Uuid;
 
+use crate::cdr::Direction;
 use crate::error::{CoreError, CoreResult};
 use crate::jobs::{self, JobStatus, NewJob};
 use crate::recordings::{self, Source};
@@ -199,8 +200,21 @@ pub struct JobView {
     pub voicemail_id: Option<Uuid>,
     /// Length of the audio in seconds.
     pub audio_secs: i32,
+    /// Caller of the recorded call or of the voicemail.
     pub caller_number: Option<String>,
+    pub caller_name: Option<String>,
     pub destination: Option<String>,
+    /// Direction of the recorded call; none for a voicemail.
+    pub direction: Option<Direction>,
+    /// Own extension of the call, or the voicemail box.
+    #[serde(skip)]
+    pub extension_id: Option<Uuid>,
+    /// Answering or called extension of the call.
+    #[serde(skip)]
+    pub dest_extension_id: Option<Uuid>,
+    /// Own phone number that the caller dialed.
+    #[serde(skip)]
+    pub number_id: Option<Uuid>,
     pub call_started_at: Option<DateTime<Utc>>,
     pub requested_by: Option<String>,
     pub attempts: i32,
@@ -236,7 +250,11 @@ const VIEW: &str = "SELECT j.id, j.status, j.priority, j.progress,
         j.payload->'engine' AS engine, '' AS engine_key,
         r.id AS recording_id, vm.id AS voicemail_id,
         COALESCE(r.duration_secs, vm.duration_secs, 0) AS audio_secs,
-        c.caller_number, COALESCE(c.destination, ve.number) AS destination,
+        COALESCE(c.caller_number, vm.caller_number) AS caller_number,
+        COALESCE(c.caller_name, vm.caller_name) AS caller_name,
+        COALESCE(c.destination, ve.number) AS destination,
+        c.direction, COALESCE(c.extension_id, vm.extension_id) AS extension_id,
+        c.dest_extension_id, c.number_id,
         COALESCE(c.started_at, vm.created_at) AS call_started_at,
         u.display_name AS requested_by, j.attempts, j.last_error, j.control,
         j.created_at, j.started_at, j.run_started_at, j.run_progress_start, j.finished_at,
@@ -251,6 +269,10 @@ const VIEW: &str = "SELECT j.id, j.status, j.priority, j.progress,
        AND ($3::uuid IS NULL OR j.requested_by = $3
             OR c.extension_id = ANY($4) OR c.dest_extension_id = ANY($4)
             OR vm.extension_id = ANY($4))";
+
+/// Maximum number of jobs in the history. The history covers 7 days, so the
+/// UI normally has the full list and filters it in the browser.
+pub const HISTORY_LIMIT: i64 = 1000;
 
 /// Active jobs (running, paused, queued) or the history of the last days.
 pub async fn list(
@@ -267,7 +289,7 @@ pub async fn list(
         format!(
             "{VIEW} AND j.status IN ('done', 'failed', 'cancelled')
                AND j.updated_at > now() - interval '7 days'
-             ORDER BY j.updated_at DESC LIMIT 200"
+             ORDER BY j.updated_at DESC LIMIT {HISTORY_LIMIT}"
         )
     } else {
         format!(
@@ -543,7 +565,12 @@ mod tests {
             voicemail_id: None,
             audio_secs: audio,
             caller_number: None,
+            caller_name: None,
             destination: None,
+            direction: None,
+            extension_id: None,
+            dest_extension_id: None,
+            number_id: None,
             call_started_at: None,
             requested_by: None,
             attempts: 1,

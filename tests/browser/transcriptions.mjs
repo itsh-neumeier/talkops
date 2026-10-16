@@ -21,6 +21,15 @@ try {
     job('j-paused', 'paused', { progress: 0.3, resumable: true, engine: { kind: 'local', model: 'accurate' }, engine_key: 'local:accurate', requested_by: 'Admin' }),
     job('j-queued', 'queued', { eta_secs: 400, pass: 2 })
   ];
+  const maria = { name: 'Familie Vollmeier (Maria)', number: '+4995436999124', extension_id: null, contact_id: 'c-maria', ambiguous: false, matches: [] };
+  const zweig = { name: 'Familie Zweig', number: '101', extension_id: 'e-101', contact_id: null, ambiguous: false, matches: [] };
+  const bob = { name: 'Bob', number: '102', extension_id: 'e-102', contact_id: null, ambiguous: false, matches: [] };
+  const history = [
+    job('j-fail', 'failed', { direction: 'outbound', engine_key: 'local:accurate', caller_number: '102', destination: '+499112193553', started_at: '2026-10-14T17:59:30Z', finished_at: '2026-10-14T18:00:00Z', created_at: '2026-10-14T17:59:00Z', last_error: 'boom', caller: bob, called: { name: '', number: '+499112193553', extension_id: null, contact_id: null, ambiguous: false, matches: [] } }),
+    job('j-old', 'done', { direction: 'inbound', progress: 1, started_at: at, finished_at: '2026-10-15T09:05:10Z', caller: maria, called: zweig, via_number: '+4995431241' }),
+    job('j-vm', 'cancelled', { direction: 'internal', recording_id: null, voicemail_id: 'vm-1', caller_number: '102', caller_name: 'Bob', destination: '101', created_at: '2026-10-15T12:00:00Z', caller: bob, called: zweig })
+  ];
+  let historyRequests = 0;
   const me = { user: { id: 'u1', username: 'admin', display_name: 'Admin', role: 'admin', role_id: null, enabled: true }, csrf_token: 'x', permissions: ['transcriptions.view', 'transcriptions.manage', 'recordings.retranscribe', 'recordings.delete'] };
   await page.route('**/api/**', async route => {
     const url = new URL(route.request().url());
@@ -29,7 +38,10 @@ try {
     const headers = {};
     if (url.pathname === '/api/v1/auth/me') value = me;
     else if (url.pathname === '/api/v1/status') value = { version: 'test', database: { ok: true }, freeswitch: { ok: true } };
-    else if (url.pathname === '/api/v1/transcription-jobs') value = url.searchParams.get('history') ? [job('j-old', 'done', { progress: 1, started_at: at, finished_at: '2026-10-15T09:05:10Z' })] : jobs;
+    else if (url.pathname === '/api/v1/transcription-jobs') {
+      if (url.searchParams.get('history')) historyRequests++;
+      value = url.searchParams.get('history') ? history : jobs;
+    }
     else if (url.pathname.startsWith('/api/v1/transcription-jobs/') && method === 'POST') {
       const action = route.request().postDataJSON().action;
       actions.push([url.pathname.split('/').pop(), action]);
@@ -73,7 +85,61 @@ try {
   // History.
   await page.getByRole('tab', { name: /Verlauf/ }).click();
   await page.getByRole('cell', { name: 'fertig' }).waitFor();
-  assert.match(await page.locator('table').textContent(), /3:10/);
+  await page.waitForFunction(() => location.search === '?tab=history');
+  const rows = page.locator('table tbody tr');
+  const ids = async () => (await rows.allInnerTexts()).map(r => r.includes('Voicemail') ? 'vm' : r.includes('fehlgeschlagen') ? 'fail' : r.includes('fertig') ? 'old' : '?');
+  assert.deepEqual(await ids(), ['vm', 'old', 'fail'], 'newest first');
+  assert.match(await rows.nth(1).textContent(), /3:10/);
+  // Parties through the phone book, like the call log.
+  const old = rows.nth(1);
+  assert.equal(await old.getByRole('link', { name: 'Familie Vollmeier (Maria)' }).getAttribute('href'), '/phonebook?contact=c-maria');
+  assert.match(await old.textContent(), /Familie Zweig\s*\[101\][\s\S]*über\s*\+4995431241/);
+  // Sort by duration (descending; jobs that did not run last), then by status.
+  await page.getByRole('button', { name: 'Dauer', exact: true }).click();
+  await page.waitForFunction(() => location.search.includes('sort=duration'));
+  assert.deepEqual(await ids(), ['old', 'fail', 'vm']);
+  await page.getByRole('button', { name: 'Ergebnis', exact: true }).click();
+  assert.deepEqual(await ids(), ['vm', 'fail', 'old']);
+  await page.getByRole('button', { name: 'Ergebnis', exact: true }).click();
+  await page.waitForFunction(() => location.search.includes('order=asc'));
+  assert.deepEqual(await ids(), ['old', 'fail', 'vm']);
+  assert.equal(await page.locator('th[aria-sort="ascending"]').count(), 1);
+  // Column filters: status, model, direction; the address keeps them.
+  await page.getByRole('button', { name: 'Ergebnis filtern', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Filter: Ergebnis' }).getByLabel('fehlgeschlagen').check();
+  await page.keyboard.press('Escape');
+  assert.deepEqual(await ids(), ['fail']);
+  await page.waitForFunction(() => location.search.includes('status=failed'));
+  await page.reload();
+  await page.getByText('1 von 3 Transkriptionen').waitFor({ timeout: 20_000 });
+  await page.getByRole('button', { name: 'Alle Filter zurücksetzen' }).first().click();
+  await page.getByText('3 von 3 Transkriptionen').waitFor();
+  await page.getByRole('button', { name: 'Modell filtern', exact: true }).click();
+  const models = page.getByRole('dialog', { name: 'Filter: Modell' });
+  assert.equal(await models.getByRole('checkbox').count(), 2, 'models of the history');
+  await models.getByRole('checkbox').first().check();
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => location.search.includes('engine=local'));
+  await page.getByRole('button', { name: 'Alle Filter zurücksetzen' }).first().click();
+  await page.getByRole('button', { name: 'Richtung filtern', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Filter: Richtung' }).getByLabel('intern').check();
+  await page.keyboard.press('Escape');
+  assert.deepEqual(await ids(), ['vm']);
+  await page.getByRole('button', { name: 'Alle Filter zurücksetzen' }).first().click();
+  // Free text on the parties (phone book name or digits).
+  await page.getByRole('searchbox', { name: 'Suchen' }).fill('vollmeier');
+  assert.deepEqual(await ids(), ['old']);
+  await page.getByRole('searchbox', { name: 'Suchen' }).fill('0911 2193');
+  assert.deepEqual(await ids(), ['fail']);
+  // A date range from a link.
+  await page.goto(`${BASE}/transcriptions?tab=history&since=2026-10-14&until=2026-10-14`);
+  await page.getByText('1 von 3 Transkriptionen').waitFor({ timeout: 20_000 });
+  assert.deepEqual(await ids(), ['fail']);
+  assert.equal(await page.getByRole('button', { name: 'Zeit filtern (aktiv)' }).count(), 1);
+  // The history reloads at most every 30 s (the active list every 2 s).
+  const before = historyRequests;
+  await page.waitForTimeout(4500);
+  assert.ok(historyRequests - before <= 1, `history requests: ${historyRequests - before}`);
 
   // The dialog in the call log.
   await page.goto(`${BASE}/calls`);

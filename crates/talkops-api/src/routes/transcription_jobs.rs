@@ -6,7 +6,7 @@
 use axum::Json;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use talkops_core::roles::Permission;
 use talkops_core::transcription_jobs::{self as tjobs, Action, JobView, Scope, WorkerStatus};
@@ -17,6 +17,7 @@ use utoipa_axum::routes;
 use uuid::Uuid;
 
 use crate::AppState;
+use crate::active_calls::{Directory, JobParties};
 use crate::auth::AuthUser;
 use crate::error::{ApiError, ApiResult};
 
@@ -44,21 +45,50 @@ async fn scope(state: &AppState, auth: &AuthUser) -> ApiResult<Scope> {
 
 #[derive(Deserialize, utoipa::IntoParams)]
 pub struct JobsQuery {
-    /// `true`: finished, failed and stopped jobs of the last 7 days.
+    /// `true`: finished, failed and stopped jobs of the last 7 days (at most
+    /// 1000), with the parties resolved through the phone book.
     #[serde(default)]
     pub history: bool,
 }
 
+/// A transcription job in the list. In the history it also has the parties
+/// of the call or voicemail, resolved like the call log.
+#[derive(Serialize, ToSchema)]
+pub struct JobEntry {
+    #[serde(flatten)]
+    pub job: JobView,
+    #[serde(flatten)]
+    pub parties: JobParties,
+}
+
 /// Transcription jobs: running, paused and queued, or the history.
-#[utoipa::path(get, path = "/api/v1/transcription-jobs", tag = "recordings", params(JobsQuery), responses((status = 200, body = [JobView])))]
+#[utoipa::path(get, path = "/api/v1/transcription-jobs", tag = "recordings", params(JobsQuery), responses((status = 200, body = [JobEntry])))]
 pub async fn list_jobs(
     State(state): State<AppState>,
     auth: AuthUser,
     Query(q): Query<JobsQuery>,
-) -> ApiResult<Json<Vec<JobView>>> {
+) -> ApiResult<Json<Vec<JobEntry>>> {
     let scope = scope(&state, &auth).await?;
+    let jobs = tjobs::list(&state.db, auth.tenant, &scope, q.history).await?;
+    // The active list refreshes every 2 s; only the history resolves names.
+    let directory = if q.history && !jobs.is_empty() {
+        Some(Directory::load(&state, auth.tenant).await?)
+    } else {
+        None
+    };
     Ok(Json(
-        tjobs::list(&state.db, auth.tenant, &scope, q.history).await?,
+        jobs.into_iter()
+            .map(|mut job| {
+                let parties = directory
+                    .as_ref()
+                    .map(|d| d.job_parties(&job))
+                    .unwrap_or_default();
+                if job.direction.is_none() {
+                    job.direction = parties.direction;
+                }
+                JobEntry { job, parties }
+            })
+            .collect(),
     ))
 }
 

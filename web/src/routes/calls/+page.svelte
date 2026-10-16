@@ -4,7 +4,8 @@
 	import ColumnFilter from '#lib/components/ColumnFilter.svelte';
 	import FilterOptions from '#lib/components/FilterOptions.svelte';
 	import SortButton from '#lib/components/SortButton.svelte';
-	import { net } from '#lib/net.svelte.ts';
+	import LoadingContent from '#lib/components/LoadingContent.svelte';
+	import PhoneNumber from '#lib/components/PhoneNumber.svelte';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { syncAddress } from '#lib/list/address.ts';
@@ -40,6 +41,8 @@
 	let calls = $state<Call[] | null>(null);
 	let total = $state(0);
 	let loadingMore = $state(false);
+	let loading = $state(true);
+	let moreGeneration = 0;
 	let error = $state('');
 	let open = $state<Recording | null>(null);
 	let again = $state(false);
@@ -58,6 +61,11 @@
 			// Storage blocked: keep the default.
 		}
 		load();
+		return () => {
+			clearTimeout(typing);
+			generation++;
+			moreGeneration++;
+		};
 	});
 
 	function savePhonebook() {
@@ -70,6 +78,9 @@
 
 	async function load() {
 		const run = ++generation;
+		moreGeneration++;
+		loadingMore = false;
+		loading = true;
 		syncAddress('/calls', pageQuery(filters));
 		try {
 			const res = await api.getPage<Call>(`/calls${apiQuery(filters, 0, PAGE)}`);
@@ -79,12 +90,15 @@
 			error = '';
 		} catch (err) {
 			if (run === generation) error = errorMessage(err);
+		} finally {
+			if (run === generation) loading = false;
 		}
 	}
 
 	async function more() {
-		if (!calls) return;
+		if (!calls || loading || loadingMore) return;
 		const run = generation;
+		const moreRun = ++moreGeneration;
 		loadingMore = true;
 		try {
 			const res = await api.getPage<Call>(`/calls${apiQuery(filters, calls.length, PAGE)}`);
@@ -93,9 +107,9 @@
 			calls = [...calls, ...res.items.filter((c) => !seen.has(c.id))];
 			total = res.total;
 		} catch (err) {
-			error = errorMessage(err);
+			if (run === generation) error = errorMessage(err);
 		} finally {
-			loadingMore = false;
+			if (moreRun === moreGeneration) loadingMore = false;
 		}
 	}
 
@@ -152,7 +166,7 @@
 </script>
 
 <!-- One side of a call: phone book name over the number, or number over the name. -->
-{#snippet party(p: CallParty | undefined, rawNumber: string, rawName: string)}
+{#snippet party(p: CallParty | undefined, rawNumber: string, rawName: string, flag: boolean)}
 	{#if p && p.extension_id}
 		<span class="font-mono">{p.number}</span>
 		{#if p.name}<div class="text-xs text-slate-500 dark:text-slate-400">{p.name}</div>{/if}
@@ -162,9 +176,13 @@
 			href={contactHref(p.contact_id)}
 			title={t('dash.party.openEntry', { name: p.name })}>{p.name}</a
 		>
-		<div class="font-mono text-xs text-slate-500 dark:text-slate-400">{p.number || rawNumber}</div>
+		<div class="font-mono text-xs text-slate-500 dark:text-slate-400">
+			<PhoneNumber number={p.number || rawNumber} {flag} />
+		</div>
 	{:else}
-		<span class="font-mono">{rawNumber || '—'}</span>
+		<span class="font-mono"
+			><PhoneNumber number={rawNumber || '—'} countryNumber={p?.number || rawNumber} {flag} /></span
+		>
 		{#if rawName && rawName !== rawNumber}
 			<div class="text-xs text-slate-500 dark:text-slate-400">{rawName}</div>
 		{/if}
@@ -204,7 +222,13 @@
 		{/snippet}
 	</PageHeader>
 	<ErrorBox {error} />
-	<div class="card scroll-x">
+	{#if loading && calls !== null}<p
+			role="status"
+			class="text-sm text-slate-500 dark:text-slate-400"
+		>
+			{t('common.loading')}
+		</p>{/if}
+	<div class="card scroll-x" aria-busy={loading || loadingMore}>
 		<table class="table">
 			<thead>
 				<tr>
@@ -382,106 +406,116 @@
 					</th>
 				</tr>
 			</thead>
-			<tbody>
-				{#each calls ?? [] as c (c.id)}
-					{@const result = callResult(c)}
-					<tr class="row-in">
-						<td class="whitespace-nowrap">{formatDateTime(c.started_at)}</td>
-						<td title={t(`dir.${c.direction}`)}
-							>{arrow[c.direction]}
-							<span class="hidden @xl:inline">{t(`dir.${c.direction}`)}</span></td
-						>
-						<td>{@render party(c.caller, c.caller_number, c.caller_name)}</td>
-						<td>
-							{#if c.direction === 'inbound' && c.called?.extension_id}
-								<div class="flex flex-wrap items-baseline gap-x-1">
-									<span class="whitespace-nowrap"
-										>{t('calls.extensionShort')}&nbsp;<span class="font-mono"
-											>{c.called.number}</span
-										></span
-									>
-									{#if c.via_number}
-										<span class="text-slate-500 dark:text-slate-400">{t('calls.via')}</span>
-										<span class="font-mono whitespace-nowrap">{c.via_number}</span>
-									{/if}
-								</div>
-								{#if c.called.name}<div class="text-xs text-slate-500 dark:text-slate-400">
-										{c.called.name}
-									</div>{/if}
-							{:else}
-								{@render party(c.called, c.destination, '')}
-							{/if}
-						</td>
-						<td class="col-opt font-mono">{c.answered_at ? formatDuration(c.billsec) : '—'}</td>
-						<td>
-							{#if result === 'answered'}<span class="badge whitespace-nowrap badge-ok">OK</span>
-							{:else if result === 'busy'}<span
-									class="badge whitespace-nowrap badge-warn"
-									title={c.hangup_cause}>{t('calls.result.busy')}</span
-								>
-							{:else}<span class="badge whitespace-nowrap badge-bad" title={c.hangup_cause}
-									>{t('calls.missed')}</span
-								>{/if}
-						</td>
-						<td class="text-right">
-							{#if c.recording_id}
-								<button
-									class="btn btn-sm whitespace-nowrap"
-									aria-expanded={open?.id === c.recording_id}
-									aria-label={t('rec.recording')}
-									onclick={() => toggleRecording(c)}
-									>▶<span class="hidden @3xl:inline"> {t('rec.recording')}</span></button
-								>
-							{/if}
-						</td>
-					</tr>
-					{#if open && open.id === c.recording_id}
-						<tr>
-							<td colspan="7" class="expand-in space-y-3 bg-slate-50 dark:bg-slate-900/40">
-								<audio
-									class="w-full"
-									controls
-									preload="none"
-									src="/api/v1/recordings/{open.id}/audio"
-								></audio>
-								<TranscriptView
-									url="/recordings/{open.id}/transcript"
-									status={open.transcript_status}
-								/>
-								<div class="flex flex-wrap justify-end gap-1">
-									{#if can('recordings.retranscribe')}
-										<button class="btn btn-sm" onclick={() => (again = true)}
-											>{t('tx.again')}</button
+			<LoadingContent pending={calls === null && loading}>
+				{#snippet placeholder()}<tbody><SkeletonRows cols={7} /></tbody>{/snippet}
+				<tbody class="content-in">
+					{#each calls ?? [] as c (c.id)}
+						{@const result = callResult(c)}
+						<tr class="row-in">
+							<td class="whitespace-nowrap">{formatDateTime(c.started_at)}</td>
+							<td title={t(`dir.${c.direction}`)}
+								>{arrow[c.direction]}
+								<span class="hidden @xl:inline">{t(`dir.${c.direction}`)}</span></td
+							>
+							<td
+								>{@render party(
+									c.caller,
+									c.caller_number,
+									c.caller_name,
+									c.direction === 'inbound'
+								)}</td
+							>
+							<td>
+								{#if c.direction === 'inbound' && c.called?.extension_id}
+									<div class="flex flex-wrap items-baseline gap-x-1">
+										<span class="whitespace-nowrap"
+											>{t('calls.extensionShort')}&nbsp;<span class="font-mono"
+												>{c.called.number}</span
+											></span
 										>
-									{/if}
-									<a class="btn btn-sm" href="/api/v1/recordings/{open.id}/audio" download
-										>{t('vm.download')}</a
-									>
-									{#if can('recordings.delete')}
-										<button class="btn btn-sm btn-danger" onclick={() => remove(open!)}
-											>{t('common.delete')}</button
-										>
-									{/if}
-								</div>
-							</td>
-						</tr>
-					{/if}
-				{:else}
-					{#if calls === null || !net.settled}<SkeletonRows cols={7} />
-					{:else}
-						<tr>
-							<td colspan="7" class="py-8 text-center text-sm text-slate-500 dark:text-slate-400">
-								{anyFilter ? t('calls.noMatches') : t('calls.empty')}
-								{#if anyFilter}
-									<div class="mt-2">
-										<button class="btn btn-sm" onclick={resetAll}>{t('filter.resetAll')}</button>
+										{#if c.via_number}
+											<span class="text-slate-500 dark:text-slate-400">{t('calls.via')}</span>
+											<span class="font-mono whitespace-nowrap">{c.via_number}</span>
+										{/if}
 									</div>
+									{#if c.called.name}<div class="text-xs text-slate-500 dark:text-slate-400">
+											{c.called.name}
+										</div>{/if}
+								{:else}
+									{@render party(c.called, c.destination, '', c.direction === 'outbound')}
+								{/if}
+							</td>
+							<td class="col-opt font-mono">{c.answered_at ? formatDuration(c.billsec) : '—'}</td>
+							<td>
+								{#if result === 'answered'}<span class="badge whitespace-nowrap badge-ok">OK</span>
+								{:else if result === 'busy'}<span
+										class="badge whitespace-nowrap badge-warn"
+										title={c.hangup_cause}>{t('calls.result.busy')}</span
+									>
+								{:else}<span class="badge whitespace-nowrap badge-bad" title={c.hangup_cause}
+										>{t('calls.missed')}</span
+									>{/if}
+							</td>
+							<td class="text-right">
+								{#if c.recording_id}
+									<button
+										class="btn btn-sm whitespace-nowrap"
+										aria-expanded={open?.id === c.recording_id}
+										aria-label={t('rec.recording')}
+										onclick={() => toggleRecording(c)}
+										>▶<span class="hidden @3xl:inline"> {t('rec.recording')}</span></button
+									>
 								{/if}
 							</td>
 						</tr>
-					{/if}
-				{/each}
-			</tbody>
+						{#if open && open.id === c.recording_id}
+							<tr>
+								<td colspan="7" class="expand-in space-y-3 bg-slate-50 dark:bg-slate-900/40">
+									<audio
+										class="w-full"
+										controls
+										preload="none"
+										src="/api/v1/recordings/{open.id}/audio"
+									></audio>
+									<TranscriptView
+										url="/recordings/{open.id}/transcript"
+										status={open.transcript_status}
+									/>
+									<div class="flex flex-wrap justify-end gap-1">
+										{#if can('recordings.retranscribe')}
+											<button class="btn btn-sm" onclick={() => (again = true)}
+												>{t('tx.again')}</button
+											>
+										{/if}
+										<a class="btn btn-sm" href="/api/v1/recordings/{open.id}/audio" download
+											>{t('vm.download')}</a
+										>
+										{#if can('recordings.delete')}
+											<button class="btn btn-sm btn-danger" onclick={() => remove(open!)}
+												>{t('common.delete')}</button
+											>
+										{/if}
+									</div>
+								</td>
+							</tr>
+						{/if}
+					{:else}
+						{#if !error}
+							<tr>
+								<td colspan="7" class="py-8 text-center text-sm text-slate-500 dark:text-slate-400">
+									{anyFilter ? t('calls.noMatches') : t('calls.empty')}
+									{#if anyFilter}
+										<div class="mt-2">
+											<button class="btn btn-sm" onclick={resetAll}>{t('filter.resetAll')}</button>
+										</div>
+									{/if}
+								</td>
+							</tr>
+						{/if}
+					{/each}
+					{#if loadingMore}<SkeletonRows cols={7} rows={2} />{/if}
+				</tbody>
+			</LoadingContent>
 		</table>
 		{#if calls && calls.length > 0}
 			<div
@@ -493,7 +527,7 @@
 						<button class="btn btn-sm" onclick={resetAll}>{t('filter.resetAll')}</button>
 					{/if}
 					{#if calls.length < total}
-						<button class="btn btn-sm" disabled={loadingMore} onclick={more}
+						<button class="btn btn-sm" disabled={loadingMore || loading} onclick={more}
 							>{t('calls.more')}</button
 						>
 					{/if}

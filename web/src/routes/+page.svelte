@@ -1,6 +1,7 @@
 <script lang="ts">
 	import PageHeader from '#lib/components/PageHeader.svelte';
 	import Skeleton from '#lib/components/Skeleton.svelte';
+	import LoadingContent from '#lib/components/LoadingContent.svelte';
 	import { net } from '#lib/net.svelte.ts';
 	import { onMount } from 'svelte';
 	import {
@@ -35,27 +36,68 @@
 	let stats = $state<CallStats | null>(null);
 	let active = $state<ActiveCall[]>([]);
 	let recent = $state<Call[]>([]);
+	let recentLoading = $state(true);
+	let activeLoading = $state(true);
+	let recentError = $state(false);
+	let activeError = $state(false);
 	let lastBackup = $state<string | null>(null);
 	let range = $state<StatsRange>('1d');
-	let failed = $state(false);
+	let statusError = $state(false);
+	let overviewError = $state(false);
+	const failed = $derived(statusError || overviewError);
 	let now = $state(Date.now());
 
 	async function refresh() {
-		try {
-			status = await fetchStatus();
-			recent = await api.get<Call[]>('/calls?limit=8');
-			if (can('calls.active')) {
-				[live, trunks, stats, active] = await Promise.all([
-					api.get<LiveStatus>('/telephony/status'),
-					can('trunks.view') ? api.get<TrunkDetail[]>('/trunks') : Promise.resolve([]),
-					api.get<CallStats>(`/stats/calls?range=${range}`),
-					api.get<ActiveCall[]>('/telephony/calls')
-				]);
-			}
-			failed = false;
-		} catch {
-			failed = true;
-		}
+		await Promise.all([
+			fetchStatus()
+				.then((value) => {
+					status = value;
+					statusError = false;
+				})
+				.catch(() => {
+					statusError = true;
+				}),
+			api
+				.get<Call[]>('/calls?limit=8')
+				.then((value) => {
+					recent = value;
+					recentError = false;
+				})
+				.catch(() => {
+					recentError = true;
+				})
+				.finally(() => {
+					recentLoading = false;
+				}),
+			...(can('calls.active')
+				? [
+						api
+							.get<ActiveCall[]>('/telephony/calls')
+							.then((value) => {
+								active = value;
+								activeError = false;
+							})
+							.catch(() => {
+								activeError = true;
+							})
+							.finally(() => {
+								activeLoading = false;
+							}),
+						Promise.all([
+							api.get<LiveStatus>('/telephony/status'),
+							can('trunks.view') ? api.get<TrunkDetail[]>('/trunks') : Promise.resolve([]),
+							api.get<CallStats>(`/stats/calls?range=${range}`)
+						])
+							.then((values) => {
+								[live, trunks, stats] = values;
+								overviewError = false;
+							})
+							.catch(() => {
+								overviewError = true;
+							})
+					]
+				: [])
+		]);
 	}
 
 	async function loadOnce() {
@@ -249,7 +291,7 @@
 
 	<div class="grid grid-cols-1 gap-4 {can('calls.active') ? '@3xl:grid-cols-2' : ''}">
 		{#if can('calls.active')}
-			<ActiveCalls calls={active} {now} />
+			<ActiveCalls calls={active} {now} loading={activeLoading} error={activeError} />
 		{/if}
 		<section class="card space-y-2">
 			<div class="flex items-center justify-between">
@@ -258,45 +300,55 @@
 					>{t('dash.allCalls')}</a
 				>
 			</div>
-			{#if recent.length === 0}
-				<p class="text-sm text-slate-500">{t('dash.noRecent')}</p>
-			{:else}
-				<ul class="divide-y divide-slate-100 dark:divide-slate-800">
-					{#each recent as c (c.id)}
-						<li class="flex items-start justify-between gap-3 py-3 text-sm">
-							<div class="flex min-w-0 items-start gap-2">
-								<svg
-									viewBox="0 0 24 24"
-									class="mt-0.5 h-4 w-4 shrink-0 {missed(c) ? 'text-red-600' : 'text-slate-400'}"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="2"
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									aria-label={t(`dash.dir.${c.direction}` as MessageKey)}
-									><path d={DIRECTION_ICON[c.direction]} /></svg
-								>
-								<div
-									class="min-w-0 space-y-1 text-left {missed(c)
-										? 'text-red-600 dark:text-red-400'
-										: ''}"
-								>
-									<CallSummary
-										direction={c.direction}
-										caller={c.caller ?? rawParty(c.caller_number, c.caller_name)}
-										called={c.called ?? rawParty(c.destination, '')}
-										via={c.via_number}
-									/>
-								</div>
-							</div>
-							<span class="shrink-0 text-right text-xs text-slate-500">
-								{formatDateTime(c.started_at)}<br />
-								{missed(c) ? t('dash.missedCall') : formatDuration(c.billsec)}
-							</span>
-						</li>
-					{/each}
-				</ul>
-			{/if}
+			<LoadingContent pending={recentLoading}>
+				{#snippet placeholder()}<Skeleton lines={6} />{/snippet}
+				<div class="content-in" data-testid="recent-content">
+					{#if recentError}<p role="alert" class="text-sm text-red-600 dark:text-red-400">
+							{t('status.error')}
+						</p>{/if}
+					{#if recent.length === 0 && !recentError}
+						<p class="text-sm text-slate-500">{t('dash.noRecent')}</p>
+					{:else}
+						<ul class="divide-y divide-slate-100 dark:divide-slate-800">
+							{#each recent as c (c.id)}
+								<li class="flex items-start justify-between gap-3 py-3 text-sm">
+									<div class="flex min-w-0 items-start gap-2">
+										<svg
+											viewBox="0 0 24 24"
+											class="mt-0.5 h-4 w-4 shrink-0 {missed(c)
+												? 'text-red-600'
+												: 'text-slate-400'}"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											aria-label={t(`dash.dir.${c.direction}` as MessageKey)}
+											><path d={DIRECTION_ICON[c.direction]} /></svg
+										>
+										<div
+											class="min-w-0 space-y-1 text-left {missed(c)
+												? 'text-red-600 dark:text-red-400'
+												: ''}"
+										>
+											<CallSummary
+												direction={c.direction}
+												caller={c.caller ?? rawParty(c.caller_number, c.caller_name)}
+												called={c.called ?? rawParty(c.destination, '')}
+												via={c.via_number}
+											/>
+										</div>
+									</div>
+									<span class="shrink-0 text-right text-xs text-slate-500">
+										{formatDateTime(c.started_at)}<br />
+										{missed(c) ? t('dash.missedCall') : formatDuration(c.billsec)}
+									</span>
+								</li>
+							{/each}
+						</ul>
+					{/if}
+				</div>
+			</LoadingContent>
 		</section>
 	</div>
 </div>

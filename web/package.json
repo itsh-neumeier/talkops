@@ -1,7 +1,7 @@
 {
 	"name": "talkops-web",
 	"private": true,
-	"version": "1.8.0",
+	"version": "1.8.1",
 	"type": "module",
 	"license": "AGPL-3.0-only",
 	"scripts": {
@@ -31,6 +31,8 @@
 		"#lib/*": "./src/lib/*"
 	},
 	"dependencies": {
+		"flag-icons": "7.6.0",
+		"libphonenumber-js": "1.13.15",
 		"sip.js": "^0.21.2"
 	}
 }

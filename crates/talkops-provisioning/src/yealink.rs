@@ -553,6 +553,69 @@ mod tests {
     }
 
     #[test]
+    fn every_desk_model_renders_its_last_key_and_reset() {
+        let c = catalog();
+        for model in c.all().filter(|m| m.family == PhoneFamily::Desk) {
+            let mut setup = PhoneSetup {
+                name: model.name.clone(),
+                mac: "805ec0123456".into(),
+                model,
+                accounts: vec![Account {
+                    index: 1,
+                    label: "Office".into(),
+                    display_name: "Office".into(),
+                    username: "101-1".into(),
+                    password: "test".into(),
+                    codecs: AccountCodecs::PhoneDefault,
+                }],
+                keys: vec![LineKey {
+                    key: model.line_keys,
+                    kind: KeyType::SpeedDial,
+                    value: "**103".into(),
+                    label: "Workshop\n".into(),
+                    account: 1,
+                }],
+                sip_host: "pbx.lan".into(),
+                sip_port: 5060,
+                firmware_url: None,
+                voicemail_code: "*97".into(),
+                ringtone: None,
+                wallpaper: None,
+                phonebooks: vec![],
+                dial_now: vec![],
+                settings: vec![],
+            };
+            let m = parse(&render_phone(&setup).unwrap());
+            assert_eq!(
+                m[&format!("linekey.{}.type", model.line_keys)],
+                "13",
+                "{}",
+                model.id
+            );
+            assert_eq!(m[&format!("linekey.{}.value", model.line_keys)], "**103");
+            assert_eq!(m[&format!("linekey.{}.label", model.line_keys)], "Workshop");
+            assert!(!m.contains_key(&format!("linekey.{}.type", model.line_keys + 1)));
+            assert_eq!(
+                m.get("features.keep_switch_page_key.enable")
+                    .map(String::as_str),
+                model.layout.as_ref().unwrap().page_key.then_some("1")
+            );
+            setup.keys.clear();
+            let reset = parse(&render_phone(&setup).unwrap());
+            assert_eq!(reset["linekey.1.type"], "15");
+            assert_eq!(reset[&format!("linekey.{}.type", model.line_keys)], "0");
+            setup.keys.push(LineKey {
+                key: 1,
+                kind: KeyType::None,
+                value: String::new(),
+                label: String::new(),
+                account: 1,
+            });
+            assert_eq!(parse(&render_phone(&setup).unwrap())["linekey.1.type"], "0");
+        }
+    }
+
+    #[test]
     fn wifi_handset_config() {
         let c = catalog();
         for id in ["ax83h", "ax86r"] {

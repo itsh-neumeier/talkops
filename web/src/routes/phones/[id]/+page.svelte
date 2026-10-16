@@ -1,6 +1,8 @@
 <script lang="ts">
 	import PageHeader from '#lib/components/PageHeader.svelte';
 	import PhoneSettingsEditor from '#lib/components/PhoneSettingsEditor.svelte';
+	import PhoneKeyEditor from '#lib/components/PhoneKeyEditor.svelte';
+	import PhoneGraphic from '#lib/components/PhoneGraphic.svelte';
 	import { assignExtension } from '#lib/phoneAssign.ts';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
@@ -9,6 +11,7 @@
 		api,
 		getText,
 		type Extension,
+		type Contact,
 		type KeyType,
 		type LineKey,
 		type PhoneDetail,
@@ -29,6 +32,8 @@
 	let extensions = $state<Extension[]>([]);
 	let media = $state<PhoneMedia[]>([]);
 	let sections = $state<PhonebookSection[]>([]);
+	let contacts = $state<Contact[]>([]);
+	let saving = $state(false);
 	let form = $state({
 		name: '',
 		mac: '',
@@ -72,12 +77,13 @@
 
 	async function load() {
 		try {
-			[phone, models, extensions, media, sections] = await Promise.all([
+			[phone, models, extensions, media, sections, contacts] = await Promise.all([
 				api.get<PhoneDetail>(`/phones/${id}`),
 				api.get<PhoneModel[]>('/phone-models'),
 				api.get<Extension[]>('/extensions'),
 				api.get<PhoneMedia[]>('/phone-media').catch(() => []),
-				api.get<PhonebookSection[]>('/phonebook-sections')
+				api.get<PhonebookSection[]>('/phonebook-sections'),
+				api.get<Contact[]>('/contacts')
 			]);
 			comfort = await api.get<PhoneSettingsView>('/phone-settings').catch(() => null);
 			form = {
@@ -128,7 +134,10 @@
 		if (ext && !k.label) k.label = ext.display_name;
 	}
 
-	async function save() {
+	async function save(withResync = false) {
+		if (saving) return;
+		saving = true;
+		let saved = false;
 		error = '';
 		message = '';
 		try {
@@ -148,9 +157,20 @@
 					await api.put(`/phones/${id}/accounts/${a.device_id}`, edited);
 			}
 			message = t('phones.savedResync');
+			saved = true;
 			await load();
+			if (withResync) {
+				const result = await api.post<{ notified: number }>(`/phones/${id}/resync`, {
+					reboot: false
+				});
+				message = t(result.notified === 0 ? 'phonekeys.savedOffline' : 'phonekeys.savedSynced');
+			}
 		} catch (err) {
-			error = errorMessage(err);
+			error = saved
+				? `${t('phonekeys.savedResyncFailed')} ${errorMessage(err)}`
+				: errorMessage(err);
+		} finally {
+			saving = false;
 		}
 	}
 
@@ -261,6 +281,9 @@
 					<select id="ph-model" class="input" bind:value={form.model}>
 						{#each models as m (m.id)}<option value={m.id}>{m.name}</option>{/each}
 					</select>
+					{#if model?.layout}<div class="mt-2 flex items-center gap-2">
+							<PhoneGraphic {model} small /><span class="hint">{model.name}</span>
+						</div>{/if}
 				</div>
 			</div>
 			<p class="text-sm text-slate-500">
@@ -419,79 +442,96 @@
 		{/if}
 
 		{#if model && model.line_keys > 0}
-			<section class="card space-y-3">
-				<h2>{t('phones.keys')}</h2>
-				<p class="hint">{t('phones.keysHint')}</p>
-				<div class="scroll-x">
-					<table class="table">
-						<thead>
-							<tr
-								><th>#</th><th>{t('phones.keyType')}</th><th>{t('phones.keyValue')}</th><th
-									>{t('phones.keyLabel')}</th
-								><th>{t('phones.account')}</th><th></th></tr
-							>
-						</thead>
-						<tbody>
-							{#each rows as k, i (i)}
-								<tr>
-									<td class="font-mono">{i + 1}</td>
-									{#if k}
-										<td>
-											<select class="input" bind:value={k.type}>
-												{#each keyTypes as kt (kt)}<option value={kt}>{t(`keytype.${kt}`)}</option
-													>{/each}
-											</select>
-										</td>
-										<td>
-											{#if k.type === 'blf'}
-												<select
-													class="input"
-													value={k.value}
-													onchange={(e) => pickExtension(k, e.currentTarget.value)}
-												>
-													<option value="">—</option>
-													{#each extensions as e (e.id)}<option value={e.number}
-															>{e.number} {e.display_name}</option
+			{#if model.layout}
+				<PhoneKeyEditor
+					{model}
+					accounts={phone.accounts}
+					{extensions}
+					{contacts}
+					{sections}
+					sectionIds={form.phonebook_sections}
+					bind:keys
+					disabled={!can('phones.manage') || saving}
+				/>
+			{:else}
+				<section class="card space-y-3">
+					<h2>{t('phones.keys')}</h2>
+					<p class="hint">{t('phones.keysHint')}</p>
+					<div class="scroll-x">
+						<table class="table">
+							<thead>
+								<tr
+									><th>#</th><th>{t('phones.keyType')}</th><th>{t('phones.keyValue')}</th><th
+										>{t('phones.keyLabel')}</th
+									><th>{t('phones.account')}</th><th></th></tr
+								>
+							</thead>
+							<tbody>
+								{#each rows as k, i (i)}
+									<tr>
+										<td class="font-mono">{i + 1}</td>
+										{#if k}
+											<td>
+												<select class="input" bind:value={k.type}>
+													{#each keyTypes as kt (kt)}<option value={kt}>{t(`keytype.${kt}`)}</option
 														>{/each}
 												</select>
-											{:else if k.type === 'speed_dial'}
-												<input class="input font-mono" bind:value={k.value} inputmode="tel" />
-											{/if}
-										</td>
-										<td><input class="input" bind:value={k.label} maxlength="32" /></td>
-										<td>
-											<input
-												class="input w-20"
-												type="number"
-												min="1"
-												max={model.accounts}
-												bind:value={k.account}
-											/>
-										</td>
-										<td
-											><button class="btn btn-sm" onclick={() => reset(i + 1)}
-												>{t('phones.keyReset')}</button
-											></td
-										>
-									{:else}
-										<td colspan="4" class="text-sm text-slate-500">{defaultLabel(i + 1)}</td>
-										<td
-											><button class="btn btn-sm" onclick={() => configure(i + 1)}
-												>{t('common.edit')}</button
-											></td
-										>
-									{/if}
-								</tr>
-							{/each}
-						</tbody>
-					</table>
-				</div>
-			</section>
+											</td>
+											<td>
+												{#if k.type === 'blf'}
+													<select
+														class="input"
+														value={k.value}
+														onchange={(e) => pickExtension(k, e.currentTarget.value)}
+													>
+														<option value="">—</option>
+														{#each extensions as e (e.id)}<option value={e.number}
+																>{e.number} {e.display_name}</option
+															>{/each}
+													</select>
+												{:else if k.type === 'speed_dial'}
+													<input class="input font-mono" bind:value={k.value} inputmode="tel" />
+												{/if}
+											</td>
+											<td><input class="input" bind:value={k.label} maxlength="32" /></td>
+											<td>
+												<input
+													class="input w-20"
+													type="number"
+													min="1"
+													max={model.accounts}
+													bind:value={k.account}
+												/>
+											</td>
+											<td
+												><button class="btn btn-sm" onclick={() => reset(i + 1)}
+													>{t('phones.keyReset')}</button
+												></td
+											>
+										{:else}
+											<td colspan="4" class="text-sm text-slate-500">{defaultLabel(i + 1)}</td>
+											<td
+												><button class="btn btn-sm" onclick={() => configure(i + 1)}
+													>{t('common.edit')}</button
+												></td
+											>
+										{/if}
+									</tr>
+								{/each}
+							</tbody>
+						</table>
+					</div>
+				</section>
+			{/if}
 		{/if}
 
 		{#if can('phones.manage')}
-			<div class="flex justify-end">
-				<button class="btn btn-primary" onclick={save}>{t('common.save')}</button>
+			<div class="flex flex-wrap justify-end gap-2">
+				<button class="btn" disabled={saving} onclick={() => save(false)}>{t('common.save')}</button
+				>
+				<button class="btn btn-primary" disabled={saving} onclick={() => save(true)}
+					>{saving ? t('common.loading') : t('phonekeys.saveResync')}</button
+				>
 			</div>
 		{/if}
 	{/if}

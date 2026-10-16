@@ -26,8 +26,6 @@
 	--dur-fast: 120ms;
 	--dur: 180ms;
 	--dur-slow: 260ms;
-	/* Skeletons appear only when loading takes longer than this. */
-	--skeleton-delay: 180ms;
 	--skeleton-base: var(--color-slate-200);
 	--skeleton-shine: var(--color-slate-100);
 }
@@ -269,14 +267,9 @@
 }
 
 /*
- * Skeletons: invisible during the first `--skeleton-delay`, so that fast
- * answers show no flash; then they fade in with a soft light sweep.
+ * Skeletons are visible from the first frame, with a soft light sweep.
+ * LoadingContent keeps initial placeholders visible for at least 300 ms.
  */
-@keyframes skeleton-in {
-	from {
-		opacity: 0;
-	}
-}
 @keyframes skeleton-sweep {
 	from {
 		background-position: 150% 0;
@@ -286,7 +279,15 @@
 	}
 }
 .skeleton {
-	animation: skeleton-in var(--dur-slow) var(--ease-out) var(--skeleton-delay) both;
+	opacity: 1;
+}
+@keyframes content-in {
+	from {
+		opacity: 0;
+	}
+}
+.content-in {
+	animation: content-in var(--dur) var(--ease-out);
 }
 .skeleton-bar {
 	border-radius: 0.25rem;

@@ -13,6 +13,117 @@ use common::*;
 
 const UA: &str = "Yealink SIP-T54W 96.86.0.100 80:5e:c0:aa:bb:cc";
 
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn desk_model_catalog_and_extended_common_configs(db: PgPool) {
+    let router = router(db);
+    let admin = setup_admin(&router).await;
+    let (status, models) = admin.get("/api/v1/phone-models").await;
+    assert_eq!(status, StatusCode::OK);
+    let desk: Vec<_> = models
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|m| m["family"] == "desk")
+        .collect();
+    assert_eq!(desk.len(), 21);
+    for (i, model) in desk.iter().enumerate() {
+        assert!(model["layout"]["pages"].is_array(), "{model}");
+        let keys = model["line_keys"].as_u64().unwrap();
+        let body = json!({"mac": format!("805ec0dd{i:04x}"), "model": model["id"], "name": "Desk",
+            "line_keys": [{"key": keys, "type": "speed_dial", "value": "**103", "label": "Workshop"}]});
+        let (status, phone) = admin.post("/api/v1/phones", body.clone()).await;
+        assert_eq!(status, StatusCode::OK, "{model}: {phone}");
+        let path = format!("/api/v1/phones/{}", phone["id"].as_str().unwrap());
+        let (_, detail) = admin.get(&path).await;
+        assert_eq!(detail["line_keys"], body["line_keys"]);
+        let response = raw(
+            &router,
+            Request::get(format!("{path}/config"))
+                .header(header::COOKIE, &admin.cookie)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await;
+        let status = response.status();
+        let config = body_string(response).await;
+        assert_eq!(status, StatusCode::OK);
+        assert!(
+            config.contains(&format!("linekey.{keys}.type = 13")),
+            "{model}"
+        );
+        assert!(
+            config.contains(&format!("linekey.{keys}.value = **103")),
+            "{model}"
+        );
+        let mut invalid = body.clone();
+        invalid["line_keys"][0]["key"] = json!(keys + 1);
+        assert_eq!(
+            admin.put(&path, invalid).await.0,
+            StatusCode::UNPROCESSABLE_ENTITY
+        );
+        let mut invalid = body.clone();
+        invalid["line_keys"][0]["key"] = json!(model["line_key_limit"].as_u64().unwrap() + 1);
+        invalid["line_keys"][0]["type"] = json!("line");
+        assert_eq!(
+            admin.put(&path, invalid).await.0,
+            StatusCode::UNPROCESSABLE_ENTITY
+        );
+    }
+    let (_, info) = admin.get("/api/v1/provisioning").await;
+    let credentials = Some((
+        info["username"].as_str().unwrap(),
+        info["password"].as_str().unwrap(),
+    ));
+    for name in [
+        "y000000000036.cfg",
+        "y0000000000183.cfg",
+        "y0000000000196.cfg",
+        "y0000000000197.cfg",
+    ] {
+        let path = format!("/provisioning/{name}");
+        assert_eq!(
+            prov_get(&router, &path, None).await.0,
+            StatusCode::UNAUTHORIZED
+        );
+        let (status, body) = prov_get(&router, &path, credentials).await;
+        assert_eq!(status, StatusCode::OK, "{name}");
+        assert!(body.starts_with("#!version:1.0.0.1\n"));
+    }
+}
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn catalog_corrections_preserve_unchanged_legacy_overrides(db: PgPool) {
+    let router = router(db.clone());
+    let admin = setup_admin(&router).await;
+    for (i, model, key) in [(1, "t46u", 40), (2, "vp59", 29), (3, "t41p", 7)] {
+        let mut input = json!({"mac": format!("805ec0ee{i:04x}"), "model": model, "name": "Legacy", "line_keys": []});
+        let (status, phone) = admin.post("/api/v1/phones", input.clone()).await;
+        assert_eq!(status, StatusCode::OK);
+        let id = uuid::Uuid::parse_str(phone["id"].as_str().unwrap()).unwrap();
+        let old = json!([{"key": key, "type": if model == "t41p" { "line" } else { "speed_dial" }, "value": "103", "label": "Keep me", "account": 1}]);
+        sqlx::query("UPDATE phones SET line_keys = $1 WHERE id = $2 AND tenant_id = $3")
+            .bind(&old)
+            .bind(id)
+            .bind(talkops_core::tenant::TenantId::DEFAULT)
+            .execute(&db)
+            .await
+            .unwrap();
+        let path = format!("/api/v1/phones/{id}");
+        input["line_keys"] = old.clone();
+        input["name"] = json!("Renamed");
+        let (status, saved) = admin.put(&path, input.clone()).await;
+        assert_eq!(status, StatusCode::OK, "{saved}");
+        assert_eq!(saved["line_keys"], old);
+        input["line_keys"][0]["value"] = json!("104");
+        assert_eq!(
+            admin.put(&path, input.clone()).await.0,
+            StatusCode::UNPROCESSABLE_ENTITY
+        );
+        input["line_keys"] = json!([]);
+        assert_eq!(admin.put(&path, input).await.0, StatusCode::OK);
+    }
+}
+
 async fn prov_get(
     router: &axum::Router,
     path: &str,

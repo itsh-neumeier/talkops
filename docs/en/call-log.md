@@ -29,6 +29,20 @@ The check box **Show numbers through the phone book** is on by default.
 
 The browser keeps this setting.
 
+## Country flags and loading
+
+Inbound callers and outbound destinations show a small country flag next
+to the number. The country name is available as a tooltip and to screen
+readers. The flag identifies the number range, not the caller's location.
+Extensions, hidden callers, service numbers and unresolved countries have
+no flag. The flag stays visible when phone book names are off.
+
+A placeholder appears during the first load. It stays visible for at least
+300 ms, then the result fades in over 180 ms. Filters keep the old rows
+visible with a loading message. **Load more** adds placeholder rows until
+the next page arrives. Reduced motion removes the waiting interval and
+animations.
+
 ## Sort
 
 Click the column title **Time** or **Duration** to sort by this column.

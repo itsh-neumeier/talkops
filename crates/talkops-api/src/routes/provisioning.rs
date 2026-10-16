@@ -307,7 +307,9 @@ fn is_common_cfg(path: &str) -> bool {
     path.strip_prefix('y')
         .and_then(|rest| rest.strip_suffix(".cfg"))
         .is_some_and(|id| {
-            id.len() == 12 && id.starts_with("000000000") && id.bytes().all(|b| b.is_ascii_digit())
+            matches!(id.len(), 12 | 13)
+                && id.starts_with("000000000")
+                && id.bytes().all(|b| b.is_ascii_digit())
         })
 }
 
@@ -533,6 +535,22 @@ mod tests {
     fn common_file_names() {
         assert!(is_common_cfg("y000000000028.cfg"));
         assert!(is_common_cfg("y000000000108.cfg"), "AX83H (three-digit id)");
+        for name in [
+            "y000000000036.cfg",
+            "y0000000000183.cfg",
+            "y0000000000196.cfg",
+            "y0000000000197.cfg",
+        ] {
+            assert!(is_common_cfg(name), "{name}");
+        }
+        for name in [
+            "y00000000000183.cfg",
+            "y000000000018x.cfg",
+            "y1000000000183.cfg",
+            "y0000000000183.cfg/extra",
+        ] {
+            assert!(!is_common_cfg(name), "{name}");
+        }
         assert!(!is_common_cfg("y00000000028.cfg"));
         assert!(!is_common_cfg("y00000000002x.cfg"));
         assert!(!is_common_cfg("y000000000000.boot"));

@@ -11,6 +11,7 @@
 - PR: https://github.com/itsh-neumeier/talkops/pull/49
 - Proposal commits: 7610aa5, 160c205
 - Initial implementation commit: 317dd57
+- Hardware mapping and regression follow-up: 4ce322e
 
 ## Goal
 
@@ -71,6 +72,11 @@ Final follow-up checks and E2E remain in progress. No production phone, DHCP or 
   the existing catalog; additional vendor renderers are extension points.
 - Use modern codes by default and an explicit legacy code profile.
 - Reset sends effective profile defaults. Omission alone would retain old values.
+  A custom mute key needs features.keep_mute.enable=0; reset restores 1. Direct
+  pickup of a numeric extension emits *8*<extension>. Explicit codes stay intact.
+  Modern XML Group type 22 selects the remote phonebook index; source type 47 is
+  an explicit legacy mapping. Source-only redial and line-local-directory entries
+  are not offered as modern functions. T57W omits unsupported account switching.
 - Templates have tenant/model scope, immutable revisions, strict variables,
   output/evaluation/recursion limits and no filesystem or network loader.
 - Both URLs used /provisioning/. The initial chat spelling was only a typo.
@@ -87,8 +93,11 @@ Final follow-up checks and E2E remain in progress. No production phone, DHCP or 
 - Passed: Initial 10 existing phone API tests and 3 new PostgreSQL integration
   tests for overrides, preview redaction, resync, templates and tenant isolation.
 - Passed: Web lint, Svelte check (0 errors, 0 warnings), 34 web unit tests and build.
-- Passed: 5 renderer/profile integration tests, including all active native models,
+- Passed: All 13 provisioning unit tests and 5 renderer/profile integration tests,
+  including all active native models,
   unsupported slots, numeric profiles, reset, source lookup and bounded rendering.
+  Also checked all keys in a full six-module setup, mute hardware gating, direct
+  pickup codes and restoration of the profile defaults.
 - Passed: Expanded preview checks with a real assigned SIP account: secret redaction,
   unsaved labels and rejection of unrelated account IDs. Preview does not write labels.
 - Passed: Existing browser regressions for all 21 desk models and general layouts.

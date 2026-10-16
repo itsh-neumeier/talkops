@@ -404,7 +404,7 @@ export interface Call {
 	caller?: CallParty;
 	/** Resolved called party; the answering extension of inbound calls. */
 	called?: CallParty;
-	/** Inbound: the own number that the caller dialed. */
+	/** Own number: dialed (inbound) or caller ID (outbound). */
 	via_number?: string | null;
 }
 

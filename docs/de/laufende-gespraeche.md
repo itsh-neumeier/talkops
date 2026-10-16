@@ -27,6 +27,21 @@ kennzeichnet den Eintrag aus der Zeile. Esc schließt die Übersicht.
 Status und Dauer bleiben rechts. Die Gesprächsdauer beginnt bei Annahme;
 vorher wird die Wartezeit angezeigt. Lange Namen umbrechen auf kleinen Geräten.
 
+## Letzte Anrufe
+
+Die Karte **Letzte Anrufe** im Dashboard zeigt beendete Anrufe im selben
+Format wie die laufenden Gespräche. Namen, eckige Klammern und **+N weitere**
+funktionieren gleich. Die erste Zeile zeigt außerdem die eigene Rufnummer:
+
+- Eingehend: die Rufnummer, die der Anrufer gewählt hat, zum Beispiel
+  `Eingehender Anruf an Nst: Familie Zweig [101] über +4995431241`.
+- Ausgehend: die Rufnummer, die der Angerufene als Absender sieht.
+- Intern: keine eigene Rufnummer.
+
+Ältere Einträge ohne gespeicherte Rufnummer zeigen kein **über**. Rechts stehen
+Zeitpunkt und Dauer. Verpasste eingehende Anrufe sind rot und zeigen
+**Verpasst**. **Alle Anrufe** öffnet die [Anrufliste](anrufliste.md).
+
 ## Live-Transkript
 
 **Live-Transkript** öffnet die Vorschau bei angenommenen, aufgezeichneten

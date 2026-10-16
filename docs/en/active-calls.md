@@ -26,6 +26,21 @@ Press Esc to close the card.
 Status and duration remain on the right. Talk time starts at answer.
 Before answer, the timer shows waiting time. Long names wrap on small screens.
 
+## Recent calls
+
+The dashboard card **Recent calls** shows ended calls in the same format as
+active calls. Names, square brackets and **+N more** operate in the same way.
+The first line also shows the own number:
+
+- Inbound: the number that the caller dialed, for example
+  `Incoming call to extension: Family Zweig [101] via +4995431241`.
+- Outbound: the number that the called party sees as the caller ID.
+- Internal: no own number.
+
+Older records without a stored number do not show **via**. Time and duration
+are on the right. Missed inbound calls are red and show **Missed**.
+Select **All calls** to open the [call log](call-log.md).
+
 ## Live transcript
 
 Select **Live transcript** for an answered, recorded call with transcription

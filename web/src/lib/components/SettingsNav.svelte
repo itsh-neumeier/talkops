@@ -3,13 +3,21 @@
 	import { can } from '#lib/session.svelte.ts';
 
 	export type Section =
-		'telephony' | 'calls' | 'voicemail' | 'email' | 'security' | 'system' | 'account';
+		| 'telephony'
+		| 'calls'
+		| 'voicemail'
+		| 'email'
+		| 'notifications'
+		| 'security'
+		| 'system'
+		| 'account';
 	/** Settings sections; a section shows when the user has one of `perms`. */
 	export const sections: { id: Section; icon: string; perms: Permission[] }[] = [
 		{ id: 'telephony', icon: '☎', perms: ['settings.manage'] },
 		{ id: 'calls', icon: '🎵', perms: ['settings.manage'] },
 		{ id: 'voicemail', icon: '📮', perms: ['voicemail.settings'] },
 		{ id: 'email', icon: '✉', perms: ['voicemail.settings'] },
+		{ id: 'notifications', icon: '🔔', perms: ['notifications.manage'] },
 		{ id: 'security', icon: '🛡', perms: ['identity.manage', 'security.manage'] },
 		{ id: 'system', icon: '⚙', perms: ['diagnostics.manage', 'backups.manage'] },
 		{ id: 'account', icon: '👤', perms: [] }

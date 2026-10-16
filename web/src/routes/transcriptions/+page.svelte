@@ -1,7 +1,12 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
+	import { page } from '$app/state';
 	import { api, type TranscriptionJob, type WorkerStatus } from '#lib/api.ts';
+	import CallParty from '#lib/components/CallParty.svelte';
+	import ColumnFilter from '#lib/components/ColumnFilter.svelte';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
+	import FilterOptions from '#lib/components/FilterOptions.svelte';
+	import SortButton from '#lib/components/SortButton.svelte';
 	import PageHeader from '#lib/components/PageHeader.svelte';
 	import Skeleton from '#lib/components/Skeleton.svelte';
 	import Tabs from '#lib/components/Tabs.svelte';
@@ -9,8 +14,36 @@
 	import { can } from '#lib/session.svelte.ts';
 	import { formatBytes, formatEta, percent } from '#lib/transcriptions/format.ts';
 	import { errorMessage } from '#lib/util.ts';
+	import { daysAgo } from '#lib/calls/filters.ts';
+	import { syncAddress } from '#lib/list/address.ts';
+	import { ariaSort, nextSort } from '#lib/list/sort.ts';
+	import {
+		DIRECTIONS,
+		HISTORY_DAYS,
+		HISTORY_LIMIT,
+		HISTORY_STATUSES,
+		activeFilters,
+		anyFilter as hasFilter,
+		emptyFilters,
+		jobTime,
+		matches,
+		pageQuery,
+		parseFilters,
+		sortJobs,
+		type Direction,
+		type HistoryFilters,
+		type HistoryStatus,
+		type SortKey
+	} from '#lib/transcriptions/history.ts';
 
-	let tab = $state<'active' | 'history'>('active');
+	/** The history changes slowly; it reloads at most every 30 s. */
+	const HISTORY_REFRESH_MS = 30_000;
+
+	let tab = $state<'active' | 'history'>(
+		page.url.searchParams.get('tab') === 'history' ? 'history' : 'active'
+	);
+	let filters = $state<HistoryFilters>(parseFilters(page.url.searchParams));
+	let historyAt = 0;
 	let jobs = $state<TranscriptionJob[] | null>(null);
 	let history = $state<TranscriptionJob[] | null>(null);
 	let workers = $state<WorkerStatus[] | null>(null);
@@ -19,17 +52,21 @@
 	let pending = $state<Record<string, boolean>>({});
 	const manage = $derived(can('transcriptions.manage'));
 
-	async function refresh() {
+	async function refresh(force = false) {
+		const loadHistory =
+			history === null ||
+			(tab === 'history' && (force || Date.now() - historyAt > HISTORY_REFRESH_MS));
 		try {
 			const [active, done, w] = await Promise.all([
 				api.get<TranscriptionJob[]>('/transcription-jobs'),
-				tab === 'history' || history === null
+				loadHistory
 					? api.get<TranscriptionJob[]>('/transcription-jobs?history=true')
 					: Promise.resolve(history),
 				manage ? api.get<WorkerStatus[]>('/transcription-workers') : Promise.resolve(null)
 			]);
 			jobs = active;
 			history = done;
+			if (loadHistory) historyAt = Date.now();
 			workers = w;
 			error = '';
 		} catch (err) {
@@ -81,6 +118,40 @@
 		failed: 'badge-bad',
 		cancelled: 'badge-muted'
 	};
+
+	// The address follows the tab and the history filters.
+	$effect(() => {
+		const query = tab === 'history' ? pageQuery(filters) : '';
+		untrack(() => syncAddress('/transcriptions', query));
+	});
+
+	const active = $derived(activeFilters(filters));
+	const anyFilter = $derived(hasFilter(filters));
+	const shownHistory = $derived(
+		history
+			? sortJobs(
+					history.filter((j) => matches(j, filters)),
+					filters
+				)
+			: []
+	);
+	const engineOptions = $derived(
+		[...new Set([...(history ?? []).map((j) => j.engine_key), ...filters.engine])]
+			.filter(Boolean)
+			.map((key) => ({ value: key, label: engineName(key) }))
+			.sort((a, b) => a.label.localeCompare(b.label))
+	);
+	const arrow = { inbound: '↙', outbound: '↗', internal: '↔' } as const;
+	const today = daysAgo(0);
+	const firstDay = daysAgo(HISTORY_DAYS);
+
+	function sortBy(key: SortKey) {
+		({ sort: filters.sort, order: filters.order } = nextSort(filters, key));
+	}
+
+	function resetAll() {
+		filters = { ...emptyFilters(), sort: filters.sort, order: filters.order };
+	}
 
 	function share(used: number, total: number): number {
 		return total > 0 ? Math.min(1, used / total) : 0;
@@ -180,7 +251,7 @@
 			{ id: 'history', label: t('tx.history') }
 		]}
 		bind:value={tab}
-		onchange={refresh}
+		onchange={() => refresh(true)}
 	/>
 
 	{#if tab === 'active'}
@@ -291,26 +362,175 @@
 			{t('tx.emptyHistory')}
 		</div>
 	{:else}
+		<div class="flex flex-wrap items-center gap-2">
+			<input
+				class="input max-w-sm"
+				type="search"
+				placeholder={t('tx.searchParties')}
+				aria-label={t('common.search')}
+				bind:value={filters.search}
+			/>
+		</div>
 		<div class="card scroll-x">
 			<table class="table">
 				<thead>
 					<tr>
-						<th>{t('calls.time')}</th>
-						<th>{t('tx.recording')}</th>
-						<th class="col-opt">{t('tx.model')}</th>
-						<th class="col-opt">{t('calls.duration')}</th>
-						<th>{t('calls.result')}</th>
+						<th aria-sort={ariaSort(filters.sort === 'time', filters.order)}>
+							<span class="inline-flex items-center gap-1 whitespace-nowrap">
+								<SortButton
+									label={t('calls.time')}
+									active={filters.sort === 'time'}
+									order={filters.order}
+									onclick={() => sortBy('time')}
+								/>
+								<ColumnFilter
+									label={t('calls.time')}
+									active={active.time}
+									onreset={() => {
+										filters.since = '';
+										filters.until = '';
+									}}
+								>
+									<div class="mb-3 flex flex-wrap gap-1">
+										<button
+											type="button"
+											class="btn btn-sm"
+											onclick={() => {
+												filters.since = today;
+												filters.until = '';
+											}}>{t('calls.range.today')}</button
+										>
+										<button
+											type="button"
+											class="btn btn-sm"
+											onclick={() => {
+												filters.since = daysAgo(1);
+												filters.until = daysAgo(1);
+											}}>{t('tx.range.yesterday')}</button
+										>
+									</div>
+									<div class="grid grid-cols-2 gap-2">
+										<label
+											>{t('calls.range.since')}
+											<input
+												class="input"
+												type="date"
+												min={firstDay}
+												max={today}
+												bind:value={filters.since}
+											/>
+										</label>
+										<label
+											>{t('calls.range.until')}
+											<input
+												class="input"
+												type="date"
+												min={firstDay}
+												max={today}
+												bind:value={filters.until}
+											/>
+										</label>
+									</div>
+								</ColumnFilter>
+							</span>
+						</th>
+						<th>
+							<span class="inline-flex items-center gap-1 whitespace-nowrap">
+								{t('calls.direction')}
+								<ColumnFilter
+									label={t('calls.direction')}
+									active={active.direction}
+									onreset={() => (filters.direction = [])}
+								>
+									<FilterOptions
+										options={DIRECTIONS.map((d) => ({
+											value: d,
+											label: t(`dir.${d}`),
+											icon: arrow[d]
+										}))}
+										selected={filters.direction}
+										onchange={(v) => (filters.direction = v as Direction[])}
+									/>
+								</ColumnFilter>
+							</span>
+						</th>
+						<th>{t('tx.parties')}</th>
+						<th class="col-opt">
+							<span class="inline-flex items-center gap-1 whitespace-nowrap">
+								{t('tx.model')}
+								<ColumnFilter
+									label={t('tx.model')}
+									active={active.engine}
+									onreset={() => (filters.engine = [])}
+								>
+									<FilterOptions
+										options={engineOptions}
+										selected={filters.engine}
+										onchange={(v) => (filters.engine = v)}
+									/>
+								</ColumnFilter>
+							</span>
+						</th>
+						<th class="col-opt" aria-sort={ariaSort(filters.sort === 'duration', filters.order)}>
+							<SortButton
+								label={t('calls.duration')}
+								active={filters.sort === 'duration'}
+								order={filters.order}
+								onclick={() => sortBy('duration')}
+							/>
+						</th>
+						<th aria-sort={ariaSort(filters.sort === 'status', filters.order)}>
+							<span class="inline-flex items-center gap-1 whitespace-nowrap">
+								<SortButton
+									label={t('calls.result')}
+									active={filters.sort === 'status'}
+									order={filters.order}
+									onclick={() => sortBy('status')}
+								/>
+								<ColumnFilter
+									label={t('calls.result')}
+									active={active.status}
+									onreset={() => (filters.status = [])}
+								>
+									<FilterOptions
+										options={HISTORY_STATUSES.map((s) => ({
+											value: s,
+											label: t(`tx.status.${s}`)
+										}))}
+										selected={filters.status}
+										onchange={(v) => (filters.status = v as HistoryStatus[])}
+									/>
+								</ColumnFilter>
+							</span>
+						</th>
 					</tr>
 				</thead>
 				<tbody>
-					{#each history as job (job.id)}
+					{#each shownHistory as job (job.id)}
 						<tr>
-							<td class="whitespace-nowrap">{formatDateTime(job.finished_at ?? job.created_at)}</td>
+							<td class="whitespace-nowrap">{formatDateTime(jobTime(job))}</td>
+							<td title={job.direction ? t(`dir.${job.direction}`) : ''}>
+								{#if job.direction}{arrow[job.direction]}
+									<span class="hidden @xl:inline">{t(`dir.${job.direction}`)}</span>
+								{:else}—{/if}
+							</td>
 							<td class="[overflow-wrap:anywhere]">
-								{source(job)}
-								{#if job.requested_by}<div class="text-xs text-slate-500 dark:text-slate-400">
-										{t('tx.requestedBy', { name: job.requested_by })}
-									</div>{/if}
+								{#if job.caller || job.called}
+									<div>
+										{#if job.caller}<CallParty party={job.caller} />{/if}
+										<span class="text-slate-400 dark:text-slate-500" aria-hidden="true"> → </span>
+										<span class="sr-only">{t('calls.to')}</span>
+										{#if job.called}<CallParty party={job.called} />{/if}
+									</div>
+								{:else}
+									{source(job)}
+								{/if}
+								<div class="text-xs text-slate-500 dark:text-slate-400">
+									{job.voicemail_id ? t('tx.voicemail') : t('tx.recording')}{#if job.via_number}
+										· {t('calls.via')}
+										<span class="font-mono">{job.via_number}</span>{/if}{#if job.requested_by}
+										· {t('tx.requestedBy', { name: job.requested_by })}{/if}
+								</div>
 							</td>
 							<td class="col-opt">{engineName(job.engine_key)}</td>
 							<td class="col-opt font-mono">{runTime(job)}</td>
@@ -321,9 +541,34 @@
 								>
 							</td>
 						</tr>
+					{:else}
+						<tr>
+							<td colspan="6" class="py-8 text-center text-sm text-slate-500 dark:text-slate-400">
+								{t('tx.noMatches')}
+								{#if anyFilter}
+									<div class="mt-2">
+										<button class="btn btn-sm" onclick={resetAll}>{t('filter.resetAll')}</button>
+									</div>
+								{/if}
+							</td>
+						</tr>
 					{/each}
 				</tbody>
 			</table>
+			<div
+				class="flex flex-wrap items-center justify-between gap-2 pt-3 text-sm text-slate-500 dark:text-slate-400"
+			>
+				<span
+					>{t('tx.shown', {
+						shown: shownHistory.length,
+						total: history.length
+					})}{#if history.length >= HISTORY_LIMIT}
+						· {t('tx.historyLimit', { limit: HISTORY_LIMIT })}{/if}</span
+				>
+				{#if anyFilter}
+					<button class="btn btn-sm" onclick={resetAll}>{t('filter.resetAll')}</button>
+				{/if}
+			</div>
 		</div>
 	{/if}
 </div>

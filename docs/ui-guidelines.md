@@ -65,7 +65,8 @@ tablets and desktops.
 
 ## Sort and filter lists
 
-The call list and the phone book use the same parts. Use these parts for other sortable or filterable tables.
+The call list, the phone book and the transcription history use the same
+parts. Use these parts for other sortable or filterable tables.
 
 - `SortButton.svelte` is the sort button in a column title. Set
   `aria-sort` on the `th` with `ariaSort()` from `#lib/list/sort.ts`.

@@ -62,3 +62,20 @@ export function textCompare(locale?: string): (a: string, b: string) => number {
 	const collator = new Intl.Collator(locale, { sensitivity: 'base', numeric: true });
 	return (a, b) => collator.compare(a, b);
 }
+
+/**
+ * True if a search text made of digits is part of one of the numbers. Other
+ * characters do not count, and a national number with a leading 0 also
+ * finds the international form (`0911 2193` finds `+49 911 2193…`).
+ */
+export function digitsMatch(search: string, numbers: readonly string[]): boolean {
+	const q = search.trim();
+	if (!/^[\d\s+()/.-]+$/.test(q)) return false;
+	const qd = q.replace(/\D/g, '');
+	if (qd.length < 3) return false;
+	const national = /^0[1-9]/.test(qd) ? qd.slice(1) : qd;
+	return numbers.some((n) => {
+		const nd = n.replace(/\D/g, '');
+		return nd.includes(qd) || nd.includes(national);
+	});
+}

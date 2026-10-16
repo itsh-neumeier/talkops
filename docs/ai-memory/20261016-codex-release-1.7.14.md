@@ -18,8 +18,8 @@ Keep foreign local work. Remove only unchanged, integrated remote branches.
 
 ## Result
 
-All six ready source heads and PR 35 are merged into main. Publication
-has not started. No contribution is omitted. The four promised UI/API tasks
+All six ready source heads and PR 35 are merged into main. Version 1.7.14
+is published. Registry verification passed; the additional tag E2E is pending. No contribution is omitted. The four promised UI/API tasks
 and both backup tasks are present. No separate Codex feature PR is assigned.
 
 | PR | Contributor | Exact head | Dependencies | Migration |
@@ -75,28 +75,27 @@ and both backup tasks are present. No separate Codex feature PR is assigned.
   Linux CI and E2E passed on the final integration head.
 - Manual integration review used source changes, API/UI contracts and tests.
   CodeRabbit CLI is unavailable. FreeSWITCH source/workflow are unchanged.
-- Superseded candidate ea9de61: PR CI 38858462646 found a duplicate local
-  unused local `std::io::Write` import after the backup merge. Remove it. Web browser and Compose checks passed on that head.
-  Repeat all final-head gates after this correction.
+- Superseded candidate ea9de61: PR CI 38858462646 found an unused local
+  `std::io::Write` import after the backup merge. Remove it. All final-head
+  gates passed after the correction. Earlier runs are superseded.
 - STE review: short-sentence/manual clarity review. Full official standard
   unavailable; full language review pending, separate from functional checks.
 
 ## Dependencies and open work
 
-- Required gates: final candidate CI/E2E; merged exact-main CI/E2E; unused tag;
-  Release workflow; GH release; three amd64/arm64 manifests and moving tags.
+- Passed gates: final candidate CI/E2E; exact-main CI/E2E before tag; Release;
+  GitHub release; three amd64/arm64 manifests, OCI labels and moving tags.
 - Live SMB storage and Portainer were unavailable. Tests use protocol services,
   a fake Portainer API and real TLS certificate pin checks. Extra Git-stack
   files and backup failure emails are outside this contribution.
-- No deployed UI is available here. Check CLI versions in image CI and OCI
-  version/revision labels after publication.
+- No deployed UI is available here. CI CLI versions and all six published
+  OCI version/revision labels were verified.
 - VTO-to-VTH missing picture and percent-encoded CDR spool import remain open
   separate work. Preserve rejected spool files.
 
 ## Next action
 
-Wait for exact-main CI/E2E. Recheck their latest runs, scope, main and unused
-tag. Push the new tag once. Verify artifacts before reporting success.
+Wait for the additional tag E2E. Archive the final summary and update PR 35.
 
 ## References
 
@@ -121,7 +120,7 @@ tag. Push the new tag once. Verify artifacts before reporting success.
   0f128ad210028b386081db0bdae90c210ff84523.
   The main tree equals the candidate tree. All six heads are ancestors.
 - Source PRs 29-34 and integration PR 35 are merged. No open PR remains.
-- Exact-main CI 38861196732 and E2E 38861196707 are pending. Do not tag yet.
+- Exact-main CI 38861196732 and E2E 38861196707 passed before the tag push.
 - This checkpoint is local documentation only. It does not change main or
   restart its checks. The final summary will use an immutable audit reference.
 ## Tag checkpoint
@@ -132,5 +131,35 @@ tag. Push the new tag once. Verify artifacts before reporting success.
 - Annotated tag v1.7.14 was pushed once. Tag object:
   dab752803d18c14ac54335f7df3c2209aede3bf8.
   Peeled target: 0f128ad210028b386081db0bdae90c210ff84523.
-- Release workflow and artifact verification are pending. No published tag
-  was moved. Do not report success until artifacts are checked.
+- Release workflow and artifact verification passed. No published tag was moved.
+
+## Publication verification
+
+- Release 38862917854 passed all six native builds, three manifest jobs and
+  GitHub release creation. Additional tag CI 38862918000 and FreeSWITCH
+  38862917817 passed. Tag E2E 38862917820 is still running.
+- GitHub release: https://github.com/itsh-neumeier/talkops/releases/tag/v1.7.14
+- Published at 2026-10-16T06:51:21Z. It is the latest stable release, not a
+  draft or prerelease. English release notes list all six source contributions.
+- Registry inspection passed for talkops-server, talkops-media-worker and
+  talkops-freeswitch. Each versioned manifest contains linux/amd64 and
+  linux/arm64. All six OCI configurations report version v1.7.14 and revision
+  0f128ad210028b386081db0bdae90c210ff84523. For every image, tags 1.7 and
+  latest have the same platform digests as 1.7.14.
+
+| Image | Architecture | Published platform digest |
+| --- | --- | --- |
+| talkops-server | amd64 | sha256:6dcfbbf0e5c5918326ce9168ef7fd29f7030b6fbfab5cd0b70b290989485ce47 |
+| talkops-server | arm64 | sha256:55c26aafe7330612a605df207ba20763f8ad2b6a9c238be21a1446566dd0296e |
+| talkops-media-worker | amd64 | sha256:91ee4b42fc426d3d9737b6a478f0bfdbb2fe1e8bcb66e39515da7f5d724ff4d8 |
+| talkops-media-worker | arm64 | sha256:d0f841f2bc8deb87fcce9993e11dd2a812c4dc6993d3af23ce9be48ecc162393 |
+| talkops-freeswitch | amd64 | sha256:66c38d105cb53e5af68cc0d3d068e20225c3c27e72f57494e193b371d54621a5 |
+| talkops-freeswitch | arm64 | sha256:687f71e9d96a04e49d9a677ecaafdec674eb3204d25595d952bcdce5efefa5be |
+## Branch cleanup
+
+- Checked all six remote source heads and the integration head unchanged.
+  Confirmed ancestry in the release commit. Deleted the seven integrated
+  remote branches in one atomic push with expected-head guards. No history
+  was rewritten. GitHub now has only main, and no open PR remains.
+- Foreign local branches, worktrees and unpublished primary documentation
+  remain. Only this task's local release branch can be removed after archiving.

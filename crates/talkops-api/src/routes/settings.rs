@@ -126,7 +126,8 @@ pub struct CallEntry {
     pub caller: Party,
     /// Called party; for answered inbound calls the answering extension.
     pub called: Party,
-    /// Inbound calls: the own number (E.164) that the caller dialed.
+    /// Own number (E.164): for inbound calls the number that the caller
+    /// dialed, for outbound calls the number that supplied the caller ID.
     pub via_number: Option<String>,
 }
 

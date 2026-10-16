@@ -40,7 +40,10 @@ const fixtures = {
   '/api/v1/numbers': [number],
   '/api/v1/trunks': [trunk],
   '/api/v1/trunks/t1': trunk,
-  '/api/v1/calls': [{ id: 'c1', call_uuid: 'c1', direction: 'inbound', caller_number: '+4995431241000', caller_name: long, destination: '+4995431241000', extension_id: 'e1', started_at: now, answered_at: now, ended_at: now, duration_secs: 61, billsec: 60, hangup_cause: 'NORMAL_CLEARING', recording_id: null }],
+  '/api/v1/calls': [
+    { id: 'c1', call_uuid: 'c1', direction: 'inbound', caller_number: '+4995431241000', caller_name: long, destination: '+4995431241000', extension_id: 'e1', started_at: now, answered_at: now, ended_at: now, duration_secs: 61, billsec: 60, hangup_cause: 'NORMAL_CLEARING', recording_id: null, number_id: 'n1', via_number: '+4995431241000', caller: { name: long, number: '+4995431241000', extension_id: null, contact_id: 'k1', ambiguous: true, matches: [{ contact_id: 'k1', name: long, section_id: null, section_name: '' }, { contact_id: 'k2', name: `${long} 2`, section_id: 's1', section_name: long }] }, called: { name: `${long} 1`, number: '101', extension_id: 'e1', ambiguous: false } },
+    { id: 'c2', call_uuid: 'c2', direction: 'outbound', caller_number: '101', caller_name: long, destination: '+4995431241000', extension_id: 'e1', started_at: now, answered_at: null, ended_at: now, duration_secs: 5, billsec: 0, hangup_cause: 'NO_ANSWER', recording_id: null, number_id: 'n1', via_number: '+4995431241000', caller: { name: `${long} 1`, number: '101', extension_id: 'e1', ambiguous: false }, called: { name: '', number: '+4995431241000', extension_id: null, ambiguous: false } }
+  ],
   '/api/v1/contacts': [{ id: 'k1', name: long, company: long, phone_work: '+4995431241000', phone_mobile: '+4915112345678', phone_other: '+4995431241999', section_id: null }],
   '/api/v1/audit': [{ id: 1, username: 'administrator.mustermann', action: 'extension.update', entity_type: 'extension', entity_id: 'e1', details: { display_name: long, number: '101' }, ip: '192.168.178.100', created_at: now }]
 };

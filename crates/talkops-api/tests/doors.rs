@@ -272,8 +272,13 @@ async fn door_station(db: PgPool) {
             == 2
     })
     .await;
-    let ring = &events[0];
-    assert_eq!(ring["detail"]["dialed"], "9902#0");
+    // Both rings are logged in background tasks, so their order can vary.
+    let ring = events
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|e| e["kind"] == "ring" && e["detail"]["dialed"] == "9902#0")
+        .unwrap_or_else(|| panic!("ring for 9902#0 missing: {events}"));
     let res = raw(
         &router,
         Request::get(format!("/api/v1/door-events/{}/snapshot", id(ring)))

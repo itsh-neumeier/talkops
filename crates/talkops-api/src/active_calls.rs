@@ -335,8 +335,10 @@ impl Directory {
         out
     }
 
-    /// The parties of a call record: caller, called party and, for inbound
-    /// calls, the own number that was dialed.
+    /// The parties of a call record: caller, called party and the own number
+    /// of the call. For inbound calls, this is the dialed number. For outbound
+    /// calls, this is the number that supplied the caller ID. Internal calls
+    /// and records without a known number have no own number.
     pub fn record_parties(&self, c: &Cdr) -> (Party, Party, Option<String>) {
         let number = || {
             self.numbers
@@ -363,7 +365,7 @@ impl Directory {
             Direction::Outbound => {
                 let caller = self.party(&c.caller_number, &c.caller_name, c.extension_id);
                 let called = self.external_party(&c.destination, "", c.extension_id);
-                (caller, called, None)
+                (caller, called, number())
             }
             Direction::Internal => (
                 self.party(&c.caller_number, &c.caller_name, c.extension_id),
@@ -956,7 +958,28 @@ mod tests {
         let (caller, called, via) = dir.record_parties(&outbound);
         assert_eq!(caller.extension_id, Some(ext));
         assert_eq!(called.name, "Family Vollmeier (Maria)");
-        assert_eq!(via, None);
+        assert_eq!(via.as_deref(), Some("+4995431241"));
+
+        // Older or unrouted outbound records have no number.
+        let unknown = Cdr {
+            number_id: None,
+            ..outbound.clone()
+        };
+        assert_eq!(dir.record_parties(&unknown).2, None);
+        let deleted = Cdr {
+            number_id: Some(Uuid::new_v4()),
+            ..outbound.clone()
+        };
+        assert_eq!(dir.record_parties(&deleted).2, None);
+
+        // Internal calls never show an own number.
+        let internal = Cdr {
+            direction: Direction::Internal,
+            destination: "101".into(),
+            dest_extension_id: Some(ext),
+            ..outbound
+        };
+        assert_eq!(dir.record_parties(&internal).2, None);
 
         assert_eq!(
             dir.contact_numbers("vollmeier"),

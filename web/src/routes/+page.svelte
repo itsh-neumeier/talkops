@@ -8,6 +8,7 @@
 		fetchStatus,
 		type ActiveCall,
 		type Call,
+		type CallParty as CallPartyData,
 		type CallStats,
 		type LiveStatus,
 		type StatsRange,
@@ -16,6 +17,7 @@
 	} from '#lib/api.ts';
 	import CallChart from '#lib/components/CallChart.svelte';
 	import ActiveCalls from '#lib/components/ActiveCalls.svelte';
+	import CallSummary from '#lib/components/CallSummary.svelte';
 	import GettingStarted from '#lib/components/GettingStarted.svelte';
 	import { formatDateTime, formatDuration, t, type MessageKey } from '#lib/i18n/index.svelte.ts';
 	import { can, isAdmin } from '#lib/session.svelte.ts';
@@ -95,6 +97,13 @@
 		).length
 	);
 	const missed = (c: Call) => c.direction === 'inbound' && !c.answered_at;
+	/** Fallback when the API sends no resolved party. */
+	const rawParty = (number: string, name: string): CallPartyData => ({
+		number,
+		name: name && name !== number ? name : '',
+		extension_id: null,
+		ambiguous: false
+	});
 
 	const DIRECTION_ICON: Record<Call['direction'], string> = {
 		inbound: 'M17 7 7 17M7 9v8h8',
@@ -254,11 +263,11 @@
 			{:else}
 				<ul class="divide-y divide-slate-100 dark:divide-slate-800">
 					{#each recent as c (c.id)}
-						<li class="flex items-center justify-between gap-3 py-2 text-sm">
-							<span class="flex min-w-0 items-center gap-2">
+						<li class="flex items-start justify-between gap-3 py-3 text-sm">
+							<div class="flex min-w-0 items-start gap-2">
 								<svg
 									viewBox="0 0 24 24"
-									class="h-4 w-4 shrink-0 {missed(c) ? 'text-red-600' : 'text-slate-400'}"
+									class="mt-0.5 h-4 w-4 shrink-0 {missed(c) ? 'text-red-600' : 'text-slate-400'}"
 									fill="none"
 									stroke="currentColor"
 									stroke-width="2"
@@ -267,12 +276,19 @@
 									aria-label={t(`dash.dir.${c.direction}` as MessageKey)}
 									><path d={DIRECTION_ICON[c.direction]} /></svg
 								>
-								<span class="min-w-0 truncate {missed(c) ? 'text-red-600 dark:text-red-400' : ''}">
-									<span class="font-mono">{c.caller_number || '—'}</span>
-									{c.caller_name && c.caller_name !== c.caller_number ? c.caller_name : ''}
-									→ <span class="font-mono">{c.destination}</span>
-								</span>
-							</span>
+								<div
+									class="min-w-0 space-y-1 text-left {missed(c)
+										? 'text-red-600 dark:text-red-400'
+										: ''}"
+								>
+									<CallSummary
+										direction={c.direction}
+										caller={c.caller ?? rawParty(c.caller_number, c.caller_name)}
+										called={c.called ?? rawParty(c.destination, '')}
+										via={c.via_number}
+									/>
+								</div>
+							</div>
 							<span class="shrink-0 text-right text-xs text-slate-500">
 								{formatDateTime(c.started_at)}<br />
 								{missed(c) ? t('dash.missedCall') : formatDuration(c.billsec)}

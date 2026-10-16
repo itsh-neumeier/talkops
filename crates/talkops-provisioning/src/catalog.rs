@@ -11,7 +11,7 @@ pub enum PhoneFamily {
     Desk,
     Dect,
     Conference,
-    /// Wi-Fi handsets (Yealink AX series): no base station, no line keys.
+    /// Wi-Fi handsets (Yealink AX series): no base station.
     Wifi,
 }
 
@@ -25,6 +25,9 @@ pub struct PhoneModel {
     pub accounts: u16,
     /// Programmable line keys managed by TalkOps.
     pub line_keys: u16,
+    /// Schematic display and explicit visual key maps, in row-major order.
+    #[serde(default)]
+    pub layout: Option<PhoneLayout>,
     #[serde(default)]
     pub video: bool,
     /// Largest custom ringtone the phone accepts in KiB; 0 = no custom
@@ -39,7 +42,75 @@ pub struct PhoneModel {
     pub vendor: String,
 }
 
+/// Model-specific display geometry. A zero in a page map is a page control.
+/// Touchscreen maps show the expanded DSS overview, not the idle screen.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PhoneLayout {
+    pub width: u16,
+    pub height: u16,
+    pub color: bool,
+    pub touch: bool,
+    pub left: u16,
+    pub right: u16,
+    pub columns: u16,
+    /// Reserve the bottom-right line key for navigation on older desk phones.
+    pub page_key: bool,
+    pub pages: Vec<Vec<u16>>,
+}
+
+impl PhoneLayout {
+    pub fn validate(&self, keys: u16) -> Result<(), &'static str> {
+        if self.width == 0 || self.height == 0 || self.columns == 0 || self.pages.is_empty() {
+            return Err("invalid display geometry");
+        }
+        if self.touch != (self.left + self.right == 0)
+            || (!self.touch
+                && self.columns
+                    != if self.left == 0 || self.right == 0 {
+                        1
+                    } else {
+                        2
+                    })
+        {
+            return Err("invalid physical key geometry");
+        }
+        let mut mapped: Vec<_> = self
+            .pages
+            .iter()
+            .flatten()
+            .copied()
+            .filter(|k| *k != 0)
+            .collect();
+        mapped.sort_unstable();
+        if mapped != (1..=keys).collect::<Vec<_>>() {
+            return Err("display must map every key exactly once");
+        }
+        if self.pages.iter().any(|p| {
+            p.is_empty() || (!self.touch && p.len() != usize::from(self.left + self.right))
+        }) {
+            return Err("invalid display page size");
+        }
+        if self.page_key
+            && (self.touch
+                || self.pages.len() < 2
+                || self.pages.iter().any(|p| p.last() != Some(&0)))
+        {
+            return Err("invalid page key position");
+        }
+        Ok(())
+    }
+}
+
 impl PhoneModel {
+    /// Yealink only permits the Line function in the first account slots.
+    pub fn line_key_limit(&self) -> u16 {
+        if self.family == PhoneFamily::Desk {
+            self.accounts.min(self.line_keys)
+        } else {
+            self.line_keys
+        }
+    }
     /// Line keys can be speed dials (`linekey.X.type = 13`); the AX Wi-Fi
     /// handsets only know line, BLF, DTMF and XML browser keys.
     pub fn speed_dial_keys(&self) -> bool {
@@ -139,6 +210,11 @@ impl PhoneCatalog {
                         &path,
                         format!("model {} needs at least one account", model.id),
                     ));
+                }
+                if let Some(layout) = &model.layout {
+                    layout
+                        .validate(model.line_keys)
+                        .map_err(|message| err(&path, format!("model {}: {message}", model.id)))?;
                 }
                 model.vendor = file.vendor.clone();
                 if models.insert(model.id.clone(), model).is_some() {
@@ -300,5 +376,65 @@ mod tests {
             Some("96.86.0.70".into())
         );
         assert_eq!(firmware_from_user_agent("curl/8"), None);
+    }
+
+    #[test]
+    fn desk_models_have_complete_display_maps() {
+        let c = catalog();
+        let expected = [
+            ("t31g", 2, 2),
+            ("t33g", 4, 12),
+            ("t41p", 6, 15),
+            ("t41s", 6, 15),
+            ("t42u", 12, 15),
+            ("t43u", 12, 21),
+            ("t46g", 16, 27),
+            ("t46s", 16, 27),
+            ("t46u", 16, 27),
+            ("t48g", 16, 29),
+            ("t48s", 16, 29),
+            ("t48u", 16, 29),
+            ("t53", 12, 21),
+            ("t53w", 12, 21),
+            ("t54w", 16, 27),
+            ("t57w", 16, 29),
+            ("t58w", 16, 27),
+            ("vp59", 16, 27),
+            ("t73w", 12, 40),
+            ("t85w", 16, 60),
+            ("t87w", 16, 84),
+        ];
+        assert_eq!(
+            c.all().filter(|m| m.family == PhoneFamily::Desk).count(),
+            expected.len()
+        );
+        for (id, accounts, keys) in expected {
+            let model = c.get(id).unwrap();
+            assert_eq!((model.accounts, model.line_keys), (accounts, keys), "{id}");
+            assert_eq!(model.line_key_limit(), accounts);
+            let layout = model.layout.as_ref().unwrap();
+            layout.validate(keys).unwrap();
+            let ua = format!("Yealink SIP-{} 1.2.3.4", id.to_ascii_uppercase());
+            assert_eq!(c.from_user_agent(&ua).unwrap().id, id);
+        }
+        assert_eq!(
+            c.get("t41p").unwrap().layout.as_ref().unwrap().pages[0],
+            [1, 4, 2, 5, 3, 0]
+        );
+        assert_eq!(c.get("t33g").unwrap().layout.as_ref().unwrap().left, 0);
+        assert!(!c.get("t73w").unwrap().layout.as_ref().unwrap().page_key);
+        assert_eq!(
+            c.get("t85w").unwrap().layout.as_ref().unwrap().pages.len(),
+            5
+        );
+        let mut bad = c.get("t41p").unwrap().layout.clone().unwrap();
+        bad.pages[1][0] = 1;
+        assert_eq!(
+            bad.validate(15),
+            Err("display must map every key exactly once")
+        );
+        let mut bad = c.get("t41p").unwrap().layout.clone().unwrap();
+        bad.pages[0].pop();
+        assert!(bad.validate(15).is_err());
     }
 }

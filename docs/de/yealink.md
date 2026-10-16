@@ -82,6 +82,65 @@ haben, starten beim ersten Resync ein letztes Mal neu. Technisch: SIP NOTIFY
 Phone to Perform Auto Provisioning*). Nicht registrierte Telefone holen die Konfiguration beim
 nächsten Start bzw. nachts zwischen 2 und 4 Uhr.
 
+### Grafische Funktionstasten und Kurzwahl
+
+Tischtelefone zeigen auf ihrer Telefonseite eine Gerätegrafik und ein
+anklickbares Display. Taste oder Beschriftung auswählen, um den Tastendialog
+zu öffnen. **Liste** zeigt alle Tasten als Tabelle. Beide Ansichten bearbeiten
+dieselben Belegungen.
+
+| Unterstützte Modelle | DSS-Tasten je Telefon |
+| --- | --- |
+| T31G | 2 |
+| T33G | 12 |
+| T41P, T41S, T42U | 15 |
+| T43U, T53, T53W | 21 |
+| T46G, T46S, T46U, T54W, T58W, VP59 | 27 |
+| T48G, T48S, T48U, T57W | 29 |
+| T73W | 40 |
+| T85W | 60 |
+| T87W | 84 |
+
+Die Grafiken sind schematisch. Bei älteren Telefonen dient die Taste unten
+rechts zum Seitenwechsel. TalkOps hält diese Taste als Seitensteuerung frei,
+damit das Telefon zur grafischen Belegung passt. T73W und T85W haben eine
+separate Seitensteuerung. Touchscreen-Modelle zeigen eine scrollbare
+DSS-Übersicht, keine Kopie jeder Firmware-Startansicht.
+
+1. Taste auswählen.
+2. **Kurzwahl**, **BLF**, **Leitung** oder **Unbelegt** wählen. Die angebotenen
+   Funktionen richten sich nach Modell und Tastenposition.
+3. Für eine Kurzwahl **Telefonbuch**, **Nebenstelle** oder **Freie Nummer** wählen.
+4. Im Telefonbuch globale Kontakte oder ein diesem Telefon zugewiesenes Buch
+   wählen. Kontakt suchen und geschäftliche, mobile oder weitere Nummer wählen.
+5. Beschriftung und verwendetes Konto prüfen.
+6. **Übernehmen** ändert den Entwurf auf der Telefonseite.
+7. **Speichern** oder **Speichern & Resync** auf der Telefonseite wählen.
+
+Die Auswahl kopiert Nummer und Kontaktname. Die Beschriftung bleibt
+bearbeitbar. Spätere Kontaktänderungen ändern gespeicherte Tasten nicht
+automatisch. Interne Kurzwahl nutzt `**<Nebenstelle>`. BLF nutzt die
+Nebenstellennummer zur Überwachung und `*8*<Nebenstelle>` zum Heranholen.
+
+**Standard** entfernt die eigene Belegung und stellt die automatische
+Belegung wieder her. **Unbelegt** leert die Taste ausdrücklich. Für eine
+aktive Taste muss ein Konto zugewiesen sein. Speichern & Resync speichert
+zuerst Telefon und Kontobeschriftungen. Erst danach wird Resync angefordert.
+Ein fehlgeschlagener Resync macht das Speichern nicht rückgängig. Ein
+Offline-Telefon übernimmt die Konfiguration beim nächsten Provisionierungsabruf.
+
+Die dokumentierten Grenzen korrigieren T33G von 4 auf 12, T46U von 40 auf 27
+und VP59 von 29 auf 27 Tasten. Nicht unterstützte Altbelegungen bleiben
+erhalten und werden in einem Korrekturbereich angezeigt. Andere Einstellungen
+lassen sich mit unveränderten Altbelegungen weiter speichern. Werte bei
+Bedarf notieren und Belegungen ausdrücklich entfernen oder unterstützten
+Tasten zuweisen. TalkOps löscht sie nicht still.
+
+Der Editor benötigt keine Datenbankmigration und keine neuen Pakete. Neue
+Modelle nutzen die vorhandenen Provisionierungszugangsdaten. Quellen stehen
+im [Entwurfsdokument](../deskphone-key-editor-proposal.md). Hardwaretests stehen
+aus; automatisierte Tests bestätigen keine bestimmte Telefon-Firmware.
+
 ### Label und Anzeigename
 
 Unter *Konten auf diesem Telefon* hat jedes Konto zwei Felder (auch im

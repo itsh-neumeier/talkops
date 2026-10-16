@@ -600,12 +600,27 @@ export interface PhoneModel {
 	family: 'desk' | 'dect' | 'conference' | 'wifi';
 	accounts: number;
 	line_keys: number;
+	line_key_limit: number;
+	layout: PhoneLayout | null;
 	/** Line keys can be speed dials (not on Wi-Fi handsets). */
 	speed_dial_keys: boolean;
 	video: boolean;
 	/** Largest custom ringtone in KiB; 0 = not supported. */
 	ringtone_max_kb: number;
 	wallpaper: boolean;
+}
+
+/** Row-major maps: zero denotes the page control. Touch maps are DSS overviews. */
+export interface PhoneLayout {
+	width: number;
+	height: number;
+	color: boolean;
+	touch: boolean;
+	left: number;
+	right: number;
+	columns: number;
+	page_key: boolean;
+	pages: number[][];
 }
 
 export type MediaKind = 'ringtone' | 'wallpaper';

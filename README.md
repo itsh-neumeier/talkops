@@ -69,6 +69,7 @@ Yealink phones [EN](docs/en/yealink.md) / [DE](docs/de/yealink.md) ·
 codec profiles for Wi-Fi handsets [EN](docs/en/codec-profiles.md) / [DE](docs/de/codec-profile.md) ·
 voicemail [EN](docs/en/voicemail.md) / [DE](docs/de/voicemail.md) ·
 e-mail design and texts [EN](docs/en/mail.md) / [DE](docs/de/e-mail.md) ·
+e-mail notifications [EN](docs/en/notifications.md) / [DE](docs/de/benachrichtigungen.md) ·
 call routing [EN](docs/en/call-routing.md) / [DE](docs/de/anrufsteuerung.md) ·
 recording & transcription [EN](docs/en/recording.md) / [DE](docs/de/aufzeichnung.md) ·
 door stations [EN](docs/en/door-station.md) / [DE](docs/de/tuersprechstelle.md), Dahua VTO/VTH [EN](docs/en/door-station-dahua.md) / [DE](docs/de/tuersprechstelle-dahua.md) ·

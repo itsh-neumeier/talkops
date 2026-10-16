@@ -208,11 +208,12 @@
 		return on ? [...new Set([...list, id])] : list.filter((x) => x !== id);
 	}
 
-	function summary(r: NotificationRule): string {
+	function summary(r: NotificationRule, problem: boolean): string {
 		const parts: string[] = [];
 		const n = r.recipient_users.length + r.recipient_roles.length + r.recipient_emails.length;
 		parts.push(n ? t('notif.recipientCount', { n }) : t('notif.noRecipients'));
-		if (r.delay_secs) parts.push(t('notif.delayShort', { n: Math.round(r.delay_secs / 60) || 1 }));
+		if (problem && r.delay_secs)
+			parts.push(t('notif.delayShort', { n: Math.round(r.delay_secs / 60) || 1 }));
 		if (r.digest_secs)
 			parts.push(t('notif.digestShort', { n: Math.round(r.digest_secs / 60) || 1 }));
 		return parts.join(' · ');
@@ -255,7 +256,7 @@
 						{@const r = rule(e.key)}
 						<li class="py-2">
 							<div class="flex flex-wrap items-center gap-x-3 gap-y-1">
-								<label class="flex min-w-0 flex-1 items-center gap-2">
+								<label class="flex min-w-0 grow basis-full items-center gap-2 @lg:basis-0">
 									<input
 										type="checkbox"
 										checked={r?.enabled ?? false}
@@ -265,7 +266,7 @@
 									<span class="min-w-0">
 										<span class="block">{eventLabel(e.key)}</span>
 										{#if r}<span class="block text-xs text-slate-500 dark:text-slate-400"
-												>{summary(r)}</span
+												>{summary(r, isProblem(e))}</span
 											>{/if}
 									</span>
 								</label>

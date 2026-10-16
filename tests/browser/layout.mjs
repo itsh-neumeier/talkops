@@ -49,10 +49,19 @@ const fixtures = {
     common_placeholders: ['instance.name', 'instance.url'],
     max_logo_bytes: 262144
   },
+  '/api/v1/settings/notifications': {
+    categories: ['trunks', 'backup'],
+    event_types: [{ key: 'trunk.down', category: 'trunks', severity: 'warning', recovery: 'trunk.up', implemented: true }, { key: 'backup.failed', category: 'backup', severity: 'critical', recovery: null, implemented: true }, { key: 'trunk.outbound_failures', category: 'trunks', severity: 'warning', recovery: null, implemented: false }],
+    rules: ['trunk.down', 'backup.failed', 'trunk.outbound_failures'].map((event_type) => ({ event_type, enabled: true, min_severity: 'info', recipient_users: ['u1'], recipient_roles: [], recipient_emails: ['verkehrsausscheidungsziffer-langname@example.com'], delay_secs: 120, send_recovery: true, digest_secs: 0, rate_limit_per_hour: 20, custom: false }))
+  },
+  '/api/v1/settings/notifications/log': {
+    events: [{ id: 1, event_type: 'trunk.down', source: 'gw-0123456789abcdef0123456789abcdef', severity: 'warning', params: {}, created_at: now }],
+    deliveries: [{ id: 1, event_type: 'trunk.down', kind: 'alert', subject: long, recipients: ['verkehrsausscheidungsziffer-langname@example.com', 'administrator.mustermann@example.com'], status: 'failed', error: long, event_count: 1, created_at: now }]
+  },
   '/api/v1/settings/mail/preview': { subject: long, html: `<!DOCTYPE html><html><body><p>${long}</p></body></html>`, text: long },
   '/api/v1/audit': [{ id: 1, username: 'administrator.mustermann', action: 'extension.update', entity_type: 'extension', entity_id: 'e1', details: { display_name: long, number: '101' }, ip: '192.168.178.100', created_at: now }]
 };
-const routes = ['/', '/phone', '/calls', '/voicemail', '/doors', '/phonebook', '/search', '/settings', '/settings#calls', '/settings#email', '/me', '/extensions', '/numbers', '/routing', '/trunks', '/trunks/t1', '/phones', '/users', '/audit', '/door-stations', '/login', '/setup'];
+const routes = ['/', '/phone', '/calls', '/voicemail', '/doors', '/phonebook', '/search', '/settings', '/settings#calls', '/settings#email', '/me', '/settings#notifications', '/extensions', '/numbers', '/routing', '/trunks', '/trunks/t1', '/phones', '/users', '/audit', '/door-stations', '/login', '/setup'];
 async function context(options, theme) {
   const context = await browser.newContext({ locale: 'de-DE', timezoneId: 'Europe/Berlin', reducedMotion: 'reduce', ...options });
   await context.addInitScript((stored) => {

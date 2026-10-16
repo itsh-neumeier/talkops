@@ -249,7 +249,8 @@ pub const CATALOG: &[EventDef] = &[
         "SIP profile {name} is not running",
     )
     .rec("freeswitch.profile_up")
-    .delay(60),
+    .delay(60)
+    .todo(),
     ev(
         "freeswitch.profile_up",
         "freeswitch",
@@ -265,7 +266,8 @@ pub const CATALOG: &[EventDef] = &[
         "Viele gleichzeitige Gespräche: {sessions} von {max}",
         "Many concurrent calls: {sessions} of {max}",
     )
-    .rec("freeswitch.channels_ok"),
+    .rec("freeswitch.channels_ok")
+    .todo(),
     ev(
         "freeswitch.channels_ok",
         "freeswitch",

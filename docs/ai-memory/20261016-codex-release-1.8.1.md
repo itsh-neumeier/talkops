@@ -21,7 +21,8 @@ work and the published 1.8.0 tag.
 All current open contributions are integrated with their source history.
 PR46 and PR47 are ready, not drafts. Both are from Codex. No Claude Code
 contribution is assigned to this batch. None was already in main. No agreed
-contribution is omitted or pending. Publication is pending validation.
+contribution is omitted or pending. Both source PRs and integration PR48 are merged. Publication is pending
+exact-main checks and artifact verification.
 
 | PR | Exact source head | Dependency | Migration ID |
 | --- | --- | --- | --- |
@@ -58,8 +59,15 @@ contribution is omitted or pending. Publication is pending validation.
 - Passed at inventory: 12 exact-head checks per source PR. PR46 CI38946303569,
   E2E38946303551, push CI38946297378/E2E38946298448. PR47 CI38949067742,
   E2E38949067882, push CI38949060274/E2E38949060264.
-- Pending: combined local checks; final candidate and exact-main CI/E2E;
-  publication workflow, GitHub release and three two-platform manifests.
+- Passed: cargo fmt; 13 provisioning tests and doc tests; npm ci/lint/check,
+  31 web tests and production build. Svelte reports zero errors and warnings.
+  All four Compose configurations pass without a Docker Linux daemon.
+- Passed: 45 unchanged unique ordered migrations, 1,975 matching EN/DE keys
+  and placeholders with no duplicates, all 12 browser suites retained once,
+  both source ancestors and version-only metadata against merged baseline
+  b747d9fb092f78b935afb8de67710edf0b6c1720.
+- Passed: final candidate CI/E2E. Exact-main CI/E2E and publication remain
+  pending. Immutable workflow run IDs and the first failure are below.
 - Cargo metadata offline first stopped because a locked cross-platform crate
   was not cached. Online metadata downloaded the existing locked crates.
   Cargo.lock changes only the six workspace package versions.
@@ -87,8 +95,9 @@ contribution is omitted or pending. Publication is pending validation.
 
 ## Next action
 
-Run combined checks. Publish the integration PR and wait for final-head CI/E2E.
-Merge, verify exact main, then push one unused v1.8.1 tag and verify artifacts.
+Wait for exact-main CI38956465215 and E2E38956465225. Recheck current main,
+scope, versions and unused tag. Push one v1.8.1 tag to the tested main commit.
+Verify Release, GitHub release and all three two-platform image manifests.
 
 ## References
 
@@ -96,3 +105,27 @@ Merge, verify exact main, then push one unused v1.8.1 tag and verify artifacts.
 - 20261016-codex-call-flags-skeleton.md.
 - 20261016-codex-yealink-t41p-dss.md.
 - 20261016-codex-release-1.8.0.md (completed previous release).
+
+## Candidate and main checkpoint
+
+- Final candidate: 5260739be6d530d6d4f8fa76d122ea0efaa9249c.
+  All 12 checks pass. PR CI38952162964/E2E38952162953 and push
+  CI38952157423/E2E38952157572.
+- E2E38952157572 attempt1 failed at ring-group voicemail storage. Both calls
+  reached vm_deposit and recording. The second message was not stored within
+  the 15-second count window. No voicemail, ring-group or SIPp scenario code
+  changed in this batch. The parallel PR E2E passed all scenarios on attempt1.
+  Push E2E attempt2 passed without code, test or timeout changes. This is
+  evidence of a sporadic failure; its precise cause is not established.
+  No test was weakened and no gate was waived.
+- CI logs confirm model maps, last-key rendering, all 21-model API/browser
+  cases, retained legacy overrides and call presentation. Server/worker smoke
+  tests report 1.8.1. Full SIPp, recording, video and WebRTC scenarios passed.
+- PR48 merged at 2026-10-16T19:38:58Z. Release main commit:
+  86772ec0c31990f7a29a639ffb90db6ebef217e2.
+  Its tree equals the tested candidate tree. All agreed heads are ancestors.
+- Source PRs46 and47 auto-closed as merged at 19:39:00Z. The open-PR list is
+  empty. Main CI38956465215 and E2E38956465225 are in progress.
+- Do not push the batch branch after merge. Local checkpoint commits change
+  only this task record. Archive the final record under audit/release-1.8.1
+  after publication, without changing released code or creating another release.

@@ -447,7 +447,7 @@
 						class="input font-mono"
 						inputmode="tel"
 						bind:value={draft.value}
-						maxlength="32"
+						maxlength={draft.type === 'xml_browser' ? 400 : 32}
 					/></label
 				>
 				<p class="hint">{t(draft.type === 'blf' ? 'phonekeys.blfHint' : 'phonekeys.numberHint')}</p>

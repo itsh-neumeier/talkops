@@ -143,7 +143,7 @@ pub fn validate(model: &PhoneModel, overrides: &Overrides) -> Result<(), String>
     {
         return Err("unsupported firmware profile".into());
     }
-    if overrides.keys.len() > 250 {
+    if overrides.keys.len() > 512 {
         return Err("too many keys".into());
     }
     let mut seen = BTreeSet::new();

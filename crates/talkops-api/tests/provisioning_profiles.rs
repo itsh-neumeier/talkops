@@ -55,6 +55,22 @@ async fn device_http_override_survives_https_preview_and_resync_with_diagnostics
     let (status, phone) = admin.post("/api/v1/phones", input.clone()).await;
     assert_eq!(status, StatusCode::OK, "{phone}");
     let id = phone["id"].as_str().unwrap();
+    let (_, extension) = admin
+        .post(
+            "/api/v1/extensions",
+            json!({"number":"101","display_name":"Desk"}),
+        )
+        .await;
+    let (status, credentials) = admin
+        .post(
+            &format!(
+                "/api/v1/extensions/{}/devices",
+                extension["id"].as_str().unwrap()
+            ),
+            json!({"name":"T41P","kind":"desk","phone_id":id}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{credentials}");
     let (_, info) = admin.get("/api/v1/provisioning").await;
     assert_eq!(info["url"], "https://secure.example/provisioning");
     let (status, cfg) = fetch(&router, "/provisioning/805ec0aabbcc.cfg", &info).await;
@@ -64,11 +80,26 @@ async fn device_http_override_survives_https_preview_and_resync_with_diagnostics
     assert!(cfg.contains("programablekey.18.type = 22\n"));
     assert!(cfg.contains("programablekey.18.xml_phonebook = 1\n"));
     assert!(cfg.contains("/softkeys/805ec0aabbcc/call_in.xml"));
+    let mut draft = input.clone();
+    draft["accounts"] = json!({credentials["device_id"].as_str().unwrap():{"phone_label":"Draft label","phone_display_name":"Draft caller"}});
     let (_, preview) = admin
-        .post(&format!("/api/v1/phones/{id}/preview"), input.clone())
+        .post(&format!("/api/v1/phones/{id}/preview"), draft.clone())
         .await;
     let text = preview["after"].as_str().unwrap();
     assert!(text.contains("REDACTED"));
+    assert!(text.contains("account.1.label = Draft label"));
+    assert!(text.contains("account.1.display_name = Draft caller"));
+    assert!(!text.contains(credentials["sip_password"].as_str().unwrap()));
+    let (_, saved) = admin.get(&format!("/api/v1/phones/{id}")).await;
+    assert_eq!(saved["accounts"][0]["phone_label"], "");
+    draft["accounts"] = json!({Uuid::new_v4().to_string():{"phone_label":"Foreign account"}});
+    assert_eq!(
+        admin
+            .post(&format!("/api/v1/phones/{id}/preview"), draft)
+            .await
+            .0,
+        StatusCode::UNPROCESSABLE_ENTITY
+    );
     for field in ["password", "phone_admin_password"] {
         assert!(!text.contains(info[field].as_str().unwrap()));
     }
@@ -76,6 +107,9 @@ async fn device_http_override_survives_https_preview_and_resync_with_diagnostics
     assert_eq!(status, StatusCode::OK);
     assert!(boot.contains("include:config \"y000000000036.cfg\""));
     assert!(boot.contains("805ec0aabbcc.cfg"));
+    let (status, generic_boot) = fetch(&router, "/provisioning/y000000000000.boot", &info).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(generic_boot, boot);
     let (status, xml) = fetch(
         &router,
         "/provisioning/softkeys/805ec0aabbcc/call_in.xml",

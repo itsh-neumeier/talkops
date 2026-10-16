@@ -616,7 +616,7 @@ async fn internal_phonebook(state: &AppState, search: Option<&String>) -> ApiRes
     let entries = phonebook::search(entries, search.map(String::as_str));
     Ok(text(
         "text/xml; charset=utf-8",
-        phonebook::render("TalkOps", &entries),
+        adapter::phonebook("yealink", "TalkOps", &entries).map_err(ApiError::BadRequest)?,
     ))
 }
 
@@ -668,7 +668,7 @@ async fn contacts_phonebook(
     let entries = phonebook::search(entries, search.map(String::as_str));
     Ok(text(
         "text/xml; charset=utf-8",
-        phonebook::render(&title, &entries),
+        adapter::phonebook("yealink", &title, &entries).map_err(ApiError::BadRequest)?,
     ))
 }
 

@@ -10,6 +10,7 @@
 - Base commit: 86772ec0c31990f7a29a639ffb90db6ebef217e2
 - PR: https://github.com/itsh-neumeier/talkops/pull/49
 - Proposal commits: 7610aa5, 160c205
+- Initial implementation commit: 317dd57
 
 ## Goal
 
@@ -22,8 +23,9 @@ and diagnose failed HTTPS resync downloads. Submit a tested PR for the release c
 The user reviewed the proposal and approved implementation. Added programmable
 keys, expansion module profiles, ordered call-state softkeys, transport overrides,
 a redacted draft preview, a source library and versioned native templates.
-The initial API regression and new database tests pass. Final UI and Rust checks
-are in progress. No production phone, DHCP or release setting changed.
+The API regression and new database tests pass. Production UI checks pass.
+Linux CI passed Rust checks, web checks and both image builds at 317dd57.
+Final follow-up checks and E2E remain in progress. No production phone, DHCP or release setting changed.
 
 ## Changes
 
@@ -85,8 +87,21 @@ are in progress. No production phone, DHCP or release setting changed.
 - Passed: Initial 10 existing phone API tests and 3 new PostgreSQL integration
   tests for overrides, preview redaction, resync, templates and tenant isolation.
 - Passed: Web lint, Svelte check (0 errors, 0 warnings), 34 web unit tests and build.
-- In progress: Final renderer/API tests after preview and bounded writer changes;
-  browser flows, full clippy and CI on the implementation commit.
+- Passed: 5 renderer/profile integration tests, including all active native models,
+  unsupported slots, numeric profiles, reset, source lookup and bounded rendering.
+- Passed: Expanded preview checks with a real assigned SIP account: secret redaction,
+  unsaved labels and rejection of unrelated account IDs. Preview does not write labels.
+- Passed: Existing browser regressions for all 21 desk models and general layouts.
+- Passed: New provisioning browser flows at 320/768/1280 px. Stored light/dark theme
+  is asserted after navigation. Inspected phone and desktop screenshots.
+- Passed: Clippy with warnings denied for API, core and provisioning, all targets.
+- Passed at 317dd57 in Linux CI: full workspace fmt, clippy and tests; web checks;
+  server and worker image build/smoke tests; Compose validation.
+- In progress: Final follow-up checks and E2E.
+- Local full workspace Clippy fails on Windows in unchanged media-worker code:
+  realtime::Streams::is_empty is unused in the Windows test target. The Linux
+  workspace CI Clippy check passes. Local Docker tests cannot run because the
+  Docker Desktop Linux daemon is not running. CI supplies the Linux checks.
 - Earlier failures: C: filled during a debug test build. Cleaned only task package
   outputs with cargo clean, then moved test outputs to the larger A: volume.
   Browser checks found a Svelte proxy clone error; snapshot cloning fixes it.

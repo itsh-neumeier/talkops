@@ -231,7 +231,8 @@ async fn activate_revision(
             .provisioning
             .get("template_id")
             .and_then(Value::as_str)
-            == Some(id.to_string().as_str())
+            .and_then(|value| Uuid::parse_str(value).ok())
+            == Some(id)
         {
             super::provisioning::preview_with_files(&state, auth.tenant, &phone, &files).await?;
         }

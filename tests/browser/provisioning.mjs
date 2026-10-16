@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync,mkdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
 const require=createRequire(import.meta.url);
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE?.replace(/index\.mjs$/,'index.js')||'playwright');
 const browser=await chromium.launch({headless:true,...(process.env.BROWSER_EXECUTABLE?{executablePath:process.env.BROWSER_EXECUTABLE}:{})});
@@ -93,14 +94,21 @@ try{
  await page.getByRole('button',{name:'Prüfen und aktivieren',exact:true}).click();
  await page.getByText('Undefined template variable',{exact:false}).waitFor();assert.equal(templates[0].active_revision,2);
  for(const width of [320,768,1280])for(const dark of [false,true]){
-   await page.setViewportSize({width,height:1000});await page.evaluate(d=>document.documentElement.classList.toggle('dark',d),dark);
-   for(const path of ['/phones/t41p','/phones/templates','/phones']){await page.goto(base+path);await page.getByRole('heading',{level:1}).waitFor();await fits();}
+   await page.setViewportSize({width,height:1000});await page.evaluate(d=>{localStorage.setItem('talkops.theme',d?'dark':'light');document.documentElement.classList.toggle('dark',d);},dark);
+   for(const path of ['/phones/t41p','/phones/templates','/phones']){
+     await page.goto(base+path);await page.getByRole('heading',{level:1}).waitFor();await fits();
+     assert.equal(await page.evaluate(()=>document.documentElement.classList.contains('dark')),dark,'stored theme survives navigation');
+     if(process.env.TALKOPS_SCREENSHOTS&&path==='/phones/t41p'&&((width===320&&dark)||(width===1280&&!dark))){
+       const output=new URL('../../target/browser/',import.meta.url);mkdirSync(output,{recursive:true});
+       await page.screenshot({path:fileURLToPath(new URL(`provisioning-${width}-${dark?'dark':'light'}.png`,output)),fullPage:true});
+     }
+   }
  }
  assert.deepEqual(errors,[]);
  console.log('Provisioning browser checks passed: T41P keys, contact/mobile target, transport override, save/resync ordering, failed saves, redacted diff, call states, reset, 70 source folders, immutable draft activation and failure preservation; 320/768/1280 light/dark layouts.');
 }catch(error){
  console.error('Page:',page.url(),'Errors:',errors,'Body:',(await page.locator('body').innerText()).slice(-7000));
  mkdirSync(new URL('../../target/browser/',import.meta.url),{recursive:true});
- await page.screenshot({path:new URL('../../target/browser/provisioning-failure.png',import.meta.url).pathname.replace(/^\/(?:([A-Z]:))/,'$1'),fullPage:true});
+ await page.screenshot({path:fileURLToPath(new URL('../../target/browser/provisioning-failure.png',import.meta.url)),fullPage:true});
  throw error;
 }finally{await browser.close();}

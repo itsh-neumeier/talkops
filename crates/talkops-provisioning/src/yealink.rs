@@ -257,7 +257,7 @@ pub enum KeyType {
 }
 
 impl KeyType {
-    /// Yealink `linekey.X.type` codes (Auto Provisioning Guide V80).
+    /// Modern Yealink DSS codes. The legacy profile overrides known source differences.
     pub fn code(self) -> u8 {
         match self {
             KeyType::None => 0,
@@ -426,7 +426,7 @@ pub fn render_phone_with(
     let keys: Vec<RenderedKey> = effective_keys(setup)
         .into_iter()
         .map(|k| {
-            let value = cfg_value(&k.value);
+            let value = key_value(k.kind, &k.value);
             RenderedKey {
                 key: k.key,
                 type_code: crate::keys::type_code(k.kind, &setup.provisioning.firmware_profile),
@@ -500,9 +500,29 @@ pub fn render_phone_with(
     )
 }
 
+fn key_value(kind: KeyType, value: &str) -> String {
+    // TalkOps directed pickup uses *8*<extension>. Preserve an explicit feature code.
+    if kind == KeyType::Pickup && !value.is_empty() && value.bytes().all(|c| c.is_ascii_digit()) {
+        format!("*8*{value}")
+    } else {
+        cfg_value(value)
+    }
+}
+
 fn extra_parameters(setup: &PhoneSetup<'_>) -> Vec<(String, String)> {
     let mut params = Vec::new();
     let caps = crate::keys::capabilities(setup.model);
+    if caps.programmable.contains(&13) {
+        let overridden = setup
+            .provisioning
+            .keys
+            .iter()
+            .any(|key| key.group == "programmable" && key.key == 13);
+        params.push((
+            "features.keep_mute.enable".into(),
+            u8::from(!overridden).to_string(),
+        ));
+    }
     let mut effective = setup.provisioning.keys.clone();
     // Restore explicit defaults when an override is removed; omission would retain
     // the previous provisioned value on the handset.
@@ -519,6 +539,7 @@ fn extra_parameters(setup: &PhoneSetup<'_>) -> Vec<(String, String)> {
                 7 => KeyType::SwitchAccountUp,
                 8 => KeyType::SwitchAccountDown,
                 9 => KeyType::Status,
+                14 => KeyType::Forward,
                 _ => KeyType::None,
             };
             effective.push(crate::keys::Key {
@@ -569,7 +590,7 @@ fn extra_parameters(setup: &PhoneSetup<'_>) -> Vec<(String, String)> {
                 crate::keys::type_code(key.kind, &setup.provisioning.firmware_profile).to_string(),
             ),
             ("line", key.account.to_string()),
-            ("value", cfg_value(&key.value)),
+            ("value", key_value(key.kind, &key.value)),
             ("label", cfg_value(&key.label)),
             ("history_type", key.history_type.to_string()),
             ("xml_phonebook", key.phonebook.to_string()),

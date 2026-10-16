@@ -55,6 +55,15 @@ und Layouts müssen am Gerät geprüft werden. SMS, BroadSoft, gemeinsame
 Leitungen und ACD werden durch Einträge in Quelldateien nicht zu verfügbaren
 TalkOps-Diensten.
 
+Eine direkte Pickup-Taste mit Ziel `101` wählt `*8*101`. Ein ausdrücklich
+eingetragener Funktionscode bleibt erhalten. Bei einer umbelegten Stummtaste
+deaktiviert TalkOps zusätzlich Yealinks Keep-Mute-Einstellung. Zurücksetzen
+stellt diese Einstellung wieder her.
+
+Die moderne XML-Telefonbuchaktion verwendet XML Group (Typ 22) und den
+gewählten Telefonbuchindex. Das Legacy-Profil verwendet den älteren Typ 47
+aus der Quellenregistrierung.
+
 ## Vorlagen anpassen
 
 **Konfigurationsvorschau** zeigt die Geräteänderungen vor dem Speichern und

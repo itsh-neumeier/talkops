@@ -59,6 +59,38 @@ fn t41p_navigation_ids_codes_and_reset_are_explicit() {
     let reset = adapter::render(&setup, &Default::default()).unwrap();
     assert!(reset.contains("programablekey.18.type = 0\n"));
     assert!(!reset.contains("**101"));
+    assert!(reset.contains("features.keep_mute.enable = 1\n"));
+    setup.provisioning.keys = vec![Key {
+        group: "programmable".into(),
+        key: 13,
+        kind: KeyType::Pickup,
+        value: "101".into(),
+        label: "Pickup".into(),
+        account: 1,
+        history_type: 0,
+        phonebook: 0,
+    }];
+    let pickup = adapter::render(&setup, &Default::default()).unwrap();
+    assert!(pickup.contains("features.keep_mute.enable = 0\n"));
+    assert!(pickup.contains("programablekey.13.value = *8*101\n"));
+    setup.keys = vec![yealink::LineKey {
+        key: 3,
+        kind: KeyType::Pickup,
+        value: "101".into(),
+        label: String::new(),
+        account: 1,
+    }];
+    assert!(
+        adapter::render(&setup, &Default::default())
+            .unwrap()
+            .contains("linekey.3.value = *8*101\n")
+    );
+    setup.keys[0].value = "*8*101".into();
+    assert!(
+        adapter::render(&setup, &Default::default())
+            .unwrap()
+            .contains("linekey.3.value = *8*101\n")
+    );
     setup.provisioning.firmware_profile = "fusionpbx-legacy".into();
     assert!(
         adapter::render(&setup, &Default::default())
@@ -102,6 +134,31 @@ fn rejects_unsupported_slots_injection_and_vendor_fallback() {
     unknown.vendor = "other".into();
     assert!(adapter::render(&setup(&unknown), &Default::default()).is_err());
     assert!(keys::capabilities(&unknown).programmable.is_empty());
+    // A full six-module legacy setup and its programmable keys fit in the limit.
+    let expanded = catalog.get("t46g").unwrap();
+    let caps = keys::capabilities(expanded);
+    let mut full = Overrides::default();
+    for (group, slots) in std::iter::once(("programmable".to_string(), caps.programmable)).chain(
+        (1..=caps.expansion_modules).map(|n| {
+            (
+                format!("expansion_{n}"),
+                (1..=caps.expansion_keys).collect(),
+            )
+        }),
+    ) {
+        full.keys.extend(slots.into_iter().map(|key| Key {
+            group: group.clone(),
+            key,
+            kind: KeyType::None,
+            value: String::new(),
+            label: String::new(),
+            account: 0,
+            history_type: 0,
+            phonebook: 0,
+        }));
+    }
+    assert!(full.keys.len() > 250);
+    keys::validate(expanded, &full).unwrap();
 }
 #[test]
 fn native_templates_validate_for_every_active_model_and_reject_bad_drafts() {

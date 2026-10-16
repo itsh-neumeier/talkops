@@ -479,7 +479,7 @@
 				{sections}
 				sectionIds={form.phonebook_sections}
 				bind:values={provisioning}
-				disabled={!can('phones.manage')}
+				disabled={!can('phones.manage') || saving}
 			/>{/if}
 		{#if model && model.line_keys > 0}
 			{#if model.layout}

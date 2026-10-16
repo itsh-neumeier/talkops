@@ -39,6 +39,10 @@ The T41P has no supported expansion module profile.
 4. For an XML phonebook, select the internal, global or assigned phonebook.
 5. Select **Apply**, then **Save** or **Save & resync** on the phone page.
 
+A direct pickup target such as `101` becomes `*8*101`. An explicit feature
+code stays unchanged. A custom mute-key assignment also disables Yealink's
+keep-mute setting. A reset restores that setting.
+
 **Inherited / factory default** removes an override. **Unused** explicitly
 clears a key. A reset sends the profile default on the next configuration
 download, so the old value does not stay on the phone. A call-state layout has
@@ -46,6 +50,8 @@ four ordered actions. Its **Default** button removes that state override.
 
 The normal key profile uses Yealink V83+ codes. The explicit `fusionpbx-legacy`
 profile uses older source-registry codes for directory and account switching.
+The modern XML phonebook action uses XML Group (type 22) and the selected
+phonebook index. The source legacy profile uses its older type 47 entry.
 Select a legacy profile only when the firmware needs it. Imported comments
 and registries contain differences; the source tree is not a compatibility
 certificate. All new key and layout behaviour needs a real-device check.

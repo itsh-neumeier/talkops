@@ -164,7 +164,6 @@ pub async fn import_deployment(
     auth: AuthUser,
     Json(mut input): Json<DeploymentInput>,
 ) -> ApiResult<Json<DeploymentInfo>> {
-    use std::io::Write;
     auth.require_perm(Permission::BackupsManage)?;
     let cfg = config(&state)?;
     if recovery::mounted_active(cfg) {

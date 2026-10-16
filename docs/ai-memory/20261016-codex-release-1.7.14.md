@@ -75,6 +75,10 @@ and both backup tasks are present. No separate Codex feature PR is assigned.
   Required Linux CI and E2E are pending for the final integration head.
 - Manual integration review used source changes, API/UI contracts and tests.
   CodeRabbit CLI is unavailable. FreeSWITCH source/workflow are unchanged.
+- Superseded candidate ea9de61: PR CI 38858462646 found a duplicate local
+  `std::io::Write` import after the backup merge. Keep the shared module import
+  and remove the duplicate. Web browser and Compose checks passed on that head.
+  Repeat all final-head gates after this correction.
 - STE review: short-sentence/manual clarity review. Full official standard
   unavailable; full language review pending, separate from functional checks.
 

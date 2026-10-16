@@ -287,6 +287,7 @@ async fn serve(config: Config) -> anyhow::Result<()> {
         talkops_api::voicemail::handle(session, vm_ctx.clone())
     }));
     talkops_api::mailer::spawn(state.db.clone(), state.secrets.clone(), state.media.clone());
+    talkops_api::notifier::spawn(state.db.clone(), state.secrets.clone(), state.media.clone());
     talkops_api::retention::spawn(db.clone(), state.media.clone());
     talkops_api::cdr_spool::spawn(state.clone(), config.storage.cdr_spool_dir.clone());
     match talkops_core::attendant::adopt_legacy_greetings(&db, &state.media.sounds).await {

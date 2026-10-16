@@ -312,6 +312,14 @@ pub fn spawn(db: PgPool, secrets: SecretBox, media: Arc<MediaPaths>) {
                     Ok(()) => jobs::complete(&db, job.id).await.map(|_| ()),
                     Err(err) => {
                         tracing::warn!(job = %job.id, error = %err, "voicemail mail failed");
+                        talkops_core::notifications::emit_logged(
+                            &db,
+                            job.tenant_id,
+                            "services.voicemail_mail_failed",
+                            "",
+                            serde_json::json!({ "error": err.to_string() }),
+                        )
+                        .await;
                         jobs::fail(&db, job.id, &err.to_string()).await.map(|_| ())
                     }
                 };

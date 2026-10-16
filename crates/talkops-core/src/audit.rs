@@ -32,6 +32,10 @@ pub struct Actor {
 }
 
 /// Records an action. `details` must never contain secrets.
+///
+/// Changes that map to a notification event type
+/// ([crate::notifications::audit_event]) also go into the notification
+/// outbox, in the same statement.
 pub async fn record<'e>(
     db: impl PgExecutor<'e>,
     actor: &Actor,
@@ -40,9 +44,19 @@ pub async fn record<'e>(
     entity_id: Option<String>,
     details: serde_json::Value,
 ) -> CoreResult<()> {
+    let event =
+        crate::notifications::audit_event(entity_type, action).and_then(crate::notifications::def);
     sqlx::query(
-        "INSERT INTO audit_log (tenant_id, user_id, action, entity_type, entity_id, details, ip)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)",
+        "WITH entry AS (
+             INSERT INTO audit_log (tenant_id, user_id, action, entity_type, entity_id, details, ip)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)
+             RETURNING tenant_id
+         )
+         INSERT INTO notification_events (tenant_id, event_type, source, severity, params)
+         SELECT tenant_id, $8, '', $9, jsonb_build_object(
+                    'entity', $4::text, 'action', $3::text, 'entity_id', $5::text, 'ip', $7::text,
+                    'user', coalesce((SELECT username FROM users WHERE id = $2), 'system'))
+         FROM entry WHERE $8::text IS NOT NULL",
     )
     .bind(actor.tenant)
     .bind(actor.user_id)
@@ -51,6 +65,8 @@ pub async fn record<'e>(
     .bind(entity_id)
     .bind(details)
     .bind(&actor.ip)
+    .bind(event.map(|d| d.key))
+    .bind(event.map(|d| d.severity.as_str()))
     .execute(db)
     .await?;
     Ok(())

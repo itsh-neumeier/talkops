@@ -39,6 +39,7 @@ nächste freie Nummer; überholte ADRs werden nicht gelöscht, sondern auf
 | [0031](0031-backup-targets-with-rclone.md) | Backup targets with rclone | Accepted; storage parts superseded by 0036 |
 | [0032](0032-automatic-deployment-capture.md) | Automatic deployment capture and Portainer API | Accepted |
 | [0034](0034-mail-design-and-templates.md) | Mail design and editable mail templates | Accepted |
+| [0035](0035-mail-notifications.md) | Mail notifications for operations events | Accepted |
 | [0036](0036-storage-targets.md) | Storage targets as a shared area | Accepted |
 | [0037](0037-audit-export-and-retention.md) | Audit log filters, export and retention | Accepted |
 

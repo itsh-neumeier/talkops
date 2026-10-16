@@ -7,6 +7,7 @@
 		| 'calls'
 		| 'voicemail'
 		| 'email'
+		| 'notifications'
 		| 'security'
 		| 'system'
 		| 'backup'
@@ -18,6 +19,7 @@
 		{ id: 'calls', icon: '🎵', perms: ['settings.manage'] },
 		{ id: 'voicemail', icon: '📮', perms: ['voicemail.settings'] },
 		{ id: 'email', icon: '✉', perms: ['voicemail.settings'] },
+		{ id: 'notifications', icon: '🔔', perms: ['notifications.manage'] },
 		{ id: 'security', icon: '🛡', perms: ['identity.manage', 'security.manage'] },
 		{ id: 'system', icon: '⚙', perms: ['diagnostics.manage'] },
 		{ id: 'backup', icon: '💾', perms: ['backups.manage'] },

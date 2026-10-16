@@ -23,6 +23,7 @@
 	import TwoFactor from '#lib/components/TwoFactor.svelte';
 	import VoicemailControl from '#lib/components/VoicemailControl.svelte';
 	import MailDesign from '#lib/components/MailDesign.svelte';
+	import NotificationSettings from '#lib/components/NotificationSettings.svelte';
 	import SettingsNav, {
 		sections,
 		sectionVisible,
@@ -487,6 +488,8 @@
 					</form>
 					<MailDesign />
 				{/if}
+			{:else if section === 'notifications'}
+				{#if can('notifications.manage')}<NotificationSettings />{/if}
 			{:else if section === 'security'}
 				{#if can('identity.manage')}<IdentitySettings />{/if}
 				{#if can('security.manage')}<SipGuardSettings />{/if}

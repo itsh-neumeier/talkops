@@ -41,6 +41,12 @@ pub struct LiveStatus {
     pub registrations: Vec<Registration>,
     pub gateways: HashMap<String, GatewayState>,
     pub updated_at: Option<DateTime<Utc>>,
+    /// FreeSWITCH uptime in seconds (for the restart notification).
+    #[serde(skip)]
+    pub uptime: Option<u64>,
+    /// False if a query failed (registrations or gateways may be missing).
+    #[serde(skip)]
+    pub complete: bool,
 }
 
 /// A call in progress (`show calls`).
@@ -81,8 +87,12 @@ impl Telephony {
         let this = self.clone();
         tokio::spawn(async move {
             let mut known: HashSet<String> = HashSet::new();
+            let mut monitor = crate::notifier::Monitor::default();
             loop {
                 let status = this.poll().await;
+                if !status.connected || status.complete {
+                    monitor.observe(&db, observed(&status)).await;
+                }
                 let current: HashSet<String> = status
                     .registrations
                     .iter()
@@ -123,10 +133,12 @@ impl Telephony {
         let Some(client) = self.esl.get().await else {
             return LiveStatus::default();
         };
+        let mut complete = true;
         let registrations = match client.api("show registrations as json").await {
             Ok(json) => parse_registrations(&json),
             Err(err) => {
                 tracing::debug!(error = %err, "show registrations failed");
+                complete = false;
                 Vec::new()
             }
         };
@@ -134,14 +146,22 @@ impl Telephony {
             Ok(xml) => parse_gateways(&xml),
             Err(err) => {
                 tracing::debug!(error = %err, "sofia xmlstatus gateway failed");
+                complete = false;
                 HashMap::new()
             }
         };
+        let uptime = client
+            .api("uptime s")
+            .await
+            .ok()
+            .and_then(|s| s.trim().parse().ok());
         LiveStatus {
             connected: true,
             registrations,
             gateways,
             updated_at: Some(Utc::now()),
+            uptime,
+            complete,
         }
     }
 
@@ -274,6 +294,24 @@ impl Telephony {
                 tracing::warn!(error = %err, "sofia profile restart failed");
             }
         }
+    }
+}
+
+/// The parts of the status that the notification monitor compares.
+fn observed(status: &LiveStatus) -> crate::notifier::Observed {
+    crate::notifier::Observed {
+        connected: status.connected,
+        uptime: status.uptime,
+        gateways: status
+            .gateways
+            .iter()
+            .map(|(k, g)| (k.clone(), (g.state.clone(), g.last_error.clone())))
+            .collect(),
+        registered: status
+            .registrations
+            .iter()
+            .map(|r| r.user.to_lowercase())
+            .collect(),
     }
 }
 

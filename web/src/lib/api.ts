@@ -124,6 +124,7 @@ export type Permission =
 	| 'backups.manage'
 	| 'storage.manage'
 	| 'diagnostics.manage'
+	| 'notifications.manage'
 	| 'audit.view'
 	| 'audit.manage';
 
@@ -779,6 +780,71 @@ export interface MailDesignView {
 	templates: MailTemplateEntry[];
 	common_placeholders: string[];
 	max_logo_bytes: number;
+}
+
+export type NotificationSeverity = 'info' | 'warning' | 'critical';
+
+export interface NotificationEventType {
+	key: string;
+	category: string;
+	severity: NotificationSeverity;
+	/** Problem events: the event that ends the problem. */
+	recovery: string | null;
+	/** False: no producer yet. */
+	implemented: boolean;
+}
+
+export interface NotificationRule {
+	event_type: string;
+	enabled: boolean;
+	min_severity: NotificationSeverity;
+	recipient_users: string[];
+	recipient_roles: string[];
+	recipient_emails: string[];
+	delay_secs: number;
+	send_recovery: boolean;
+	digest_secs: number;
+	rate_limit_per_hour: number;
+	/** True if changed from the defaults. */
+	custom: boolean;
+}
+
+export interface NotificationsView {
+	categories: string[];
+	event_types: NotificationEventType[];
+	rules: NotificationRule[];
+}
+
+export interface NotificationEvent {
+	id: number;
+	event_type: string;
+	source: string;
+	severity: NotificationSeverity;
+	params: Record<string, unknown>;
+	created_at: string;
+}
+
+export interface NotificationDelivery {
+	id: number;
+	event_type: string;
+	kind: 'alert' | 'recovery' | 'digest' | 'test';
+	subject: string;
+	recipients: string[];
+	status: string;
+	error: string | null;
+	event_count: number;
+	created_at: string;
+}
+
+export interface NotificationLog {
+	events: NotificationEvent[];
+	deliveries: NotificationDelivery[];
+}
+
+export interface NotificationTestResult {
+	status: string;
+	recipients: string[];
+	error: string | null;
 }
 
 export interface RenderedMail {

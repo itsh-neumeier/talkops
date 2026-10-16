@@ -22,6 +22,12 @@ dieses Protokoll. TalkOps stellt keinen TFTP-Dienst bereit. Für DHCP die unter
 Eingabe Benutzername und Passwort in die getrennten Felder des Telefons
 eintragen. Die URL mit Zugangsdaten nicht veröffentlichen.
 
+Das Telefon muss TalkOps zuerst erreichen, um eine Geräte-Ausnahme zu laden.
+Scheitert bereits die erste HTTPS-Verbindung, trage die HTTP-Adresse und die
+Provisionierungs-Zugangsdaten einmal am Telefon ein. Alternativ kann eine
+gerätespezifische DHCP-Option 66 diese HTTP-Adresse verteilen. Nach dem ersten
+erfolgreichen Download behält die Geräte-Konfiguration die gewählte Adresse.
+
 ## Tasten belegen
 
 Der grafische Leitungstasten-Editor bleibt verfügbar. Je Modell sind zusätzliche

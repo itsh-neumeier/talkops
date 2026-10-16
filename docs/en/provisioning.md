@@ -14,6 +14,11 @@ Use HTTP only on a trusted phone LAN. The exception also applies to phonebooks,
 firmware, media, status callbacks and softkey files. TalkOps does not disable
 certificate checks or change HTTPS to HTTP automatically.
 
+The phone must first reach TalkOps to download this exception. If its initial
+HTTPS connection fails, enter the HTTP URL and provisioning credentials on the
+phone once, or set that URL in its device-specific DHCP option 66. After a
+successful download, the device configuration keeps the selected HTTP address.
+
 DHCP option 66 distributes a server value. Its name in a DHCP UI can be
 "TFTP server", but an `http://` or `https://` URL requests that protocol on a
 phone that supports it. TalkOps serves HTTP(S), not a TFTP service. Use the URL

@@ -102,7 +102,7 @@ export type TargetsOverview = {
 };
 
 /** A feature that uses storage targets (`StoragePurpose` in the API). */
-export type StoragePurpose = 'backup';
+export type StoragePurpose = 'backup' | 'audit_export';
 
 export type StorageUsage = { purpose: StoragePurpose; id: string; name: string };
 

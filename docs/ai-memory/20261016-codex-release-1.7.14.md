@@ -5,7 +5,7 @@
 - Task ID: 20261016-codex-release-1.7.14
 - Date: 2026-10-16, Europe/Berlin
 - Tool: Codex
-- Status: In progress
+- Status: Completed
 - Branch: codex/release-1.7.14
 - Base commit: 702507b39fb1cf80db4ce5a0f9dd3d339b9da68c
 - Related commits or PR: Integration corrections 1bad7389a7f97f1dc477c840e200d0cc3e9d6692; [integration PR 35](https://github.com/itsh-neumeier/talkops/pull/35)
@@ -19,7 +19,7 @@ Keep foreign local work. Remove only unchanged, integrated remote branches.
 ## Result
 
 All six ready source heads and PR 35 are merged into main. Version 1.7.14
-is published. Registry verification passed; the additional tag E2E is pending. No contribution is omitted. The four promised UI/API tasks
+is published. Registry verification and all additional tag checks passed. No contribution is omitted. The four promised UI/API tasks
 and both backup tasks are present. No separate Codex feature PR is assigned.
 
 | PR | Contributor | Exact head | Dependencies | Migration |
@@ -95,7 +95,8 @@ and both backup tasks are present. No separate Codex feature PR is assigned.
 
 ## Next action
 
-Wait for the additional tag E2E. Archive the final summary and update PR 35.
+None. Release 1.7.14 and its artifacts are verified. The integration PR has
+the release record. Keep the separate hardware and CDR follow-up work.
 
 ## References
 
@@ -137,7 +138,7 @@ Wait for the additional tag E2E. Archive the final summary and update PR 35.
 
 - Release 38862917854 passed all six native builds, three manifest jobs and
   GitHub release creation. Additional tag CI 38862918000 and FreeSWITCH
-  38862917817 passed. Tag E2E 38862917820 is still running.
+  38862917817 passed. Tag E2E 38862917820 passed too.
 - GitHub release: https://github.com/itsh-neumeier/talkops/releases/tag/v1.7.14
 - Published at 2026-10-16T06:51:21Z. It is the latest stable release, not a
   draft or prerelease. English release notes list all six source contributions.
@@ -162,4 +163,13 @@ Wait for the additional tag E2E. Archive the final summary and update PR 35.
   remote branches in one atomic push with expected-head guards. No history
   was rewritten. GitHub now has only main, and no open PR remains.
 - Foreign local branches, worktrees and unpublished primary documentation
-  remain. Only this task's local release branch can be removed after archiving.
+  remain. This task's local release branch is removed after archiving.
+## Final record
+
+- All release gates passed. No agreed contribution is omitted or blocked.
+- Final summary reference: audit/release-1.7.14. Its difference from the release
+  commit contains only this task summary. It does not move the release tag or
+  change the published code. The owned worktree stays at the audit commit.
+- PR 35 stores the complete scope, exact heads, checks, release link and a
+  permanent link to the final summary. Documentation-only audit checks are
+  separate from the already passed release checks.

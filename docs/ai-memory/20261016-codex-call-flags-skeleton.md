@@ -5,10 +5,11 @@
 - Task ID: 20261016-codex-call-flags-skeleton
 - Date: 2026-10-16, Europe/Berlin
 - Tool: Codex
-- Status: In progress. Implementation and local checks are complete. PR pending.
+- Status: Completed locally. PR 46 records final checks and readiness.
 - Branch: codex/call-flags-skeleton
 - Base commit: 7d7990b99e9f02c126ad3983da633476a22a9708
-- Related commits or PR: Pending
+- Related commits or PR: implementation `3f122d4`;
+  [PR 46](https://github.com/itsh-neumeier/talkops/pull/46).
 
 ## Goal
 
@@ -106,8 +107,8 @@ A precise Git safe-directory exception permits this network-backed worktree.
 
 ## Next action
 
-Commit and push the feature branch. Create a PR against main and record the
-final checks, package dependencies, migration status and release notes.
+Check remote CI on the final PR revision. Mark the PR ready when applicable
+checks pass. The release manager owns integration and publication.
 
 ## References
 

@@ -104,7 +104,7 @@ Diese Einstellungen im WLAN helfen oft mehr als der Codec:
 
 ## Codec prüfen
 
-**Einstellungen → System → Aktive Kanäle** zeigt den Codec jedes Kanals
+**Einstellungen → System → Status → Aktive Kanäle** zeigt den Codec jedes Kanals
 (`read_codec` und `write_codec`). Ein Anruf zu einem Gerät mit Robust
 zeigt `iLBC` auf dem Kanal des Geräts und den Codec der Gegenseite auf
 dem anderen Kanal.

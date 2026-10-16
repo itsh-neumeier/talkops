@@ -26,8 +26,7 @@ Copy archives to another machine. Same-disk backups cannot survive disk failure.
 default), TalkOps captures these files of the directory automatically:
 `.env`, `*.env`, `docker-compose*.yml`/`.yaml` and `compose*.yml`/`.yaml`.
 TalkOps leaves out links, files larger than 1 MiB, files that UID 10001
-cannot read and files that contain the backup password. **Settings → System →
-Backups** shows the captured and the left-out files.
+cannot read and files that contain the backup password. **Settings → Backup** shows the captured and the left-out files.
 
 1. Create a separate password file. The operator owns the file; group 10001
    gives the container read access:
@@ -79,7 +78,7 @@ Portainer API instead:
 
 1. In Portainer, open **My account → Access tokens** and add a token. Use a
    user that can read the TalkOps stack.
-2. In TalkOps, open **Settings → System → Backups** and click
+2. In TalkOps, open **Settings → Backup** and click
    **Connect Portainer**.
 3. Enter the Portainer URL, for example `https://127.0.0.1:9443`.
    `http://` is allowed only for `127.0.0.1`.
@@ -114,7 +113,7 @@ that password in imported `.env` files. Store a separate recovery copy.
 ## Backup targets
 
 Backup targets receive copies of the backup archives. Open
-**Settings > System > Backup targets** and click **Add target**.
+**Settings → Backup → Backup targets** and click **Add target**.
 TalkOps copies the archives with [rclone](https://rclone.org). The server
 image contains a pinned rclone release.
 

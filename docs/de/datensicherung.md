@@ -25,7 +25,7 @@ kopieren; Backups auf derselben Platte helfen bei einem Plattenausfall nicht.
 (Standard) sichert TalkOps diese Dateien des Verzeichnisses automatisch:
 `.env`, `*.env`, `docker-compose*.yml`/`.yaml` und `compose*.yml`/`.yaml`.
 TalkOps lässt Links, Dateien über 1 MiB, für UID 10001 nicht lesbare Dateien
-und Dateien mit dem Backup-Passwort aus. **Einstellungen → System → Backups**
+und Dateien mit dem Backup-Passwort aus. **Einstellungen → Backup**
 zeigt gesicherte und ausgelassene Dateien.
 
 1. Eine separate Passwortdatei erstellen. Der ausführende Benutzer ist Eigentümer;
@@ -79,7 +79,7 @@ stattdessen die Portainer-API:
 
 1. In Portainer unter **My account → Access tokens** ein Token anlegen. Einen
    Benutzer verwenden, der den TalkOps-Stack lesen darf.
-2. In TalkOps **Einstellungen → System → Backups** öffnen und auf
+2. In TalkOps **Einstellungen → Backup** öffnen und auf
    **Portainer verbinden** klicken.
 3. Die Portainer-URL eingeben, z. B. `https://127.0.0.1:9443`. `http://` ist
    nur für `127.0.0.1` erlaubt.
@@ -117,7 +117,7 @@ Passwort nicht in die importierte `.env` aufnehmen und separat aufbewahren.
 ## Sicherungsziele
 
 Sicherungsziele erhalten Kopien der Backup-Archive. Unter
-**Einstellungen > System > Sicherungsziele** auf **Ziel hinzufügen** klicken.
+**Einstellungen → Backup → Sicherungsziele** auf **Ziel hinzufügen** klicken.
 TalkOps kopiert die Archive mit [rclone](https://rclone.org). Das Server-Image
 enthält eine fest eingestellte rclone-Version.
 

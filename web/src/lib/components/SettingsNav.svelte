@@ -3,7 +3,7 @@
 	import { can } from '#lib/session.svelte.ts';
 
 	export type Section =
-		'telephony' | 'calls' | 'voicemail' | 'email' | 'security' | 'system' | 'account';
+		'telephony' | 'calls' | 'voicemail' | 'email' | 'security' | 'system' | 'backup' | 'account';
 	/** Settings sections; a section shows when the user has one of `perms`. */
 	export const sections: { id: Section; icon: string; perms: Permission[] }[] = [
 		{ id: 'telephony', icon: '☎', perms: ['settings.manage'] },
@@ -11,7 +11,8 @@
 		{ id: 'voicemail', icon: '📮', perms: ['voicemail.settings'] },
 		{ id: 'email', icon: '✉', perms: ['voicemail.settings'] },
 		{ id: 'security', icon: '🛡', perms: ['identity.manage', 'security.manage'] },
-		{ id: 'system', icon: '⚙', perms: ['diagnostics.manage', 'backups.manage'] },
+		{ id: 'system', icon: '⚙', perms: ['diagnostics.manage'] },
+		{ id: 'backup', icon: '💾', perms: ['backups.manage'] },
 		{ id: 'account', icon: '👤', perms: [] }
 	];
 
@@ -113,7 +114,7 @@
 				{t(`settings.section.${s.id}`)}</button
 			>
 		{:else}
-			<a href="/settings#{s.id}" class="nav-item"
+			<a href="/settings?section={s.id}" class="nav-item"
 				><span aria-hidden="true" class="w-5 text-center">{s.icon}</span>
 				{t(`settings.section.${s.id}`)}</a
 			>

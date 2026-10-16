@@ -1,7 +1,7 @@
 # Running with Portainer
 
 For complete recovery backups, connect TalkOps to the Portainer API in
-**Settings → System → Backups**. TalkOps then reads the stack file and the stack
+**Settings → Backup**. TalkOps then reads the stack file and the stack
 environment before each backup. Supply the backup password separately. See
 [Backup and restore](backup.md#portainer) for the connection, manual imports
 and new-host recovery.

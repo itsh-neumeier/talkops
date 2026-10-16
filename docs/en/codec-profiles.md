@@ -102,7 +102,7 @@ These settings in the Wi-Fi network often help more than the codec:
 
 ## Check the codec
 
-**Settings → System → Active channels** shows the codec of each channel
+**Settings → System → Status → Active channels** shows the codec of each channel
 (`read_codec` and `write_codec`). A call to a device with Robust shows
 `iLBC` on the leg of the device and the codec of the other party on the
 other leg.

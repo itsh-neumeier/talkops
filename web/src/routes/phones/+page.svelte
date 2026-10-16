@@ -19,6 +19,7 @@
 	import Modal from '#lib/components/Modal.svelte';
 	import PhoneMediaManager from '#lib/components/PhoneMediaManager.svelte';
 	import PhoneSettingsDefaults from '#lib/components/PhoneSettingsDefaults.svelte';
+	import PhoneGraphic from '#lib/components/PhoneGraphic.svelte';
 	import { formatDateTime, t } from '#lib/i18n/index.svelte.ts';
 	import { can } from '#lib/session.svelte.ts';
 	import { copy, errorMessage } from '#lib/util.ts';
@@ -232,7 +233,14 @@
 										href="/phones/{p.id}">{t('phones.noneAssigned')}</a
 									>{/each}
 							</td>
-							<td>{modelName(p.model)}</td>
+							<td
+								><div class="flex items-center gap-2">
+									{#if models.find((m) => m.id === p.model)?.layout}<PhoneGraphic
+											model={models.find((m) => m.id === p.model)}
+											small
+										/>{/if}<span>{modelName(p.model)}</span>
+								</div></td
+							>
 							<td class="col-opt-lg font-mono text-xs">{p.mac}</td>
 							<td class="col-opt text-sm">{seen(p)}{p.last_ip ? ` · ${p.last_ip}` : ''}</td>
 							<td class="col-opt-lg font-mono text-xs">{p.last_firmware ?? '—'}</td>
@@ -374,6 +382,9 @@
 			<select id="p-model" class="input" bind:value={form.model}>
 				{#each models as m (m.id)}<option value={m.id}>{m.vendor} {m.name}</option>{/each}
 			</select>
+			{#if models.find((m) => m.id === form.model)?.layout}<div class="mt-3">
+					<PhoneGraphic model={models.find((m) => m.id === form.model)} />
+				</div>{/if}
 		</div>
 		<div>
 			<label for="p-ext">{t('phones.assignExtension')}</label>

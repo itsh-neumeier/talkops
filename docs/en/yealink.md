@@ -79,6 +79,62 @@ with `sip.notify_reboot_enable = 0` (Yealink documentation *Phone Reboot* and
 Phones that are not registered fetch the configuration on their next start or
 at night between 2 and 4 am.
 
+### Graphical function keys and speed dial
+
+Desk phones have a model graphic and a selectable display layout on their
+phone page. Select a key or its label to open the key dialog. Use **List**
+for a table of all keys. Both views edit the same assignments.
+
+| Supported models | DSS keys per phone |
+| --- | --- |
+| T31G | 2 |
+| T33G | 12 |
+| T41P, T41S, T42U | 15 |
+| T43U, T53, T53W | 21 |
+| T46G, T46S, T46U, T54W, T58W, VP59 | 27 |
+| T48G, T48S, T48U, T57W | 29 |
+| T73W | 40 |
+| T85W | 60 |
+| T87W | 84 |
+
+The graphics are schematic. Older phones use the bottom-right line key to
+change pages. TalkOps keeps that key as the page control, so the phone
+matches the editor. T73W and T85W have a separate page control. Touchscreen
+models show a scrollable DSS overview, not a copy of each firmware idle screen.
+
+1. Select the key.
+2. Select **Speed dial**, **BLF**, **Line** or **Unused**. Available functions
+   depend on the model and key position.
+3. For a speed dial, select **Phonebook**, **Extension** or **Manual number**.
+4. In the phonebook view, select global contacts or a book assigned to this
+   phone. Find a contact and select its work, mobile or other number.
+5. Check the display label and assigned account.
+6. Select **Apply** to update the page draft.
+7. Select **Save** or **Save & resync** on the phone page.
+
+The picker copies the selected number and contact name. The label stays
+editable. Later contact changes do not automatically change a saved key.
+Internal speed dial uses `**<extension>`. BLF uses the extension number for
+monitoring and `*8*<extension>` for pickup.
+
+**Default** removes a key override and restores its automatic assignment.
+**Unused** explicitly clears the key. Assign an account before you apply
+an active key. Save & resync saves the phone and account text first. It sends
+the resync request only after these saves succeed. A failed notification
+does not undo the save. An offline phone fetches the saved configuration at
+its next provisioning request.
+
+The documented capacities correct the old T33G limit from 4 to 12, T46U from
+40 to 27 and VP59 from 29 to 27. Unsupported old overrides remain stored and
+visible in a correction area. You can save other phone changes while these
+overrides remain unchanged. Record their values, then remove or reassign
+them explicitly. TalkOps does not silently delete them.
+
+No database migration or new package is required. New models use the existing
+provisioning credentials. Sources are in the
+[design record](../deskphone-key-editor-proposal.md). Hardware checks are
+pending; automated checks do not confirm a particular phone firmware.
+
 ### Label and display name
 
 Under *Accounts on this phone* every account has two fields (also in the

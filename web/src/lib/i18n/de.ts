@@ -696,6 +696,62 @@ const de: Record<keyof typeof en, string> = {
 	'phones.keyValue': 'Ziel',
 	'phones.keyLabel': 'Beschriftung',
 	'phones.keyReset': 'Standard',
+	'phonekeys.title': 'Funktionstasten & Kurzwahl',
+	'phonekeys.hint':
+		'Taste auswählen und bearbeiten. Änderungen hier übernehmen, danach das Telefon speichern und synchronisieren.',
+	'phonekeys.graphic': 'Grafik',
+	'phonekeys.list': 'Liste',
+	'phonekeys.view': 'Tastenansicht',
+	'phonekeys.layout': 'Tastenbelegung',
+	'phonekeys.touchOverview': 'DSS-Übersicht',
+	'phonekeys.touchHint':
+		'Schematische, scrollbare Übersicht aller DSS-Tasten. Die Startansicht am Telefon kann je nach Firmware und Ansicht abweichen.',
+	'phonekeys.schematic':
+		'Schematisches Display. Beschriftung oder danebenliegende Taste auswählen.',
+	'phonekeys.pages': 'Tastenseiten',
+	'phonekeys.page': 'Seite {n}',
+	'phonekeys.nextPage': 'Nächste Tastenseite',
+	'phonekeys.key': 'Taste {n}',
+	'phonekeys.editTitle': 'Taste {n} bearbeiten',
+	'phonekeys.configure': 'Belegen',
+	'phonekeys.internal': 'Nebenstelle',
+	'phonekeys.manual': 'Freie Nummer',
+	'phonekeys.source': 'Ziel auswählen',
+	'phonekeys.assignedBooks': 'Globale und zugewiesene Telefonbücher',
+	'phonekeys.search': 'Kontakt suchen',
+	'phonekeys.results': 'Passende Kontakte',
+	'phonekeys.number': 'Rufnummer oder Funktionscode',
+	'phonekeys.work': 'Geschäftlich',
+	'phonekeys.mobile': 'Mobil',
+	'phonekeys.other': 'Weitere',
+	'phonekeys.chooseNumber': 'Rufnummer auswählen',
+	'phonekeys.chooseContact': 'Bitte einen Kontakt und eine seiner Rufnummern auswählen.',
+	'phonekeys.chooseExtension': 'Nebenstelle auswählen',
+	'phonekeys.numberHint':
+		'Zum Beispiel +49… für externe Nummern, **103 für interne Anrufe oder ein Funktionscode wie *97.',
+	'phonekeys.blfHint':
+		'BLF nutzt die Nebenstellennummer ohne **. Vorhandene Parkziele wie park+*71 werden ebenfalls unterstützt.',
+	'phonekeys.noAccount':
+		'Zuerst diesem Telefon eine Nebenstelle zuweisen, um eine aktive Taste einzurichten.',
+	'phonekeys.unassignedAccount': 'Konto {n} · nicht zugewiesen',
+	'phonekeys.missingAccount': 'Bitte ein diesem Telefon zugewiesenes Konto auswählen.',
+	'phonekeys.invalidNumber':
+		'Bitte eine gültige Nummer oder einen Funktionscode eingeben (höchstens 32 Zeichen: Ziffern, *, #, +).',
+	'phonekeys.invalidSlot': 'Diese Taste oder Funktion wird vom gewählten Modell nicht unterstützt.',
+	'phonekeys.longLabel': 'Die Beschriftung darf höchstens 32 Zeichen enthalten.',
+	'phonekeys.noSpeedDial': 'Dieses Modell unterstützt keine Kurzwahltasten.',
+	'phonekeys.legacy':
+		'Diese gespeicherten Belegungen überschreiten die dokumentierten Modellgrenzen. Sie bleiben gespeichert, können am Telefon aber nicht wie angezeigt angewendet werden. Werte bei Bedarf notieren, Belegung entfernen und einer unterstützten Taste zuweisen.',
+	'phonekeys.dials': 'Wählt',
+	'phonekeys.watches': 'Überwacht',
+	'phonekeys.apply': 'Übernehmen',
+	'phonekeys.saveResync': 'Speichern & Resync',
+	'phonekeys.savedOffline':
+		'Gespeichert. Das Telefon ist offline und übernimmt die Konfiguration beim nächsten Provisionierungsabruf.',
+	'phonekeys.savedSynced':
+		'Gespeichert. Das Telefon wurde zum Neuladen der Konfiguration benachrichtigt.',
+	'phonekeys.savedResyncFailed':
+		'Gespeichert, aber die Resync-Anforderung ist fehlgeschlagen. Resync kann erneut angefordert werden.',
 	'phones.keyLine': 'Leitung',
 	'phones.keyUnused': 'unbelegt',
 	'phones.resync': 'Resync',

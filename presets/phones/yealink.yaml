@@ -22,20 +22,79 @@
 #                  Administrator's Guide (covers T5x and T4U), sections
 #                  "Custom Ringtone Limit" and "Custom Wallpaper Picture Limit".
 #                  Models not listed there keep their own settings.
+# Desk display/key maps: Yealink T3/T4U/T5 series specifications and DSS Keys.
+# T33G has its four physical buttons on the right of the display.
+# Older paged desk models reserve the bottom-right key for page switching;
+# the renderer sets features.keep_switch_page_key.enable = 1 to match.
+# T73W/T85W have a separate page control; all physical line keys stay usable.
+# Touch models use an expanded, scrollable DSS overview, not idle-screen pages.
+# Sources and capacity corrections: docs/deskphone-key-editor-proposal.md.
 vendor: yealink
 status: untested
 models:
-  - { id: t31g, name: SIP-T31G, family: desk, accounts: 2, line_keys: 2 }
-  - { id: t33g, name: SIP-T33G, family: desk, accounts: 4, line_keys: 4 }
-  - { id: t42u, name: SIP-T42U, family: desk, accounts: 12, line_keys: 15, ringtone_max_kb: 100 }
-  - { id: t43u, name: SIP-T43U, family: desk, accounts: 12, line_keys: 21, ringtone_max_kb: 100, wallpaper: true }
-  - { id: t46u, name: SIP-T46U, family: desk, accounts: 16, line_keys: 40, ringtone_max_kb: 8192, wallpaper: true }
-  - { id: t48u, name: SIP-T48U, family: desk, accounts: 16, line_keys: 29, ringtone_max_kb: 8192, wallpaper: true }
-  - { id: t53w, name: SIP-T53W, family: desk, accounts: 12, line_keys: 21, ringtone_max_kb: 100, wallpaper: true }
-  - { id: t54w, name: SIP-T54W, family: desk, accounts: 16, line_keys: 27, ringtone_max_kb: 8192, wallpaper: true }
-  - { id: t57w, name: SIP-T57W, family: desk, accounts: 16, line_keys: 29, ringtone_max_kb: 8192, wallpaper: true }
-  - { id: t58w, name: SIP-T58W, family: desk, accounts: 16, line_keys: 27, video: true }
-  - { id: vp59, name: VP59, family: desk, accounts: 16, line_keys: 29, video: true }
+  - { id: t31g, name: SIP-T31G, family: desk, accounts: 2, line_keys: 2,
+      layout: { width: 132, height: 64, color: false, touch: false, left: 0, right: 2, columns: 1, page_key: false,
+        pages: [[1, 2]] } }
+  - { id: t33g, name: SIP-T33G, family: desk, accounts: 4, line_keys: 12,
+      layout: { width: 320, height: 240, color: true, touch: false, left: 0, right: 4, columns: 1, page_key: true,
+        pages: [[1, 2, 3, 0], [4, 5, 6, 0], [7, 8, 9, 0], [10, 11, 12, 0]] } }
+  - { id: t41p, name: SIP-T41P, family: desk, accounts: 6, line_keys: 15,
+      layout: { width: 192, height: 64, color: false, touch: false, left: 3, right: 3, columns: 2, page_key: true,
+        pages: [[1, 4, 2, 5, 3, 0], [6, 9, 7, 10, 8, 0], [11, 14, 12, 15, 13, 0]] } }
+  - { id: t41s, name: SIP-T41S, family: desk, accounts: 6, line_keys: 15,
+      layout: { width: 192, height: 64, color: false, touch: false, left: 3, right: 3, columns: 2, page_key: true,
+        pages: [[1, 4, 2, 5, 3, 0], [6, 9, 7, 10, 8, 0], [11, 14, 12, 15, 13, 0]] } }
+  - { id: t42u, name: SIP-T42U, family: desk, accounts: 12, line_keys: 15, ringtone_max_kb: 100,
+      layout: { width: 192, height: 64, color: false, touch: false, left: 3, right: 3, columns: 2, page_key: true,
+        pages: [[1, 4, 2, 5, 3, 0], [6, 9, 7, 10, 8, 0], [11, 14, 12, 15, 13, 0]] } }
+  - { id: t43u, name: SIP-T43U, family: desk, accounts: 12, line_keys: 21, ringtone_max_kb: 100, wallpaper: true,
+      layout: { width: 360, height: 160, color: false, touch: false, left: 4, right: 4, columns: 2, page_key: true,
+        pages: [[1, 5, 2, 6, 3, 7, 4, 0], [8, 12, 9, 13, 10, 14, 11, 0], [15, 19, 16, 20, 17, 21, 18, 0]] } }
+  - { id: t46g, name: SIP-T46G, family: desk, accounts: 16, line_keys: 27,
+      layout: { width: 480, height: 272, color: true, touch: false, left: 5, right: 5, columns: 2, page_key: true,
+        pages: [[1, 6, 2, 7, 3, 8, 4, 9, 5, 0], [10, 15, 11, 16, 12, 17, 13, 18, 14, 0], [19, 24, 20, 25, 21, 26, 22, 27, 23, 0]] } }
+  - { id: t46s, name: SIP-T46S, family: desk, accounts: 16, line_keys: 27,
+      layout: { width: 480, height: 272, color: true, touch: false, left: 5, right: 5, columns: 2, page_key: true,
+        pages: [[1, 6, 2, 7, 3, 8, 4, 9, 5, 0], [10, 15, 11, 16, 12, 17, 13, 18, 14, 0], [19, 24, 20, 25, 21, 26, 22, 27, 23, 0]] } }
+  - { id: t46u, name: SIP-T46U, family: desk, accounts: 16, line_keys: 27, ringtone_max_kb: 8192, wallpaper: true,
+      layout: { width: 480, height: 272, color: true, touch: false, left: 5, right: 5, columns: 2, page_key: true,
+        pages: [[1, 6, 2, 7, 3, 8, 4, 9, 5, 0], [10, 15, 11, 16, 12, 17, 13, 18, 14, 0], [19, 24, 20, 25, 21, 26, 22, 27, 23, 0]] } }
+  - { id: t48g, name: SIP-T48G, family: desk, accounts: 16, line_keys: 29,
+      layout: { width: 800, height: 480, color: true, touch: true, left: 0, right: 0, columns: 3, page_key: false,
+        pages: [[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]] } }
+  - { id: t48s, name: SIP-T48S, family: desk, accounts: 16, line_keys: 29,
+      layout: { width: 800, height: 480, color: true, touch: true, left: 0, right: 0, columns: 3, page_key: false,
+        pages: [[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]] } }
+  - { id: t48u, name: SIP-T48U, family: desk, accounts: 16, line_keys: 29, ringtone_max_kb: 8192, wallpaper: true,
+      layout: { width: 800, height: 480, color: true, touch: true, left: 0, right: 0, columns: 3, page_key: false,
+        pages: [[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]] } }
+  - { id: t53, name: SIP-T53, family: desk, accounts: 12, line_keys: 21,
+      layout: { width: 360, height: 160, color: false, touch: false, left: 4, right: 4, columns: 2, page_key: true,
+        pages: [[1, 5, 2, 6, 3, 7, 4, 0], [8, 12, 9, 13, 10, 14, 11, 0], [15, 19, 16, 20, 17, 21, 18, 0]] } }
+  - { id: t53w, name: SIP-T53W, family: desk, accounts: 12, line_keys: 21, ringtone_max_kb: 100, wallpaper: true,
+      layout: { width: 360, height: 160, color: false, touch: false, left: 4, right: 4, columns: 2, page_key: true,
+        pages: [[1, 5, 2, 6, 3, 7, 4, 0], [8, 12, 9, 13, 10, 14, 11, 0], [15, 19, 16, 20, 17, 21, 18, 0]] } }
+  - { id: t54w, name: SIP-T54W, family: desk, accounts: 16, line_keys: 27, ringtone_max_kb: 8192, wallpaper: true,
+      layout: { width: 480, height: 272, color: true, touch: false, left: 5, right: 5, columns: 2, page_key: true,
+        pages: [[1, 6, 2, 7, 3, 8, 4, 9, 5, 0], [10, 15, 11, 16, 12, 17, 13, 18, 14, 0], [19, 24, 20, 25, 21, 26, 22, 27, 23, 0]] } }
+  - { id: t57w, name: SIP-T57W, family: desk, accounts: 16, line_keys: 29, ringtone_max_kb: 8192, wallpaper: true,
+      layout: { width: 800, height: 480, color: true, touch: true, left: 0, right: 0, columns: 3, page_key: false,
+        pages: [[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]] } }
+  - { id: t58w, name: SIP-T58W, family: desk, accounts: 16, line_keys: 27, video: true,
+      layout: { width: 1024, height: 600, color: true, touch: true, left: 0, right: 0, columns: 3, page_key: false,
+        pages: [[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]] } }
+  - { id: vp59, name: VP59, family: desk, accounts: 16, line_keys: 27, video: true,
+      layout: { width: 1280, height: 800, color: true, touch: true, left: 0, right: 0, columns: 3, page_key: false,
+        pages: [[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]] } }
+  - { id: t73w, name: SIP-T73W, family: desk, accounts: 12, line_keys: 40,
+      layout: { width: 320, height: 240, color: true, touch: false, left: 4, right: 4, columns: 2, page_key: false,
+        pages: [[1, 5, 2, 6, 3, 7, 4, 8], [9, 13, 10, 14, 11, 15, 12, 16], [17, 21, 18, 22, 19, 23, 20, 24], [25, 29, 26, 30, 27, 31, 28, 32], [33, 37, 34, 38, 35, 39, 36, 40]] } }
+  - { id: t85w, name: SIP-T85W, family: desk, accounts: 16, line_keys: 60,
+      layout: { width: 960, height: 480, color: true, touch: false, left: 6, right: 6, columns: 2, page_key: false,
+        pages: [[1, 7, 2, 8, 3, 9, 4, 10, 5, 11, 6, 12], [13, 19, 14, 20, 15, 21, 16, 22, 17, 23, 18, 24], [25, 31, 26, 32, 27, 33, 28, 34, 29, 35, 30, 36], [37, 43, 38, 44, 39, 45, 40, 46, 41, 47, 42, 48], [49, 55, 50, 56, 51, 57, 52, 58, 53, 59, 54, 60]] } }
+  - { id: t87w, name: SIP-T87W, family: desk, accounts: 16, line_keys: 84,
+      layout: { width: 800, height: 480, color: true, touch: true, left: 0, right: 0, columns: 3, page_key: false,
+        pages: [[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84]] } }
   - { id: cp920, name: CP920, family: conference, accounts: 1, line_keys: 0 }
   - { id: cp960, name: CP960, family: conference, accounts: 1, line_keys: 0 }
   - { id: w60b, name: W60B, family: dect, accounts: 8, line_keys: 0 }

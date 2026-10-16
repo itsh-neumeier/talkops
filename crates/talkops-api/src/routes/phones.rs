@@ -17,6 +17,7 @@ use talkops_core::phones::{
     PhonebookSection, SectionInput,
 };
 use talkops_core::tenant::TenantId;
+use talkops_provisioning::catalog::PhoneLayout;
 use talkops_provisioning::yealink::{KeyType, LineKey};
 use talkops_provisioning::{PhoneModel, PhoneSetting};
 use tokio::io::AsyncWriteExt;
@@ -84,6 +85,8 @@ pub struct PhoneModelInfo {
     pub family: String,
     pub accounts: u16,
     pub line_keys: u16,
+    pub line_key_limit: u16,
+    pub layout: Option<PhoneLayoutInfo>,
     pub video: bool,
     /// Largest custom ringtone in KiB; 0 = not supported.
     pub ringtone_max_kb: u32,
@@ -91,6 +94,35 @@ pub struct PhoneModelInfo {
     pub wallpaper: bool,
     /// Line keys can be speed dials.
     pub speed_dial_keys: bool,
+}
+
+#[derive(Serialize, ToSchema)]
+pub struct PhoneLayoutInfo {
+    pub width: u16,
+    pub height: u16,
+    pub color: bool,
+    pub touch: bool,
+    pub left: u16,
+    pub right: u16,
+    pub columns: u16,
+    pub page_key: bool,
+    pub pages: Vec<Vec<u16>>,
+}
+
+impl From<&PhoneLayout> for PhoneLayoutInfo {
+    fn from(l: &PhoneLayout) -> Self {
+        Self {
+            width: l.width,
+            height: l.height,
+            color: l.color,
+            touch: l.touch,
+            left: l.left,
+            right: l.right,
+            columns: l.columns,
+            page_key: l.page_key,
+            pages: l.pages.clone(),
+        }
+    }
 }
 
 impl From<&PhoneModel> for PhoneModelInfo {
@@ -105,6 +137,8 @@ impl From<&PhoneModel> for PhoneModelInfo {
                 .unwrap_or_default(),
             accounts: m.accounts,
             line_keys: m.line_keys,
+            line_key_limit: m.line_key_limit(),
+            layout: m.layout.as_ref().map(PhoneLayoutInfo::from),
             video: m.video,
             ringtone_max_kb: m.ringtone_max_kb,
             wallpaper: m.wallpaper,
@@ -136,7 +170,7 @@ pub struct PhoneDetail {
 
 /// Checks the model, the key layout and the comfort settings against the
 /// catalog.
-fn validate_phone(state: &AppState, input: &PhoneInput) -> ApiResult<()> {
+fn validate_phone(state: &AppState, input: &PhoneInput, existing: Option<&Phone>) -> ApiResult<()> {
     let model = state
         .phone_catalog
         .get(&input.model)
@@ -145,10 +179,22 @@ fn validate_phone(state: &AppState, input: &PhoneInput) -> ApiResult<()> {
     let keys: Vec<LineKey> = serde_json::from_value(input.line_keys.clone())
         .map_err(|e| ApiError::BadRequest(format!("invalid line_keys: {e}")))?;
     let mut seen = HashSet::new();
+    let previous: Vec<LineKey> = existing
+        .filter(|p| p.model == input.model)
+        .and_then(|p| serde_json::from_value(p.line_keys.clone()).ok())
+        .unwrap_or_default();
     for k in &keys {
-        if k.key < 1 || k.key > model.line_keys {
+        // Keep an unchanged legacy override reviewable after a catalog correction.
+        let unchanged = previous.contains(k);
+        if k.key < 1 || (k.key > model.line_keys && !unchanged) {
             return Err(ApiError::BadRequest(format!(
                 "key {} does not exist on {}",
+                k.key, model.name
+            )));
+        }
+        if k.kind == KeyType::Line && k.key > model.line_key_limit() && !unchanged {
+            return Err(ApiError::BadRequest(format!(
+                "key {} does not support the Line function on {}",
                 k.key, model.name
             )));
         }
@@ -274,7 +320,7 @@ pub async fn create_phone(
     Json(input): Json<PhoneInput>,
 ) -> ApiResult<Json<Phone>> {
     auth.require_perm(Permission::PhonesManage)?;
-    validate_phone(&state, &input)?;
+    validate_phone(&state, &input, None)?;
     validate_media(&state, &auth, &input).await?;
     let phone = phones::create(&state.db, auth.tenant, &input).await?;
     audit::record(
@@ -323,7 +369,8 @@ pub async fn update_phone(
     Json(input): Json<PhoneInput>,
 ) -> ApiResult<Json<Phone>> {
     auth.require_perm(Permission::PhonesManage)?;
-    validate_phone(&state, &input)?;
+    let existing = phones::get(&state.db, auth.tenant, id).await?;
+    validate_phone(&state, &input, Some(&existing))?;
     validate_media(&state, &auth, &input).await?;
     let phone = phones::update(&state.db, auth.tenant, id, &input).await?;
     audit::record(

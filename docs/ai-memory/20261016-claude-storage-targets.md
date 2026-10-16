@@ -8,7 +8,7 @@
 - Status: Completed
 - Branch: claude/storage-targets (stacked on claude/settings-system-structure)
 - Base commit: 0ea197d (head of claude/settings-system-structure, PR #37)
-- Related commits or PR: Pending
+- Related commits or PR: https://github.com/itsh-neumeier/talkops/pull/41 (stacked on #37)
 
 ## Goal
 

@@ -17,7 +17,11 @@ const fixtures = {
   '/api/v1/telephony/status': { connected: true, registrations: [{ user: '101', network_ip: '192.0.2.10', network_port: '5060', transport: 'udp', user_agent: 'Yealink T54W', expires: 60 }], gateways: {}, updated_at: at },
   '/api/v1/trunks': [{ id: 't1', name: 'Telekom', preset: 'telekom', overrides: {}, enabled: true, video_enabled: false, numbers: [], accounts: [{ id: 'a1', trunk_id: 't1', username: '+4995431241000', auth_username: 'x', enabled: true, destination_type: 'none', destination_id: null, gateway: 'gw1', state: { name: 'gw1', state: 'FAIL_WAIT', status: 'DOWN', last_error: '403 Forbidden' } }] }],
   '/api/v1/backups': { settings: { enabled: true, hour: 3, keep: 7, include_recordings: true, last_run_at: null, last_file: null, last_error: null }, files: [], running: false, configuration: null, configuration_error: null, encryption_configured: false, mounted: false, auto_discovery: true, portainer: null },
-  '/api/v1/backup-targets': { targets: [], roots: [], encryption_configured: false }
+  '/api/v1/backup-targets': { targets: [{ id: 'j1', name: 'Nightly', enabled: true, storage_target_id: 's1', storage_name: 'NAS', folder: 'daily', config: { kind: 'smb', host: 'nas.local', port: null, user: 'backup', domain: '' }, path: 'talkops/daily', allow_insecure: false, bwlimit_kbps: null, has_secret: true, include_recordings: true, schedule: { weekdays: 127, hour: 3, minute: 30, every_hours: 0 }, retention: { keep_last: 3, keep_daily: 7, keep_weekly: 4, keep_monthly: 12, keep_yearly: 0 }, last_run_at: null, last_success_at: null, last_file: null, last_error: null, created_at: at, next_run_at: at, activity: null }], roots: [], encryption_configured: true },
+  '/api/v1/storage-targets': { targets: [
+    { id: 's1', name: 'NAS', config: { kind: 'smb', host: 'nas.local', port: null, user: 'backup', domain: '' }, path: 'talkops', allow_insecure: false, bwlimit_kbps: null, has_secret: true, last_test_at: at, last_test_ok: true, last_test_error: null, created_at: at, updated_at: at, used_by: [{ purpose: 'backup', id: 'j1', name: 'Nightly' }] },
+    { id: 's2', name: 'USB', config: { kind: 'local' }, path: '/var/lib/talkops/targets/usb', allow_insecure: false, bwlimit_kbps: null, has_secret: false, last_test_at: null, last_test_ok: null, last_test_error: null, created_at: at, updated_at: at, used_by: [] }
+  ], roots: ['/var/lib/talkops/targets'], encryption_configured: true }
 };
 
 async function open(permissions) {
@@ -63,13 +67,38 @@ try {
   // Backups only: an old "#system" link opens the "Backup" section.
   const b = await open(['backups.manage']);
   await b.page.goto(`${BASE}/settings#system`);
-  await b.page.getByRole('heading', { name: 'Sicherungsziele' }).waitFor({ timeout: 20_000 });
+  await b.page.getByRole('heading', { name: 'Sicherungsaufträge' }).waitFor({ timeout: 20_000 });
+  // The job editor selects a storage target; it has no connection fields.
+  await b.page.getByRole('button', { name: 'Bearbeiten' }).click();
+  assert.equal(await b.page.getByLabel('Speicherziel').inputValue(), 's1');
+  assert.equal(await b.page.getByLabel('Unterordner (optional)').inputValue(), 'daily');
+  await b.page.getByRole('dialog').getByText('smb://nas.local/talkops/daily').waitFor();
+  assert.equal(await b.page.getByLabel('Server').count(), 0);
+  await b.page.getByRole('button', { name: 'Abbrechen' }).click();
   const navB = b.page.getByRole('navigation', { name: 'Einstellungen' });
   assert.equal(await navB.getByRole('button', { name: /System/ }).count(), 0);
   assert.equal(await navB.getByRole('button', { name: /Backup/ }).getAttribute('aria-current'), 'page');
   assert.equal(await b.page.getByRole('tab').count(), 0);
   assert.deepEqual(b.errors, []);
   await b.context.close();
+
+  // Storage: its own section; a used target cannot be deleted.
+  const c = await open(['storage.manage']);
+  await c.page.goto(`${BASE}/settings?section=storage`);
+  await c.page.getByRole('heading', { name: 'Speicherziele' }).waitFor({ timeout: 20_000 });
+  const rows = c.page.locator('tbody tr');
+  assert.equal(await rows.count(), 2);
+  await rows.nth(0).getByText('Nightly').waitFor();
+  assert.equal(await rows.nth(0).getByRole('button', { name: 'Löschen' }).isDisabled(), true);
+  assert.equal(await rows.nth(1).getByRole('button', { name: 'Löschen' }).isDisabled(), false);
+  await rows.nth(0).getByRole('button', { name: 'Bearbeiten' }).click();
+  await c.page.getByText('Änderungen gelten für alle 1 Aufträge').waitFor();
+  await c.page.getByRole('button', { name: 'Abbrechen' }).click();
+  await c.page.setViewportSize({ width: 360, height: 780 });
+  const w = await c.page.evaluate(() => [document.documentElement.scrollWidth, innerWidth]);
+  assert.ok(w[0] <= w[1], JSON.stringify(w));
+  assert.deepEqual(c.errors, []);
+  await c.context.close();
   console.log('settings system browser checks passed');
 } finally {
   await browser.close();

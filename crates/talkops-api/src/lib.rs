@@ -271,6 +271,7 @@ pub fn api_router() -> (Router<AppState>, utoipa::openapi::OpenApi) {
         .merge(routes::webrtc::router())
         .merge(routes::backups::router())
         .merge(routes::backup_targets::router())
+        .merge(routes::storage_targets::router())
         .merge(routes::recovery::router())
         .merge(routes::diagnostics::router())
         .merge(routes::blocking::router())

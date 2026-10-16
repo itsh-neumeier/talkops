@@ -14,6 +14,7 @@
 	import BackupTargets from '#lib/components/BackupTargets.svelte';
 	import IdentitySettings from '#lib/components/IdentitySettings.svelte';
 	import SipGuardSettings from '#lib/components/SipGuardSettings.svelte';
+	import StorageTargets from '#lib/components/StorageTargets.svelte';
 	import SystemDiagnostics, {
 		isSystemTab,
 		type SystemTab
@@ -494,6 +495,8 @@
 					/>{/if}
 			{:else if section === 'backup'}
 				{#if can('backups.manage')}<BackupSettings /><BackupTargets />{/if}
+			{:else if section === 'storage'}
+				{#if can('storage.manage')}<StorageTargets />{/if}
 			{:else}
 				<form class="card max-w-md space-y-3" onsubmit={changePassword}>
 					<h2>{t('settings.account')}</h2>

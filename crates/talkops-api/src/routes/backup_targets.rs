@@ -1,59 +1,40 @@
-//! Backup targets (admin, ADR 0031): manage targets, test connections,
-//! browse folders, run a target now, list, download and delete its archives.
+//! Backup targets (ADR 0031, ADR 0036): backup jobs that copy archives to a
+//! storage target. Manage jobs, run a job now, list, download and delete
+//! its archives. Connections, tests and the folder browser are in
+//! `storage_targets`.
 
 use axum::Json;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use chrono::{DateTime, Local, Utc};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use serde_json::json;
 use talkops_core::audit;
-use talkops_core::backup_targets::{
-    self, BackupTarget, BackupTargetInput, TargetConfig, TargetConnection, TargetSecret,
-};
+use talkops_core::backup_targets::{self, BackupTarget, BackupTargetInput};
 use talkops_core::roles::Permission;
+use talkops_core::storage_targets;
 use talkops_core::tenant::TenantId;
 use utoipa::ToSchema;
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
 use uuid::Uuid;
 
+use super::storage_targets::{config, rclone_error};
 use crate::AppState;
 use crate::auth::AuthUser;
-use crate::backup::{self, BackupConfig};
+use crate::backup;
 use crate::backup_targets::{self as runner, Activity};
 use crate::error::{ApiError, ApiResult};
-use crate::rclone::{Entry, RcloneError, TestReport};
+use crate::rclone::Entry;
 
 pub fn router() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
         .routes(routes!(list_targets, create_target))
         .routes(routes!(update_target, delete_target))
-        .routes(routes!(test_target))
-        .routes(routes!(browse_target))
-        .routes(routes!(create_folder))
         .routes(routes!(run_target))
         .routes(routes!(list_archives))
         .routes(routes!(fetch_archive))
         .routes(routes!(delete_archive))
-}
-
-fn config(state: &AppState) -> ApiResult<&std::sync::Arc<BackupConfig>> {
-    state
-        .backup
-        .as_ref()
-        .ok_or_else(|| ApiError::Conflict("backups are not configured".into()))
-}
-
-/// Maps transfer errors: the target failed (502) or rclone is missing.
-pub fn rclone_error(err: RcloneError) -> ApiError {
-    match err {
-        RcloneError::NotFound => {
-            ApiError::BadRequest("folder or file not found on the target".into())
-        }
-        RcloneError::Missing(m) => ApiError::Conflict(format!("rclone is not available: {m}")),
-        other => ApiError::Device(other.to_string()),
-    }
 }
 
 #[derive(Serialize, ToSchema)]
@@ -118,9 +99,11 @@ pub async fn list_targets(
 fn audit_details(target: &BackupTarget) -> serde_json::Value {
     json!({
         "name": target.name,
-        "kind": target.config.kind(),
-        "path": target.path,
+        "storage_target_id": target.storage_target_id,
+        "storage": target.storage_name,
+        "folder": target.folder,
         "enabled": target.enabled,
+        "include_recordings": target.include_recordings,
         "schedule": target.schedule,
         "retention": target.retention,
     })
@@ -129,15 +112,20 @@ fn audit_details(target: &BackupTarget) -> serde_json::Value {
 async fn check_input(
     state: &AppState,
     tenant: TenantId,
-    id: Option<Uuid>,
     input: &BackupTargetInput,
 ) -> ApiResult<()> {
     let cfg = config(state)?;
-    let stored = match id {
-        Some(id) => backup_targets::secret(&state.db, tenant, &state.secrets, id).await?,
-        None => TargetSecret::default(),
-    };
-    let conn = backup_targets::check(input, stored)?;
+    let folder = backup_targets::check(input)?;
+    let (storage, mut conn) =
+        storage_targets::connection(&state.db, tenant, &state.secrets, input.storage_target_id)
+            .await
+            .map_err(|e| match e {
+                talkops_core::error::CoreError::NotFound => {
+                    ApiError::BadRequest("unknown storage target".into())
+                }
+                other => other.into(),
+            })?;
+    conn.path = storage_targets::join_path(&storage.path, &folder);
     runner::check_connection(cfg, &conn)?;
     if input.enabled {
         runner::check_encryption(cfg, &conn.config)
@@ -146,7 +134,8 @@ async fn check_input(
     Ok(())
 }
 
-/// Adds a backup target. Remote targets need a backup password.
+/// Adds a backup job on a storage target. Remote storage targets need a
+/// backup password.
 #[utoipa::path(post, path = "/api/v1/backup-targets", tag = "system", request_body = BackupTargetInput, responses((status = 201, body = BackupTarget), (status = 409)))]
 pub async fn create_target(
     State(state): State<AppState>,
@@ -154,8 +143,8 @@ pub async fn create_target(
     Json(input): Json<BackupTargetInput>,
 ) -> ApiResult<(StatusCode, Json<BackupTarget>)> {
     auth.require_perm(Permission::BackupsManage)?;
-    check_input(&state, auth.tenant, None, &input).await?;
-    let target = backup_targets::create(&state.db, auth.tenant, &state.secrets, &input).await?;
+    check_input(&state, auth.tenant, &input).await?;
+    let target = backup_targets::create(&state.db, auth.tenant, &input).await?;
     audit::record(
         &state.db,
         &auth.actor(),
@@ -168,7 +157,7 @@ pub async fn create_target(
     Ok((StatusCode::CREATED, Json(target)))
 }
 
-/// Changes a backup target; missing secret fields keep the stored values.
+/// Changes a backup job (schedule, retention, storage target, folder).
 #[utoipa::path(put, path = "/api/v1/backup-targets/{id}", tag = "system", params(("id" = Uuid, Path)), request_body = BackupTargetInput, responses((status = 200, body = BackupTarget)))]
 pub async fn update_target(
     State(state): State<AppState>,
@@ -177,8 +166,8 @@ pub async fn update_target(
     Json(input): Json<BackupTargetInput>,
 ) -> ApiResult<Json<BackupTarget>> {
     auth.require_perm(Permission::BackupsManage)?;
-    check_input(&state, auth.tenant, Some(id), &input).await?;
-    let target = backup_targets::update(&state.db, auth.tenant, &state.secrets, id, &input).await?;
+    check_input(&state, auth.tenant, &input).await?;
+    let target = backup_targets::update(&state.db, auth.tenant, id, &input).await?;
     audit::record(
         &state.db,
         &auth.actor(),
@@ -207,186 +196,9 @@ pub async fn delete_target(
         "delete",
         "backup_target",
         Some(id.to_string()),
-        json!({"name": target.name, "kind": target.config.kind()}),
+        json!({"name": target.name, "storage": target.storage_name}),
     )
     .await?;
-    Ok(StatusCode::NO_CONTENT)
-}
-
-/// A connection from the editor, possibly not saved yet.
-#[derive(Debug, Deserialize, ToSchema)]
-pub struct DraftConnection {
-    /// Saved target whose stored secrets fill the missing secret fields.
-    #[serde(default)]
-    pub id: Option<Uuid>,
-    pub config: TargetConfig,
-    /// The folder to use or list.
-    #[serde(default)]
-    pub path: String,
-    #[serde(default)]
-    pub allow_insecure: bool,
-    #[serde(default)]
-    pub secret: Option<TargetSecret>,
-}
-
-impl DraftConnection {
-    /// The checked connection; stored secrets come from `stored`.
-    pub fn resolve(self, cfg: &BackupConfig, stored: TargetSecret) -> ApiResult<TargetConnection> {
-        let mut conn = TargetConnection {
-            config: self.config,
-            path: self.path,
-            allow_insecure: self.allow_insecure,
-            secret: stored.merge(self.secret.as_ref()),
-        };
-        if matches!(conn.config, TargetConfig::Local) && conn.path.trim().is_empty() {
-            conn.path = "/".into();
-            conn.validate(true)?;
-            conn.path.clear();
-            return Ok(conn);
-        }
-        conn.validate(true)?;
-        runner::check_connection(cfg, &conn)?;
-        Ok(conn)
-    }
-}
-
-async fn resolve(
-    state: &AppState,
-    tenant: TenantId,
-    draft: DraftConnection,
-) -> ApiResult<TargetConnection> {
-    let cfg = config(state)?;
-    let stored = match draft.id {
-        Some(id) => backup_targets::secret(&state.db, tenant, &state.secrets, id).await?,
-        None => TargetSecret::default(),
-    };
-    draft.resolve(cfg, stored)
-}
-
-#[derive(Serialize, ToSchema)]
-pub struct BrowseResult {
-    /// Folders first, then files, by name.
-    pub entries: Vec<Entry>,
-    /// The folder has more entries than the list shows.
-    pub truncated: bool,
-    /// SFTP: host keys accepted on this first connection.
-    pub host_keys: Option<String>,
-    pub fingerprint: Option<String>,
-}
-
-/// Lists one folder level of a target (folders and files) for the folder
-/// browser. Local targets with an empty path list the allowed roots.
-pub async fn browse(cfg: &BackupConfig, mut conn: TargetConnection) -> ApiResult<BrowseResult> {
-    if matches!(conn.config, TargetConfig::Local) && conn.path.is_empty() {
-        return Ok(BrowseResult {
-            entries: cfg
-                .target_roots
-                .iter()
-                .map(|p| Entry {
-                    name: p.display().to_string(),
-                    is_dir: true,
-                    size: 0,
-                    modified: None,
-                })
-                .collect(),
-            truncated: false,
-            host_keys: None,
-            fingerprint: None,
-        });
-    }
-    let mut pinned = (None, None);
-    if let TargetConfig::Sftp { host_keys, .. } = &conn.config
-        && host_keys.is_empty()
-    {
-        let (keys, print) = cfg.rclone.pin_host_key(&conn).await.map_err(rclone_error)?;
-        if let TargetConfig::Sftp { host_keys, .. } = &mut conn.config {
-            host_keys.clone_from(&keys);
-        }
-        pinned = (Some(keys), Some(print));
-    }
-    let (entries, truncated) = match cfg.rclone.list(&conn, "").await {
-        Ok(list) => list,
-        Err(RcloneError::NotFound) => (Vec::new(), false),
-        Err(err) => return Err(rclone_error(err)),
-    };
-    Ok(BrowseResult {
-        entries,
-        truncated,
-        host_keys: pinned.0,
-        fingerprint: pinned.1,
-    })
-}
-
-/// Lists a folder of a target (folder browser).
-#[utoipa::path(post, path = "/api/v1/backup-targets/browse", tag = "system", request_body = DraftConnection, responses((status = 200, body = BrowseResult), (status = 502)))]
-pub async fn browse_target(
-    State(state): State<AppState>,
-    auth: AuthUser,
-    Json(draft): Json<DraftConnection>,
-) -> ApiResult<Json<BrowseResult>> {
-    auth.require_perm(Permission::BackupsManage)?;
-    let conn = resolve(&state, auth.tenant, draft).await?;
-    Ok(Json(browse(config(&state)?, conn).await?))
-}
-
-/// Tests a connection: creates the folder, writes, reads and deletes a
-/// test file. SFTP: returns the host key to accept.
-#[utoipa::path(post, path = "/api/v1/backup-targets/test", tag = "system", request_body = DraftConnection, responses((status = 200, body = TestReport), (status = 502)))]
-pub async fn test_target(
-    State(state): State<AppState>,
-    auth: AuthUser,
-    Json(draft): Json<DraftConnection>,
-) -> ApiResult<Json<TestReport>> {
-    auth.require_perm(Permission::BackupsManage)?;
-    let conn = resolve(&state, auth.tenant, draft).await?;
-    let cfg = config(&state)?;
-    if matches!(conn.config, TargetConfig::Local) && conn.path.is_empty() {
-        return Err(ApiError::BadRequest("select a folder".into()));
-    }
-    Ok(Json(cfg.rclone.test(&conn).await.map_err(rclone_error)?))
-}
-
-#[derive(Debug, Deserialize, ToSchema)]
-pub struct NewFolder {
-    /// The parent folder.
-    pub connection: DraftConnection,
-    pub name: String,
-}
-
-/// Creates a folder in the folder browser.
-#[utoipa::path(post, path = "/api/v1/backup-targets/folders", tag = "system", request_body = NewFolder, responses((status = 204), (status = 502)))]
-pub async fn create_folder(
-    State(state): State<AppState>,
-    auth: AuthUser,
-    Json(input): Json<NewFolder>,
-) -> ApiResult<StatusCode> {
-    auth.require_perm(Permission::BackupsManage)?;
-    let name = input.name.trim();
-    if name.is_empty()
-        || name.len() > 255
-        || name == "."
-        || name == ".."
-        || name
-            .chars()
-            .any(|c| c == '/' || c == '\\' || c.is_control())
-    {
-        return Err(ApiError::BadRequest("invalid folder name".into()));
-    }
-    let mut draft = input.connection;
-    draft.path = if draft.path.trim_end_matches('/').is_empty() {
-        name.to_owned()
-    } else {
-        format!("{}/{name}", draft.path.trim_end_matches('/'))
-    };
-    let conn = resolve(&state, auth.tenant, draft).await?;
-    if matches!(conn.config, TargetConfig::Local) && conn.path.is_empty() {
-        return Err(ApiError::BadRequest("select a folder".into()));
-    }
-    config(&state)?
-        .rclone
-        .mkdir(&conn, "")
-        .await
-        .map_err(rclone_error)?;
     Ok(StatusCode::NO_CONTENT)
 }
 

@@ -9,7 +9,7 @@
 - Branch: claude/transcription-history-filter (stacked on
   claude/phonebook-sort-filter)
 - Base commit: c8a4d5b (head of claude/phonebook-sort-filter, PR #39)
-- Related commits or PR: Pending
+- Related commits or PR: #42 (stacked on #39)
 
 ## Goal
 

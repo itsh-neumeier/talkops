@@ -6,7 +6,7 @@ All notable changes to TalkOps. The format follows
 
 ## [Unreleased]
 
-## [1.7.15] – 2026-10-16
+## [1.8.0] – 2026-10-16
 
 ### Added
 
@@ -37,10 +37,6 @@ All notable changes to TalkOps. The format follows
   with recovery mail, digest and rate limit. Review the delivery log.
 
 ### Upgrade notes
-
-- This requested 1.7.15 release contains an incompatible backup API change.
-  This is an explicit exception to the normal SemVer policy. API clients must
-  follow the migration below.
 
 - Back up the database before upgrading. Four forward migrations run in ID
   order: 20261103000001_mail_templates, 20261103000002_notifications,

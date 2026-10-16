@@ -1,8 +1,8 @@
-# TalkOps 1.7.15 release
+# TalkOps 1.8.0 release
 
 ## Task state
 
-- Task ID: 20261016-codex-release-1.7.15
+- Task ID: 20261016-codex-release-1.8.0
 - Date: 2026-10-16, Europe/Berlin
 - Tool: Codex
 - Status: In progress
@@ -12,7 +12,7 @@
 
 ## Goal
 
-Integrate all open PRs and publish the requested version 1.7.15. Verify the
+Integrate all open PRs and publish version 1.8.0, as the user now requests. Verify the
 combined candidate, exact main and all published artifacts. Preserve foreign
 work. Record the breaking backup API and the fixed version in the release notes.
 
@@ -51,13 +51,14 @@ Publication has not started. The final 1.7.14 audit history is preserved too.
 
 - Target branch is main; merge commits are permitted. No active ruleset or
   main protection was reported. Sources remain unchanged.
-- The user explicitly fixed version 1.7.15 and all open PRs in the current
-  request. Keep that authorized version and scope. The optional major-version
-  question does not require a second publication approval. Do not infer
-  approval from silence; the existing explicit instruction is the authority.
-  Document the SemVer exception and the incompatible backup write API in
-  CHANGELOG.md, release notes and the integration PR. ADR 0036 deliberately
-  has no aliases; do not add unrelated compatibility feature work.
+- The user explicitly selected 1.8.0 in both version replies. This supersedes
+  the original 1.7.15 request and its preliminary metadata. No 1.7.15 tag or
+  release was created. Use 1.8.0 exactly; keep the backup API break in upgrade
+  notes. Do not describe the API break as backward compatible or claim that a
+  minor version meets strict SemVer for a public API break.
+- Keep codex/release-1.7.15 as the original batch branch so PR45 and its review
+  record stay together. The code, release title, task summary, tag and image
+  labels use 1.8.0. Remove only this owned batch branch after release audit.
 - Closed PR 36 (Cactus Whistle evaluation) is outside the open-PR scope. Its
   unmerged branch claude/vigilant-tesla-ef0027 at 37f8a18aa2971c1a570821d150dcf0941fae12eb
   must remain. ADR 0033 is reserved there; do not reuse it.
@@ -104,7 +105,7 @@ Publication has not started. The final 1.7.14 audit history is preserved too.
 
 ## Next action
 
-Pass checks on the final 1.7.15 candidate, merge PR 45 and pass exact-main
+Pass checks on the final 1.8.0 candidate, merge PR 45 and pass exact-main
 CI/E2E. Recheck scope and tag, then publish and verify all artifacts.
 
 ## References
@@ -115,25 +116,18 @@ CI/E2E. Recheck scope and tag, then publish and verify all artifacts.
   storage-targets, transcription-history-filter, audit-export and notifications
   in this directory.
 
-## Version and PR checkpoint
+## PR checkpoint
 
-- Retargeted stacked PRs 41, 42, 43 and 44 to main. Heads are unchanged.
-  The ledger keeps the original dependency chains. All eight source PRs can
-  close as merged when the integration commits reach main.
-- The initial version question incorrectly offered 1.8.0 as SemVer for the
-  API break. Corrected this to 2.0.0 under https://semver.org/#spec-item-8.
-  The replacement question asks for explicit 1.7.15 with documented API break
-  or 2.0.0. No answer was received. This is not approval; the existing
-  explicit 1.7.15 release instruction remains the authority.
-## Fixed version checkpoint
+- Stacked PRs41-44 now target main with unchanged heads. PR45 contains the
+  complete scope and exact source checks. The original dependency chains stay.
 
-- Version: 1.7.15, as explicitly requested. The optional version questions
-  offered an alternative, not a required permission step. Apply the user's
-  fixed version and complete scope. Report the breaking API transparently.
-- Initial combined code CI passed on both events: PR 38937833861 and push
-  38937820115. Initial E2E is superseded by final-version checks.
-- Update Cargo and web workspace/root metadata without unrelated upgrades.
-  The metadata baseline is the committed integration state before this bump.
-Final-version local lint and production build passed. Cargo and npm locks differ
-from integration baseline 1887b85916adbbf39a25d2c221bdc8d42cf3119a only in
-workspace/root version fields. No unrelated dependency change.
+## Version 1.8.0 checkpoint
+
+- User replies select 1.8.0 twice. Update all Cargo/web version metadata and
+  CHANGELOG.md. The source scope is unchanged: PRs37-44, all eight exact heads.
+- Preliminary 1.7.15 candidate eaad6df7bac6107d4ee44fa8b2381c7b7d713cde had green
+  CI on both events: PR38939657493, push38939650450. E2E runs38939657587 and
+  38939651093 are superseded by final 1.8.0 checks. No prior tag was created.
+- Use fresh final-version CI/E2E and exact-main checks before publication.
+Version metadata validated against eaad6df7bac6107d4ee44fa8b2381c7b7d713cde:
+only Cargo workspace and npm root version fields change to 1.8.0.

@@ -22,6 +22,8 @@ pub mod identity;
 pub mod jobs;
 pub mod live_transcripts;
 pub mod mail;
+pub mod mail_render;
+pub mod mail_templates;
 pub mod mfa;
 pub mod numbering;
 pub mod phones;

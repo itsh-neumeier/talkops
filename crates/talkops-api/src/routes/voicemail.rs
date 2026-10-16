@@ -345,7 +345,10 @@ pub async fn test_smtp(
     let cfg = mail::config(&state.db, auth.tenant, &state.secrets)
         .await?
         .ok_or_else(|| ApiError::BadRequest("SMTP is not configured".into()))?;
-    crate::mailer::send_test(&cfg, &input.to)
+    let lang = settings::get(&state.db, auth.tenant)
+        .await?
+        .default_language;
+    crate::mailer::send_test(&state.db, auth.tenant, &cfg, &input.to, &lang)
         .await
         .map_err(|e| ApiError::BadRequest(e.to_string()))?;
     audit::record(&state.db, &auth.actor(), "test", "smtp", None, json!({})).await?;

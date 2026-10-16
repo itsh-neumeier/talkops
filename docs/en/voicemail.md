@@ -20,7 +20,8 @@ the extension page:
 - **Send by e-mail** – to the e-mail address of the extension's user,
   optionally with the recording attached as WAV. With transcription switched
   on, the mail also contains the text of the message (see
-  [recording & transcription](recording.md)).
+  [recording & transcription](recording.md)). To change the design and the
+  text of the mail, see [e-mail design and texts](mail.md).
 
 ## Speech speed
 

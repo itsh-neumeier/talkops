@@ -3547,6 +3547,7 @@ dependencies = [
  "getrandom 0.4.3",
  "hex",
  "hmac 0.13.0",
+ "minijinja",
  "serde",
  "serde_json",
  "serde_yaml_ng",

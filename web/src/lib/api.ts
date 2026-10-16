@@ -79,7 +79,9 @@ export const api = {
 	get: <T>(path: string) => request<T>('GET', path),
 	post: <T>(path: string, body?: unknown) => request<T>('POST', path, body ?? {}),
 	put: <T>(path: string, body: unknown) => request<T>('PUT', path, body),
-	del: (path: string) => request<void>('DELETE', path)
+	del: (path: string) => request<void>('DELETE', path),
+	/** DELETE that returns a JSON body. */
+	delJson: <T>(path: string) => request<T>('DELETE', path)
 };
 
 // --- types (mirror the Rust API) -------------------------------------------
@@ -745,6 +747,44 @@ export interface SmtpSettings {
 	username: string;
 	has_password: boolean;
 	from: string;
+}
+
+/** Mail branding (ADR 0034). */
+export interface MailBranding {
+	instance_name: string;
+	sender_name: string;
+	accent_color: string;
+	header_text: string;
+	footer_text: string;
+	has_logo: boolean;
+	logo_type: string | null;
+	logo_width: number | null;
+	logo_height: number | null;
+}
+
+export interface MailTemplateEntry {
+	kind: string;
+	language: 'de' | 'en';
+	subject: string;
+	body: string;
+	custom: boolean;
+	default_subject: string;
+	default_body: string;
+}
+
+export interface MailDesignView {
+	branding: MailBranding;
+	instance: { name: string; url: string; hostname: string; version: string };
+	kinds: { key: string; placeholders: string[] }[];
+	templates: MailTemplateEntry[];
+	common_placeholders: string[];
+	max_logo_bytes: number;
+}
+
+export interface RenderedMail {
+	subject: string;
+	html: string;
+	text: string;
 }
 
 export type DestinationType =

@@ -14,6 +14,7 @@ pub mod groups;
 pub mod health;
 pub mod identity;
 pub mod live_transcripts;
+pub mod mail;
 pub mod metrics;
 pub mod oidc;
 pub mod phones;

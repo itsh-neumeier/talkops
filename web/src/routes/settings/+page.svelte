@@ -22,6 +22,7 @@
 	import TranscriptionSettings from '#lib/components/TranscriptionSettings.svelte';
 	import TwoFactor from '#lib/components/TwoFactor.svelte';
 	import VoicemailControl from '#lib/components/VoicemailControl.svelte';
+	import MailDesign from '#lib/components/MailDesign.svelte';
 	import SettingsNav, {
 		sections,
 		sectionVisible,
@@ -484,6 +485,7 @@
 							<button class="btn btn-primary">{t('common.save')}</button>
 						</div>
 					</form>
+					<MailDesign />
 				{/if}
 			{:else if section === 'security'}
 				{#if can('identity.manage')}<IdentitySettings />{/if}

@@ -1,6 +1,7 @@
 //! Outgoing mail: voicemail notifications (job `mail.voicemail`) and the
 //! SMTP test from the settings page. Runs in the TalkOps server because it
-//! holds the key for the SMTP password.
+//! holds the key for the SMTP password. Mails are HTML + plain text in the
+//! layout of ADR 0034.
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -15,7 +16,10 @@ use sqlx::PgPool;
 use talkops_core::crypto::SecretBox;
 use talkops_core::jobs::{self, Job};
 use talkops_core::mail::{self, SmtpConfig};
+use talkops_core::mail_render::{self, Design, MailKind, RenderedMail};
+use talkops_core::mail_templates::{self, Logo};
 use talkops_core::settings;
+use talkops_core::tenant::TenantId;
 use talkops_core::voicemail::{self, MailInfo};
 
 use crate::MediaPaths;
@@ -66,15 +70,80 @@ fn mailbox(addr: &str) -> Result<Mailbox, MailError> {
         .map_err(|_| MailError::Address(addr.to_owned()))
 }
 
-/// Sends a test mail to `to`.
-pub async fn send_test(cfg: &SmtpConfig, to: &str) -> Result<(), MailError> {
-    let msg = Message::builder()
-        .from(mailbox(&cfg.from)?)
+/// Sender mailbox: the SMTP sender address with the branding display name
+/// (if set).
+pub fn sender(from: &str, display_name: &str) -> Result<Mailbox, MailError> {
+    let mut mb = mailbox(from)?;
+    if !display_name.trim().is_empty() {
+        mb.name = Some(display_name.trim().to_owned());
+    }
+    Ok(mb)
+}
+
+/// A file attached to a mail.
+pub struct MailAttachment {
+    pub filename: String,
+    pub content_type: String,
+    pub data: Vec<u8>,
+}
+
+/// Builds a multipart mail: plain text and HTML (with the logo as inline
+/// image, Content-ID [mail_render::LOGO_CID]), plus attachments.
+pub fn build_message(
+    from: Mailbox,
+    to: &str,
+    mail: RenderedMail,
+    logo: Option<&Logo>,
+    attachments: Vec<MailAttachment>,
+) -> Result<Message, MailError> {
+    let other = |e: lettre::error::Error| MailError::Other(e.to_string());
+    let content_type = |ct: &str| {
+        ContentType::parse(ct).map_err(|_| MailError::Other(format!("invalid content type {ct}")))
+    };
+    let html = SinglePart::html(mail.html);
+    let alternative = MultiPart::alternative().singlepart(SinglePart::plain(mail.text));
+    let alternative = match logo {
+        Some(logo) => alternative.multipart(
+            MultiPart::related().singlepart(html).singlepart(
+                Attachment::new_inline(mail_render::LOGO_CID.to_owned())
+                    .body(logo.bytes.clone(), content_type(&logo.content_type)?),
+            ),
+        ),
+        None => alternative.singlepart(html),
+    };
+    let builder = Message::builder()
+        .from(from)
         .to(mailbox(to)?)
-        .subject("TalkOps: test mail")
-        .header(ContentType::TEXT_PLAIN)
-        .body("This is a test mail from your TalkOps phone system.\n".to_owned())
+        .subject(mail.subject);
+    if attachments.is_empty() {
+        return builder.multipart(alternative).map_err(other);
+    }
+    let mut mixed = MultiPart::mixed().multipart(alternative);
+    for a in attachments {
+        mixed = mixed
+            .singlepart(Attachment::new(a.filename).body(a.data, content_type(&a.content_type)?));
+    }
+    builder.multipart(mixed).map_err(other)
+}
+
+/// Renders mail type `kind` for a tenant: own text or default in `lang`,
+/// with the tenant's branding.
+pub async fn render_for(
+    db: &PgPool,
+    tenant: TenantId,
+    kind: &MailKind,
+    lang: &str,
+    values: &mail_render::Values,
+) -> Result<(Design, Option<Logo>, RenderedMail), MailError> {
+    let (design, logo) = mail_templates::design(db, tenant).await?;
+    let text = mail_templates::template(db, tenant, kind, lang).await?;
+    let mail = mail_render::render(&design, kind, lang, &text.subject, &text.body, values)
         .map_err(|e| MailError::Other(e.to_string()))?;
+    Ok((design, logo, mail))
+}
+
+/// Sends a mail with the given SMTP settings.
+pub async fn send(cfg: &SmtpConfig, msg: Message) -> Result<(), MailError> {
     transport(cfg)?
         .send(msg)
         .await
@@ -82,53 +151,67 @@ pub async fn send_test(cfg: &SmtpConfig, to: &str) -> Result<(), MailError> {
     Ok(())
 }
 
-/// Texts of the notification mail.
-pub struct VoicemailText {
-    pub subject: String,
-    pub body: String,
+/// Common placeholder values: recipient name and the current time.
+pub async fn base_values(
+    db: &PgPool,
+    tenant: TenantId,
+    recipient: &str,
+) -> Result<mail_render::Values, MailError> {
+    let s = settings::get(db, tenant).await?;
+    let mut values = mail_render::Values::new();
+    values.insert("recipient.name".into(), recipient.to_owned());
+    values.insert("now".into(), local_time(Utc::now(), &s.timezone));
+    Ok(values)
 }
 
-/// Renders the notification in the box language (`de`/`en`).
-pub fn voicemail_text(info: &MailInfo, caller: &str, at: &str, lang: &str) -> VoicemailText {
+/// Sends the test mail (mail type `test`) to `to`.
+pub async fn send_test(
+    db: &PgPool,
+    tenant: TenantId,
+    cfg: &SmtpConfig,
+    to: &str,
+    lang: &str,
+) -> Result<(), MailError> {
+    let values = base_values(db, tenant, "").await?;
+    let (design, logo, mail) = render_for(db, tenant, &mail_render::TEST, lang, &values).await?;
+    let msg = build_message(
+        sender(&cfg.from, &design.sender_name)?,
+        to,
+        mail,
+        logo.as_ref(),
+        Vec::new(),
+    )?;
+    send(cfg, msg).await
+}
+
+/// Placeholder values of a voicemail notification.
+pub fn voicemail_values(info: &MailInfo, caller: &str, at: &str) -> mail_render::Values {
     let duration = format!("{}:{:02}", info.duration_secs / 60, info.duration_secs % 60);
-    let caller_line = if info.caller_name.is_empty() {
+    let display = if info.caller_name.is_empty() {
         caller.to_owned()
     } else {
         format!("{} ({caller})", info.caller_name)
     };
-    let transcript = |label: &str| {
-        info.transcript
-            .as_deref()
-            .map(str::trim)
-            .filter(|t| !t.is_empty())
-            .map(|t| format!("{label}\n{t}\n\n"))
-            .unwrap_or_default()
-    };
-    if lang == "en" {
-        VoicemailText {
-            subject: format!("New voicemail from {caller_line}"),
-            body: format!(
-                "Hello {name},\n\nthere is a new voicemail for extension {number}.\n\n\
-                 From:     {caller_line}\nReceived: {at}\nLength:   {duration}\n\n\
-                 {transcript}Listen to it in the TalkOps web interface or by dialing *97.\n\n-- \nTalkOps\n",
-                name = info.extension_name,
-                number = info.extension_number,
-                transcript = transcript("Transcript (automatic):"),
-            ),
-        }
-    } else {
-        VoicemailText {
-            subject: format!("Neue Sprachnachricht von {caller_line}"),
-            body: format!(
-                "Hallo {name},\n\nfür die Nebenstelle {number} ist eine neue Sprachnachricht eingegangen.\n\n\
-                 Von:     {caller_line}\nZeit:    {at}\nLänge:   {duration}\n\n\
-                 {transcript}Abhören in der TalkOps-Weboberfläche oder per Anruf auf *97.\n\n-- \nTalkOps\n",
-                name = info.extension_name,
-                number = info.extension_number,
-                transcript = transcript("Transkript (automatisch):"),
-            ),
-        }
-    }
+    let transcript = info
+        .transcript
+        .as_deref()
+        .map(str::trim)
+        .unwrap_or_default()
+        .to_owned();
+    [
+        ("recipient.name", info.extension_name.clone()),
+        ("extension.number", info.extension_number.clone()),
+        ("extension.name", info.extension_name.clone()),
+        ("caller.name", info.caller_name.clone()),
+        ("caller.number", caller.to_owned()),
+        ("caller.display", display),
+        ("call.time", at.to_owned()),
+        ("call.duration", duration),
+        ("transcript", transcript),
+    ]
+    .into_iter()
+    .map(|(k, v)| (k.to_owned(), v))
+    .collect()
 }
 
 /// Formats a timestamp in the tenant's time zone.
@@ -137,36 +220,12 @@ pub fn local_time(at: DateTime<Utc>, zone: &str) -> String {
     at.with_timezone(&tz).format("%d.%m.%Y %H:%M").to_string()
 }
 
-/// Builds the notification mail, with the recording attached if wanted.
-pub fn build_voicemail_mail(
-    from: &str,
-    to: &str,
-    text: VoicemailText,
-    audio: Option<Vec<u8>>,
-) -> Result<Message, MailError> {
-    let builder = Message::builder()
-        .from(mailbox(from)?)
-        .to(mailbox(to)?)
-        .subject(text.subject);
-    let body = SinglePart::plain(text.body);
-    let msg = match audio {
-        Some(audio) => builder.multipart(
-            MultiPart::mixed().singlepart(body).singlepart(
-                Attachment::new("voicemail.wav".to_owned())
-                    .body(audio, "audio/wav".parse().expect("valid content type")),
-            ),
-        ),
-        None => builder.singlepart(body),
-    };
-    msg.map_err(|e| MailError::Other(e.to_string()))
-}
-
 /// Prepares the notification for a message; `None` if nothing is to be sent
 /// (notification off, no address, message deleted).
 pub async fn prepare(
     db: &PgPool,
     media: &MediaPaths,
-    tenant: talkops_core::tenant::TenantId,
+    tenant: TenantId,
     message: uuid::Uuid,
     from: &str,
 ) -> Result<Option<Message>, MailError> {
@@ -186,22 +245,32 @@ pub async fn prepare(
     } else {
         info.caller_number.clone()
     };
-    let text = voicemail_text(
-        &info,
-        &caller,
-        &local_time(info.created_at, &s.timezone),
-        &lang,
-    );
+    let mut values = voicemail_values(&info, &caller, &local_time(info.created_at, &s.timezone));
+    values.insert("now".into(), local_time(Utc::now(), &s.timezone));
+    let (design, logo, mail) =
+        render_for(db, tenant, &mail_render::VOICEMAIL, &lang, &values).await?;
     let path = media.voicemail.join(&info.file);
-    let audio = match tokio::fs::metadata(&path).await {
-        Ok(m) if info.attach_audio && m.len() <= MAX_ATTACHMENT => Some(
-            tokio::fs::read(&path)
+    let mut attachments = Vec::new();
+    if let Ok(m) = tokio::fs::metadata(&path).await
+        && info.attach_audio
+        && m.len() <= MAX_ATTACHMENT
+    {
+        attachments.push(MailAttachment {
+            filename: "voicemail.wav".into(),
+            content_type: "audio/wav".into(),
+            data: tokio::fs::read(&path)
                 .await
                 .map_err(|e| MailError::Other(e.to_string()))?,
-        ),
-        _ => None,
-    };
-    build_voicemail_mail(from, &to, text, audio).map(Some)
+        });
+    }
+    build_message(
+        sender(from, &design.sender_name)?,
+        &to,
+        mail,
+        logo.as_ref(),
+        attachments,
+    )
+    .map(Some)
 }
 
 async fn process(
@@ -219,10 +288,7 @@ async fn process(
         return Ok(());
     };
     if let Some(msg) = prepare(db, media, job.tenant_id, message, &cfg.from).await? {
-        transport(&cfg)?
-            .send(msg)
-            .await
-            .map_err(|e| MailError::Smtp(e.to_string()))?;
+        send(&cfg, msg).await?;
         tracing::info!(%message, "voicemail mail sent");
     }
     Ok(())
@@ -262,6 +328,7 @@ pub fn spawn(db: PgPool, secrets: SecretBox, media: Arc<MediaPaths>) {
 mod tests {
     use super::*;
     use chrono::TimeZone;
+    use talkops_core::mail_render::{InstanceInfo, LogoSize};
 
     fn info() -> MailInfo {
         MailInfo {
@@ -276,7 +343,26 @@ mod tests {
             email: Some("anna@example.com".into()),
             attach_audio: true,
             language: None,
-            transcript: None,
+            transcript: Some(" Bitte ruf zurück. ".into()),
+        }
+    }
+
+    fn design() -> Design {
+        Design {
+            sender_name: "Phone system".into(),
+            accent_color: "#0d9488".into(),
+            logo: Some(LogoSize {
+                width: 10,
+                height: 10,
+            }),
+            logo_src: format!("cid:{}", mail_render::LOGO_CID),
+            instance: InstanceInfo {
+                name: "Home".into(),
+                url: String::new(),
+                hostname: "pbx".into(),
+                version: "1.0.0".into(),
+            },
+            ..Design::default()
         }
     }
 
@@ -284,42 +370,74 @@ mod tests {
     fn renders_notification() {
         let at = local_time(info().created_at, "Europe/Berlin");
         assert_eq!(at, "01.07.2026 12:05");
-        let text = voicemail_text(&info(), "030 123456", &at, "de");
-        assert_eq!(text.subject, "Neue Sprachnachricht von Anna (030 123456)");
-        assert!(text.body.contains("Länge:   1:15"));
-        let text = voicemail_text(&info(), "030 123456", &at, "en");
-        assert!(text.body.contains("extension 20"));
-        assert!(!text.body.contains("Transcript"));
-        let with = MailInfo {
-            transcript: Some(" Bitte ruf zurück. ".into()),
-            ..info()
-        };
-        let text = voicemail_text(&with, "030 123456", &at, "de");
+        let values = voicemail_values(&info(), "030 123456", &at);
+        let kind = &mail_render::VOICEMAIL;
+        let mail = mail_render::render(
+            &design(),
+            kind,
+            "de",
+            kind.subject[0],
+            kind.body[0],
+            &values,
+        )
+        .unwrap();
+        assert_eq!(
+            mail.subject,
+            "[Home] Neue Sprachnachricht von Anna (030 123456)"
+        );
+        assert!(mail.text.contains("- Länge: 1:15"), "{}", mail.text);
         assert!(
-            text.body
-                .contains("Transkript (automatisch):\nBitte ruf zurück.\n\nAbhören"),
+            mail.text
+                .contains("Transkript (automatisch):\nBitte ruf zurück."),
             "{}",
-            text.body
+            mail.text
         );
 
-        let msg = build_voicemail_mail(
-            "TalkOps <pbx@example.com>",
+        let logo = Logo {
+            bytes: b"GIF89a\x01\x00\x01\x00".to_vec(),
+            content_type: "image/gif".into(),
+            size: LogoSize {
+                width: 1,
+                height: 1,
+            },
+        };
+        let msg = build_message(
+            sender("pbx@example.com", "Phone system").unwrap(),
             "anna@example.com",
-            text,
-            Some(b"RIFF....".to_vec()),
+            mail.clone(),
+            Some(&logo),
+            vec![MailAttachment {
+                filename: "voicemail.wav".into(),
+                content_type: "audio/wav".into(),
+                data: b"RIFF....".to_vec(),
+            }],
         )
         .unwrap();
         let raw = String::from_utf8(msg.formatted()).unwrap();
         assert!(raw.contains("filename=\"voicemail.wav\""), "{raw}");
         assert!(raw.contains("To: anna@example.com"));
         assert!(
-            build_voicemail_mail(
-                "nobody",
-                "a@b.c",
-                voicemail_text(&info(), "x", "y", "de"),
-                None
-            )
-            .is_err()
+            raw.contains("From: \"Phone system\" <pbx@example.com>"),
+            "{raw}"
         );
+        assert!(raw.contains("multipart/mixed"));
+        assert!(raw.contains("multipart/alternative"));
+        assert!(raw.contains("multipart/related"));
+        assert!(raw.contains("Content-ID: <logo@talkops>"), "{raw}");
+        assert!(raw.contains("text/plain"));
+        assert!(raw.contains("text/html"));
+
+        let msg = build_message(
+            sender("pbx@example.com", "").unwrap(),
+            "a@b.c",
+            mail,
+            None,
+            Vec::new(),
+        )
+        .unwrap();
+        let raw = String::from_utf8(msg.formatted()).unwrap();
+        assert!(!raw.contains("multipart/mixed"));
+        assert!(!raw.contains("Content-ID"));
+        assert!(sender("nobody", "").is_err());
     }
 }

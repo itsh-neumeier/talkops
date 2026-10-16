@@ -5,11 +5,11 @@
 - Task ID: 20261016-codex-release-1.8.1
 - Date: 2026-10-16, Europe/Berlin
 - Tool: Codex
-- Status: In progress
+- Status: Completed
 - Integration branch: codex/release-1.8.1 (merged and remote deleted)
 - Base commit: 7d7990b99e9f02c126ad3983da633476a22a9708
 - Related PR: https://github.com/itsh-neumeier/talkops/pull/48
-- Final record: audit/release-1.8.1 (not yet pushed)
+- Final record: immutable annotated tag audit/release-1.8.1
 
 ## Goal
 
@@ -22,8 +22,8 @@ work and all published tags.
 TalkOps 1.8.1 is published and registry verification passed. Both agreed source
 PRs and integration PR48 are merged. No agreed contribution is omitted or
 pending. Both features are from Codex; no Claude Code contribution was assigned.
-The additional tag E2E is still running. No later open PR was present during
-publication verification.
+All publication and additional tag checks passed. No later open PR was present
+at final inventory. No 1.8.1 release work remains.
 
 | PR | Exact source head | Dependency | Migration ID | Status |
 | --- | --- | --- | --- | --- |
@@ -81,7 +81,8 @@ publication verification.
   Full SIPp, recording, video and WebRTC passed. Server and worker smoke tests
   report 1.8.1. All workspace/DB/LDAP, web, Compose and image gates passed.
 - Passed publication: Release38958752273. Additional tag CI38958752284 and
-  FreeSWITCH38958752047 passed. Additional E2E38958752093 remains in progress.
+  FreeSWITCH38958752047 passed. Additional E2E38958752093 passed at
+  2026-10-16T20:07:25Z. All four tag workflows use the exact release commit.
 - Not run locally: full Rust workspace/DB/LDAP and Linux Docker/SIPp stack.
   Windows GNU lacks dlltool.exe; no Linux Docker daemon is available. Linux CI
   supplied those gates. No deployed UI or physical phone was available for
@@ -164,8 +165,9 @@ this task record and must be published under audit/release-1.8.1.
 
 ## Next action
 
-Wait for additional tag E2E38958752093, then publish the final audit reference
-and complete PR48. No further feature work is part of this release.
+None for 1.8.1. Release, verification and branch cleanup are complete.
+Keep the immutable final audit linked from merged PR48. Preserve closed PR36
+and foreign local work. Future contributions need a new release assignment.
 
 ## References
 
@@ -173,3 +175,18 @@ and complete PR48. No further feature work is part of this release.
 - docs/release-workflow.md; docs/release-manager-prompt.md.
 - 20261016-codex-call-flags-skeleton.md; 20261016-codex-yealink-t41p-dss.md.
 - 20261016-codex-release-1.8.0.md (completed previous release).
+
+## Final workflow evidence
+
+- [Candidate CI](https://github.com/itsh-neumeier/talkops/actions/runs/38952162964)
+  and [E2E](https://github.com/itsh-neumeier/talkops/actions/runs/38952162953).
+- [Exact-main CI](https://github.com/itsh-neumeier/talkops/actions/runs/38956465215)
+  and [E2E](https://github.com/itsh-neumeier/talkops/actions/runs/38956465225).
+- [Release](https://github.com/itsh-neumeier/talkops/actions/runs/38958752273),
+  [tag CI](https://github.com/itsh-neumeier/talkops/actions/runs/38958752284),
+  [tag E2E](https://github.com/itsh-neumeier/talkops/actions/runs/38958752093),
+  [FreeSWITCH](https://github.com/itsh-neumeier/talkops/actions/runs/38958752047).
+- All final runs passed on their expected immutable heads. Main and the
+  published tag still target 86772ec0c31990f7a29a639ffb90db6ebef217e2.
+- The final audit descendant changes only this task record. It is not a new
+  candidate and does not change main or the published release tag.

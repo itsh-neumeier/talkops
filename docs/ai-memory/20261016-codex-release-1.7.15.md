@@ -1,4 +1,4 @@
-# TalkOps release after 1.7.14
+# TalkOps 1.7.15 release
 
 ## Task state
 
@@ -14,8 +14,7 @@
 
 Integrate all open PRs and publish the requested version 1.7.15. Verify the
 combined candidate, exact main and all published artifacts. Preserve foreign
-work. Clarify the breaking backup API before publication, as the release
-workflow requires.
+work. Record the breaking backup API and the fixed version in the release notes.
 
 ## Result
 
@@ -52,11 +51,13 @@ Publication has not started. The final 1.7.14 audit history is preserved too.
 
 - Target branch is main; merge commits are permitted. No active ruleset or
   main protection was reported. Sources remain unchanged.
-- Version clarification is pending. PR 41 removes the released backup draft
-  browse/folder/test paths and changes POST/PUT payloads. ADR 0036 explicitly
-  chooses no aliases. This conflicts with patch SemVer. Ask whether to use
-  2.0.0 or retain 1.7.15 with the documented API break. Do not silently add a
-  new compatibility feature or publish before the answer.
+- The user explicitly fixed version 1.7.15 and all open PRs in the current
+  request. Keep that authorized version and scope. The optional major-version
+  question does not require a second publication approval. Do not infer
+  approval from silence; the existing explicit instruction is the authority.
+  Document the SemVer exception and the incompatible backup write API in
+  CHANGELOG.md, release notes and the integration PR. ADR 0036 deliberately
+  has no aliases; do not add unrelated compatibility feature work.
 - Closed PR 36 (Cactus Whistle evaluation) is outside the open-PR scope. Its
   unmerged branch claude/vigilant-tesla-ef0027 at 37f8a18aa2971c1a570821d150dcf0941fae12eb
   must remain. ADR 0033 is reserved there; do not reuse it.
@@ -103,8 +104,8 @@ Publication has not started. The final 1.7.14 audit history is preserved too.
 
 ## Next action
 
-Run combined checks. Record the version answer, update release metadata and
-create the integration PR. Pass all release gates before tag and publication.
+Pass checks on the final 1.7.15 candidate, merge PR 45 and pass exact-main
+CI/E2E. Recheck scope and tag, then publish and verify all artifacts.
 
 ## References
 
@@ -122,4 +123,17 @@ create the integration PR. Pass all release gates before tag and publication.
 - The initial version question incorrectly offered 1.8.0 as SemVer for the
   API break. Corrected this to 2.0.0 under https://semver.org/#spec-item-8.
   The replacement question asks for explicit 1.7.15 with documented API break
-  or 2.0.0. The answer is still pending; do not publish on silence.
+  or 2.0.0. No answer was received. This is not approval; the existing
+  explicit 1.7.15 release instruction remains the authority.
+## Fixed version checkpoint
+
+- Version: 1.7.15, as explicitly requested. The optional version questions
+  offered an alternative, not a required permission step. Apply the user's
+  fixed version and complete scope. Report the breaking API transparently.
+- Initial combined code CI passed on both events: PR 38937833861 and push
+  38937820115. Initial E2E is superseded by final-version checks.
+- Update Cargo and web workspace/root metadata without unrelated upgrades.
+  The metadata baseline is the committed integration state before this bump.
+Final-version local lint and production build passed. Cargo and npm locks differ
+from integration baseline 1887b85916adbbf39a25d2c221bdc8d42cf3119a only in
+workspace/root version fields. No unrelated dependency change.

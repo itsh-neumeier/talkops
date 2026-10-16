@@ -6,6 +6,81 @@ All notable changes to TalkOps. The format follows
 
 ## [Unreleased]
 
+## [1.7.15] – 2026-10-16
+
+### Added
+
+- Settings → System has Status, Diagnostics, Sessions and Maintenance tabs
+  with direct links. Backup and Storage have separate settings sections. Old
+  settings hash links still work.
+- Dashboard recent calls show resolved phonebook names, the local extension,
+  shared-number matches and the own inbound or outbound number.
+- Sort and filter the phonebook by name, company, section and number type.
+  Search names or formatted numbers. Keep filters in the page address and
+  keep contact links working.
+- Sort and filter transcription history by time, processing duration, result,
+  direction and model. Show phonebook parties. History contains up to the
+  newest 1,000 jobs from seven days and refreshes every 30 seconds.
+- Send HTML and plain-text mails with an instance name, logo, accent color,
+  header and footer. Edit subjects and texts per language with allowed
+  placeholders, preview and test send. A fixed TalkOps version line stays in
+  every mail.
+- Manage shared storage connections in Settings → Storage. Backup jobs select
+  a storage target and optional subfolder. Saved connection tests show their
+  last result; targets in use cannot be deleted.
+- Filter, sort and page the audit log. Download CSV or JSON. Optionally
+  export new records to a storage target with SHA-256 checksum files and file
+  retention. Database retention keeps unexported records while export is
+  enabled.
+- Configure operations mail notifications for supported telephony, backup,
+  storage, security, service and configuration events. Set recipients, delay
+  with recovery mail, digest and rate limit. Review the delivery log.
+
+### Upgrade notes
+
+- This requested 1.7.15 release contains an incompatible backup API change.
+  This is an explicit exception to the normal SemVer policy. API clients must
+  follow the migration below.
+
+- Back up the database before upgrading. Four forward migrations run in ID
+  order: 20261103000001_mail_templates, 20261103000002_notifications,
+  20261104000001_storage_targets and 20261104000002_audit_export.
+- **Backup API clients must change.** POST and PUT /api/v1/backup-targets now
+  take storage_target_id and folder, rather than connection fields. Draft
+  browse, folder and test endpoints move from /api/v1/backup-targets/* to
+  /api/v1/storage-targets/*. Existing connection fields stay read-only in job
+  responses. Setup restore endpoints stay unchanged.
+- Existing backup connections move automatically, with their IDs, names and
+  encrypted secrets. Jobs keep their IDs, run history and archives. Remote
+  backup jobs still require an archive password. Use a separate subfolder for
+  each job.
+- Roles with backups.manage also receive storage.manage during migration. New
+  audit.manage and notifications.manage permissions default to
+  administrators. Audit viewing remains under audit.view. Audit list default
+  page size changes from 200 to 50; the response stays an array with an added
+  user_id.
+- Some notification events are enabled by default after upgrade. With SMTP
+  configured, administrator accounts with an email address receive those
+  mails. Review Settings → Notifications for recipients and rules.
+- Audit exports are not encrypted archives. Use protected storage and
+  encrypted transport. Checksum files detect damage; they are not signatures.
+- minijinja 2.24 with the fuel feature is now a direct core dependency. Its
+  package was already locked. No unrelated dependency version upgrade is
+  included.
+
+### Known limits
+
+- Five notification types remain planned and have no producer:
+  trunk.outbound_failures, freeswitch.xml_curl_failed,
+  freeswitch.profile_down, freeswitch.channels_high and
+  services.update_available.
+- Delivery and layout in real mail clients, live FreeSWITCH gateway
+  transitions, live SMB and live Portainer were not tested here. Use the
+  documented automated coverage and verify those integrations in the
+  deployment.
+- The VTO-to-VTH missing-picture cause and percent-encoded FreeSWITCH CDR
+  spool import defect remain separate work. Preserve rejected spool files.
+
 ## [1.7.14] – 2026-10-16
 
 ### Added

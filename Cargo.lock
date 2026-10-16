@@ -3486,7 +3486,7 @@ dependencies = [
 
 [[package]]
 name = "talkops-api"
-version = "1.7.14"
+version = "1.7.15"
 dependencies = [
  "age",
  "anyhow",
@@ -3536,7 +3536,7 @@ dependencies = [
 
 [[package]]
 name = "talkops-core"
-version = "1.7.14"
+version = "1.7.15"
 dependencies = [
  "argon2",
  "base64 0.23.1",
@@ -3564,7 +3564,7 @@ dependencies = [
 
 [[package]]
 name = "talkops-doorbell"
-version = "1.7.14"
+version = "1.7.15"
 dependencies = [
  "axum",
  "bytes",
@@ -3581,7 +3581,7 @@ dependencies = [
 
 [[package]]
 name = "talkops-esl"
-version = "1.7.14"
+version = "1.7.15"
 dependencies = [
  "percent-encoding",
  "thiserror 2.0.21",
@@ -3591,7 +3591,7 @@ dependencies = [
 
 [[package]]
 name = "talkops-media-worker"
-version = "1.7.14"
+version = "1.7.15"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -3614,7 +3614,7 @@ dependencies = [
 
 [[package]]
 name = "talkops-provisioning"
-version = "1.7.14"
+version = "1.7.15"
 dependencies = [
  "minijinja",
  "serde",

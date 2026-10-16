@@ -18,7 +18,7 @@ Keep foreign local work. Remove only unchanged, integrated remote branches.
 
 ## Result
 
-All six ready source heads are integrated with merge commits. Publication
+All six ready source heads and PR 35 are merged into main. Publication
 has not started. No contribution is omitted. The four promised UI/API tasks
 and both backup tasks are present. No separate Codex feature PR is assigned.
 
@@ -72,12 +72,11 @@ and both backup tasks are present. No separate Codex feature PR is assigned.
   heads are ancestors; all seven browser suites remain in CI.
 - Not run locally: full Rust/DB/LDAP tests (Windows GNU lacks dlltool.exe),
   Linux image/Compose/SIPp/browser stack (Docker Linux daemon unavailable).
-  Required Linux CI and E2E are pending for the final integration head.
+  Linux CI and E2E passed on the final integration head.
 - Manual integration review used source changes, API/UI contracts and tests.
   CodeRabbit CLI is unavailable. FreeSWITCH source/workflow are unchanged.
 - Superseded candidate ea9de61: PR CI 38858462646 found a duplicate local
-  `std::io::Write` import after the backup merge. Keep the shared module import
-  and remove the duplicate. Web browser and Compose checks passed on that head.
+  unused local `std::io::Write` import after the backup merge. Remove it. Web browser and Compose checks passed on that head.
   Repeat all final-head gates after this correction.
 - STE review: short-sentence/manual clarity review. Full official standard
   unavailable; full language review pending, separate from functional checks.
@@ -96,8 +95,8 @@ and both backup tasks are present. No separate Codex feature PR is assigned.
 
 ## Next action
 
-Create the integration PR. Pass all checks before merge. Verify exact main,
-then push the new tag once. Verify artifacts before reporting success.
+Wait for exact-main CI/E2E. Recheck their latest runs, scope, main and unused
+tag. Push the new tag once. Verify artifacts before reporting success.
 
 ## References
 
@@ -106,3 +105,22 @@ then push the new tag once. Verify artifacts before reporting success.
   `20261015-claude-roles-permissions.md`, `20261015-claude-transcription-jobs.md`,
   `20261015-claude-motion-polish.md`, `20261015-claude-backup-targets.md`,
   `20261015-claude-backup-deployment-capture.md` in this directory.
+
+## Main merge checkpoint
+
+- Final candidate: 057e2bea587d2c598872edc16612bb7b1680c30d.
+- PR CI 38858886905 and E2E 38858886884 passed. Push CI 38858882436
+  and E2E 38858882201 attempt 2 passed. All 12 final-head checks are green.
+- Push E2E attempt 1 failed at the unchanged Piper duration assertion. Logs
+  did not print durations. No render error was logged. The cause is unknown.
+  It did not recur in the independent PR run or the full rerun. No assertion
+  was changed or waived. The ignored real-whisper test was not run in CI.
+- Both new integration tests passed. rclone WebDAV/FTP/SFTP/S3 transfers and
+  real self-signed TLS pin tests passed. Server and worker report 1.7.14.
+- Merged at 2026-10-16T06:26:15Z. Main commit:
+  0f128ad210028b386081db0bdae90c210ff84523.
+  The main tree equals the candidate tree. All six heads are ancestors.
+- Source PRs 29-34 and integration PR 35 are merged. No open PR remains.
+- Exact-main CI 38861196732 and E2E 38861196707 are pending. Do not tag yet.
+- This checkpoint is local documentation only. It does not change main or
+  restart its checks. The final summary will use an immutable audit reference.

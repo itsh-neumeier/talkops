@@ -6,6 +6,55 @@ All notable changes to TalkOps. The format follows
 
 ## [Unreleased]
 
+## [1.8.1] – 2026-10-16
+
+### Added
+
+- Show local country flags for inbound callers and outbound destinations in
+  recent calls, active calls, the call log and softphone history. Resolve
+  shared calling codes with bundled numbering data. Show localized country
+  names for screen readers. No external lookup is required.
+- Show loading placeholders immediately. Load dashboard call cards separately.
+  Keep existing content during refreshes. Show loading, empty and error states
+  separately. Respect reduced motion settings.
+- Add ten Yealink desk phone models: T41P, T41S, T46G, T46S, T48G, T48S,
+  T53, T73W, T85W and T87W. All 21 supported desk models now have graphical
+  function key setup, a list view and local device graphics.
+- Select speed dial targets from assigned phonebooks or internal extensions.
+  Select work, mobile or other numbers. Save the phone and account text before
+  resync. Report save, offline and resync failures separately.
+
+### Fixed
+
+- Correct documented key capacities for T33G, T46U and VP59. Keep unchanged
+  unsupported overrides visible for explicit review. Reject new or modified
+  unsupported assignments. Keep Default and Unused distinct.
+- Accept the longer common configuration filenames of newer Yealink models.
+- Ignore stale call-list and softphone history responses after navigation,
+  filtering or identity changes. Load softphone history independently of SIP
+  registration.
+
+### Upgrade notes
+
+- No database migration is added. Phone model layout fields are additive.
+  Existing line_keys storage and call routing stay compatible.
+- Resync phones to apply saved layouts. Review old unsupported key overrides
+  before reassigning them. Older paged models reserve the bottom-right key
+  for page control.
+- Country flags identify a number range, not a caller's current location.
+  Raw national softphone numbers without country metadata have no flag.
+- Initial call placeholders stay visible for at least 300 ms, then content
+  fades in over 180 ms. Reduced motion skips this interval and animation.
+- Web packages libphonenumber-js 1.13.15 and flag-icons 7.6.0 are pinned.
+  No unrelated dependency upgrade is included.
+
+### Known limits
+
+- New phone presets and firmware behavior have not been checked on physical
+  phones. Touch models use a labeled DSS overview, not a firmware screen copy.
+- This release does not change the documented 1.8.0 backup API upgrade steps
+  or its separate notification, live-service and Dahua follow-ups.
+
 ## [1.8.0] – 2026-10-16
 
 ### Added

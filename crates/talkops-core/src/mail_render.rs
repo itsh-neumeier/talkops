@@ -159,9 +159,71 @@ this test mail shows that your TalkOps phone system can send e-mail.
     ],
 };
 
-/// Registry of all mail types. New mail types (e.g. notifications) add
-/// their entry here; the editor and the API list them automatically.
-pub const KINDS: &[&MailKind] = &[&VOICEMAIL, &TEST];
+/// Operations notification (ADR 0035): alerts, recoveries and digests.
+pub const NOTIFICATION: MailKind = MailKind {
+    key: "notification",
+    placeholders: &[
+        ph("event.title", "Trunk Telekom: Registrierung verloren (FAIL_WAIT)", "Trunk Telekom: registration lost (FAIL_WAIT)"),
+        ph("event.category", "Trunks", "Trunks"),
+        ph("event.severity", "Warnung", "Warning"),
+        ph("event.status", "Problem", "Problem"),
+        ph("event.time", "01.07.2026 12:05", "01.07.2026 12:05"),
+        ph("event.details", "name: Telekom\nstate: FAIL_WAIT", "name: Telekom\nstate: FAIL_WAIT"),
+        ph("event.count", "1", "1"),
+        ph("event.recovery", "", ""),
+        ph("event.digest", "", ""),
+    ],
+    subject: [
+        "{{ event.severity }}: {{ event.title }}",
+        "{{ event.severity }}: {{ event.title }}",
+    ],
+    body: [
+        "Hallo,
+
+{% if event.digest %}in den letzten Minuten gab es **{{ event.count }}** Ereignisse der Art „{{ event.category }}“:
+
+{{ event.digest }}{% elif event.recovery %}das Problem ist behoben:
+
+**{{ event.title }}**{% else %}TalkOps meldet ein Ereignis:
+
+**{{ event.title }}**{% endif %}
+
+- **Bereich:** {{ event.category }}
+- **Schweregrad:** {{ event.severity }}
+- **Zeit:** {{ event.time }}
+
+{% if event.details %}
+**Details:**
+{{ event.details }}
+{% endif %}
+
+{% if instance.url %}[TalkOps öffnen]({{ instance.url }}){% endif %}",
+        "Hello,
+
+{% if event.digest %}there were **{{ event.count }}** events of the type “{{ event.category }}” in the last minutes:
+
+{{ event.digest }}{% elif event.recovery %}the problem has ended:
+
+**{{ event.title }}**{% else %}TalkOps reports an event:
+
+**{{ event.title }}**{% endif %}
+
+- **Area:** {{ event.category }}
+- **Severity:** {{ event.severity }}
+- **Time:** {{ event.time }}
+
+{% if event.details %}
+**Details:**
+{{ event.details }}
+{% endif %}
+
+{% if instance.url %}[Open TalkOps]({{ instance.url }}){% endif %}",
+    ],
+};
+
+/// Registry of all mail types. New mail types add their entry here; the
+/// editor and the API list them automatically.
+pub const KINDS: &[&MailKind] = &[&VOICEMAIL, &NOTIFICATION, &TEST];
 
 pub fn kind(key: &str) -> Option<&'static MailKind> {
     KINDS.iter().copied().find(|k| k.key == key)

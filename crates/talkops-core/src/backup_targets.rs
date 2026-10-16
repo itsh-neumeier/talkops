@@ -913,17 +913,28 @@ pub async fn record_run(pool: &PgPool, id: Uuid, result: Result<&str, &str>) -> 
         Ok(f) => (Some(f), None),
         Err(e) => (None, Some(e.chars().take(1000).collect::<String>())),
     };
-    sqlx::query(
+    let row: Option<(TenantId, String)> = sqlx::query_as(
         "UPDATE backup_targets SET last_run_at = now(),
              last_success_at = CASE WHEN $2::text IS NULL THEN last_success_at ELSE now() END,
              last_file = COALESCE($2, last_file), last_error = $3
-         WHERE id = $1",
+         WHERE id = $1
+         RETURNING tenant_id, name",
     )
     .bind(id)
     .bind(file)
-    .bind(error)
-    .execute(pool)
+    .bind(&error)
+    .fetch_optional(pool)
     .await?;
+    if let Some((tenant, name)) = row {
+        let (event, params) = match &error {
+            None => ("backup.target_ok", serde_json::json!({ "name": name })),
+            Some(e) => (
+                "backup.target_failed",
+                serde_json::json!({ "name": name, "error": e }),
+            ),
+        };
+        crate::notifications::emit_logged(pool, tenant, event, &id.to_string(), params).await;
+    }
     Ok(())
 }
 

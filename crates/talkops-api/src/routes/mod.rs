@@ -15,6 +15,7 @@ pub mod identity;
 pub mod live_transcripts;
 pub mod mail;
 pub mod metrics;
+pub mod notifications;
 pub mod oidc;
 pub mod phones;
 pub mod provisioning;

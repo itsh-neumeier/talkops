@@ -84,6 +84,7 @@ permissions! {
     IdentityManage = "identity.manage", "system", true;
     BackupsManage = "backups.manage", "system", true;
     DiagnosticsManage = "diagnostics.manage", "system", true;
+    NotificationsManage = "notifications.manage", "system", false;
     AuditView = "audit.view", "system", false;
 }
 

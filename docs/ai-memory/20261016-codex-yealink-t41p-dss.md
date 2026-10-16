@@ -5,10 +5,12 @@
 - Task ID: 20261016-codex-yealink-t41p-dss
 - Date: 2026-10-16, Europe/Berlin
 - Tool: Codex
-- Status: In progress. Implementation complete; final checks and PR handoff pending.
+- Status: Implementation complete and published for review. See the PR for
+  the checks and readiness of its current head. Release integration is separate.
 - Branch: codex/yealink-t41p-dss
 - Base commit: 7d7990b99e9f02c126ad3983da633476a22a9708
-- Related commits or PR: Pending
+- Application commit: 29c5a6f5fc2662712c4a641625898a9e7e7e181e
+- Related PR: https://github.com/itsh-neumeier/talkops/pull/47
 
 ## Goal
 
@@ -85,7 +87,16 @@ call flags change; no dependency is required.
 - Passed: cargo clippy -p talkops-provisioning --all-targets --locked -- -D warnings.
 - Passed: npm ci; npm run lint; npm run check (zero errors and warnings);
   npm test (28 tests); npm run build.
-- Pending: final phone key browser suite, broader layout checks and CI/E2E.
+- Passed: node tests/browser/phone-keys.mjs against the production build.
+  All 21 models, each last key, contact/mobile selection, persistence,
+  internal/BLF targets, default reset, missing accounts, legacy overrides,
+  save/resync failures, role restrictions, dialog bounds and light/dark
+  layouts at 320, 768 and 1280 pixels.
+- Passed: node tests/browser/layout.mjs; general responsive layout suite.
+- CI/E2E: Follow the checks on the current head of PR 47. Initial application
+  push runs: CI 38947234032, E2E 38947234000. Initial PR runs:
+  CI 38947338227, E2E 38947338284. The PR records final results. Do not infer
+  final readiness from an older run or this task summary.
 - Not available locally: full workspace Clippy stopped because dlltool.exe
   is absent from the Windows GNU toolchain. The Docker Linux daemon is not
   running. Full PostgreSQL/LDAP/Linux stack validation must run in CI.
@@ -107,13 +118,14 @@ call flags change; no dependency is required.
   for 21 Yealink desk phone models. Select speed dial targets from assigned
   phonebooks or internal extensions. Preserve legacy key overrides when model
   limits are corrected. Support common CFG requests from newer Yealink phones.
-- No commit, push or PR has been completed yet.
+- Committed and pushed the implementation. PR 47 contains the handoff.
+  The final task-summary revision is a separate documentation commit.
 
 ## Next action
 
-Finish local browser checks, commit and push the feature branch, create the
-PR, inspect CI/E2E on its final head, and update this summary with results.
-Leave target merges and publication to the release chat.
+The development chat must verify the final PR checks and update the PR
+handoff before marking it ready. The release chat can then review and
+integrate PR 47. Target merges and publication belong to the release chat.
 
 ## References
 

@@ -8,7 +8,7 @@
 - Status: Completed
 - Branch: claude/settings-system-structure
 - Base commit: 0f128ad (main, release 1.7.14)
-- Related commits or PR: Pending. Stacked follow-ups: claude/storage-targets
+- Related commits or PR: https://github.com/itsh-neumeier/talkops/pull/37. Stacked follow-ups: claude/storage-targets
   (PR 7a) and claude/audit-export (PR 7b).
 
 ## Goal

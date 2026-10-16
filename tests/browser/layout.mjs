@@ -21,6 +21,8 @@ const fixtures = {
   '/api/v1/stats/calls': { range: '1d', buckets: [], total: 0, missed: 0, avg_talk_secs: 0, answer_rate: null, inbound: 0, outbound: 0, internal: 0 },
   '/api/v1/backups': { settings: { last_run_at: null } },
   '/api/v1/settings': { country_code: '49', area_code: '9543', national_prefix: '0', international_prefix: '00', emergency_numbers: ['110', '112'], external_ip: '', default_language: 'de', default_number_id: null, timezone: 'Europe/Berlin', record_inbound: false, record_outbound: false, record_internal: false, recording_announcement: false, recording_retention_days: 30, transcription_enabled: false, transcription_quality: 'fast', transcription_refine: '', sip_uri_dialing: false, transcription_vocabulary: '', hold_music: '', hold_music_clip_id: null },
+  '/api/v1/diagnostics': { version: 'test', server_started_at: now, freeswitch: 'UP 0 years, 1 days, 2 hours, 3 minutes', capture: { running: false, level: null, sip_trace: false, started_at: null, until: null, lines: 0, last_seq: 0 }, channels: [{ uuid: 'ch1', created: now, name: `sofia/external/${long}@sip.example.com`, state: 'CS_EXECUTE', callstate: 'ACTIVE', cid_name: long, cid_num: '+4995431241000', dest: '+4995431241000', application: 'bridge', application_data: long, read_codec: 'PCMA', write_codec: 'PCMA', secure: '' }] },
+  '/api/v1/diagnostics/log': { lines: [{ seq: 1, text: `INVITE sip:${long}@sip.example.com SIP/2.0` }], capture: { running: false, level: null, sip_trace: false, started_at: null, until: null, lines: 1, last_seq: 1 } },
   '/api/v1/phone-settings': { catalog: [], values: {} },
   '/api/v1/settings/transcription': {
     providers: [{ id: 'p1', name: long, kind: 'openai', url: 'https://api.openai.com/v1', has_key: true }],
@@ -42,7 +44,7 @@ const fixtures = {
   '/api/v1/contacts': [{ id: 'k1', name: long, company: long, phone_work: '+4995431241000', phone_mobile: '+4915112345678', phone_other: '+4995431241999', section_id: null }],
   '/api/v1/audit': [{ id: 1, username: 'administrator.mustermann', action: 'extension.update', entity_type: 'extension', entity_id: 'e1', details: { display_name: long, number: '101' }, ip: '192.168.178.100', created_at: now }]
 };
-const routes = ['/', '/phone', '/calls', '/voicemail', '/doors', '/phonebook', '/search', '/settings', '/settings#calls', '/me', '/extensions', '/numbers', '/routing', '/trunks', '/trunks/t1', '/phones', '/users', '/audit', '/door-stations', '/login', '/setup'];
+const routes = ['/', '/phone', '/calls', '/voicemail', '/doors', '/phonebook', '/search', '/settings', '/settings#calls', '/settings?section=system&tab=status', '/settings?section=system&tab=diagnostics', '/me', '/extensions', '/numbers', '/routing', '/trunks', '/trunks/t1', '/phones', '/users', '/audit', '/door-stations', '/login', '/setup'];
 async function context(options, theme) {
   const context = await browser.newContext({ locale: 'de-DE', timezoneId: 'Europe/Berlin', reducedMotion: 'reduce', ...options });
   await context.addInitScript((stored) => {

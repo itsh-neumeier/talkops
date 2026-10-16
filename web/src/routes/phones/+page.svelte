@@ -20,7 +20,7 @@
 	import PhoneMediaManager from '#lib/components/PhoneMediaManager.svelte';
 	import PhoneSettingsDefaults from '#lib/components/PhoneSettingsDefaults.svelte';
 	import { formatDateTime, t } from '#lib/i18n/index.svelte.ts';
-	import { hasRole } from '#lib/session.svelte.ts';
+	import { can } from '#lib/session.svelte.ts';
 	import { copy, errorMessage } from '#lib/util.ts';
 	import { assignExtension } from '#lib/phoneAssign.ts';
 
@@ -63,7 +63,7 @@
 				api.get<PhoneModel[]>('/phone-models')
 			]);
 			extensions = await api.get<Extension[]>('/extensions').catch(() => []);
-			if (hasRole('admin')) firmware = await api.get<Firmware[]>('/firmware');
+			if (can('phones.manage')) firmware = await api.get<Firmware[]>('/firmware');
 		} catch (err) {
 			error = errorMessage(err);
 		}
@@ -148,7 +148,7 @@
 <div class="space-y-4">
 	<PageHeader title={t('nav.phones')}>
 		{#snippet actions()}
-			{#if hasRole('admin')}
+			{#if can('phones.manage')}
 				<button class="btn btn-primary" onclick={() => (addOpen = true)}>{t('phones.new')}</button>
 			{/if}
 		{/snippet}
@@ -248,7 +248,7 @@
 		{/if}
 	</div>
 
-	{#if hasRole('admin')}
+	{#if can('phones.manage')}
 		<section class="card space-y-3">
 			<h2>{t('phones.provisioning')}</h2>
 			<p class="text-sm text-slate-600 dark:text-slate-300">{t('phones.provisioningHint')}</p>

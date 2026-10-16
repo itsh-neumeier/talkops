@@ -9,7 +9,6 @@ use talkops_core::audit::{self, AuditEntry};
 use talkops_core::cdr::{self, Cdr, CdrQuery, CdrScope};
 use talkops_core::extensions;
 use talkops_core::settings::{self, TenantSettings};
-use talkops_core::users::Role;
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
 
@@ -18,6 +17,7 @@ use crate::active_calls::{Directory, Party};
 use crate::auth::AuthUser;
 use crate::error::{ApiError, ApiResult};
 use crate::telephony::LiveStatus;
+use talkops_core::roles::Permission;
 
 pub fn router() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
@@ -86,7 +86,7 @@ pub async fn update_settings(
     auth: AuthUser,
     Json(input): Json<TenantSettings>,
 ) -> ApiResult<Json<TenantSettings>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::SettingsManage)?;
     validate(&input)?;
     talkops_core::audio::ensure_exists(&state.db, auth.tenant, input.hold_music_clip_id).await?;
     let before = settings::get(&state.db, auth.tenant).await?;
@@ -113,7 +113,7 @@ pub async fn telephony_status(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> ApiResult<Json<LiveStatus>> {
-    auth.require(Role::Operator)?;
+    auth.require_perm(Permission::CallsActive)?;
     Ok(Json(state.telephony.snapshot().await))
 }
 
@@ -140,7 +140,7 @@ pub async fn list_calls(
 ) -> ApiResult<([(HeaderName, String); 1], Json<Vec<CallEntry>>)> {
     let directory = Directory::load(&state, auth.tenant).await?;
     let scope = CdrScope {
-        extensions: if auth.role >= Role::Operator {
+        extensions: if auth.can(Permission::CallsViewAll) {
             None
         } else {
             Some(
@@ -190,6 +190,6 @@ pub async fn list_audit(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> ApiResult<Json<Vec<AuditEntry>>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::AuditView)?;
     Ok(Json(audit::list(&state.db, auth.tenant, 200).await?))
 }

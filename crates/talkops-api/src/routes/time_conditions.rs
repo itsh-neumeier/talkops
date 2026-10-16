@@ -7,7 +7,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use talkops_core::holidays::{self, Holiday};
 use talkops_core::time_conditions::{self, State as TcState, TimeCondition, TimeConditionInput};
-use talkops_core::users::Role;
 use talkops_core::{audit, settings};
 use utoipa::ToSchema;
 use utoipa_axum::router::OpenApiRouter;
@@ -17,6 +16,7 @@ use uuid::Uuid;
 use crate::AppState;
 use crate::auth::AuthUser;
 use crate::error::{ApiError, ApiResult};
+use talkops_core::roles::Permission;
 
 pub fn router() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
@@ -52,7 +52,7 @@ pub async fn list_conditions(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> ApiResult<Json<Vec<TimeConditionView>>> {
-    auth.require(Role::Operator)?;
+    auth.require_perm(Permission::RoutingView)?;
     let mut out = Vec::new();
     for tc in time_conditions::list(&state.db, auth.tenant).await? {
         out.push(view(&state, &auth, tc).await?);
@@ -67,7 +67,7 @@ pub async fn create_condition(
     auth: AuthUser,
     Json(input): Json<TimeConditionInput>,
 ) -> ApiResult<Json<TimeConditionView>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::RoutingManage)?;
     let emergency = settings::get(&state.db, auth.tenant)
         .await?
         .emergency_numbers;
@@ -91,7 +91,7 @@ pub async fn get_condition(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<Json<TimeConditionView>> {
-    auth.require(Role::Operator)?;
+    auth.require_perm(Permission::RoutingView)?;
     let tc = time_conditions::get(&state.db, auth.tenant, id).await?;
     Ok(Json(view(&state, &auth, tc).await?))
 }
@@ -104,7 +104,7 @@ pub async fn update_condition(
     Path(id): Path<Uuid>,
     Json(input): Json<TimeConditionInput>,
 ) -> ApiResult<Json<TimeConditionView>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::RoutingManage)?;
     let emergency = settings::get(&state.db, auth.tenant)
         .await?
         .emergency_numbers;
@@ -128,7 +128,7 @@ pub async fn delete_condition(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<StatusCode> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::RoutingManage)?;
     let tc = time_conditions::get(&state.db, auth.tenant, id).await?;
     time_conditions::delete(&state.db, auth.tenant, id).await?;
     audit::record(
@@ -158,7 +158,7 @@ pub async fn set_override(
     Path(id): Path<Uuid>,
     Json(input): Json<OverrideInput>,
 ) -> ApiResult<Json<TimeConditionView>> {
-    auth.require(Role::Operator)?;
+    auth.require_perm(Permission::RoutingOverride)?;
     let tc = time_conditions::set_override(&state.db, auth.tenant, id, &input.r#override).await?;
     audit::record(
         &state.db,

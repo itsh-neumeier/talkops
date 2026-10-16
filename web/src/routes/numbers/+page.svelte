@@ -9,7 +9,7 @@
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
 	import NumberDestination from '#lib/components/NumberDestination.svelte';
 	import { t } from '#lib/i18n/index.svelte.ts';
-	import { hasRole } from '#lib/session.svelte.ts';
+	import { can } from '#lib/session.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
 
 	let numbers = $state<PhoneNumber[]>([]);
@@ -51,7 +51,8 @@
 						<td class="col-opt-lg"
 							><a class="hover:underline" href="/trunks/{n.trunk_id}">{trunk?.name ?? '—'}</a></td
 						>
-						<td><NumberDestination number={n} editable={hasRole('admin')} onchange={load} /></td>
+						<td><NumberDestination number={n} editable={can('trunks.manage')} onchange={load} /></td
+						>
 					</tr>
 				{:else}
 					{#if !net.settled}<SkeletonRows cols={4} />{:else}<EmptyRow cols={4} />{/if}

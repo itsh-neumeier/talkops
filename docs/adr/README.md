@@ -34,6 +34,7 @@ nächste freie Nummer; überholte ADRs werden nicht gelöscht, sondern auf
 | [0026](0026-door-station-vendors.md) | Door station vendors and SIP password formats | Accepted |
 | [0027](0027-shared-phonebook-numbers-in-active-calls.md) | Shared phonebook numbers in active calls | Accepted |
 | [0028](0028-device-media-settings.md) | Media settings per device and door call ringing | Accepted |
+| [0029](0029-roles-and-permissions.md) | Roles with fine-grained permissions | Accepted |
 
 
 Vorlage: [`template.md`](template.md)

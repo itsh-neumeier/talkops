@@ -15,7 +15,7 @@
 	import { loadTargets } from '#lib/destinations.svelte.ts';
 	import { createNode } from '#lib/flow.ts';
 	import { i18n, t } from '#lib/i18n/index.svelte.ts';
-	import { hasRole } from '#lib/session.svelte.ts';
+	import { can } from '#lib/session.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
 
 	const id = $derived(page.params.id ?? 'new');
@@ -87,7 +87,7 @@
 	<PageHeader
 		back={{ href: '/routing', label: t('nav.routing') }}
 		title={t('flow.title')}
-		actions={hasRole('admin') ? actions : undefined}
+		actions={can('routing.manage') ? actions : undefined}
 	/>
 	{#snippet actions()}
 		<div class="flex items-center gap-3">

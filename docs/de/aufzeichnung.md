@@ -51,6 +51,8 @@ Wer darf was?
   und das Löschen stehen im Audit-Log.
 - Operatoren sehen zwar alle Anrufe in der Anrufliste, Aufnahmen aber nur wie
   Benutzer.
+- Das sind die Vorgaben. Admins können sie je Rolle ändern: siehe
+  [Benutzer und Rollen](benutzer-und-rollen.md).
 
 ## Transkription
 

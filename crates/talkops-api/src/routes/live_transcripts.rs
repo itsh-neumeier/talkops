@@ -7,7 +7,7 @@ use axum::{
     response::IntoResponse,
 };
 use serde_json::json;
-use talkops_core::users::Role;
+use talkops_core::roles::Permission;
 use talkops_core::{audit, extensions, live_transcripts, settings};
 use utoipa_axum::{router::OpenApiRouter, routes};
 use uuid::Uuid;
@@ -28,7 +28,7 @@ pub async fn preview(
     auth: AuthUser,
     Path(uuid): Path<Uuid>,
 ) -> ApiResult<impl IntoResponse> {
-    auth.require(Role::Operator)?;
+    auth.require_perm(Permission::CallsLiveTranscript)?;
     let call = active_calls::load(&state, auth.tenant, Some(uuid))
         .await?
         .into_iter()
@@ -38,7 +38,7 @@ pub async fn preview(
     let mine = own
         .iter()
         .any(|e| call.caller.extension_id == Some(e.id) || call.called.extension_id == Some(e.id));
-    if !mine && auth.role < Role::Admin {
+    if !mine && !auth.can(Permission::CallsLiveTranscriptAll) {
         return Err(ApiError::NotFound);
     }
     if !call.transcript_available
@@ -80,7 +80,7 @@ pub async fn stop(
     auth: AuthUser,
     Path(uuid): Path<Uuid>,
 ) -> ApiResult<StatusCode> {
-    auth.require(Role::Operator)?;
+    auth.require_perm(Permission::CallsLiveTranscript)?;
     live_transcripts::stop(&state.db, auth.tenant, auth.id, uuid).await?;
     audit::record(
         &state.db,

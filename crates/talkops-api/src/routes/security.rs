@@ -9,7 +9,6 @@ use serde::Serialize;
 use serde_json::json;
 use talkops_core::audit;
 use talkops_core::sip_guard::{self, Ban, GuardSettings, GuardSettingsInput};
-use talkops_core::users::Role;
 use utoipa::ToSchema;
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
@@ -17,6 +16,7 @@ use utoipa_axum::routes;
 use crate::AppState;
 use crate::auth::AuthUser;
 use crate::error::{ApiError, ApiResult};
+use talkops_core::roles::Permission;
 
 pub fn router() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
@@ -37,7 +37,7 @@ pub async fn get_sip_guard(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> ApiResult<Json<SipGuard>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::SecurityManage)?;
     Ok(Json(SipGuard {
         settings: sip_guard::get(&state.db, auth.tenant).await?,
         bans: sip_guard::list_bans(&state.db, auth.tenant).await?,
@@ -51,7 +51,7 @@ pub async fn update_sip_guard(
     auth: AuthUser,
     Json(input): Json<GuardSettingsInput>,
 ) -> ApiResult<Json<GuardSettings>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::SecurityManage)?;
     let s = sip_guard::update(&state.db, auth.tenant, &input).await?;
     let _ = audit::record(
         &state.db,
@@ -72,7 +72,7 @@ pub async fn unban(
     auth: AuthUser,
     Path(ip): Path<String>,
 ) -> ApiResult<StatusCode> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::SecurityManage)?;
     let ip: IpAddr = ip.parse().map_err(|_| ApiError::NotFound)?;
     sip_guard::unban(&state.db, auth.tenant, ip).await?;
     let _ = audit::record(

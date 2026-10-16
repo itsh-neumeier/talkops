@@ -8,7 +8,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use talkops_core::audit;
 use talkops_core::blocking::{self, BlockSettings, BlockSettingsInput, CallBlock, CallBlockInput};
-use talkops_core::users::Role;
 use utoipa::ToSchema;
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
@@ -17,6 +16,7 @@ use uuid::Uuid;
 use crate::AppState;
 use crate::auth::AuthUser;
 use crate::error::{ApiError, ApiResult};
+use talkops_core::roles::Permission;
 
 pub fn router() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
@@ -32,7 +32,7 @@ pub async fn list_blocks(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> ApiResult<Json<Vec<CallBlock>>> {
-    auth.require(Role::Operator)?;
+    auth.require_perm(Permission::BlockingManage)?;
     Ok(Json(blocking::list(&state.db, auth.tenant).await?))
 }
 
@@ -43,7 +43,7 @@ pub async fn create_block(
     auth: AuthUser,
     Json(input): Json<CallBlockInput>,
 ) -> ApiResult<(StatusCode, Json<CallBlock>)> {
-    auth.require(Role::Operator)?;
+    auth.require_perm(Permission::BlockingManage)?;
     let block = blocking::create(&state.db, auth.tenant, &input).await?;
     audit::record(
         &state.db,
@@ -63,7 +63,7 @@ pub async fn delete_block(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<StatusCode> {
-    auth.require(Role::Operator)?;
+    auth.require_perm(Permission::BlockingManage)?;
     blocking::delete(&state.db, auth.tenant, id).await?;
     audit::record(
         &state.db,
@@ -82,7 +82,7 @@ pub async fn get_block_settings(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> ApiResult<Json<BlockSettings>> {
-    auth.require(Role::Operator)?;
+    auth.require_perm(Permission::BlockingManage)?;
     Ok(Json(blocking::get_settings(&state.db, auth.tenant).await?))
 }
 
@@ -93,7 +93,7 @@ pub async fn update_block_settings(
     auth: AuthUser,
     Json(input): Json<BlockSettingsInput>,
 ) -> ApiResult<Json<BlockSettings>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::BlockingSettings)?;
     let settings =
         blocking::update_settings(&state.db, auth.tenant, &input, &state.secrets).await?;
     audit::record(
@@ -133,7 +133,7 @@ pub async fn test_number(
     auth: AuthUser,
     Json(req): Json<TestRequest>,
 ) -> ApiResult<Json<TestResult>> {
-    auth.require(Role::Operator)?;
+    auth.require_perm(Permission::BlockingManage)?;
     let number = blocking::normalize_pattern(&req.number)
         .ok()
         .filter(|n| !n.ends_with('*'))

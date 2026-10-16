@@ -11,7 +11,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use talkops_core::audit;
 use talkops_core::doors::{self, DoorEvent, DoorStation, DoorStationInput};
-use talkops_core::users::Role;
 use utoipa::ToSchema;
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
@@ -21,6 +20,7 @@ use crate::AppState;
 use crate::auth::AuthUser;
 use crate::doors::DoorCtx;
 use crate::error::{ApiError, ApiResult};
+use talkops_core::roles::Permission;
 
 pub fn router() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
@@ -41,7 +41,7 @@ pub async fn list_stations(
     auth: AuthUser,
 ) -> ApiResult<Json<Vec<DoorStation>>> {
     let mut list = doors::list(&state.db, auth.tenant).await?;
-    if auth.role < Role::Admin {
+    if !auth.can(Permission::DoorsManage) {
         for s in &mut list {
             s.host.clear();
             s.username.clear();
@@ -60,7 +60,7 @@ pub async fn create_station(
     auth: AuthUser,
     Json(input): Json<DoorStationInput>,
 ) -> ApiResult<Json<DoorStation>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::DoorsManage)?;
     let station = doors::create(&state.db, auth.tenant, &state.secrets, &input).await?;
     audit::record(
         &state.db,
@@ -83,7 +83,7 @@ pub async fn get_station(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<Json<DoorStation>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::DoorsManage)?;
     Ok(Json(doors::get(&state.db, auth.tenant, id).await?))
 }
 
@@ -96,7 +96,7 @@ pub async fn update_station(
     Path(id): Path<Uuid>,
     Json(input): Json<DoorStationInput>,
 ) -> ApiResult<Json<DoorStation>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::DoorsManage)?;
     let station = doors::update(&state.db, auth.tenant, &state.secrets, id, &input).await?;
     audit::record(
         &state.db,
@@ -122,7 +122,7 @@ pub async fn delete_station(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<StatusCode> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::DoorsManage)?;
     let station = doors::get(&state.db, auth.tenant, id).await?;
     let files = doors::delete(&state.db, auth.tenant, id).await?;
     crate::doors::remove_files(state.media.snapshots.clone(), files).await;
@@ -220,7 +220,7 @@ pub async fn test_station(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<Json<TestResult>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::DoorsManage)?;
     doors::get(&state.db, auth.tenant, id).await?;
     let model = DoorCtx::from(&state).test(id).await?;
     Ok(Json(TestResult { model }))
@@ -239,7 +239,7 @@ pub async fn new_token(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<Json<NewToken>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::DoorsManage)?;
     let token = doors::new_api_token(&state.db, auth.tenant, id).await?;
     audit::record(
         &state.db,
@@ -260,7 +260,7 @@ pub async fn revoke_token(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<StatusCode> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::DoorsManage)?;
     doors::revoke_api_token(&state.db, auth.tenant, id).await?;
     audit::record(
         &state.db,

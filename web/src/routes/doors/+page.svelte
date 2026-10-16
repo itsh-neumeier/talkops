@@ -6,7 +6,7 @@
 	import { api, type DoorEvent, type DoorStation } from '#lib/api.ts';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
 	import { formatDateTime, t, type MessageKey } from '#lib/i18n/index.svelte.ts';
-	import { hasRole } from '#lib/session.svelte.ts';
+	import { can } from '#lib/session.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
 
 	let stations = $state<DoorStation[] | null>(null);
@@ -75,7 +75,7 @@
 <div class="space-y-4">
 	<PageHeader title={t('nav.doors')}>
 		{#snippet actions()}
-			{#if hasRole('admin')}
+			{#if can('doors.manage')}
 				<a class="btn" href="/door-stations">{t('door.setup')}</a>
 			{/if}
 		{/snippet}
@@ -95,7 +95,7 @@
 						<h2>{s.name}</h2>
 						{#if s.model}<p class="text-xs text-slate-500">{s.model}</p>{/if}
 					</div>
-					{#if s.events_enabled && hasRole('admin')}
+					{#if s.events_enabled && can('doors.manage')}
 						<span class="badge {s.online ? 'badge-ok' : 'badge-bad'}"
 							>{s.online ? t('door.online') : t('door.offline')}</span
 						>

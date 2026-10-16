@@ -14,7 +14,7 @@
 	import MemberPicker from '#lib/components/routing/MemberPicker.svelte';
 	import { loadTargets, targets } from '#lib/destinations.svelte.ts';
 	import { i18n, t, type MessageKey } from '#lib/i18n/index.svelte.ts';
-	import { hasRole } from '#lib/session.svelte.ts';
+	import { can } from '#lib/session.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
 
 	const strategies = [
@@ -144,7 +144,7 @@
 	<PageHeader
 		back={{ href: '/routing', label: t('nav.routing') }}
 		title={form?.name || t('queues.new')}
-		actions={hasRole('admin') ? actions : undefined}
+		actions={can('routing.manage') ? actions : undefined}
 	/>
 	{#snippet actions()}
 		<div class="flex items-center gap-3">

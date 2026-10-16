@@ -3,7 +3,7 @@
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
 	import { describe, loadTargets, targets } from '#lib/destinations.svelte.ts';
 	import { t, type MessageKey } from '#lib/i18n/index.svelte.ts';
-	import { hasRole } from '#lib/session.svelte.ts';
+	import { can } from '#lib/session.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
 
 	let error = $state('');
@@ -28,7 +28,8 @@
 <div class="space-y-3">
 	<div class="flex items-center justify-between gap-2">
 		<p class="text-sm text-slate-600 dark:text-slate-300">{t('queues.hint')}</p>
-		{#if hasRole('admin')}<a class="btn btn-primary" href="/routing/queues/new">{t('queues.new')}</a
+		{#if can('routing.manage')}<a class="btn btn-primary" href="/routing/queues/new"
+				>{t('queues.new')}</a
 			>{/if}
 	</div>
 	<ErrorBox {error} />
@@ -67,9 +68,9 @@
 							<td class="col-opt-lg">{unanswered(q)}</td>
 							<td class="space-x-1 text-right whitespace-nowrap">
 								<a class="btn btn-sm" href="/routing/queues/{q.id}"
-									>{hasRole('admin') ? t('common.edit') : t('flow.view')}</a
+									>{can('routing.manage') ? t('common.edit') : t('flow.view')}</a
 								>
-								{#if hasRole('admin')}
+								{#if can('routing.manage')}
 									<button class="btn btn-sm btn-danger" onclick={() => remove(q)}
 										>{t('common.delete')}</button
 									>

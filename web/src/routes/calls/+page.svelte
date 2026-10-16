@@ -9,7 +9,7 @@
 	import { api, type Call, type CallParty, type Recording } from '#lib/api.ts';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
 	import TranscriptView from '#lib/components/TranscriptView.svelte';
-	import { hasRole } from '#lib/session.svelte.ts';
+	import { can } from '#lib/session.svelte.ts';
 	import { formatDateTime, formatDuration, t } from '#lib/i18n/index.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
 	import {
@@ -495,7 +495,7 @@
 									<a class="btn btn-sm" href="/api/v1/recordings/{open.id}/audio" download
 										>{t('vm.download')}</a
 									>
-									{#if hasRole('admin')}
+									{#if can('recordings.delete')}
 										<button class="btn btn-sm btn-danger" onclick={() => remove(open!)}
 											>{t('common.delete')}</button
 										>

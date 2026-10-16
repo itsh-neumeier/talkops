@@ -12,7 +12,6 @@ use serde_json::json;
 use talkops_core::audit;
 use talkops_core::transcription_api::{self, Provider, ProviderInput};
 use talkops_core::transcription_profiles::{self, OPENAI_PRICES, Profile, Usage};
-use talkops_core::users::Role;
 use utoipa::ToSchema;
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
@@ -21,6 +20,7 @@ use uuid::Uuid;
 use crate::AppState;
 use crate::auth::AuthUser;
 use crate::error::{ApiError, ApiResult};
+use talkops_core::roles::Permission;
 
 pub fn router() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
@@ -56,7 +56,7 @@ pub async fn overview(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> ApiResult<Json<TranscriptionOverview>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::TranscriptionSettings)?;
     Ok(Json(TranscriptionOverview {
         providers: transcription_api::list(&state.db, auth.tenant).await?,
         profiles: transcription_profiles::list(&state.db, auth.tenant).await?,
@@ -78,7 +78,7 @@ pub async fn update_profiles(
     auth: AuthUser,
     Json(input): Json<Vec<Profile>>,
 ) -> ApiResult<Json<Vec<Profile>>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::TranscriptionSettings)?;
     let profiles = transcription_profiles::update(&state.db, auth.tenant, &input).await?;
     let summary: Vec<_> = profiles
         .iter()
@@ -106,7 +106,7 @@ pub async fn create_provider(
     auth: AuthUser,
     Json(input): Json<ProviderInput>,
 ) -> ApiResult<(StatusCode, Json<Provider>)> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::TranscriptionSettings)?;
     let p = transcription_api::create(&state.db, auth.tenant, &state.secrets, &input).await?;
     audit::record(
         &state.db,
@@ -128,7 +128,7 @@ pub async fn update_provider(
     Path(id): Path<Uuid>,
     Json(input): Json<ProviderInput>,
 ) -> ApiResult<Json<Provider>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::TranscriptionSettings)?;
     let p = transcription_api::update(&state.db, auth.tenant, &state.secrets, id, &input).await?;
     audit::record(
         &state.db,
@@ -149,7 +149,7 @@ pub async fn delete_provider(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<StatusCode> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::TranscriptionSettings)?;
     let old = transcription_api::get(&state.db, auth.tenant, id).await?;
     transcription_api::delete(&state.db, auth.tenant, id)
         .await
@@ -210,7 +210,7 @@ pub async fn test_provider(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<Json<ApiTest>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::TranscriptionSettings)?;
     let cfg = transcription_api::config(&state.db, auth.tenant, &state.secrets, id, "").await?;
     let mut req = client().get(format!("{}/models", cfg.url.trim_end_matches('/')));
     if let Some(key) = &cfg.key {

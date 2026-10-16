@@ -10,7 +10,6 @@ use talkops_core::trunks::{
     self, AccountInput, NumberDestination, NumberInput, PhoneNumber, Trunk, TrunkAccount,
     TrunkInput,
 };
-use talkops_core::users::Role;
 use talkops_core::{audit, numbering};
 use utoipa::ToSchema;
 use utoipa_axum::router::OpenApiRouter;
@@ -21,6 +20,7 @@ use crate::AppState;
 use crate::auth::AuthUser;
 use crate::error::{ApiError, ApiResult};
 use crate::telephony::GatewayState;
+use talkops_core::roles::Permission;
 
 pub fn router() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
@@ -103,7 +103,7 @@ pub async fn list_trunks(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> ApiResult<Json<Vec<TrunkDetail>>> {
-    auth.require(Role::Operator)?;
+    auth.require_perm(Permission::TrunksView)?;
     let mut out = Vec::new();
     for trunk in trunks::list(&state.db, auth.tenant).await? {
         out.push(detail(&state, &auth, trunk).await?);
@@ -145,7 +145,7 @@ pub async fn create_trunk(
     auth: AuthUser,
     Json(input): Json<TrunkInput>,
 ) -> ApiResult<Json<Trunk>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::TrunksManage)?;
     let trunk = trunks::create(&state.db, auth.tenant, &state.catalog, &input).await?;
     audit::record(
         &state.db,
@@ -166,7 +166,7 @@ pub async fn get_trunk(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<Json<TrunkDetail>> {
-    auth.require(Role::Operator)?;
+    auth.require_perm(Permission::TrunksView)?;
     let trunk = trunks::get(&state.db, auth.tenant, id).await?;
     Ok(Json(detail(&state, &auth, trunk).await?))
 }
@@ -179,7 +179,7 @@ pub async fn update_trunk(
     Path(id): Path<Uuid>,
     Json(input): Json<TrunkInput>,
 ) -> ApiResult<Json<Trunk>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::TrunksManage)?;
     let trunk = trunks::update(&state.db, auth.tenant, &state.catalog, id, &input).await?;
     audit::record(
         &state.db,
@@ -201,7 +201,7 @@ pub async fn delete_trunk(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<StatusCode> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::TrunksManage)?;
     let trunk = trunks::get(&state.db, auth.tenant, id).await?;
     let gateways = trunk_gateways(&state, &auth, id).await?;
     trunks::delete(&state.db, auth.tenant, id).await?;
@@ -226,7 +226,7 @@ pub async fn create_account(
     Path(id): Path<Uuid>,
     Json(input): Json<AccountInput>,
 ) -> ApiResult<Json<TrunkAccount>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::TrunksManage)?;
     numbering::check_destination(
         &state.db,
         auth.tenant,
@@ -257,7 +257,7 @@ pub async fn update_account(
     Path(id): Path<Uuid>,
     Json(input): Json<AccountInput>,
 ) -> ApiResult<Json<TrunkAccount>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::TrunksManage)?;
     numbering::check_destination(
         &state.db,
         auth.tenant,
@@ -279,7 +279,7 @@ pub async fn delete_account(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<StatusCode> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::TrunksManage)?;
     let account = trunks::get_account(&state.db, auth.tenant, id).await?;
     trunks::delete_account(&state.db, auth.tenant, id).await?;
     audit::record(
@@ -304,7 +304,7 @@ pub async fn add_line(
     Path(id): Path<Uuid>,
     Json(input): Json<LineInput>,
 ) -> ApiResult<Json<Line>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::TrunksManage)?;
     let trunk = trunks::get(&state.db, auth.tenant, id).await?;
     let preset = state
         .catalog
@@ -383,7 +383,7 @@ pub async fn list_numbers(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> ApiResult<Json<Vec<PhoneNumber>>> {
-    auth.require(Role::Operator)?;
+    auth.require_perm(Permission::TrunksView)?;
     Ok(Json(trunks::list_numbers(&state.db, auth.tenant).await?))
 }
 
@@ -394,7 +394,7 @@ pub async fn create_number(
     auth: AuthUser,
     Json(input): Json<NumberInput>,
 ) -> ApiResult<Json<PhoneNumber>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::TrunksManage)?;
     let number = trunks::create_number(&state.db, auth.tenant, &input).await?;
     audit::record(
         &state.db,
@@ -419,7 +419,7 @@ pub async fn update_number(
     Path(id): Path<Uuid>,
     Json(input): Json<NumberInput>,
 ) -> ApiResult<Json<PhoneNumber>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::TrunksManage)?;
     let before = trunks::get_number(&state.db, auth.tenant, id).await?;
     let number = trunks::update_number(&state.db, auth.tenant, id, &input).await?;
     audit::record(
@@ -451,7 +451,7 @@ pub async fn delete_number(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<StatusCode> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::TrunksManage)?;
     let number = trunks::get_number(&state.db, auth.tenant, id).await?;
     trunks::delete_number(&state.db, auth.tenant, id).await?;
     audit::record(

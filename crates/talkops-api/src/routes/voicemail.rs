@@ -9,7 +9,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use talkops_core::extensions::{self, Extension};
 use talkops_core::mail::{self, SmtpInput, SmtpSettings};
-use talkops_core::users::Role;
 use talkops_core::voicemail::{self, Message, VoicemailBox, VoicemailBoxInput};
 use talkops_core::voicemail_config::{self as vmc, VoicemailConfig};
 use talkops_core::{audit, jobs, prompts, settings};
@@ -22,6 +21,7 @@ use crate::AppState;
 use crate::auth::AuthUser;
 use crate::error::{ApiError, ApiResult};
 use crate::voicemail::{VmContext, delete_message as remove_message, update_mwi};
+use talkops_core::roles::Permission;
 
 pub fn router() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
@@ -39,7 +39,7 @@ pub fn router() -> OpenApiRouter<AppState> {
 /// Voicemail is private: the extension's user, or an admin.
 async fn owned_extension(state: &AppState, auth: &AuthUser, id: Uuid) -> ApiResult<Extension> {
     let ext = extensions::get(&state.db, auth.tenant, id).await?;
-    if ext.user_id == Some(auth.id) || auth.role >= Role::Admin {
+    if ext.user_id == Some(auth.id) || auth.can(Permission::VoicemailAccessAll) {
         Ok(ext)
     } else {
         Err(ApiError::Forbidden)
@@ -302,7 +302,7 @@ pub async fn get_smtp(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> ApiResult<Json<SmtpSettings>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::VoicemailSettings)?;
     Ok(Json(mail::get(&state.db, auth.tenant).await?))
 }
 
@@ -313,7 +313,7 @@ pub async fn update_smtp(
     auth: AuthUser,
     Json(input): Json<SmtpInput>,
 ) -> ApiResult<Json<SmtpSettings>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::VoicemailSettings)?;
     let s = mail::update(&state.db, auth.tenant, &state.secrets, &input).await?;
     audit::record(
         &state.db,
@@ -341,7 +341,7 @@ pub async fn test_smtp(
     auth: AuthUser,
     Json(input): Json<SmtpTest>,
 ) -> ApiResult<StatusCode> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::VoicemailSettings)?;
     let cfg = mail::config(&state.db, auth.tenant, &state.secrets)
         .await?
         .ok_or_else(|| ApiError::BadRequest("SMTP is not configured".into()))?;
@@ -389,7 +389,7 @@ pub async fn get_vm_config(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> ApiResult<Json<VmConfigView>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::VoicemailSettings)?;
     Ok(Json(vm_config_view(
         vmc::get(&state.db, auth.tenant).await?,
     )))
@@ -403,7 +403,7 @@ pub async fn update_vm_config(
     auth: AuthUser,
     Json(input): Json<VoicemailConfig>,
 ) -> ApiResult<Json<VmConfigView>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::VoicemailSettings)?;
     let config = input.normalized();
     vmc::set(&state.db, auth.tenant, &config).await?;
     let mut job = jobs::NewJob::new(vmc::JOB_TTS_PROMPTS, json!({}));

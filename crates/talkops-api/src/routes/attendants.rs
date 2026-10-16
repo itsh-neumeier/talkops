@@ -5,7 +5,6 @@ use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use serde_json::json;
 use talkops_core::attendant::{self, Attendant, AttendantInput};
-use talkops_core::users::Role;
 use talkops_core::{audit, settings};
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
@@ -14,6 +13,7 @@ use uuid::Uuid;
 use crate::AppState;
 use crate::auth::AuthUser;
 use crate::error::ApiResult;
+use talkops_core::roles::Permission;
 
 pub fn router() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
@@ -27,7 +27,7 @@ pub async fn list_attendants(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> ApiResult<Json<Vec<Attendant>>> {
-    auth.require(Role::Operator)?;
+    auth.require_perm(Permission::RoutingView)?;
     Ok(Json(attendant::list(&state.db, auth.tenant).await?))
 }
 
@@ -58,7 +58,7 @@ pub async fn create_attendant(
     auth: AuthUser,
     Json(input): Json<AttendantInput>,
 ) -> ApiResult<Json<Attendant>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::RoutingManage)?;
     Ok(Json(save(&state, &auth, None, &input).await?))
 }
 
@@ -69,7 +69,7 @@ pub async fn get_attendant(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<Json<Attendant>> {
-    auth.require(Role::Operator)?;
+    auth.require_perm(Permission::RoutingView)?;
     Ok(Json(attendant::get(&state.db, auth.tenant, id).await?))
 }
 
@@ -81,7 +81,7 @@ pub async fn update_attendant(
     Path(id): Path<Uuid>,
     Json(input): Json<AttendantInput>,
 ) -> ApiResult<Json<Attendant>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::RoutingManage)?;
     Ok(Json(save(&state, &auth, Some(id), &input).await?))
 }
 
@@ -92,7 +92,7 @@ pub async fn delete_attendant(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<StatusCode> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::RoutingManage)?;
     let old = attendant::get(&state.db, auth.tenant, id).await?;
     attendant::delete(&state.db, auth.tenant, id).await?;
     audit::record(

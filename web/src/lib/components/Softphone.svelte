@@ -1,5 +1,8 @@
 <script lang="ts">
 	import PageHeader from '#lib/components/PageHeader.svelte';
+	import PhoneNumber from '#lib/components/PhoneNumber.svelte';
+	import LoadingContent from '#lib/components/LoadingContent.svelte';
+	import Skeleton from '#lib/components/Skeleton.svelte';
 	import { onDestroy, onMount } from 'svelte';
 	import { SessionState, Web, type Session } from 'sip.js';
 	import { ApiError, api, type Call, type Contact } from '#lib/api.ts';
@@ -52,6 +55,9 @@
 	let notificationSupported = $state(false);
 	let preferencesLoaded = $state(false);
 	let calls = $state<Call[]>([]);
+	let historyLoading = $state(true);
+	let historyOwner: string | undefined;
+	let historyGeneration = 0;
 	let contacts = $state<Contact[]>([]);
 	let contactSearch = $state('');
 	let favorites = $state<string[]>([]);
@@ -181,6 +187,11 @@
 
 	async function loadData() {
 		const id = selected;
+		const run = ++historyGeneration;
+		if (historyOwner !== id) {
+			historyLoading = true;
+			calls = [];
+		}
 		dataError = '';
 		const results = await Promise.allSettled([
 			api.get<Contact[]>('/contacts'),
@@ -188,7 +199,9 @@
 				? api.get<Call[]>(`/me/webrtc/calls?extension_id=${encodeURIComponent(id)}`)
 				: Promise.resolve([])
 		]);
-		if (disposed || id !== selected) return;
+		if (disposed || id !== selected || run !== historyGeneration) return;
+		historyOwner = id;
+		historyLoading = false;
 		if (results[0].status === 'fulfilled') contacts = results[0].value;
 		else dataError = errorMessage(results[0].reason);
 		if (results[1].status === 'fulfilled') calls = results[1].value;
@@ -285,6 +298,8 @@
 		switching = true;
 		const generation = ++accountGeneration;
 		calls = [];
+		historyOwner = undefined;
+		void loadData();
 		lastDialed = '';
 		await stopUser();
 		if (disposed) {
@@ -410,7 +425,6 @@
 		} finally {
 			switching = false;
 		}
-		void loadData();
 	}
 
 	onMount(() => {
@@ -943,30 +957,42 @@
 					></select
 				>
 			</div>
-			<div class="max-h-80 space-y-2 overflow-y-auto">
-				{#each recentCalls as c (c.id)}
-					<div class="border-b border-slate-200 pb-2 dark:border-slate-700">
-						<button
-							class="btn btn-sm font-mono"
-							disabled={busy}
-							onclick={() => chooseNumber(callbackNumber(c, selected))}
-							>{callbackNumber(c, selected)}</button
-						>
-						<span class="ml-1 text-sm"
-							><button
-								class="btn btn-sm"
-								aria-label={t('phone.callNumber', { number: callbackNumber(c, selected) })}
-								disabled={status !== 'ready'}
-								onclick={() => dialNumber(callbackNumber(c, selected))}>📞</button
+			<LoadingContent pending={historyLoading}>
+				{#snippet placeholder()}<Skeleton lines={6} />{/snippet}
+				<div class="content-in max-h-80 space-y-2 overflow-y-auto">
+					{#each recentCalls as c (c.id)}
+						<div class="border-b border-slate-200 pb-2 dark:border-slate-700">
+							<button
+								class="btn btn-sm font-mono"
+								aria-label={callbackNumber(c, selected)}
+								disabled={busy}
+								onclick={() => chooseNumber(callbackNumber(c, selected))}
+								><PhoneNumber
+									number={callbackNumber(c, selected)}
+									countryNumber={(c.direction === 'inbound' ? c.caller : c.called)?.number ||
+										callbackNumber(c, selected)}
+									flag={c.direction === 'inbound' || c.direction === 'outbound'}
+									internal={!!(c.direction === 'inbound' ? c.caller : c.called)?.extension_id}
+								/></button
 							>
-							{t(`dir.${c.direction}`)}{#if missedIncoming(c, selected)}
-								· {t('calls.missed')}{:else if !c.answered_at}
-								· {t('phone.unanswered')}{/if}</span
-						>
-						<p class="hint">{formatDateTime(c.started_at)}</p>
-					</div>
-				{:else}<p class="hint">{selected ? t('calls.empty') : t('phone.selectIdentity')}</p>{/each}
-			</div>
+							<span class="ml-1 text-sm"
+								><button
+									class="btn btn-sm"
+									aria-label={t('phone.callNumber', { number: callbackNumber(c, selected) })}
+									disabled={status !== 'ready'}
+									onclick={() => dialNumber(callbackNumber(c, selected))}>📞</button
+								>
+								{t(`dir.${c.direction}`)}{#if missedIncoming(c, selected)}
+									· {t('calls.missed')}{:else if !c.answered_at}
+									· {t('phone.unanswered')}{/if}</span
+							>
+							<p class="hint">{formatDateTime(c.started_at)}</p>
+						</div>
+					{:else}{#if !dataError}<p class="hint">
+								{selected ? t('calls.empty') : t('phone.selectIdentity')}
+							</p>{/if}{/each}
+				</div>
+			</LoadingContent>
 		</section>
 	</div>
 </div>

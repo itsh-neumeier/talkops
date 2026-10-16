@@ -31,6 +31,8 @@
 		"#lib/*": "./src/lib/*"
 	},
 	"dependencies": {
+		"flag-icons": "7.6.0",
+		"libphonenumber-js": "1.13.15",
 		"sip.js": "^0.21.2"
 	}
 }

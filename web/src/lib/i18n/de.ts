@@ -106,6 +106,7 @@ const de: Record<keyof typeof en, string> = {
 	'common.edit': 'Bearbeiten',
 	'common.add': 'Hinzufügen',
 	'common.close': 'Schließen',
+	'calls.numberCountry': 'Länderkennzeichnung: {country}',
 	'common.loading': 'Lädt…',
 	'common.enabled': 'Aktiv',
 	'common.disabled': 'Deaktiviert',

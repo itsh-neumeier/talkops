@@ -1,4 +1,4 @@
-// Browser checks of loading states and motion: delayed skeletons, the page
+// Browser checks of loading states and motion: visible skeletons, the page
 // fade and the dialog transitions, with and without reduced motion.
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
@@ -29,8 +29,8 @@ const opacity = (page) => page.evaluate(() => {
 });
 
 try {
-  // Normal motion, a slow answer: the skeleton is invisible at first, then
-  // fades in, and the list replaces it.
+  // Normal motion, a slow answer: the skeleton is visible immediately and
+  // remains visible until the list replaces it.
   {
     const { context, page, errors } = await open('no-preference', 1500);
     await page.goto(`${BASE}/settings`);
@@ -38,10 +38,10 @@ try {
     await page.getByRole('link', { name: 'Benutzer' }).first().click();
     await page.locator('main [data-testid="skeleton"]').first().waitFor({ state: 'attached' });
     const early = await opacity(page);
-    assert.ok(early !== null && early < 0.3, `early skeleton opacity ${early}`);
+    assert.ok(early !== null && early > 0.9, `early skeleton opacity ${early}`);
     await page.waitForTimeout(700);
     const later = await opacity(page);
-    assert.ok(later !== null && later > 0.9, `skeleton opacity after the delay ${later}`);
+    assert.ok(later !== null && later > 0.9, `skeleton opacity during loading ${later}`);
     const sweep = await page.evaluate(() => getComputedStyle(document.querySelector('main .skeleton-bar')).animationName);
     assert.equal(sweep, 'skeleton-sweep');
     await page.getByRole('cell', { name: 'admin', exact: true }).waitFor();

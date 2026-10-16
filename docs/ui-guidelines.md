@@ -112,11 +112,22 @@ parts. Use these parts for other sortable or filterable tables.
   `--ease-out` and the durations `--dur-fast` (120 ms: hover, press,
   focus), `--dur` (180 ms: rows, panels, popups) and `--dur-slow`
   (260 ms: page content). Do not add other durations or curves.
-- Skeletons (`Skeleton.svelte`, `SkeletonRows.svelte`) stay invisible for
-  `--skeleton-delay` (180 ms). A fast answer thus shows no flash. A slow
-  answer shows the skeleton with a soft fade and a light sweep. Use the
-  classes `.skeleton` and `.skeleton-bar` for own placeholders, not
-  `animate-pulse`.
+- Skeletons (`Skeleton.svelte`, `SkeletonRows.svelte`) are visible from
+  the first frame. Use `.skeleton` and `.skeleton-bar` for placeholders.
+  The bars have a light sweep. Do not use `animate-pulse`.
+- For the first load of call content, use `LoadingContent.svelte`. Set
+  `pending` from the request for that content. Supply a `placeholder`
+  snippet and a child snippet. The component keeps the placeholder visible
+  for at least 300 ms. Put `.content-in` on the loaded content for a 180 ms
+  opacity change. The component adds no wrapper, so it can contain table
+  bodies. Reduced motion removes the minimum interval and the animation.
+- Keep loaded call content during polling and filter requests. Show a
+  status message during a filter request. Add placeholder rows while the
+  next page loads. Do not show an empty state before the first response.
+- Use `PhoneNumber.svelte` for numbers with country flags. Enable `flag`
+  only on inbound callers and outbound destinations. Set `internal` when
+  extension metadata identifies the party. Use the normalized API number
+  as `countryNumber` when the displayed number has another format.
 - The root layout fades in the content of each new page (`.page-in`).
 - `Modal.svelte` fades the backdrop and moves the panel in and out. Native
   `<dialog class="dialog-panel">` elements open with the same motion.
@@ -131,8 +142,20 @@ parts. Use these parts for other sortable or filterable tables.
 
 ## Checks
 
-`tests/browser/motion.mjs` checks the skeleton delay, the page fade, the
-dialog transition and reduced motion.
+`tests/browser/motion.mjs` checks immediate skeleton visibility, the page
+fade, the dialog transition and reduced motion. `call-presentation.mjs`
+checks call flags, initial loading, independent dashboard requests, polling,
+filters, pagination, empty and error states, and reduced motion.
+
+Country detection uses the pinned `libphonenumber-js` package with full
+metadata. SVG assets come from the pinned `flag-icons` package. Both ship
+with the application. The browser makes no external lookup. The resolver
+accepts international numbers only; tenant normalization stays in the API.
+Shared service ranges and numbers without a resolved country have no flag.
+The softphone endpoint supplies raw records, so its flags require a `+` or
+`00` international prefix. Names and dial targets do not change.
+See the upstream [number library](https://github.com/catamphetamine/libphonenumber-js)
+and [flag assets](https://github.com/lipis/flag-icons) for metadata and licenses.
 
 `tests/browser/layout.mjs` opens all main pages at 360 px, 768 px and
 1280 px in the light and the dark theme. The check fails when a page scrolls

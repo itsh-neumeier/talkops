@@ -8,7 +8,7 @@
 - Status: Completed
 - Branch: `claude/mail-design-editor`
 - Base commit: `0f128ad` (release 1.7.14)
-- Related commits or PR: Pending
+- Related commits or PR: https://github.com/itsh-neumeier/talkops/pull/40
 
 ## Goal
 

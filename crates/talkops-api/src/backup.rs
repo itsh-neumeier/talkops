@@ -449,6 +449,8 @@ pub async fn create_in(
     include_recordings: bool,
     out_dir: &Path,
 ) -> Result<String> {
+    // The stack from Portainer, when connected (ADR 0032).
+    crate::portainer::refresh(cfg, db).await;
     let _guard = BUSY.try_lock().map_err(|_| BackupError::Busy)?;
     let _file_lock = file_lock(&cfg.dir)?;
     let _db_lock = talkops_core::db::operation_guard(&cfg.database_url, false).await?;

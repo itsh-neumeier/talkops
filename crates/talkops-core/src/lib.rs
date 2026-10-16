@@ -24,6 +24,7 @@ pub mod mail;
 pub mod mfa;
 pub mod numbering;
 pub mod phones;
+pub mod portainer;
 pub mod presets;
 pub mod prompts;
 pub mod queues;

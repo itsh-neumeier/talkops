@@ -62,7 +62,7 @@ const de: Record<keyof typeof en, string> = {
 	'backup.configImported': 'Importierte Konfiguration nach jeder Stack-Änderung aktualisieren.',
 	'backup.encryptionMissing':
 		'Kein Backup-Passwort konfiguriert. Vollständige Backups mit Deployment-Zugangsdaten benötigen TALKOPS_BACKUP_PASSWORD oder TALKOPS_BACKUP_PASSWORD_FILE.',
-	'backup.importTitle': 'Portainer-Deployment-Konfiguration importieren',
+	'backup.importTitle': 'Manueller Import (ohne Portainer-Verbindung)',
 	'backup.importHint':
 		'Dateien .env und docker-compose*.yml/yaml auswählen. Portainer-Umgebungswerte zuvor in eine lokale .env kopieren. Backup-Passwort separat speichern. Importierte Dateien werden verschlüsselt abgelegt.',
 	'backup.importFiles': 'Deployment-Dateien',
@@ -1395,6 +1395,38 @@ const de: Record<keyof typeof en, string> = {
 	'restore.targetPick': 'Zum Ordner navigieren und ein Archiv wählen (talkops-….tar.gz.age).',
 	'restore.storedArchive':
 		'Das Archiv liegt jetzt als {name} im Backups-Volume. Der Restore-Befehl unten verwendet es.',
+	'backup.configSource': 'Quelle',
+	'backup.source.mounted': 'Compose-Verzeichnis (eingebunden)',
+	'backup.source.portainer': 'Portainer-API',
+	'backup.source.imported': 'Manueller Import',
+	'backup.source.missing': 'Keine',
+	'backup.configExcluded':
+		'Ausgelassen (Link, größer als 1 MiB, nicht lesbar oder enthält das Backup-Passwort):',
+	'backup.portainer.title': 'Portainer',
+	'backup.portainer.hint':
+		'TalkOps mit der Portainer-API verbinden. Vor jeder Sicherung liest TalkOps die Stack-Datei und die Umgebungsvariablen seines Stacks. Das ersetzt den manuellen Import.',
+	'backup.portainer.connect': 'Portainer verbinden',
+	'backup.portainer.url': 'Portainer-URL',
+	'backup.portainer.checkCert': 'Zertifikat prüfen',
+	'backup.portainer.http':
+		'http:// ist nur für 127.0.0.1 erlaubt. Das Token geht nur an den lokalen Host.',
+	'backup.portainer.trusted': 'Das Zertifikat ist gültig. Kein Pinning nötig.',
+	'backup.portainer.selfSigned':
+		'Selbstsigniertes Zertifikat. Diesen SHA-256-Fingerabdruck mit dem Zertifikat von Portainer vergleichen, dann festlegen:',
+	'backup.portainer.pin': 'Dieses Zertifikat festlegen',
+	'backup.portainer.pinned': 'Festgelegtes Zertifikat',
+	'backup.portainer.token': 'Access Token',
+	'backup.portainer.tokenKept': 'Gespeichert – leer lassen zum Behalten',
+	'backup.portainer.tokenHint':
+		'Portainer > My account > Access tokens. Einen Benutzer verwenden, der den TalkOps-Stack lesen darf. TalkOps speichert das Token verschlüsselt.',
+	'backup.portainer.loadStacks': 'Stacks laden',
+	'backup.portainer.stack': 'Stack',
+	'backup.portainer.save': 'Speichern und Stack lesen',
+	'backup.portainer.saved': 'Stack-Konfiguration aus Portainer gelesen.',
+	'backup.portainer.syncNow': 'Jetzt lesen',
+	'backup.portainer.lastSync': 'Zuletzt gelesen',
+	'backup.portainer.confirmRemove':
+		'Portainer-Verbindung entfernen? Die zuletzt gespeicherte Kopie bleibt.',
 	'start.title': 'Erste Schritte',
 	'start.progress': '{done} von {total} erledigt',
 	'start.hide': 'Ausblenden',

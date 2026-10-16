@@ -10,6 +10,7 @@ use serde::Serialize;
 use serde_json::json;
 use talkops_core::audit;
 use talkops_core::backups::{self, BackupSettings, BackupSettingsInput};
+use talkops_core::portainer::{self, PortainerConnection, PortainerInput};
 use utoipa::ToSchema;
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
@@ -18,6 +19,7 @@ use crate::AppState;
 use crate::auth::AuthUser;
 use crate::backup::{self, BackupConfig, BackupError, BackupFile};
 use crate::error::{ApiError, ApiResult};
+use crate::portainer::{Api, PortainerError, Stack};
 use crate::recovery::{self, DeploymentInfo, DeploymentInput};
 use talkops_core::roles::Permission;
 
@@ -26,6 +28,10 @@ pub fn router() -> OpenApiRouter<AppState> {
         .routes(routes!(list_backups, start_backup))
         .routes(routes!(update_backup_settings))
         .routes(routes!(import_deployment))
+        .routes(routes!(get_portainer, save_portainer, delete_portainer))
+        .routes(routes!(probe_portainer))
+        .routes(routes!(portainer_stacks))
+        .routes(routes!(sync_portainer))
         .routes(routes!(download_backup, delete_backup))
 }
 
@@ -56,6 +62,11 @@ pub struct BackupOverview {
     pub configuration: Option<DeploymentInfo>,
     pub configuration_error: Option<String>,
     pub encryption_configured: bool,
+    /// Mounted deployment files take precedence over imports and Portainer.
+    pub mounted: bool,
+    /// Automatic discovery of deployment files (`TALKOPS_DEPLOYMENT_FILES=auto`).
+    pub auto_discovery: bool,
+    pub portainer: Option<PortainerConnection>,
 }
 
 async fn overview(state: &AppState, auth: &AuthUser) -> ApiResult<BackupOverview> {
@@ -71,6 +82,9 @@ async fn overview(state: &AppState, auth: &AuthUser) -> ApiResult<BackupOverview
         configuration,
         configuration_error,
         encryption_configured: cfg.password.is_some(),
+        mounted: recovery::mounted_active(cfg),
+        auto_discovery: recovery::auto_discovery(cfg),
+        portainer: portainer::get(&state.db, auth.tenant).await?,
     })
 }
 
@@ -148,16 +162,17 @@ pub async fn update_backup_settings(
 pub async fn import_deployment(
     State(state): State<AppState>,
     auth: AuthUser,
-    Json(input): Json<DeploymentInput>,
+    Json(mut input): Json<DeploymentInput>,
 ) -> ApiResult<Json<DeploymentInfo>> {
     use std::io::Write;
     auth.require_perm(Permission::BackupsManage)?;
     let cfg = config(&state)?;
-    if cfg.deployment_dir.is_some() {
+    if recovery::mounted_active(cfg) {
         return Err(ApiError::Conflict(
             "mounted deployment files take precedence; update those files".into(),
         ));
     }
+    input.origin = None;
     recovery::validate_configuration(&input)?;
     if input
         .files
@@ -168,20 +183,7 @@ pub async fn import_deployment(
             "keep the backup password outside imported deployment files".into(),
         ));
     }
-    let encrypted = state
-        .secrets
-        .encrypt(&serde_json::to_string(&input).expect("configuration"))
-        .map_err(|_| ApiError::Internal("configuration encryption failed".into()))?;
-    std::fs::create_dir_all(&cfg.dir).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let mut temp =
-        tempfile::NamedTempFile::new_in(&cfg.dir).map_err(|e| ApiError::Internal(e.to_string()))?;
-    temp.write_all(encrypted.as_bytes())
-        .map_err(|e| ApiError::Internal(e.to_string()))?;
-    temp.as_file()
-        .sync_all()
-        .map_err(|e| ApiError::Internal(e.to_string()))?;
-    temp.persist(cfg.dir.join(recovery::IMPORT_FILE))
-        .map_err(|_| ApiError::Internal("configuration import failed".into()))?;
+    recovery::store_import(cfg, &state.secrets, &input)?;
     let info = recovery::deployment_info(&input, "imported", chrono::Utc::now());
     audit::record(
         &state.db,
@@ -192,6 +194,176 @@ pub async fn import_deployment(
         json!({"files": info.files, "complete":info.complete}),
     )
     .await?;
+    Ok(Json(info))
+}
+
+impl From<PortainerError> for ApiError {
+    fn from(err: PortainerError) -> Self {
+        match err {
+            PortainerError::Invalid(m) => ApiError::BadRequest(m),
+            other => ApiError::Device(other.to_string()),
+        }
+    }
+}
+
+/// The Portainer connection, if any (without the token).
+#[utoipa::path(get, path = "/api/v1/backups/portainer", tag = "system", responses((status = 200, body = Option<PortainerConnection>)))]
+pub async fn get_portainer(
+    State(state): State<AppState>,
+    auth: AuthUser,
+) -> ApiResult<Json<Option<PortainerConnection>>> {
+    auth.require_perm(Permission::BackupsManage)?;
+    Ok(Json(portainer::get(&state.db, auth.tenant).await?))
+}
+
+/// Saves the Portainer connection and reads the stack once.
+#[utoipa::path(put, path = "/api/v1/backups/portainer", tag = "system", request_body = PortainerInput, responses((status = 200, body = DeploymentInfo), (status = 502)))]
+pub async fn save_portainer(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Json(input): Json<PortainerInput>,
+) -> ApiResult<Json<DeploymentInfo>> {
+    auth.require_perm(Permission::BackupsManage)?;
+    let cfg = config(&state)?;
+    if recovery::mounted_active(cfg) {
+        return Err(ApiError::Conflict(
+            "mounted deployment files take precedence; update those files".into(),
+        ));
+    }
+    let conn = portainer::save(&state.db, auth.tenant, &state.secrets, &input).await?;
+    audit::record(
+        &state.db,
+        &auth.actor(),
+        "update",
+        "backup_portainer",
+        None,
+        json!({"url": conn.url, "stack_id": conn.stack_id, "pinned": !conn.cert_sha256.is_empty()}),
+    )
+    .await?;
+    Ok(Json(
+        crate::portainer::sync(cfg, &state.db, &state.secrets, auth.tenant).await?,
+    ))
+}
+
+/// Removes the Portainer connection. The last imported copy stays.
+#[utoipa::path(delete, path = "/api/v1/backups/portainer", tag = "system", responses((status = 204)))]
+pub async fn delete_portainer(
+    State(state): State<AppState>,
+    auth: AuthUser,
+) -> ApiResult<StatusCode> {
+    auth.require_perm(Permission::BackupsManage)?;
+    portainer::delete(&state.db, auth.tenant).await?;
+    audit::record(
+        &state.db,
+        &auth.actor(),
+        "delete",
+        "backup_portainer",
+        None,
+        json!({}),
+    )
+    .await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+#[derive(serde::Deserialize, ToSchema)]
+pub struct PortainerProbe {
+    pub url: String,
+}
+
+#[derive(Serialize, ToSchema)]
+pub struct PortainerCertificate {
+    /// SHA-256 of the server certificate (hex); `None` for http://.
+    pub cert_sha256: Option<String>,
+    /// The certificate is valid for a public CA; no pin is needed.
+    pub trusted: bool,
+}
+
+/// Reads the certificate of a Portainer server for pinning. Sends no token.
+#[utoipa::path(post, path = "/api/v1/backups/portainer/certificate", tag = "system", request_body = PortainerProbe, responses((status = 200, body = PortainerCertificate), (status = 502)))]
+pub async fn probe_portainer(
+    auth: AuthUser,
+    Json(input): Json<PortainerProbe>,
+) -> ApiResult<Json<PortainerCertificate>> {
+    auth.require_perm(Permission::BackupsManage)?;
+    let url = portainer::check_url(&input.url)?;
+    let cert_sha256 = crate::portainer::probe_certificate(&url).await?;
+    // A public CA works without a pin; the stack list tells.
+    let api = Api {
+        url: &url,
+        token: "",
+        cert_sha256: "",
+    };
+    let trusted = cert_sha256.is_some()
+        && !matches!(
+            api.stacks().await,
+            Err(PortainerError::Http(_) | PortainerError::CertificateMismatch)
+        );
+    Ok(Json(PortainerCertificate {
+        cert_sha256,
+        trusted,
+    }))
+}
+
+#[derive(serde::Deserialize, ToSchema)]
+pub struct PortainerStacksRequest {
+    pub url: String,
+    #[serde(default)]
+    pub cert_sha256: String,
+    /// `null` uses the stored token.
+    #[serde(default)]
+    pub token: Option<String>,
+}
+
+/// Lists the stacks the token can read.
+#[utoipa::path(post, path = "/api/v1/backups/portainer/stacks", tag = "system", request_body = PortainerStacksRequest, responses((status = 200, body = Vec<Stack>), (status = 502)))]
+pub async fn portainer_stacks(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Json(input): Json<PortainerStacksRequest>,
+) -> ApiResult<Json<Vec<Stack>>> {
+    auth.require_perm(Permission::BackupsManage)?;
+    let url = portainer::check_url(&input.url)?;
+    let cert = portainer::check_fingerprint(&input.cert_sha256)?;
+    let token = match input
+        .token
+        .as_deref()
+        .map(str::trim)
+        .filter(|t| !t.is_empty())
+    {
+        Some(t) => {
+            portainer::check_token(t)?;
+            t.to_owned()
+        }
+        None => portainer::token(&state.db, auth.tenant, &state.secrets)
+            .await
+            .map_err(|_| ApiError::BadRequest("enter the access token".into()))?,
+    };
+    let api = Api {
+        url: &url,
+        token: &token,
+        cert_sha256: &cert,
+    };
+    Ok(Json(api.stacks().await?))
+}
+
+/// Reads the stack from Portainer now.
+#[utoipa::path(post, path = "/api/v1/backups/portainer/sync", tag = "system", responses((status = 200, body = DeploymentInfo), (status = 502)))]
+pub async fn sync_portainer(
+    State(state): State<AppState>,
+    auth: AuthUser,
+) -> ApiResult<Json<DeploymentInfo>> {
+    auth.require_perm(Permission::BackupsManage)?;
+    let cfg = config(&state)?;
+    let info = crate::portainer::sync(cfg, &state.db, &state.secrets, auth.tenant).await?;
+    let _ = audit::record(
+        &state.db,
+        &auth.actor(),
+        "sync",
+        "backup_portainer",
+        None,
+        json!({"files": info.files, "complete": info.complete}),
+    )
+    .await;
     Ok(Json(info))
 }
 

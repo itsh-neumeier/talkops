@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};
 use serde::Serialize;
-use talkops_core::cdr::Direction;
+use talkops_core::cdr::{Cdr, Direction};
 use talkops_core::dialing::DialPlanSettings;
 use talkops_core::extensions::{self, Device, Extension};
 use talkops_core::phones::{self, Contact, PhonebookSection};
@@ -140,6 +140,31 @@ pub struct Directory {
 }
 
 impl Directory {
+    /// Loads the extensions, numbers and phone books of a tenant.
+    pub async fn load(state: &AppState, tenant: TenantId) -> ApiResult<Self> {
+        let (settings, extensions, devices, numbers, contacts, sections, phone_list) = tokio::try_join!(
+            settings::get(&state.db, tenant),
+            extensions::list(&state.db, tenant),
+            extensions::list_all_devices(&state.db, tenant),
+            trunks::list_numbers(&state.db, tenant),
+            phones::list_contacts(&state.db, tenant),
+            phones::list_sections(&state.db, tenant),
+            phones::list(&state.db, tenant)
+        )?;
+        Ok(Self {
+            dial: settings.dial_plan(),
+            extensions,
+            devices,
+            numbers,
+            contacts,
+            sections,
+            phone_sections: phone_list
+                .into_iter()
+                .map(|p| (p.id, p.phonebook_sections))
+                .collect(),
+        })
+    }
+
     fn extension(&self, raw: &str, id: Option<Uuid>) -> Option<&Extension> {
         let number = raw
             .strip_prefix("**")
@@ -161,7 +186,7 @@ impl Directory {
         self.extensions.iter().find(|e| e.id == device.extension_id)
     }
 
-    fn external(&self, raw: &str) -> String {
+    pub fn external(&self, raw: &str) -> String {
         // Short numbers and feature codes are not external directory identities.
         if raw.starts_with('*')
             || raw.starts_with('#')
@@ -221,7 +246,7 @@ impl Directory {
     /// Resolves an external number against all phone books. `local` is the
     /// own extension in the call: when several entries have the number, an
     /// entry from a phone book of that extension supplies the name.
-    fn external_party(&self, raw: &str, fallback: &str, local: Option<Uuid>) -> Party {
+    pub fn external_party(&self, raw: &str, fallback: &str, local: Option<Uuid>) -> Party {
         let number = self.external(raw);
         let found: Vec<&Contact> = self
             .contacts
@@ -287,6 +312,64 @@ impl Directory {
             contact_id: chosen.map(|c| c.id),
             ambiguous,
             matches,
+        }
+    }
+
+    /// Numbers of the phone book entries whose name contains `text`, in
+    /// the form of call records (external numbers normalized).
+    pub fn contact_numbers(&self, text: &str) -> Vec<String> {
+        let text = text.trim().to_lowercase();
+        if text.is_empty() {
+            return Vec::new();
+        }
+        let mut out: Vec<String> = self
+            .contacts
+            .iter()
+            .filter(|c| c.display_name().to_lowercase().contains(&text))
+            .flat_map(|c| [&c.phone_work, &c.phone_mobile, &c.phone_other])
+            .filter(|n| !n.is_empty() && !n.starts_with('*'))
+            .flat_map(|n| [n.clone(), self.external(n)])
+            .collect();
+        out.sort();
+        out.dedup();
+        out
+    }
+
+    /// The parties of a call record: caller, called party and, for inbound
+    /// calls, the own number that was dialed.
+    pub fn record_parties(&self, c: &Cdr) -> (Party, Party, Option<String>) {
+        let number = || {
+            self.numbers
+                .iter()
+                .find(|n| Some(n.id) == c.number_id)
+                .map(|n| n.e164.clone())
+        };
+        match c.direction {
+            Direction::Inbound => {
+                let answered = c.dest_extension_id.or(c.extension_id);
+                let caller = self.external_party(&c.caller_number, &c.caller_name, answered);
+                let called =
+                    match answered.and_then(|id| self.extensions.iter().find(|e| e.id == id)) {
+                        Some(ext) => Party {
+                            name: ext.display_name.clone(),
+                            number: ext.number.clone(),
+                            extension_id: Some(ext.id),
+                            ..Party::default()
+                        },
+                        None => self.party(&c.destination, "", None),
+                    };
+                (caller, called, number())
+            }
+            Direction::Outbound => {
+                let caller = self.party(&c.caller_number, &c.caller_name, c.extension_id);
+                let called = self.external_party(&c.destination, "", c.extension_id);
+                (caller, called, None)
+            }
+            Direction::Internal => (
+                self.party(&c.caller_number, &c.caller_name, c.extension_id),
+                self.party(&c.destination, "", c.dest_extension_id),
+                None,
+            ),
         }
     }
 
@@ -391,27 +474,10 @@ pub async fn load(
     if raw.is_empty() {
         return Ok(Vec::new());
     }
-    let (settings, extensions, devices, numbers, contacts, sections, phone_list) = tokio::try_join!(
-        settings::get(&state.db, tenant),
-        extensions::list(&state.db, tenant),
-        extensions::list_all_devices(&state.db, tenant),
-        trunks::list_numbers(&state.db, tenant),
-        phones::list_contacts(&state.db, tenant),
-        phones::list_sections(&state.db, tenant),
-        phones::list(&state.db, tenant)
+    let (settings, directory) = tokio::try_join!(
+        async { Ok(settings::get(&state.db, tenant).await?) },
+        Directory::load(state, tenant)
     )?;
-    let directory = Directory {
-        dial: settings.dial_plan(),
-        extensions,
-        devices,
-        numbers,
-        contacts,
-        sections,
-        phone_sections: phone_list
-            .into_iter()
-            .map(|p| (p.id, p.phonebook_sections))
-            .collect(),
-    };
     let mut dumps: HashMap<String, Metadata> = HashMap::new();
     let mut result = Vec::new();
     for mut call in raw {
@@ -834,5 +900,68 @@ mod tests {
             Metadata::parse("Caller-Destination-Number: 303\n\n").channel_destination,
             "303"
         );
+    }
+
+    #[test]
+    fn call_records_show_the_answering_extension_the_number_and_phone_book_names() {
+        let mut dir = directory();
+        let number = PhoneNumber {
+            id: Uuid::new_v4(),
+            trunk_id: Uuid::new_v4(),
+            account_id: None,
+            e164: "+4995431241".into(),
+            label: String::new(),
+            destination_type: talkops_core::trunks::NumberDestination::Extension,
+            destination_id: None,
+            extra_extensions: vec![],
+            enabled: true,
+        };
+        dir.numbers.push(number.clone());
+        let ext = dir.extensions[0].id;
+        let now = Utc::now();
+        let record = Cdr {
+            id: Uuid::new_v4(),
+            call_uuid: "x".into(),
+            direction: Direction::Inbound,
+            caller_number: "+4995458589".into(),
+            caller_name: "095458589".into(),
+            destination: "101".into(),
+            extension_id: Some(ext),
+            dest_extension_id: None,
+            trunk_id: None,
+            number_id: Some(number.id),
+            started_at: now,
+            answered_at: Some(now),
+            ended_at: now,
+            duration_secs: 1,
+            billsec: 1,
+            hangup_cause: String::new(),
+            recording_id: None,
+        };
+        let (caller, called, via) = dir.record_parties(&record);
+        assert_eq!(caller.name, "Family Vollmeier (Maria)");
+        assert_eq!(caller.number, "+4995458589");
+        assert_eq!(called.number, "101");
+        assert_eq!(called.name, "Family Zweig");
+        assert_eq!(called.extension_id, Some(ext));
+        assert_eq!(via.as_deref(), Some("+4995431241"));
+
+        let outbound = Cdr {
+            direction: Direction::Outbound,
+            caller_number: "101".into(),
+            caller_name: "Family Zweig".into(),
+            destination: "+4995458589".into(),
+            ..record
+        };
+        let (caller, called, via) = dir.record_parties(&outbound);
+        assert_eq!(caller.extension_id, Some(ext));
+        assert_eq!(called.name, "Family Vollmeier (Maria)");
+        assert_eq!(via, None);
+
+        assert_eq!(
+            dir.contact_numbers("vollmeier"),
+            ["+4995458589", "095458589"]
+        );
+        assert!(dir.contact_numbers(" ").is_empty());
     }
 }

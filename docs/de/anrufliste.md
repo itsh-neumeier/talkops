@@ -29,6 +29,21 @@ Die Checkbox **Rufnummern über Telefonbuch anzeigen** ist standardmäßig an.
 
 Der Browser merkt sich die Einstellung.
 
+## Länderflaggen und Laden
+
+Bei eingehenden Anrufen steht die Flagge neben der externen Quelle, bei
+ausgehenden Anrufen neben dem externen Ziel. Der Ländername erscheint als
+Tooltip und ist für Screenreader verfügbar. Die Flagge bezeichnet den
+Rufnummernbereich, nicht den Aufenthaltsort. Nebenstellen, anonyme Anrufer,
+Servicenummern und nicht eindeutig zugeordnete Länder erhalten keine Flagge.
+Die Flagge bleibt auch bei ausgeschalteten Telefonbuchnamen sichtbar.
+
+Beim ersten Laden erscheinen sofort Platzhalter für mindestens 300 ms.
+Danach wird der Inhalt über 180 ms weich eingeblendet. Beim Filtern bleiben
+vorhandene Zeilen mit einem Ladehinweis sichtbar. **Weitere laden** zeigt
+zusätzliche Platzhalterzeilen bis zur Antwort. Bei reduzierter Bewegung
+entfallen Mindestanzeige und Animationen.
+
 ## Sortieren
 
 Ein Klick auf die Spaltenüberschrift **Zeit** oder **Dauer** sortiert nach

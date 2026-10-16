@@ -91,6 +91,7 @@ async function scenario(role, choices) {
 	await page.getByRole('button', { name: '210', exact: true }).click();
 	assert.equal(await page.getByLabel('Number', { exact: true }).inputValue(), '210');
 	await page.getByLabel('Filter calls').selectOption('missed');
+	await page.getByRole('region', { name: 'Recent calls' }).getByRole('button', { name: '+49999', exact: true }).waitFor();
 	assert.equal(await page.getByRole('region', { name: 'Recent calls' }).getByRole('button', { name: '+49999', exact: true }).count(), 1);
 	await page.getByRole('region', { name: 'Recent calls' }).getByRole('button', { name: '+49999', exact: true }).click();
 	assert.equal(await page.getByLabel('Number', { exact: true }).inputValue(), '+49999');

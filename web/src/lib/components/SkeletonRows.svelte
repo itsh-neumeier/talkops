@@ -1,5 +1,5 @@
 <script lang="ts">
-	/** Placeholder table rows while a list loads (shown only after a short delay). */
+	/** Placeholder table rows while a list loads (visible from the first frame). */
 	let { rows = 4, cols = 3 }: { rows?: number; cols?: number } = $props();
 </script>
 

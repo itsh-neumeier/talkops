@@ -1,8 +1,9 @@
 <script lang="ts">
+	import PhoneNumber from './PhoneNumber.svelte';
 	import type { CallParty } from '#lib/api.ts';
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import { tick } from 'svelte';
-	let { party }: { party: CallParty } = $props();
+	let { party, flag = false }: { party: CallParty; flag?: boolean } = $props();
 
 	const cardId = $props.id();
 	const matches = $derived(party.ambiguous ? (party.matches ?? []) : []);
@@ -83,7 +84,7 @@
 {#snippet number()}
 	{#if showNumber}
 		<span class="inline-block max-w-full break-all text-slate-500 dark:text-slate-400"
-			>[{party.number}]</span
+			><PhoneNumber number={party.number} {flag} internal={!!party.extension_id} brackets /></span
 		>
 	{:else}
 		<span>{t('dash.party.anonymous')}</span>

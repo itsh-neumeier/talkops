@@ -27,6 +27,22 @@ kennzeichnet den Eintrag aus der Zeile. Esc schließt die Übersicht.
 Status und Dauer bleiben rechts. Die Gesprächsdauer beginnt bei Annahme;
 vorher wird die Wartezeit angezeigt. Lange Namen umbrechen auf kleinen Geräten.
 
+## Länderflaggen und Laden
+
+Laufende und letzte Anrufe zeigen eine Flagge neben der eingehenden Quelle
+oder dem ausgehenden Ziel. Sie kennzeichnet den Rufnummernbereich, nicht
+den aktuellen Aufenthaltsort. Interne, anonyme und nicht zuordenbare Nummern
+bekommen keine Flagge. Der Ländername erscheint als Tooltip und ist für
+Screenreader verfügbar. Die letzten Anrufe im Softphone zeigen Flaggen bei
+Rufnummern mit internationalem `+`- oder `00`-Präfix.
+
+Die beiden Anrufbereiche der Übersicht laden unabhängig. Beim ersten Laden
+erscheinen sofort Platzhalter für mindestens 300 ms. Danach wird der Inhalt
+über 180 ms weich eingeblendet. Hintergrundabfragen lassen vorhandene Inhalte
+sichtbar. Ein Leerzustand erscheint erst nach einer erfolgreichen leeren
+Antwort. Bei Fehlern bleiben vorhandene Inhalte mit einem Fehlerhinweis
+sichtbar. Bei reduzierter Bewegung entfallen Mindestanzeige und Animationen.
+
 ## Letzte Anrufe
 
 Die Karte **Letzte Anrufe** im Dashboard zeigt beendete Anrufe im selben

@@ -102,6 +102,7 @@ export default {
 	'common.edit': 'Edit',
 	'common.add': 'Add',
 	'common.close': 'Close',
+	'calls.numberCountry': 'Country code: {country}',
 	'common.loading': 'Loading…',
 	'common.enabled': 'Enabled',
 	'common.disabled': 'Disabled',

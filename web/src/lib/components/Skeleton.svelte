@@ -1,5 +1,5 @@
 <script lang="ts">
-	/** Placeholder bars while content loads (shown only after a short delay). */
+	/** Placeholder bars while content loads (visible from the first frame). */
 	let { lines = 3, class: extra = '' }: { lines?: number; class?: string } = $props();
 	const widths = ['w-3/4', 'w-full', 'w-5/6', 'w-2/3', 'w-11/12'];
 </script>

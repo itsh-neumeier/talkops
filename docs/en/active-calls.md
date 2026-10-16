@@ -26,6 +26,22 @@ Press Esc to close the card.
 Status and duration remain on the right. Talk time starts at answer.
 Before answer, the timer shows waiting time. Long names wrap on small screens.
 
+## Country flags and loading
+
+Active and recent calls show a flag beside an inbound caller or an outbound
+destination. The flag identifies the number range. It does not identify the
+caller's current location. Internal, hidden and unresolved numbers have no
+flag. Hover over a flag to read the country name. The name is also available
+to screen readers. The softphone recent calls show flags for raw numbers
+with an international `+` or `00` prefix.
+
+The two dashboard call cards load independently. Each card shows placeholders
+immediately during its first load, for at least 300 ms. Content then fades
+in over 180 ms. Later polling keeps the current content visible. An empty
+message appears only after a successful empty response. A failed request
+shows an error and keeps existing content. Reduced motion removes the
+minimum display interval and animations.
+
 ## Recent calls
 
 The dashboard card **Recent calls** shows ended calls in the same format as

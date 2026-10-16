@@ -25,12 +25,12 @@
 
 {#if direction === 'inbound'}
 	<p>{t('dash.call.inbound')} <CallParty party={called} />{@render viaNumber()}</p>
-	<p>{t('dash.call.from')} <CallParty party={caller} /></p>
+	<p>{t('dash.call.from')} <CallParty party={caller} flag={direction === 'inbound'} /></p>
 {:else if direction === 'outbound'}
 	<p>{t('dash.call.outbound')} <CallParty party={caller} />{@render viaNumber()}</p>
 	<p>
 		<span aria-hidden="true">→</span><span class="sr-only">{t('dash.call.to')}</span>
-		<CallParty party={called} />
+		<CallParty party={called} flag={direction === 'outbound'} />
 	</p>
 {:else}
 	<p>

@@ -57,6 +57,9 @@ permissions! {
     CallsLiveTranscriptAll = "calls.live_transcript_all", "calls", false;
     RecordingsAccessAll = "recordings.access_all", "recordings", false;
     RecordingsDelete = "recordings.delete", "recordings", false;
+    RecordingsRetranscribe = "recordings.retranscribe", "recordings", false;
+    TranscriptionsView = "transcriptions.view", "recordings", false;
+    TranscriptionsManage = "transcriptions.manage", "recordings", false;
     VoicemailAccessAll = "voicemail.access_all", "voicemail", false;
     VoicemailSettings = "voicemail.settings", "voicemail", false;
     PhonebookEdit = "phonebook.edit", "phonebook", false;

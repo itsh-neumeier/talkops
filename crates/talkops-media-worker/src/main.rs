@@ -8,6 +8,7 @@
 mod api;
 mod live;
 mod realtime;
+mod resources;
 mod transcribe;
 mod tts;
 mod utterances;
@@ -23,12 +24,13 @@ use talkops_core::crypto::SecretBox;
 use talkops_core::jobs::{self, Job};
 use talkops_core::recordings::{self, Source};
 use talkops_core::telemetry::{self, LogFormat};
+use talkops_core::transcription_jobs::{self as tjobs, Payload as TranscribePayload};
 use talkops_core::transcription_profiles::{self as profiles, Engine, Purpose};
 use talkops_core::voicemail_config as vmc;
 use talkops_core::{audio, settings, transcription_api, voicemail};
 use tokio::sync::Notify;
 
-use crate::transcribe::Whisper;
+use crate::transcribe::{Checkpoint, Control, Interrupt, Outcome, Whisper};
 use crate::tts::Piper;
 
 /// Job kinds per lane; each lane works through its jobs one at a time.
@@ -251,7 +253,9 @@ async fn main() -> anyhow::Result<()> {
         recordings_dir: args.recordings_dir.clone(),
         worker_id: args.worker_id.clone(),
         streams: realtime::Streams::default(),
+        current_job: std::sync::Mutex::new(None),
     });
+    spawn_resource_reports(ctx.clone());
     match tts::ensure_prompts(&ctx.piper, &args.sounds_dir).await {
         Ok(0) => {}
         Ok(n) => tracing::info!(count = n, "system prompts rendered"),
@@ -326,6 +330,8 @@ struct Ctx {
     worker_id: String,
     /// Realtime live previews this worker streams.
     streams: realtime::Streams,
+    /// The transcription job that runs now (for the resource report).
+    current_job: std::sync::Mutex<Option<uuid::Uuid>>,
 }
 
 async fn drain_queue(ctx: &Ctx, worker_id: &str, kinds: &[&str]) -> anyhow::Result<()> {
@@ -337,7 +343,19 @@ async fn drain_queue(ctx: &Ctx, worker_id: &str, kinds: &[&str]) -> anyhow::Resu
     while let Some(job) = jobs::claim(pool, worker_id, kinds).await? {
         let id = job.id;
         match run(ctx, &job).await {
-            Ok(()) => jobs::complete(pool, id).await?,
+            Ok(JobEnd::Done) => jobs::complete(pool, id).await?,
+            Ok(JobEnd::Paused {
+                progress,
+                checkpoint,
+            }) => {
+                tracing::info!(job = %id, progress, "job paused");
+                jobs::pause_running(pool, id, progress, checkpoint).await?;
+            }
+            Ok(JobEnd::Stopped) => {
+                tracing::info!(job = %id, "job stopped");
+                jobs::cancel_running(pool, id).await?;
+                tjobs::after_cancel(pool, job.tenant_id, &job.payload).await?;
+            }
             Err(err) => {
                 let status = jobs::fail(pool, id, &format!("{err:#}")).await?;
                 tracing::warn!(job = %id, kind = %job.kind, ?status, error = %err, "job failed");
@@ -347,16 +365,95 @@ async fn drain_queue(ctx: &Ctx, worker_id: &str, kinds: &[&str]) -> anyhow::Resu
     Ok(())
 }
 
-async fn run(ctx: &Ctx, job: &Job) -> anyhow::Result<()> {
+/// How a job ended without an error.
+enum JobEnd {
+    Done,
+    /// A user paused the job; `checkpoint` is its resume point.
+    Paused {
+        progress: f32,
+        checkpoint: Option<serde_json::Value>,
+    },
+    /// A user stopped the job.
+    Stopped,
+}
+
+async fn run(ctx: &Ctx, job: &Job) -> anyhow::Result<JobEnd> {
+    let done = |r: anyhow::Result<()>| r.map(|_| JobEnd::Done);
     match job.kind.as_str() {
-        audio::JOB_TTS_CLIP => tts_clip(ctx, job).await,
-        voicemail::JOB_TTS_GREETING => tts_greeting(ctx, job).await,
-        vmc::JOB_TTS_MESSAGE_INFO => tts_message_info(ctx, job).await,
-        vmc::JOB_TTS_PROMPTS => tenant_prompts(ctx, Some(job.tenant_id)).await.map(|_| ()),
-        recordings::JOB_TRANSCRIBE => transcribe(ctx, job).await,
-        talkops_core::live_transcripts::JOB => live::run(ctx, job).await,
+        audio::JOB_TTS_CLIP => done(tts_clip(ctx, job).await),
+        voicemail::JOB_TTS_GREETING => done(tts_greeting(ctx, job).await),
+        vmc::JOB_TTS_MESSAGE_INFO => done(tts_message_info(ctx, job).await),
+        vmc::JOB_TTS_PROMPTS => done(tenant_prompts(ctx, Some(job.tenant_id)).await.map(|_| ())),
+        recordings::JOB_TRANSCRIBE => {
+            *ctx.current_job.lock().expect("job lock") = Some(job.id);
+            let end = transcribe(ctx, job).await;
+            *ctx.current_job.lock().expect("job lock") = None;
+            end
+        }
+        talkops_core::live_transcripts::JOB => done(live::run(ctx, job).await),
         other => anyhow::bail!("no handler for job kind `{other}`"),
     }
+}
+
+/// Reports the resource usage of this worker every 5 seconds.
+fn spawn_resource_reports(ctx: std::sync::Arc<Ctx>) {
+    tokio::spawn(async move {
+        let mut sampler = resources::Sampler::new();
+        loop {
+            let sample = tokio::task::spawn_blocking(move || {
+                let s = sampler.sample();
+                (sampler, s)
+            })
+            .await;
+            let Ok((back, s)) = sample else { return };
+            sampler = back;
+            let status = tjobs::WorkerStatus {
+                worker_id: ctx.worker_id.clone(),
+                cpu_percent: s.cpu_percent,
+                cpus: s.cpus as i32,
+                load1: s.load1,
+                rss_bytes: s.rss_bytes as i64,
+                mem_used_bytes: s.mem_used_bytes as i64,
+                mem_total_bytes: s.mem_total_bytes as i64,
+                job_id: *ctx.current_job.lock().expect("job lock"),
+                updated_at: Default::default(),
+            };
+            if let Err(err) = tjobs::report_worker(&ctx.pool, &status).await {
+                tracing::debug!(error = %err, "resource report failed");
+            }
+            tokio::time::sleep(Duration::from_secs(5)).await;
+        }
+    });
+}
+
+/// Passes progress to the job row every second and pause or stop
+/// requests from the UI to the transcription.
+fn spawn_job_monitor(
+    pool: PgPool,
+    id: uuid::Uuid,
+    mut progress: tokio::sync::watch::Receiver<f32>,
+    interrupt: tokio::sync::watch::Sender<Option<Interrupt>>,
+) -> tokio::task::JoinHandle<()> {
+    tokio::spawn(async move {
+        loop {
+            let value = *progress.borrow_and_update();
+            match jobs::report_progress(&pool, id, value).await {
+                Ok(Some(jobs::Control::Pause)) => {
+                    let _ = interrupt.send(Some(Interrupt::Pause));
+                }
+                Ok(Some(jobs::Control::Stop)) => {
+                    let _ = interrupt.send(Some(Interrupt::Stop));
+                }
+                Ok(None) => {}
+                Err(err) => tracing::debug!(error = %err, "progress report failed"),
+            }
+            tokio::time::sleep(Duration::from_secs(1)).await;
+            // The transcription ended.
+            if progress.has_changed().is_err() {
+                return;
+            }
+        }
+    })
 }
 
 /// Renders a generated audio clip; its status tells the UI the outcome.
@@ -566,38 +663,35 @@ impl TtsPayload {
     }
 }
 
-/// Payload of `transcribe` jobs.
-#[derive(serde::Deserialize, serde::Serialize)]
-struct TranscribePayload {
-    recording_id: Option<uuid::Uuid>,
-    voicemail_id: Option<uuid::Uuid>,
-    /// 1 = quick first pass (default), 2 = more accurate second pass.
-    #[serde(default = "first_pass")]
-    pass: u8,
-}
-
-fn first_pass() -> u8 {
-    1
-}
-
 /// Transcribes a call recording or voicemail in up to two passes: a quick
 /// one whose transcript is shown (and mailed) right away, then optionally a
 /// more accurate one that replaces it. A voicemail's e-mail waits for the
 /// first pass and is sent once it is there or has finally failed.
-async fn transcribe(ctx: &Ctx, job: &Job) -> anyhow::Result<()> {
+///
+/// A manual job (`engine` in the payload) runs one final pass with the
+/// selected engine. Users can pause and stop the job; a local Whisper run
+/// continues at the paused position.
+async fn transcribe(ctx: &Ctx, job: &Job) -> anyhow::Result<JobEnd> {
     let p: TranscribePayload =
         serde_json::from_value(job.payload.clone()).context("invalid payload")?;
     let tenant = job.tenant_id;
     let tenant_settings = settings::get(&ctx.pool, tenant).await?;
     let voicemail = p.voicemail_id.is_some();
-    let first = profiles::engine(&ctx.pool, tenant, Purpose::for_pass(voicemail, 1))
-        .await?
-        .unwrap_or(Engine::Local(settings::TranscriptionQuality::Fast));
-    // A second pass equal to the first adds nothing.
-    let refine = profiles::engine(&ctx.pool, tenant, Purpose::for_pass(voicemail, 2))
-        .await?
-        .filter(|e| *e != first);
-    let (source, file, language) = match (p.recording_id, p.voicemail_id) {
+    let manual = p.engine.is_some();
+    let (first, refine) = match &p.engine {
+        Some(choice) => (choice.engine(&ctx.pool, tenant).await?, None),
+        None => {
+            let first = profiles::engine(&ctx.pool, tenant, Purpose::for_pass(voicemail, 1))
+                .await?
+                .unwrap_or(Engine::Local(settings::TranscriptionQuality::Fast));
+            // A second pass equal to the first adds nothing.
+            let refine = profiles::engine(&ctx.pool, tenant, Purpose::for_pass(voicemail, 2))
+                .await?
+                .filter(|e| *e != first);
+            (first, refine)
+        }
+    };
+    let (source, file, language, audio_secs) = match (p.recording_id, p.voicemail_id) {
         (Some(id), None) => {
             let rec = recordings::get(&ctx.pool, tenant, id).await?;
             let lang = tenant_settings.default_language.clone();
@@ -605,6 +699,7 @@ async fn transcribe(ctx: &Ctx, job: &Job) -> anyhow::Result<()> {
                 Source::Recording(id),
                 ctx.recordings_dir.join(rec.file),
                 lang,
+                rec.duration_secs,
             )
         }
         (None, Some(id)) => {
@@ -620,6 +715,7 @@ async fn transcribe(ctx: &Ctx, job: &Job) -> anyhow::Result<()> {
                 Source::Voicemail(id),
                 ctx.voicemail_dir.join(msg.file),
                 lang,
+                msg.duration_secs,
             )
         }
         _ => anyhow::bail!("payload needs recording_id or voicemail_id"),
@@ -628,15 +724,34 @@ async fn transcribe(ctx: &Ctx, job: &Job) -> anyhow::Result<()> {
         match refine.clone() {
             Some(engine) => engine,
             // Switched off since the first pass.
-            None => return Ok(recordings::finalize_transcript(&ctx.pool, source).await?),
+            None => {
+                recordings::finalize_transcript(&ctx.pool, source).await?;
+                return Ok(JobEnd::Done);
+            }
         }
     } else {
         first
     };
+    let key = tjobs::engine_key(&engine);
+    // A resume point is only valid for the same engine.
+    let resume: Option<Checkpoint> = job
+        .checkpoint
+        .as_ref()
+        .filter(|c| c.get("engine").and_then(|e| e.as_str()) == Some(key.as_str()))
+        .and_then(|c| serde_json::from_value(c.get("state")?.clone()).ok());
+    let resumed = resume.is_some();
     let purpose = Purpose::for_pass(voicemail, p.pass);
     let language = talkops_core::prompts::language(&language);
     let started = std::time::Instant::now();
-    let result = run_engine(
+    let (progress_tx, progress_rx) =
+        tokio::sync::watch::channel(resume.as_ref().map_or(0.0, |c| c.progress));
+    let (interrupt_tx, interrupt_rx) = tokio::sync::watch::channel(None);
+    let monitor = spawn_job_monitor(ctx.pool.clone(), job.id, progress_rx, interrupt_tx);
+    let control = Control {
+        progress: progress_tx,
+        interrupt: interrupt_rx,
+    };
+    let result = run_engine_controlled(
         ctx,
         tenant,
         purpose,
@@ -644,28 +759,53 @@ async fn transcribe(ctx: &Ctx, job: &Job) -> anyhow::Result<()> {
         &file,
         language,
         &tenant_settings.transcription_vocabulary,
+        &control,
+        resume,
     )
     .await;
+    drop(control);
+    monitor.abort();
     let last_attempt = job.attempts >= job.max_attempts;
+    let result = match result {
+        Ok(Run::Done(segments, label)) => Ok((segments, label)),
+        Ok(Run::Paused(checkpoint)) => {
+            let progress = checkpoint.as_ref().map_or(0.0, |c| c.progress);
+            return Ok(JobEnd::Paused {
+                progress,
+                checkpoint: checkpoint
+                    .map(|state| serde_json::json!({"engine": key, "state": state})),
+            });
+        }
+        Ok(Run::Stopped) => return Ok(JobEnd::Stopped),
+        Err(err) => Err(err),
+    };
     let finished = match &result {
         Ok((segments, label)) => {
-            let is_final = p.pass >= 2 || refine.is_none();
+            let is_final = manual || p.pass >= 2 || refine.is_none();
             let meta = recordings::TranscriptMeta {
                 engine: label,
                 is_final,
             };
             recordings::save_transcript(&ctx.pool, tenant, source, language, segments, meta)
                 .await?;
+            let secs = started.elapsed().as_secs_f32();
             tracing::info!(
                 ?source,
                 pass = p.pass,
+                manual,
                 engine = %label,
                 segments = segments.len(),
-                secs = started.elapsed().as_secs(),
+                secs,
                 "transcribed"
             );
+            if !resumed {
+                let _ = tjobs::record_speed(&ctx.pool, &key, audio_secs as f32, secs).await;
+            }
             if !is_final {
-                let payload = TranscribePayload { pass: 2, ..p };
+                let payload = TranscribePayload {
+                    pass: 2,
+                    ..p.clone()
+                };
                 let mut next =
                     jobs::NewJob::new(recordings::JOB_TRANSCRIBE, serde_json::to_value(&payload)?);
                 next.tenant_id = tenant;
@@ -676,7 +816,7 @@ async fn transcribe(ctx: &Ctx, job: &Job) -> anyhow::Result<()> {
             }
             true
         }
-        Err(_) if last_attempt && p.pass >= 2 => {
+        Err(_) if last_attempt && (p.pass >= 2 || manual) => {
             recordings::finalize_transcript(&ctx.pool, source).await?;
             false
         }
@@ -686,12 +826,81 @@ async fn transcribe(ctx: &Ctx, job: &Job) -> anyhow::Result<()> {
         }
         Err(_) => false,
     };
-    if let (true, 1, Source::Voicemail(id)) = (finished, p.pass, source) {
+    if let (true, 1, false, Source::Voicemail(id)) = (finished, p.pass, manual, source) {
         let msg = voicemail::get_message(&ctx.pool, tenant, id).await?;
         let mut conn = ctx.pool.acquire().await?;
         voicemail::enqueue_mail(&mut conn, tenant, &msg).await?;
     }
-    result.map(|_| ())
+    result.map(|_| JobEnd::Done)
+}
+
+/// The result of a transcription that users can pause and stop.
+enum Run {
+    Done(Vec<recordings::Segment>, String),
+    /// Paused; a local run has a resume point, a cloud run starts again.
+    Paused(Option<Checkpoint>),
+    Stopped,
+}
+
+/// Like [run_engine], with progress, pause and stop for jobs.
+#[allow(clippy::too_many_arguments)]
+async fn run_engine_controlled(
+    ctx: &Ctx,
+    tenant: talkops_core::tenant::TenantId,
+    purpose: Purpose,
+    engine: Engine,
+    file: &Path,
+    language: &str,
+    vocabulary: &str,
+    control: &Control,
+    resume: Option<Checkpoint>,
+) -> anyhow::Result<Run> {
+    match engine {
+        Engine::Local(quality) => {
+            let opts = transcribe::Options {
+                quality,
+                vocabulary: vocabulary.to_owned(),
+            };
+            let label = format!("whisper:{}", ctx.whisper.model_name(quality));
+            Ok(
+                match ctx
+                    .whisper
+                    .transcribe_with(file, language, &opts, Some(control), resume)
+                    .await?
+                {
+                    Outcome::Done(segments) => Run::Done(segments, label),
+                    Outcome::Paused(checkpoint) => Run::Paused(Some(checkpoint)),
+                    Outcome::Stopped => Run::Stopped,
+                },
+            )
+        }
+        cloud => {
+            // The provider gives no progress; a pause starts the request again.
+            let mut interrupt = control.interrupt.clone();
+            let work = run_engine(ctx, tenant, purpose, cloud, file, language, vocabulary);
+            tokio::pin!(work);
+            loop {
+                tokio::select! {
+                    result = &mut work => {
+                        let (segments, label) = result?;
+                        let _ = control.progress.send(1.0);
+                        return Ok(Run::Done(segments, label));
+                    }
+                    changed = interrupt.changed() => {
+                        if changed.is_err() {
+                            let (segments, label) = work.await?;
+                            return Ok(Run::Done(segments, label));
+                        }
+                        match *interrupt.borrow() {
+                            Some(Interrupt::Pause) => return Ok(Run::Paused(None)),
+                            Some(Interrupt::Stop) => return Ok(Run::Stopped),
+                            None => {}
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 /// Runs one transcription; returns the segments and an engine label.

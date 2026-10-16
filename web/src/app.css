@@ -210,3 +210,29 @@
 		animation: none;
 	}
 }
+
+/* A running progress bar has a slow light sweep. */
+.progress-running {
+	background-image: linear-gradient(
+		90deg,
+		transparent 0%,
+		rgb(255 255 255 / 0.28) 50%,
+		transparent 100%
+	);
+	background-size: 12rem 100%;
+	background-repeat: no-repeat;
+	animation: progress-sweep 1.8s ease-in-out infinite;
+}
+@keyframes progress-sweep {
+	from {
+		background-position: -12rem 0;
+	}
+	to {
+		background-position: calc(100% + 12rem) 0;
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.progress-running {
+		animation: none;
+	}
+}

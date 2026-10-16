@@ -94,6 +94,9 @@ export type Permission =
 	| 'calls.live_transcript_all'
 	| 'recordings.access_all'
 	| 'recordings.delete'
+	| 'recordings.retranscribe'
+	| 'transcriptions.view'
+	| 'transcriptions.manage'
 	| 'voicemail.access_all'
 	| 'voicemail.settings'
 	| 'phonebook.edit'
@@ -954,4 +957,69 @@ export interface DoorEvent {
 	detail: Record<string, unknown>;
 	has_snapshot: boolean;
 	created_at: string;
+}
+
+// --- transcription jobs -------------------------------------------------------
+
+export type EngineChoice =
+	| { kind: 'local'; model: 'base' | 'fast' | 'accurate' | 'best' | 'german' }
+	| { kind: 'cloud'; provider_id: string; model: string };
+
+export interface TranscribeOption {
+	choice: EngineChoice;
+	/** Cloud connection name; empty for local models. */
+	provider: string;
+	eta_secs: number;
+	/** The estimate comes from measured runs on this server. */
+	measured: boolean;
+	cost_usd: number | null;
+	/** The engine of the automatic first pass. */
+	default: boolean;
+}
+
+export interface TranscribeOptions {
+	audio_secs: number;
+	queue_secs: number;
+	current_engine: string | null;
+	options: TranscribeOption[];
+}
+
+export type JobState = 'queued' | 'running' | 'done' | 'failed' | 'paused' | 'cancelled';
+
+export interface TranscriptionJob {
+	id: string;
+	status: JobState;
+	priority: number;
+	progress: number | null;
+	pass: number;
+	engine: EngineChoice | null;
+	engine_key: string;
+	recording_id: string | null;
+	voicemail_id: string | null;
+	audio_secs: number;
+	caller_number: string | null;
+	destination: string | null;
+	call_started_at: string | null;
+	requested_by: string | null;
+	attempts: number;
+	last_error: string | null;
+	control: 'pause' | 'stop' | null;
+	created_at: string;
+	started_at: string | null;
+	run_started_at: string | null;
+	finished_at: string | null;
+	eta_secs: number | null;
+	resumable: boolean;
+}
+
+export interface WorkerStatus {
+	worker_id: string;
+	cpu_percent: number;
+	cpus: number;
+	load1: number;
+	rss_bytes: number;
+	mem_used_bytes: number;
+	mem_total_bytes: number;
+	job_id: string | null;
+	updated_at: string;
 }

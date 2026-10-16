@@ -28,6 +28,18 @@ pub enum JobStatus {
     Running,
     Done,
     Failed,
+    /// Stopped by a user; a resume puts it back into the queue.
+    Paused,
+    /// Stopped by a user for good.
+    Cancelled,
+}
+
+/// A request from the UI to a running job.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Control {
+    Pause,
+    Stop,
 }
 
 #[derive(Debug, Clone, FromRow, Serialize)]
@@ -43,6 +55,9 @@ pub struct Job {
     pub run_at: DateTime<Utc>,
     pub locked_by: Option<String>,
     pub last_error: Option<String>,
+    /// Resume point of a paused job.
+    #[sqlx(default)]
+    pub checkpoint: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Clone)]
@@ -68,7 +83,7 @@ impl NewJob {
     }
 }
 
-const JOB_COLUMNS: &str = "id, tenant_id, kind, payload, status, priority, attempts, max_attempts, run_at, locked_by, last_error";
+const JOB_COLUMNS: &str = "id, tenant_id, kind, payload, status, priority, attempts, max_attempts, run_at, locked_by, last_error, checkpoint";
 
 /// Inserts a job and notifies listening workers. Accepts any executor so that a
 /// job can be enqueued inside the transaction that produced it.
@@ -100,7 +115,10 @@ pub async fn claim(
 ) -> Result<Option<Job>, sqlx::Error> {
     let sql = format!(
         "UPDATE jobs SET status = 'running', attempts = attempts + 1, locked_by = $1,
-                         locked_at = now(), updated_at = now()
+                         locked_at = now(), updated_at = now(),
+                         started_at = COALESCE(started_at, now()), run_started_at = now(),
+                         progress = COALESCE(progress, 0), run_progress_start = COALESCE(progress, 0),
+                         control = NULL
          WHERE id = (
              SELECT id FROM jobs
              WHERE status = 'queued' AND run_at <= now() AND kind = ANY($2)
@@ -120,8 +138,8 @@ pub async fn claim(
 /// Marks a running job as successfully finished.
 pub async fn complete(pool: &PgPool, id: Uuid) -> Result<(), sqlx::Error> {
     sqlx::query(
-        "UPDATE jobs SET status = 'done', locked_by = NULL, locked_at = NULL,
-                         finished_at = now(), updated_at = now()
+        "UPDATE jobs SET status = 'done', locked_by = NULL, locked_at = NULL, progress = 1,
+                         control = NULL, checkpoint = NULL, finished_at = now(), updated_at = now()
          WHERE id = $1 AND status = 'running'",
     )
     .bind(id)
@@ -139,7 +157,8 @@ pub async fn fail(pool: &PgPool, id: Uuid, error: &str) -> Result<JobStatus, sql
              run_at = CASE WHEN attempts >= max_attempts THEN run_at
                            ELSE now() + make_interval(secs => LEAST($3::bigint, $2::bigint * (1::bigint << LEAST(attempts - 1, 30)))) END,
              finished_at = CASE WHEN attempts >= max_attempts THEN now() ELSE NULL END,
-             last_error = $4, locked_by = NULL, locked_at = NULL, updated_at = now()
+             last_error = $4, locked_by = NULL, locked_at = NULL, control = NULL,
+             progress = NULL, checkpoint = NULL, updated_at = now()
          WHERE id = $1 AND status = 'running'
          RETURNING status",
     )
@@ -163,4 +182,62 @@ pub async fn requeue_stale(pool: &PgPool, timeout_secs: i64) -> Result<u64, sqlx
     .execute(pool)
     .await
     .map(|r| r.rows_affected())
+}
+
+/// Records the progress of a running job (0 to 1) and renews its lease.
+/// Returns a pending request from the UI.
+pub async fn report_progress(
+    pool: &PgPool,
+    id: Uuid,
+    progress: f32,
+) -> Result<Option<Control>, sqlx::Error> {
+    let control: Option<Option<String>> = sqlx::query_scalar(
+        "UPDATE jobs SET progress = GREATEST(COALESCE(progress, 0), LEAST($2, 0.999)),
+                         locked_at = now(), updated_at = now()
+         WHERE id = $1 AND status = 'running'
+         RETURNING control",
+    )
+    .bind(id)
+    .bind(progress)
+    .fetch_optional(pool)
+    .await?;
+    Ok(match control.flatten().as_deref() {
+        Some("pause") => Some(Control::Pause),
+        Some("stop") => Some(Control::Stop),
+        _ => None,
+    })
+}
+
+/// A running job stops at a resume point. The attempt does not count.
+pub async fn pause_running(
+    pool: &PgPool,
+    id: Uuid,
+    progress: f32,
+    checkpoint: Option<serde_json::Value>,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "UPDATE jobs SET status = 'paused', attempts = GREATEST(attempts - 1, 0), control = NULL,
+                         progress = $2, checkpoint = $3, locked_by = NULL, locked_at = NULL,
+                         updated_at = now()
+         WHERE id = $1 AND status = 'running'",
+    )
+    .bind(id)
+    .bind(progress)
+    .bind(checkpoint)
+    .execute(pool)
+    .await
+    .map(|_| ())
+}
+
+/// A running job stops for good.
+pub async fn cancel_running(pool: &PgPool, id: Uuid) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "UPDATE jobs SET status = 'cancelled', control = NULL, checkpoint = NULL,
+                         locked_by = NULL, locked_at = NULL, finished_at = now(), updated_at = now()
+         WHERE id = $1 AND status = 'running'",
+    )
+    .bind(id)
+    .execute(pool)
+    .await
+    .map(|_| ())
 }

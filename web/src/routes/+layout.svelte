@@ -4,7 +4,7 @@
 	import { afterNavigate, goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
-	import { api } from '#lib/api.ts';
+	import { api, type Permission } from '#lib/api.ts';
 	import {
 		i18n,
 		locales,
@@ -13,7 +13,7 @@
 		type Locale,
 		type MessageKey
 	} from '#lib/i18n/index.svelte.ts';
-	import { hasRole, loadSession, logout, session } from '#lib/session.svelte.ts';
+	import { can, hasRole, loadSession, logout, session } from '#lib/session.svelte.ts';
 	import { theme, toggleTheme } from '#lib/theme.svelte.ts';
 	import Skeleton from '#lib/components/Skeleton.svelte';
 	import { pageChanged } from '#lib/net.svelte.ts';
@@ -29,7 +29,12 @@
 
 	const publicPaths = ['/login', '/setup'];
 
-	const nav: { href: string; key: MessageKey; role: 'admin' | 'operator' | 'user' }[] = [
+	const nav: {
+		href: string;
+		key: MessageKey;
+		role: 'admin' | 'operator' | 'user';
+		perms?: Permission[];
+	}[] = [
 		{ href: '/', key: 'nav.dashboard', role: 'user' },
 		{ href: '/phone', key: 'nav.phone', role: 'user' },
 		{ href: '/calls', key: 'nav.calls', role: 'user' },
@@ -37,6 +42,12 @@
 		{ href: '/doors', key: 'nav.doors', role: 'user' },
 		{ href: '/phonebook', key: 'nav.phonebook', role: 'user' },
 		{ href: '/search', key: 'nav.search', role: 'user' },
+		{
+			href: '/transcriptions',
+			key: 'nav.transcriptions',
+			role: 'user',
+			perms: ['transcriptions.view', 'transcriptions.manage']
+		},
 		{ href: '/settings', key: 'nav.settings', role: 'user' }
 	];
 
@@ -140,7 +151,7 @@
 					: 'hidden'} fixed inset-x-0 top-(--header-h) z-20 max-h-[calc(100dvh-var(--header-h))] flex-col gap-1 overflow-y-auto border-b border-slate-200 bg-white p-2 shadow-lg md:sticky md:flex md:h-[calc(100dvh-var(--header-h))] md:max-h-none md:w-56 md:shrink-0 md:border-r md:border-b-0 md:bg-transparent md:shadow-none dark:border-slate-800 dark:bg-slate-900 md:dark:bg-transparent"
 				aria-label={t('nav.menu')}
 			>
-				{#each nav.filter((n) => hasRole(n.role) && shown(n.href)) as item (item.href)}
+				{#each nav.filter((n) => hasRole(n.role) && (!n.perms || n.perms.some( (p) => can(p) )) && shown(n.href)) as item (item.href)}
 					<a
 						href={item.href}
 						onclick={() => (menuOpen = false)}

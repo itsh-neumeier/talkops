@@ -35,6 +35,7 @@ nächste freie Nummer; überholte ADRs werden nicht gelöscht, sondern auf
 | [0027](0027-shared-phonebook-numbers-in-active-calls.md) | Shared phonebook numbers in active calls | Accepted |
 | [0028](0028-device-media-settings.md) | Media settings per device and door call ringing | Accepted |
 | [0029](0029-roles-and-permissions.md) | Roles with fine-grained permissions | Accepted |
+| [0030](0030-transcription-jobs-control.md) | Transcription jobs: progress, pause, resume and manual runs | Accepted |
 
 
 Vorlage: [`template.md`](template.md)

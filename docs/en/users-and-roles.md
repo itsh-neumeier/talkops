@@ -69,6 +69,9 @@ who can log in.
 | Calls | Live transcript of all calls | `calls.live_transcript_all` |
 | Recordings | All recordings and transcripts (audited) | `recordings.access_all` |
 | Recordings | Delete recordings | `recordings.delete` |
+| Recordings | Transcribe again | `recordings.retranscribe` |
+| Recordings | Own transcription jobs | `transcriptions.view` |
+| Recordings | All transcription jobs and worker resources | `transcriptions.manage` |
 | Voicemail | All voicemail boxes | `voicemail.access_all` |
 | Voicemail | Voicemail and e-mail settings | `voicemail.settings` |
 | Phone book | Edit the phone book | `phonebook.edit` |

@@ -23,6 +23,8 @@ fn cfg(root: &std::path::Path) -> BackupConfig {
         project_name: "talkops".into(),
         profiles: String::new(),
         restore_max_bytes: 1 << 20,
+        rclone: talkops_api::rclone::Rclone::from_env(),
+        target_roots: vec![],
     }
 }
 fn archive() -> Vec<u8> {

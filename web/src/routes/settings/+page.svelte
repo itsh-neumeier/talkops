@@ -10,6 +10,7 @@
 	import AudioPlayer from '#lib/components/AudioPlayer.svelte';
 	import { musicUrl, type MusicTrack } from '#lib/audio.ts';
 	import BackupSettings from '#lib/components/BackupSettings.svelte';
+	import BackupTargets from '#lib/components/BackupTargets.svelte';
 	import IdentitySettings from '#lib/components/IdentitySettings.svelte';
 	import SipGuardSettings from '#lib/components/SipGuardSettings.svelte';
 	import SystemDiagnostics from '#lib/components/SystemDiagnostics.svelte';
@@ -469,7 +470,7 @@
 				{#if can('security.manage')}<SipGuardSettings />{/if}
 			{:else if section === 'system'}
 				{#if can('diagnostics.manage')}<SystemDiagnostics />{/if}
-				{#if can('backups.manage')}<BackupSettings />{/if}
+				{#if can('backups.manage')}<BackupSettings /><BackupTargets />{/if}
 			{:else}
 				<form class="card max-w-md space-y-3" onsubmit={changePassword}>
 					<h2>{t('settings.account')}</h2>

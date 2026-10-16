@@ -76,6 +76,8 @@ async fn backup_and_restore(db: PgPool) {
         project_name: "talkops".into(),
         profiles: String::new(),
         restore_max_bytes: 1 << 30,
+        rclone: talkops_api::rclone::Rclone::from_env(),
+        target_roots: vec![],
         volumes: vec![
             ("voicemail", vol("voicemail")),
             ("recordings", vol("recordings")),

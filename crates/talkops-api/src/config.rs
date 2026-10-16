@@ -224,4 +224,18 @@ pub struct Storage {
         default_value_t = 68_719_476_736
     )]
     pub restore_max_bytes: u64,
+
+    /// rclone binary for backup targets (ADR 0031).
+    #[arg(long, env = "TALKOPS_RCLONE", default_value = "rclone")]
+    pub rclone: PathBuf,
+
+    /// Directories that local backup targets may use (mounted USB disks,
+    /// NFS or SMB volumes), comma-separated.
+    #[arg(
+        long,
+        env = "TALKOPS_BACKUP_TARGET_ROOTS",
+        value_delimiter = ',',
+        default_value = "/var/lib/talkops/targets"
+    )]
+    pub backup_target_roots: Vec<PathBuf>,
 }

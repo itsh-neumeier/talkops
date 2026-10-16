@@ -41,4 +41,29 @@ if bash "$root/scripts/recover.sh" restore --archive "$tmp/backup with spaces.ag
 log="$(< "$MOCK_LOG")"
 [[ "$log" == *'<up><-d><--wait><postgres>'* ]]
 [[ "$log" != *'<up><-d><--wait>'$'\n'* ]]
-echo 'Passed: export, confirmation, Compose options, secret handling and failed-restore service state'
+unset MOCK_FAIL
+
+# Backup targets: list and download with a private target file.
+printf '%s\n' '{"config":{"kind":"webdav","url":"https://dav.example","vendor":"other","user":"u"},"secret":{"password":"never-print-this-target-password"}}' > "$tmp/target file.json"
+: > "$MOCK_LOG"
+bash "$root/scripts/recover.sh" fetch --target-file "$tmp/target file.json" --list --image test-image >/dev/null
+log="$(< "$MOCK_LOG")"
+[[ "$log" == *"<$tmp/target file.json:/target.json:ro><test-image><fetch><--target-file></target.json><--list>"* ]]
+[[ "$log" != *'never-print-this-target-password'* ]]
+mkdir "$tmp/downloads"
+: > "$MOCK_LOG"
+bash "$root/scripts/recover.sh" fetch --target-file "$tmp/target file.json" --name talkops-20261015-033000.tar.gz.age --output "$tmp/downloads" --image test-image >/dev/null
+log="$(< "$MOCK_LOG")"
+[[ "$log" == *"<$tmp/downloads:/output><test-image><fetch><--target-file></target.json><--name><talkops-20261015-033000.tar.gz.age><--output></output>"* ]]
+if bash "$root/scripts/recover.sh" fetch --target-file "$tmp/target file.json" --name '../x' --output "$tmp/downloads" >/dev/null 2>&1; then exit 1; fi
+
+# Restore of an archive in the backups volume (downloaded by the setup assistant).
+: > "$MOCK_LOG"
+bash "$root/scripts/recover.sh" restore --backup talkops-20261015-033000.tar.gz.age --password-file "$tmp/password" --yes >/dev/null
+log="$(< "$MOCK_LOG")"
+[[ "$log" == *'<talkops><inspect></var/lib/talkops/backups/talkops-20261015-033000.tar.gz.age>'* ]]
+[[ "$log" == *'<talkops><restore><--yes></var/lib/talkops/backups/talkops-20261015-033000.tar.gz.age>'* ]]
+[[ "$log" != *'/restore.archive'* ]]
+[[ "$log" != *'never-print-this-test-password'* ]]
+if bash "$root/scripts/recover.sh" restore --backup '../../etc/passwd' --yes >/dev/null 2>&1; then exit 1; fi
+echo 'Passed: export, confirmation, Compose options, secret handling, failed-restore service state, target fetch and volume restore'

@@ -17,6 +17,7 @@ Data-only backups without a password remain unencrypted.
 Models, Docker images, the FreeSWITCH runtime database and previous archives
 are excluded. External mounts and services need their own recovery procedure.
 Copy archives to another machine. Same-disk backups cannot survive disk failure.
+[Backup targets](#backup-targets) copy archives automatically.
 
 ## Complete backups with Compose
 
@@ -76,6 +77,157 @@ take precedence. CLI capture of imports also needs `TALKOPS_SECRET_KEY`.
 Supply `TALKOPS_BACKUP_PASSWORD` separately as a container environment value,
 or mount a private file and set `TALKOPS_BACKUP_PASSWORD_FILE`. Do not include
 that password in imported `.env` files. Store a separate recovery copy.
+
+## Backup targets
+
+Backup targets receive copies of the backup archives. Open
+**Settings > System > Backup targets** and click **Add target**.
+TalkOps copies the archives with [rclone](https://rclone.org). The server
+image contains a pinned rclone release.
+
+| Protocol | Folder field | Notes |
+| --- | --- | --- |
+| SMB | `share/folder` | SMB 2 or 3. TalkOps does not mount the share. |
+| S3 | `bucket/folder` | AWS or a compatible service. Enter the endpoint URL for all providers except AWS. Self-hosted servers usually need path-style URLs. |
+| WebDAV | folder below the URL | Nextcloud: `https://SERVER/remote.php/dav/files/USER` and an app password. |
+| SFTP | folder; `/path` starts at the root | Password or private key without a passphrase. |
+| FTP | folder | Explicit TLS is the default. Plain FTP needs the insecure-transport switch. |
+| Local | absolute path | Below `TALKOPS_BACKUP_TARGET_ROOTS` (default `/var/lib/talkops/targets`). |
+
+Rules:
+
+- Remote targets receive only encrypted archives. Set
+  `TALKOPS_BACKUP_PASSWORD` or `TALKOPS_BACKUP_PASSWORD_FILE` first. See
+  [Complete backups with Compose](#complete-backups-with-compose).
+- Plain FTP and `http://` URLs send data without encryption. They need the
+  switch **Allow transport without encryption**.
+- TalkOps stores passwords and keys encrypted with `TALKOPS_SECRET_KEY`. The
+  API and the audit log do not show them. Leave a password field empty to keep
+  the stored value.
+- Use a separate folder for each TalkOps server. Retention deletes TalkOps
+  archives in the folder. It does not delete other files.
+
+### Folder browser and connection test
+
+**Browse** shows one folder level. Select a folder and click **Use this
+folder**. **Create folder** makes a new folder. S3 shows the buckets and SMB
+shows the shares when the server permits it. Otherwise, type the bucket or
+share name into the folder field.
+
+**Test connection** creates the folder, writes a test file, reads it back and
+deletes it. SFTP: the first test or browse accepts the host key of the server
+and shows its SHA-256 fingerprint. Compare the fingerprint with the server
+(`ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub`) before you save the
+target. Later connections refuse a different host key.
+
+### Schedule
+
+Each target has its own schedule in the time zone of the container (`TZ`):
+
+- Select the weekdays. A target with no weekday runs only with **Back up now**.
+- Set the time of the first run of the day.
+- Optional: repeat the run every 1 to 12 hours until midnight.
+
+A target that is due in the same minute as the daily local backup receives
+that archive. For other runs, TalkOps writes an archive into a temporary
+folder in the backups volume, copies it to all due targets and deletes it.
+The backups volume needs free space for one archive. **Include call
+recordings** is a setting of each target.
+
+### Smart retention
+
+After each upload, TalkOps keeps an archive on the target when one of these
+rules selects it:
+
+- **Latest archives**: the newest N archives (at least 1).
+- **Daily**: the newest archive of each day for N days.
+- **Weekly**: the newest archive of each week (Monday to Sunday) for N weeks.
+- **Monthly**: the newest archive of each month for N months.
+- **Yearly**: the newest archive of each year for N years.
+
+The default is 3 latest archives, 7 days, 4 weeks and 12 months: one archive
+for each day of the last week, then one for each week of the last month,
+then one for each month of the last year. Set all periods to 0 to keep only
+the latest N archives. Upload leftovers (`*.partial`) older than six hours are
+also deleted.
+
+### NFS, USB disks and SMB mounts
+
+The server container has no Linux capabilities. It cannot mount shares.
+Let the Docker daemon of the host mount them and use a local target:
+
+```sh
+# .env: TALKOPS_NFS_HOST=nas.local and TALKOPS_NFS_EXPORT=/export/talkops
+docker compose -f docker-compose.yml -f docker-compose.targets.yml up -d
+```
+
+Then add a local target with the folder `/var/lib/talkops/targets/nfs`. The
+export must allow writes for UID/GID 10001. A USB disk or another host folder
+works the same way with a bind mount (see the comment in
+`docker-compose.targets.yml`). In Portainer, add the same volume definition to
+the stack.
+
+### Status and monitoring
+
+The list shows the status, the last successful run, the last error and the
+next run of each target. A failed target does not stop the other targets.
+Check the list after changes to the network, the password or the target.
+
+## Restore from a backup target
+
+In operation:
+
+1. Click **Archives** at the target.
+2. Click **To this server** for the archive. TalkOps downloads the archive
+   into the local backup list. Existing archives are never replaced.
+3. Restore the archive offline:
+
+   ```sh
+   bash recover.sh restore --backup talkops-YYYYMMDD-HHMMSS.tar.gz.age \
+     --password-file backup-password -f docker-compose.yml --env-file .env
+   ```
+
+   `--backup` uses an archive in the backups volume. Add all active
+   overrides and options as described below.
+
+During first setup:
+
+1. Choose **Restore from backup** and enter the setup token.
+2. Select **From a backup target**. Enter the connection of the target.
+   TalkOps does not store these values.
+3. Click **Browse**, go to the folder and select an archive.
+4. Enter the backup password and click **Inspect backup**. TalkOps downloads
+   the archive into the backups volume and shows the review.
+5. Use the shown `recover.sh restore --backup …` command on the host.
+
+After the restore, the saved targets of the restored database are active
+again.
+
+On a host without a running TalkOps server, `recover.sh fetch` lists and
+downloads archives. Put the connection into a private JSON file:
+
+```json
+{
+  "config": {"kind": "s3", "provider": "Hetzner", "endpoint": "https://fsn1.your-objectstorage.com",
+             "region": "", "access_key_id": "KEY", "path_style": false},
+  "path": "backups/talkops",
+  "secret": {"secret_access_key": "SECRET"}
+}
+```
+
+```sh
+chmod 600 target.json
+bash recover.sh fetch --target-file target.json --list
+bash recover.sh fetch --target-file target.json --name talkops-YYYYMMDD-HHMMSS.tar.gz.age --output .
+```
+
+Other `config` examples: `{"kind": "smb", "host": "nas.local", "user": "backup"}`,
+`{"kind": "webdav", "url": "https://cloud.example.com/remote.php/dav/files/u", "vendor": "nextcloud", "user": "u"}`,
+`{"kind": "sftp", "host": "backup.example.com", "user": "u", "host_keys": "ssh-ed25519 AAAA…"}`
+and `{"kind": "ftp", "host": "ftp.example.com", "user": "u", "tls": "explicit"}`.
+Put passwords into `"secret": {"password": "…"}`. For SFTP without `host_keys`,
+the command shows the fingerprint; add `--trust-host-key` after you compare it.
+Delete the target file after the recovery.
 
 ## Recover before the first container start
 

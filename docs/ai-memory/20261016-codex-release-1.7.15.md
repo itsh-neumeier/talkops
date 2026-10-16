@@ -8,7 +8,7 @@
 - Status: In progress
 - Branch: codex/release-1.7.15
 - Base commit: 0f128ad210028b386081db0bdae90c210ff84523
-- Related commits or PR: integration head 5bd0d65; integration PR pending
+- Related commits or PR: integration head 5bd0d65; [integration PR 45](https://github.com/itsh-neumeier/talkops/pull/45)
 
 ## Goal
 
@@ -55,7 +55,7 @@ Publication has not started. The final 1.7.14 audit history is preserved too.
 - Version clarification is pending. PR 41 removes the released backup draft
   browse/folder/test paths and changes POST/PUT payloads. ADR 0036 explicitly
   chooses no aliases. This conflicts with patch SemVer. Ask whether to use
-  1.8.0 or retain 1.7.15 with the documented API break. Do not silently add a
+  2.0.0 or retain 1.7.15 with the documented API break. Do not silently add a
   new compatibility feature or publish before the answer.
 - Closed PR 36 (Cactus Whistle evaluation) is outside the open-PR scope. Its
   unmerged branch claude/vigilant-tesla-ef0027 at 37f8a18aa2971c1a570821d150dcf0941fae12eb
@@ -70,9 +70,14 @@ Publication has not started. The final 1.7.14 audit history is preserved too.
 
 - Passed at inventory: all eight exact source heads have 12 green CI/E2E
   checks each. Save the source run IDs in the integration PR.
-- Passed after merges: cargo fmt --all --check.
-- Pending: combined web checks, migration/ADR/translation validation, final
-  candidate CI/E2E, exact-main CI/E2E, release and artifact verification.
+- Passed after merges: cargo fmt; npm ci, lint, check, 25 tests and build.
+- Passed: all eight exact heads are ancestors; 45 ordered unique migrations,
+  previous 41 unchanged; 36 unique ADR files (0033 reserved), 61 local ADR links;
+  1,929 matching EN/DE keys and placeholders; all ten browser suites retained.
+- Pending: final candidate CI/E2E, exact-main CI/E2E, release and artifacts.
+  Initial combined candidate bf3b55c: PR CI 38937833861/E2E 38937833472,
+  push CI 38937820115/E2E 38937819970 are running. Web/browser and Compose
+  checks passed; Clippy passed and Rust tests are running.
 - Not run locally: full Rust/DB/LDAP and Linux stack tests. Windows GNU lacks
   dlltool.exe; Docker Linux daemon is unavailable. Use the workflow CI gates.
 - CodeRabbit CLI is unavailable. Manual integration review uses actual diffs,
@@ -108,3 +113,13 @@ create the integration PR. Pass all release gates before tag and publication.
   dashboard-recent-calls, phonebook-sort-filter, mail-design-editor,
   storage-targets, transcription-history-filter, audit-export and notifications
   in this directory.
+
+## Version and PR checkpoint
+
+- Retargeted stacked PRs 41, 42, 43 and 44 to main. Heads are unchanged.
+  The ledger keeps the original dependency chains. All eight source PRs can
+  close as merged when the integration commits reach main.
+- The initial version question incorrectly offered 1.8.0 as SemVer for the
+  API break. Corrected this to 2.0.0 under https://semver.org/#spec-item-8.
+  The replacement question asks for explicit 1.7.15 with documented API break
+  or 2.0.0. The answer is still pending; do not publish on silence.

@@ -8,7 +8,7 @@
 - Status: Completed. The PR records the readiness.
 - Branch: claude/phonebook-sort-filter
 - Base commit: 0f128ad (origin/main, TalkOps 1.7.14)
-- Related commits or PR: Pending
+- Related commits or PR: [itsh-neumeier/talkops#39](https://github.com/itsh-neumeier/talkops/pull/39)
 
 ## Goal
 

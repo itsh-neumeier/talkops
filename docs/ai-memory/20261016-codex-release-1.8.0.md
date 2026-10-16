@@ -5,10 +5,11 @@
 - Task ID: 20261016-codex-release-1.8.0
 - Date: 2026-10-16, Europe/Berlin
 - Tool: Codex
-- Status: In progress
-- Branch: codex/release-1.7.15
+- Status: Completed
+- Integration branch: codex/release-1.7.15 (merged and remote deleted)
+- Final record: immutable annotated tag audit/release-1.8.0
 - Base commit: 0f128ad210028b386081db0bdae90c210ff84523
-- Related commits or PR: integration head 5bd0d65; [integration PR 45](https://github.com/itsh-neumeier/talkops/pull/45)
+- Related commits or PR: release main 7d7990b99e9f02c126ad3983da633476a22a9708; [integration PR 45](https://github.com/itsh-neumeier/talkops/pull/45)
 
 ## Goal
 
@@ -19,10 +20,12 @@ work. Record the breaking backup API and the fixed version in the release notes.
 ## Result
 
 All eight ready source heads and PR45 are merged into main. None was in
-the base. No open contribution is omitted or pending. All features are from
+the base. No agreed contribution is omitted or pending. Later PRs 46 and 47
+arrived after the release tag and belong to a future release. All features are from
 Claude Code; Codex supplies integration, validation and release work.
-Version 1.8.0 is published and registry verification passed. The additional
-tag E2E is pending. The final 1.7.14 audit history is preserved too.
+Version 1.8.0 is published. Final candidate, exact-main and tag CI/E2E passed.
+Release, FreeSWITCH and registry verification passed. The final 1.7.14 audit
+history is preserved too. No publication work remains for 1.8.0.
 
 | PR | Exact source head | Dependency | Migration ID |
 | --- | --- | --- | --- |
@@ -77,10 +80,9 @@ tag E2E is pending. The final 1.7.14 audit history is preserved too.
 - Passed: all eight exact heads are ancestors; 45 ordered unique migrations,
   previous 41 unchanged; 36 unique ADR files (0033 reserved), 61 local ADR links;
   1,929 matching EN/DE keys and placeholders; all ten browser suites retained.
-- Pending: final candidate CI/E2E, exact-main CI/E2E, release and artifacts.
-  Initial combined candidate bf3b55c: PR CI 38937833861/E2E 38937833472,
-  push CI 38937820115/E2E 38937819970 are running. Web/browser and Compose
-  checks passed; Clippy passed and Rust tests are running.
+- Passed: all 12 final-candidate checks, exact-main CI/E2E before tagging,
+  Release and all additional tag checks. See immutable run IDs below.
+  Earlier pre-version runs were superseded and are not the release evidence.
 - Not run locally: full Rust/DB/LDAP and Linux stack tests. Windows GNU lacks
   dlltool.exe; Docker Linux daemon is unavailable. Use the workflow CI gates.
 - CodeRabbit CLI is unavailable. Manual integration review uses actual diffs,
@@ -106,7 +108,9 @@ tag E2E is pending. The final 1.7.14 audit history is preserved too.
 
 ## Next action
 
-Wait for tag E2E38945722771. Archive the final summary and complete PR45.
+None for 1.8.0. The release and verification are complete. Preserve this final
+record under audit/release-1.8.0 and link it from merged PR45. New PRs46 and47
+need a separate release assignment; do not change v1.8.0.
 
 ## References
 
@@ -123,12 +127,12 @@ Wait for tag E2E38945722771. Archive the final summary and complete PR45.
 
 ## Version 1.8.0 checkpoint
 
-- User replies select 1.8.0 twice. Update all Cargo/web version metadata and
-  CHANGELOG.md. The source scope is unchanged: PRs37-44, all eight exact heads.
+- User replies select 1.8.0 twice. All Cargo/web version metadata and
+  CHANGELOG.md were updated. The source scope is unchanged: PRs37-44, all eight exact heads.
 - Preliminary 1.7.15 candidate eaad6df7bac6107d4ee44fa8b2381c7b7d713cde had green
   CI on both events: PR38939657493, push38939650450. E2E runs38939657587 and
   38939651093 are superseded by final 1.8.0 checks. No prior tag was created.
-- Use fresh final-version CI/E2E and exact-main checks before publication.
+- Fresh final-version CI/E2E and exact-main checks passed before publication.
 Version metadata validated against eaad6df7bac6107d4ee44fa8b2381c7b7d713cde:
 only Cargo workspace and npm root version fields change to 1.8.0.
 
@@ -147,7 +151,8 @@ only Cargo workspace and npm root version fields change to 1.8.0.
 - PR45 merged at 2026-10-16T17:56:12Z. Release main commit:
   7d7990b99e9f02c126ad3983da633476a22a9708.
   Its tree equals the tested candidate; all eight exact heads are ancestors.
-- Source PRs37-44 and integration PR45 are merged. No open PR remains.
+- Source PRs37-44 and integration PR45 are merged. No open PR remained at
+  the merge and pre-tag checkpoints. Later arrivals are listed below.
 - Exact-main CI38943496152 and E2E38943496202 passed before the tag push.
 - This checkpoint is committed locally only. Do not push the batch branch
   after merge. Final audit documentation stays separate from released code.
@@ -165,7 +170,7 @@ only Cargo workspace and npm root version fields change to 1.8.0.
 
 - Release38945722759 passed all six native builds, three manifest jobs and
   GitHub release creation. Tag CI38945722845 and FreeSWITCH38945722748 passed.
-  Additional tag E2E38945722771 is still running.
+  Additional tag E2E38945722771 passed at 2026-10-16T18:24:49Z.
 - Release: https://github.com/itsh-neumeier/talkops/releases/tag/v1.8.0
 - Published at 2026-10-16T18:21:15Z. It is the latest stable release, not a
   draft or prerelease. English release notes cover all eight contributions.
@@ -197,8 +202,27 @@ only Cargo workspace and npm root version fields change to 1.8.0.
   (Release run created at 18:13:49Z) and was a draft with pending checks.
   Its handoff asks for the next release. It is not part of 1.8.0. Keep its
   branch; do not change the published tag or silently add a later contribution.
-- Current GitHub branches: main, claude/vigilant-tesla-ef0027 and
-  codex/call-flags-skeleton. Current open PR: 46. No agreed 1.8.0 source was
-  omitted; the pre-tag open-PR check was empty.
+- New PR47, Codex graphical Yealink provisioning keys, was created at
+  2026-10-16T18:26:16Z. Head dce0e31b27975f1305982c0cf96b9294e6d3d6b9;
+  branch codex/yealink-t41p-dss. It was a draft at final inventory. It also
+  arrived after the tag and is outside 1.8.0. Keep its branch.
+- Final GitHub branch inventory: main, claude/vigilant-tesla-ef0027,
+  codex/call-flags-skeleton and codex/yealink-t41p-dss. Open PRs46 and47
+  are later arrivals. No agreed 1.8.0 source was omitted; the pre-tag
+  open-PR check was empty.
 - Foreign local worktrees, branches and unpublished primary documentation
   remain. Only the owned batch branch can be removed after final audit.
+## Final verification links
+
+- [Final candidate CI](https://github.com/itsh-neumeier/talkops/actions/runs/38941246995)
+  and [E2E](https://github.com/itsh-neumeier/talkops/actions/runs/38941247001).
+- [Exact-main CI](https://github.com/itsh-neumeier/talkops/actions/runs/38943496152)
+  and [E2E](https://github.com/itsh-neumeier/talkops/actions/runs/38943496202).
+- [Release](https://github.com/itsh-neumeier/talkops/actions/runs/38945722759),
+  [tag CI](https://github.com/itsh-neumeier/talkops/actions/runs/38945722845),
+  [tag E2E](https://github.com/itsh-neumeier/talkops/actions/runs/38945722771),
+  [FreeSWITCH](https://github.com/itsh-neumeier/talkops/actions/runs/38945722748).
+- Every listed run passed on its expected immutable head. Main, published tag
+  and all image revisions still match 7d7990b99e9f02c126ad3983da633476a22a9708.
+- The final audit descendant changes only this task record. It is not a new
+  release candidate and does not change main or the published release tag.

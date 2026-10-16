@@ -26,6 +26,8 @@ fn cfg(root: &std::path::Path, mounted: bool) -> BackupConfig {
         project_name: "talkops".into(),
         profiles: String::new(),
         restore_max_bytes: 1 << 20,
+        rclone: talkops_api::rclone::Rclone::from_env(),
+        target_roots: vec![root.join("targets")],
     }
 }
 
@@ -261,6 +263,73 @@ async fn mounted_compose_files_take_precedence(db: PgPool) {
         )
         .await;
     assert_eq!(status, StatusCode::CONFLICT);
+}
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn target_staging_archive_refreshes_portainer_configuration(db: PgPool) {
+    let root = tempfile::tempdir().unwrap();
+    let mut config = cfg(root.path(), false);
+    config.pg_bin_dir = std::env::var_os("TALKOPS_TEST_PG_BIN_DIR").map(Into::into);
+    let pg_dump = config
+        .pg_bin_dir
+        .as_ref()
+        .map_or_else(|| "pg_dump".into(), |dir| dir.join("pg_dump"));
+    if !std::process::Command::new(pg_dump)
+        .arg("--version")
+        .output()
+        .is_ok_and(|out| out.status.success())
+    {
+        assert!(std::env::var_os("CI").is_none(), "CI must provide pg_dump");
+        return;
+    }
+    let mut database_url = url::Url::parse(&std::env::var("DATABASE_URL").unwrap()).unwrap();
+    database_url.set_path(db.connect_options().get_database().unwrap());
+    config.database_url = database_url.to_string();
+    let tokens = Arc::new(Mutex::new(Vec::new()));
+    let url = fake_portainer(tokens.clone()).await;
+    let app_state = state(db.clone());
+    let input =
+        serde_json::from_value(json!({"url": url, "stack_id": 7, "token": "ptr_valid"})).unwrap();
+    talkops_core::portainer::save(
+        &db,
+        talkops_core::tenant::TenantId::DEFAULT,
+        &app_state.secrets,
+        &input,
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        talkops_api::recovery::capture(&config).unwrap().1.source,
+        "missing"
+    );
+
+    let staging = config.dir.join("staging");
+    std::fs::create_dir_all(&staging).unwrap();
+    let name = talkops_api::backup::create_in(&config, &db, false, &staging)
+        .await
+        .unwrap();
+    let prepared = talkops_api::recovery::prepare(
+        &staging.join(name),
+        config.password.as_ref(),
+        config.restore_max_bytes,
+    )
+    .unwrap();
+    let compose =
+        std::fs::read_to_string(prepared.root.path().join("deployment/docker-compose.yml"))
+            .unwrap();
+    assert!(compose.contains("image: talkops"));
+    let env = std::fs::read_to_string(prepared.root.path().join("deployment/.env")).unwrap();
+    assert!(env.contains("TALKOPS_ESL_PASSWORD=esl"));
+    assert!(!env.contains("must-not-be-captured"));
+    assert!(
+        tokens
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|token| *token == "ptr_valid")
+            .count()
+            >= 2
+    );
 }
 
 /// Certificate pinning against `openssl s_server` with a self-signed certificate.

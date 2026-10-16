@@ -976,6 +976,8 @@ mod tests {
             project_name: "talkops".into(),
             profiles: String::new(),
             restore_max_bytes: 1 << 20,
+            rclone: crate::rclone::Rclone::from_env(),
+            target_roots: vec![],
         }
     }
 

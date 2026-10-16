@@ -298,6 +298,91 @@ fn base_cfg(root: &Path, db_url: String, password: bool) -> BackupConfig {
     }
 }
 
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn delegated_backup_permission_covers_targets_and_portainer(db: PgPool) {
+    let root = tempfile::tempdir().unwrap();
+    let target_dir = root.path().join("targets/usb");
+    std::fs::create_dir_all(&target_dir).unwrap();
+    let router = talkops_api::app(
+        state(db.clone()).with_backup(base_cfg(root.path(), test_db_url(&db), true)),
+        None,
+    );
+    let admin = setup_admin(&router).await;
+    let (status, role) = admin
+        .post(
+            "/api/v1/roles",
+            json!({"name": "Backup manager", "permissions": []}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{role}");
+    let role_id = role["id"].as_str().unwrap();
+    let (status, user) = admin
+        .post(
+            "/api/v1/users",
+            json!({"username": "backup-manager", "display_name": "Backup manager",
+                   "role": "user", "role_id": role_id, "password": "correct-horse"}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{user}");
+    let manager = login(&router, "backup-manager", "correct-horse")
+        .await
+        .unwrap();
+    let paths = [
+        "/api/v1/backups",
+        "/api/v1/backup-targets",
+        "/api/v1/backups/portainer",
+    ];
+    for path in paths {
+        assert_eq!(manager.get(path).await.0, StatusCode::FORBIDDEN, "{path}");
+    }
+
+    let grant = |permissions: Value| json!({"name": "Backup manager", "permissions": permissions});
+    let (status, body) = admin
+        .put(
+            &format!("/api/v1/roles/{role_id}"),
+            grant(json!(["backups.manage"])),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    // The same non-admin session gains only the delegated permission.
+    for path in paths {
+        assert_eq!(manager.get(path).await.0, StatusCode::OK, "{path}");
+    }
+    assert_eq!(manager.get("/api/v1/roles").await.0, StatusCode::FORBIDDEN);
+    let (status, target) = manager
+        .post(
+            "/api/v1/backup-targets",
+            json!({"name": "USB", "config": {"kind": "local"},
+                   "path": target_dir.display().to_string(), "include_recordings": false}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::CREATED, "{target}");
+    let path = format!("/api/v1/backup-targets/{}", target["id"].as_str().unwrap());
+    assert_eq!(
+        manager.call("DELETE", &path, None).await.0,
+        StatusCode::NO_CONTENT
+    );
+    assert_eq!(
+        manager
+            .call("DELETE", "/api/v1/backups/portainer", None)
+            .await
+            .0,
+        StatusCode::NO_CONTENT
+    );
+
+    let (status, body) = admin
+        .put(&format!("/api/v1/roles/{role_id}"), grant(json!([])))
+        .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    for path in paths {
+        assert_eq!(manager.get(path).await.0, StatusCode::FORBIDDEN, "{path}");
+    }
+    assert_eq!(
+        manager.call("DELETE", &path, None).await.0,
+        StatusCode::FORBIDDEN
+    );
+}
+
 async fn wait_done(admin: &Client) -> Value {
     for _ in 0..600 {
         let (status, body) = admin.get("/api/v1/backup-targets").await;

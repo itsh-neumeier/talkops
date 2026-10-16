@@ -11,8 +11,8 @@ use talkops_core::audit;
 use talkops_core::backup_targets::{
     self, BackupTarget, BackupTargetInput, TargetConfig, TargetConnection, TargetSecret,
 };
-use talkops_core::tenant::TenantId;
 use talkops_core::roles::Permission;
+use talkops_core::tenant::TenantId;
 use utoipa::ToSchema;
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;

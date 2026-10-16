@@ -1,6 +1,6 @@
 //! First-setup preflight. Actual restore remains an offline host operation.
 use super::auth::RequestMeta;
-use super::backup_targets::{BrowseResult, DraftConnection};
+use super::storage_targets::{BrowseResult, DraftConnection};
 use crate::{
     AppState,
     backup::{BackupConfig, Manifest},
@@ -220,7 +220,7 @@ pub async fn browse_target(
     let cfg = backup_config(&state)?;
     let conn = setup_connection(cfg, draft)?;
     let tx = setup_lock(&state).await?;
-    let result = super::backup_targets::browse(cfg, conn).await;
+    let result = super::storage_targets::browse(cfg, conn).await;
     Ok(Json(end_setup(tx, result).await?))
 }
 

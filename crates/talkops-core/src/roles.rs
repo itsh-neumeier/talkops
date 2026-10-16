@@ -83,6 +83,7 @@ permissions! {
     SecurityManage = "security.manage", "system", true;
     IdentityManage = "identity.manage", "system", true;
     BackupsManage = "backups.manage", "system", true;
+    StorageManage = "storage.manage", "system", true;
     DiagnosticsManage = "diagnostics.manage", "system", true;
     AuditView = "audit.view", "system", false;
 }

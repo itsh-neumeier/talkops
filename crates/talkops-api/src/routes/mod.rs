@@ -23,6 +23,7 @@ pub mod recovery;
 pub mod roles;
 pub mod security;
 pub mod settings;
+pub mod storage_targets;
 pub mod time_conditions;
 pub mod transcription;
 pub mod transcription_jobs;

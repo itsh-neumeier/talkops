@@ -1,6 +1,6 @@
-//! Backup targets (ADR 0031): transfers with real rclone servers (WebDAV,
-//! FTP, SFTP, S3), a local target with retention, and restore from a target
-//! before setup. Needs rclone (TALKOPS_RCLONE or `PATH`); the run test also
+//! Backup targets (ADR 0031) on storage targets (ADR 0036): transfers with
+//! real rclone servers (WebDAV, FTP, SFTP, S3), a local target with
+//! retention, and restore from a target before setup. Needs rclone (TALKOPS_RCLONE or `PATH`); the run test also
 //! needs `pg_dump` (see tests/backup.rs).
 
 mod common;
@@ -331,6 +331,7 @@ async fn delegated_backup_permission_covers_targets_and_portainer(db: PgPool) {
         "/api/v1/backups",
         "/api/v1/backup-targets",
         "/api/v1/backups/portainer",
+        "/api/v1/storage-targets",
     ];
     for path in paths {
         assert_eq!(manager.get(path).await.0, StatusCode::FORBIDDEN, "{path}");
@@ -349,14 +350,27 @@ async fn delegated_backup_permission_covers_targets_and_portainer(db: PgPool) {
         assert_eq!(manager.get(path).await.0, StatusCode::OK, "{path}");
     }
     assert_eq!(manager.get("/api/v1/roles").await.0, StatusCode::FORBIDDEN);
+    // Backup managers select storage targets; managing them needs
+    // `storage.manage` (the migration gives it to roles with backups.manage).
+    let storage_input = json!({"name": "USB", "config": {"kind": "local"},
+                               "path": target_dir.display().to_string()});
+    let (status, _) = manager
+        .post("/api/v1/storage-targets", storage_input.clone())
+        .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    let (status, storage) = admin.post("/api/v1/storage-targets", storage_input).await;
+    assert_eq!(status, StatusCode::CREATED, "{storage}");
     let (status, target) = manager
         .post(
             "/api/v1/backup-targets",
-            json!({"name": "USB", "config": {"kind": "local"},
-                   "path": target_dir.display().to_string(), "include_recordings": false}),
+            json!({"name": "USB", "storage_target_id": storage["id"],
+                   "include_recordings": false}),
         )
         .await;
     assert_eq!(status, StatusCode::CREATED, "{target}");
+    assert_eq!(target["storage_name"], "USB");
+    let (_, list) = manager.get("/api/v1/storage-targets").await;
+    assert_eq!(list["targets"][0]["used_by"][0]["purpose"], "backup");
     let path = format!("/api/v1/backup-targets/{}", target["id"].as_str().unwrap());
     assert_eq!(
         manager.call("DELETE", &path, None).await.0,
@@ -415,26 +429,35 @@ async fn local_target_runs_prunes_and_restores(db: PgPool) {
     let router = talkops_api::app(state(db.clone()).with_backup(cfg), None);
     let admin = setup_admin(&router).await;
 
-    let mut input = json!({
+    let mut storage = json!({"name": "USB disk", "config": {"kind": "local"}, "path": "/etc"});
+    let (status, body) = admin.post("/api/v1/storage-targets", storage.clone()).await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{body}");
+    storage["path"] = json!(usb.display().to_string());
+    let (status, storage) = admin.post("/api/v1/storage-targets", storage).await;
+    assert_eq!(status, StatusCode::CREATED, "{storage}");
+    let storage_id = storage["id"].as_str().unwrap().to_owned();
+    let input = json!({
         "name": "USB disk",
-        "config": {"kind": "local"},
-        "path": "/etc",
+        "storage_target_id": storage_id,
         "include_recordings": false,
         "schedule": {"weekdays": 0, "hour": 3, "minute": 30, "every_hours": 0},
         "retention": {"keep_last": 1, "keep_daily": 0, "keep_weekly": 0, "keep_monthly": 0, "keep_yearly": 0}
     });
-    let (status, body) = admin.post("/api/v1/backup-targets", input.clone()).await;
-    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{body}");
-    input["path"] = json!(usb.display().to_string());
     let (status, target) = admin.post("/api/v1/backup-targets", input.clone()).await;
     assert_eq!(status, StatusCode::CREATED, "{target}");
     let id = target["id"].as_str().unwrap().to_owned();
     assert_eq!(target["has_secret"], false);
+    assert_eq!(target["path"], usb.display().to_string());
+    // A second job in the same folder would delete the archives of the first.
+    let mut twin = input.clone();
+    twin["name"] = json!("Twin");
+    let (status, _) = admin.post("/api/v1/backup-targets", twin).await;
+    assert_eq!(status, StatusCode::CONFLICT);
 
     // Folder browser: the roots, then the folder.
     let (status, list) = admin
         .post(
-            "/api/v1/backup-targets/browse",
+            "/api/v1/storage-targets/browse",
             json!({"config": {"kind": "local"}}),
         )
         .await;
@@ -445,7 +468,7 @@ async fn local_target_runs_prunes_and_restores(db: PgPool) {
     );
     let (status, list) = admin
         .post(
-            "/api/v1/backup-targets/browse",
+            "/api/v1/storage-targets/browse",
             json!({"config": {"kind": "local"}, "path": usb.display().to_string()}),
         )
         .await;
@@ -459,7 +482,7 @@ async fn local_target_runs_prunes_and_restores(db: PgPool) {
     );
     let (status, _) = admin
         .post(
-            "/api/v1/backup-targets/folders",
+            "/api/v1/storage-targets/folders",
             json!({"connection": {"config": {"kind": "local"}, "path": usb.display().to_string()}, "name": "sub"}),
         )
         .await;
@@ -467,18 +490,28 @@ async fn local_target_runs_prunes_and_restores(db: PgPool) {
     assert!(usb.join("sub").is_dir());
     let (status, _) = admin
         .post(
-            "/api/v1/backup-targets/folders",
+            "/api/v1/storage-targets/folders",
             json!({"connection": {"config": {"kind": "local"}, "path": usb.display().to_string()}, "name": "../x"}),
         )
         .await;
     assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
     let (status, _) = admin
         .post(
-            "/api/v1/backup-targets/test",
+            "/api/v1/storage-targets/test",
             json!({"config": {"kind": "local"}, "path": usb.display().to_string()}),
         )
         .await;
     assert_eq!(status, StatusCode::OK);
+
+    // The saved connection test records its result.
+    let (status, tested) = admin
+        .post(
+            &format!("/api/v1/storage-targets/{storage_id}/test"),
+            json!({}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{tested}");
+    assert_eq!(tested["last_test_ok"], true);
 
     let (status, _) = admin
         .post(&format!("/api/v1/backup-targets/{id}/run"), json!({}))
@@ -546,8 +579,26 @@ async fn local_target_runs_prunes_and_restores(db: PgPool) {
         .await;
     assert_eq!(status, StatusCode::NOT_FOUND);
 
+    // A used storage target cannot be deleted.
+    let (status, body) = admin
+        .call(
+            "DELETE",
+            &format!("/api/v1/storage-targets/{storage_id}"),
+            None,
+        )
+        .await;
+    assert_eq!(status, StatusCode::CONFLICT, "{body}");
+    assert!(body["message"].as_str().unwrap().contains("USB disk"));
     let (status, _) = admin
         .call("DELETE", &format!("/api/v1/backup-targets/{id}"), None)
+        .await;
+    assert_eq!(status, StatusCode::NO_CONTENT);
+    let (status, _) = admin
+        .call(
+            "DELETE",
+            &format!("/api/v1/storage-targets/{storage_id}"),
+            None,
+        )
         .await;
     assert_eq!(status, StatusCode::NO_CONTENT);
     let actions: Vec<String> = sqlx::query_scalar(
@@ -557,12 +608,19 @@ async fn local_target_runs_prunes_and_restores(db: PgPool) {
     .await
     .unwrap();
     assert_eq!(actions, ["create", "run", "fetch", "delete"]);
+    let actions: Vec<String> = sqlx::query_scalar(
+        "SELECT action FROM audit_log WHERE entity_type = 'storage_target' ORDER BY id",
+    )
+    .fetch_all(&db)
+    .await
+    .unwrap();
+    assert_eq!(actions, ["create", "delete"]);
 }
 
 #[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
 async fn remote_targets_need_encryption_and_hide_secrets(db: PgPool) {
     let root = tempfile::tempdir().unwrap();
-    let input = json!({
+    let storage = json!({
         "name": "Nextcloud",
         "config": {"kind": "webdav", "url": "https://cloud.example.com/remote.php/dav/files/u", "vendor": "nextcloud", "user": "u"},
         "path": "Backups/TalkOps",
@@ -573,6 +631,11 @@ async fn remote_targets_need_encryption_and_hide_secrets(db: PgPool) {
         None,
     );
     let admin = setup_admin(&plain).await;
+    // A storage target needs no backup password; a backup job on it does.
+    let (status, created) = admin.post("/api/v1/storage-targets", storage.clone()).await;
+    assert_eq!(status, StatusCode::CREATED, "{created}");
+    assert_eq!(created["has_secret"], true);
+    let input = json!({"name": "Nextcloud", "storage_target_id": created["id"]});
     let (status, body) = admin.post("/api/v1/backup-targets", input.clone()).await;
     assert_eq!(status, StatusCode::CONFLICT, "{body}");
     assert!(
@@ -596,6 +659,12 @@ async fn remote_targets_need_encryption_and_hide_secrets(db: PgPool) {
     assert!(!list.to_string().contains("app-password-never-shown"));
     assert_eq!(list["encryption_configured"], true);
     assert!(list["targets"][0]["next_run_at"].is_string());
+    let (_, storage_list) = admin.get("/api/v1/storage-targets").await;
+    assert!(
+        !storage_list
+            .to_string()
+            .contains("app-password-never-shown")
+    );
     let audit: Vec<Value> = sqlx::query_scalar("SELECT details FROM audit_log")
         .fetch_all(&db)
         .await
@@ -603,13 +672,15 @@ async fn remote_targets_need_encryption_and_hide_secrets(db: PgPool) {
     assert!(!format!("{audit:?}").contains("app-password-never-shown"));
 
     // Plain HTTP needs the explicit switch.
-    let mut insecure = input.clone();
+    let mut insecure = storage.clone();
     insecure["name"] = json!("Plain");
     insecure["config"]["url"] = json!("http://cloud.local/dav");
-    let (status, _) = admin.post("/api/v1/backup-targets", insecure.clone()).await;
+    let (status, _) = admin
+        .post("/api/v1/storage-targets", insecure.clone())
+        .await;
     assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
     insecure["allow_insecure"] = json!(true);
-    let (status, _) = admin.post("/api/v1/backup-targets", insecure).await;
+    let (status, _) = admin.post("/api/v1/storage-targets", insecure).await;
     assert_eq!(status, StatusCode::CREATED);
 }
 
@@ -767,14 +838,23 @@ async fn scheduler_reuses_the_daily_archive(db: PgPool) {
     let cfg = std::sync::Arc::new(base_cfg(root.path(), test_db_url(&db), true));
     let secrets = talkops_core::crypto::SecretBox::from_hex(KEY).unwrap();
     let tenant = talkops_core::tenant::TenantId::DEFAULT;
+    let storage: talkops_core::storage_targets::StorageTargetInput =
+        serde_json::from_value(json!({
+            "name": "USB",
+            "config": {"kind": "local"},
+            "path": usb.display().to_string()
+        }))
+        .unwrap();
+    let storage = talkops_core::storage_targets::create(&db, tenant, &secrets, &storage)
+        .await
+        .unwrap();
     let input: talkops_core::backup_targets::BackupTargetInput = serde_json::from_value(json!({
         "name": "USB",
-        "config": {"kind": "local"},
-        "path": usb.display().to_string(),
+        "storage_target_id": storage.id,
         "schedule": {"weekdays": 127, "hour": 0, "minute": 0, "every_hours": 0}
     }))
     .unwrap();
-    let target = talkops_core::backup_targets::create(&db, tenant, &secrets, &input)
+    let target = talkops_core::backup_targets::create(&db, tenant, &input)
         .await
         .unwrap();
 

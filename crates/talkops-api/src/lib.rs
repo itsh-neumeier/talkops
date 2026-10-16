@@ -2,6 +2,7 @@
 
 pub mod active_calls;
 pub mod attendant;
+pub mod audit_export;
 pub mod auth;
 pub mod backup;
 pub mod backup_targets;
@@ -272,6 +273,7 @@ pub fn api_router() -> (Router<AppState>, utoipa::openapi::OpenApi) {
         .merge(routes::backups::router())
         .merge(routes::backup_targets::router())
         .merge(routes::storage_targets::router())
+        .merge(routes::audit::router())
         .merge(routes::recovery::router())
         .merge(routes::diagnostics::router())
         .merge(routes::blocking::router())

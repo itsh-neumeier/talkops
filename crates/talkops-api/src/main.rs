@@ -295,6 +295,7 @@ async fn serve(config: Config) -> anyhow::Result<()> {
         Err(err) => tracing::warn!(error = %err, "cannot move voice menu greetings"),
     }
     talkops_api::sip_guard::spawn(db.clone(), state.telephony.esl.clone());
+    talkops_api::audit_export::spawn(db.clone(), state.backup.clone(), state.secrets.clone());
     if let Some(cfg) = &state.backup {
         backup::spawn(db.clone(), cfg.clone(), state.secrets.clone());
     }

@@ -122,7 +122,8 @@ export type Permission =
 	| 'backups.manage'
 	| 'storage.manage'
 	| 'diagnostics.manage'
-	| 'audit.view';
+	| 'audit.view'
+	| 'audit.manage';
 
 export interface PermissionInfo {
 	key: Permission;
@@ -515,6 +516,7 @@ export interface SearchHit {
 
 export interface AuditEntry {
 	id: number;
+	user_id: string | null;
 	username: string | null;
 	action: string;
 	entity_type: string;

@@ -74,14 +74,15 @@ pub struct StorageOverview {
     pub roots: Vec<String>,
 }
 
-/// Storage targets with their users. Users with `backups.manage` can read
-/// the list to select a target for a backup job.
+/// Storage targets with their users. Users with `backups.manage` or
+/// `audit.manage` can read the list to select a target for a backup job or
+/// the audit export.
 #[utoipa::path(get, path = "/api/v1/storage-targets", tag = "system", responses((status = 200, body = StorageOverview)))]
 pub async fn list_targets(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> ApiResult<Json<StorageOverview>> {
-    if !auth.can(Permission::BackupsManage) {
+    if !auth.can(Permission::BackupsManage) && !auth.can(Permission::AuditManage) {
         auth.require_perm(Permission::StorageManage)?;
     }
     let cfg = config(&state)?;

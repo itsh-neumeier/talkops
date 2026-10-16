@@ -95,8 +95,13 @@ who can log in.
 | System | SIP protection (critical) | `security.manage` |
 | System | LDAP and single sign-on (critical) | `identity.manage` |
 | System | Backups (critical) | `backups.manage` |
+| System | Storage targets (critical) | `storage.manage` |
 | System | Diagnostics and restart (critical) | `diagnostics.manage` |
 | System | Audit log | `audit.view` |
+| System | Audit retention and export (critical) | `audit.manage` |
+
+See [Audit log](audit-log.md) for the filters, the downloads, the retention
+and the automatic export.
 
 ## API
 

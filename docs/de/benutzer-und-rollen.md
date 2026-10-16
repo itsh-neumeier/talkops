@@ -71,6 +71,9 @@ fest, wer sich anmelden darf.
 Die vollständige Liste mit den Schlüsseln steht in der
 [englischen Dokumentation](../en/users-and-roles.md#permissions).
 
+Filter, Downloads, Aufbewahrung und automatischen Export des
+Änderungsprotokolls beschreibt [Änderungsprotokoll](audit-log.md).
+
 ## API
 
 - `GET /api/v1/roles`: Katalog der Berechtigungen und Rollen (braucht

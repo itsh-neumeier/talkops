@@ -5,7 +5,7 @@ use axum::extract::{Query, State};
 use axum::http::HeaderName;
 use serde::Serialize;
 use serde_json::json;
-use talkops_core::audit::{self, AuditEntry};
+use talkops_core::audit;
 use talkops_core::cdr::{self, Cdr, CdrQuery, CdrScope};
 use talkops_core::extensions;
 use talkops_core::settings::{self, TenantSettings};
@@ -24,7 +24,6 @@ pub fn router() -> OpenApiRouter<AppState> {
         .routes(routes!(get_settings, update_settings))
         .routes(routes!(telephony_status))
         .routes(routes!(list_calls))
-        .routes(routes!(list_audit))
 }
 
 /// Telephony settings (any logged-in user may read them).
@@ -182,14 +181,4 @@ pub async fn list_calls(
         [(HeaderName::from_static("x-total-count"), total.to_string())],
         Json(entries),
     ))
-}
-
-/// Audit log of administrative changes (admin).
-#[utoipa::path(get, path = "/api/v1/audit", tag = "settings", responses((status = 200, body = [AuditEntry])))]
-pub async fn list_audit(
-    State(state): State<AppState>,
-    auth: AuthUser,
-) -> ApiResult<Json<Vec<AuditEntry>>> {
-    auth.require_perm(Permission::AuditView)?;
-    Ok(Json(audit::list(&state.db, auth.tenant, 200).await?))
 }

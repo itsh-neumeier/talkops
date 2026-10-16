@@ -28,6 +28,11 @@ tablets and desktops.
 - Use `Tabs.svelte` for tabs. Use `variant="line"` for page sections and
   `variant="pills"` for a small switch in a card. The component supplies the
   ARIA roles and the arrow-key navigation.
+- The settings page selects its section with `?section=<id>`. A section with
+  sub-tabs adds `&tab=<id>`, for example
+  `/settings?section=system&tab=diagnostics`. Old `/settings#<id>` links
+  still work. Give each section one permission area. Put a large section
+  into sub-tabs instead of one long page.
 - Use `Modal.svelte` for dialogs. Dialog panels use the `.dialog-panel`
   class. The close button is an icon button with the label from
   `common.close`.

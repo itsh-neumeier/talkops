@@ -296,6 +296,25 @@ pub async fn finalize_transcript(pool: &PgPool, source: Source) -> CoreResult<()
     Ok(())
 }
 
+/// A user stopped the transcription: `done` if a transcript exists
+/// (marked final), otherwise `none`.
+pub async fn transcription_stopped(pool: &PgPool, source: Source) -> CoreResult<()> {
+    finalize_transcript(pool, source).await?;
+    let (table, col, id) = match source {
+        Source::Recording(id) => ("recordings", "recording_id", id),
+        Source::Voicemail(id) => ("voicemail_messages", "voicemail_id", id),
+    };
+    sqlx::query(&format!(
+        "UPDATE {table} SET transcript_status = CASE
+             WHEN EXISTS (SELECT 1 FROM transcripts WHERE {col} = $1) THEN 'done' ELSE 'none' END
+         WHERE id = $1"
+    ))
+    .bind(id)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
 /// Marks a transcription as failed.
 pub async fn transcript_failed(pool: &PgPool, source: Source) -> CoreResult<()> {
     let mut conn = pool.acquire().await?;

@@ -80,7 +80,33 @@ tablets and desktops.
 - Use `.nav-item` with `aria-current="page"` for entries of the main menu
   and the settings menu.
 
+## Loading states and motion
+
+- Use one motion system. `web/src/app.css` defines the curve
+  `--ease-out` and the durations `--dur-fast` (120 ms: hover, press,
+  focus), `--dur` (180 ms: rows, panels, popups) and `--dur-slow`
+  (260 ms: page content). Do not add other durations or curves.
+- Skeletons (`Skeleton.svelte`, `SkeletonRows.svelte`) stay invisible for
+  `--skeleton-delay` (180 ms). A fast answer thus shows no flash. A slow
+  answer shows the skeleton with a soft fade and a light sweep. Use the
+  classes `.skeleton` and `.skeleton-bar` for own placeholders, not
+  `animate-pulse`.
+- The root layout fades in the content of each new page (`.page-in`).
+- `Modal.svelte` fades the backdrop and moves the panel in and out. Native
+  `<dialog class="dialog-panel">` elements open with the same motion.
+- Use `.row-in` for new list items, `.expand-in` for opened detail rows and
+  `.popover-panel` for popups. `.progress-running` marks a running
+  progress bar.
+- Buttons, inputs, tabs and menu entries change their colors with a
+  transition; buttons move down 1 px when pressed.
+- With `prefers-reduced-motion: reduce`, all animations and transitions end
+  at once and do not repeat. Svelte transitions get their duration from
+  `motion()` in `web/src/lib/motion.ts`.
+
 ## Checks
+
+`tests/browser/motion.mjs` checks the skeleton delay, the page fade, the
+dialog transition and reduced motion.
 
 `tests/browser/layout.mjs` opens all main pages at 360 px, 768 px and
 1280 px in the light and the dark theme. The check fails when a page scrolls

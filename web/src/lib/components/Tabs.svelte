@@ -59,7 +59,7 @@
 			aria-selected={value === x.id}
 			tabindex={value === x.id ? 0 : -1}
 			class={variant === 'line'
-				? `shrink-0 border-b-2 px-3 py-2 text-sm whitespace-nowrap ${
+				? `shrink-0 border-b-2 px-3 py-2 text-sm whitespace-nowrap transition-colors duration-150 ${
 						value === x.id
 							? 'border-teal-600 font-medium text-teal-800 dark:border-teal-400 dark:text-teal-200'
 							: 'border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-100'

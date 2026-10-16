@@ -4,7 +4,7 @@
 	import { SessionState, Web, type Session } from 'sip.js';
 	import { ApiError, api, type Call, type Contact } from '#lib/api.ts';
 	import { page } from '$app/state';
-	import { session } from '#lib/session.svelte.ts';
+	import { can, session } from '#lib/session.svelte.ts';
 	import SoftphoneAudio from '#lib/components/SoftphoneAudio.svelte';
 	import {
 		callTarget,
@@ -170,7 +170,7 @@
 				selected = '';
 				await stopUser();
 			}
-			if (session.user?.role !== 'admin' && !selected && choices.length) {
+			if (!can('softphone.any_extension') && !selected && choices.length) {
 				selected = choices[0].extension_id;
 				await start();
 			}
@@ -680,7 +680,7 @@
 	{#if noExtension}<p class="text-sm text-slate-500">{t('phone.noIdentity')}</p>{/if}
 	{#if choices.length}
 		<div class="card space-y-2">
-			{#if session.user?.role === 'admin' || choices.length > 1}
+			{#if can('softphone.any_extension') || choices.length > 1}
 				<label for="phone-identity">{t('phone.identity')}</label>
 				<select
 					id="phone-identity"

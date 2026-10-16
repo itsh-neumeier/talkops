@@ -10,21 +10,27 @@
 	import AudioPlayer from '#lib/components/AudioPlayer.svelte';
 	import { musicUrl, type MusicTrack } from '#lib/audio.ts';
 	import BackupSettings from '#lib/components/BackupSettings.svelte';
+	import BackupTargets from '#lib/components/BackupTargets.svelte';
 	import IdentitySettings from '#lib/components/IdentitySettings.svelte';
 	import SipGuardSettings from '#lib/components/SipGuardSettings.svelte';
 	import SystemDiagnostics from '#lib/components/SystemDiagnostics.svelte';
 	import TranscriptionSettings from '#lib/components/TranscriptionSettings.svelte';
 	import TwoFactor from '#lib/components/TwoFactor.svelte';
 	import VoicemailControl from '#lib/components/VoicemailControl.svelte';
-	import SettingsNav, { sections, type Section } from '#lib/components/SettingsNav.svelte';
+	import SettingsNav, {
+		sections,
+		sectionVisible,
+		type Section
+	} from '#lib/components/SettingsNav.svelte';
 	import { t } from '#lib/i18n/index.svelte.ts';
-	import { hasRole, logout } from '#lib/session.svelte.ts';
+	import { can, logout } from '#lib/session.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
 
 	function initialSection(): Section {
 		const hash = page.url.hash.slice(1);
-		const found = sections.find((s) => s.id === hash && (!s.admin || hasRole('admin')));
-		return found?.id ?? (hasRole('admin') ? 'telephony' : 'account');
+		const allowed = sections.filter((s) => sectionVisible(s));
+		const found = allowed.find((s) => s.id === hash);
+		return found?.id ?? allowed[0]?.id ?? 'account';
 	}
 	let section = $state<Section>(initialSection());
 	function show(id: Section) {
@@ -70,9 +76,9 @@
 			settings = await api.get<Settings>('/settings');
 			emergency = settings.emergency_numbers.join(', ');
 			music = settings.hold_music_clip_id ? 'own' : settings.hold_music;
-			if (hasRole('admin')) tracks = await api.get<MusicTrack[]>('/audio/music');
-			if (hasRole('operator')) numbers = await api.get<PhoneNumber[]>('/numbers');
-			if (hasRole('admin')) smtp = await api.get<SmtpSettings>('/settings/smtp');
+			if (can('settings.manage')) tracks = await api.get<MusicTrack[]>('/audio/music');
+			if (can('trunks.view')) numbers = await api.get<PhoneNumber[]>('/numbers');
+			if (can('voicemail.settings')) smtp = await api.get<SmtpSettings>('/settings/smtp');
 		} catch (err) {
 			error = errorMessage(err);
 		}
@@ -176,7 +182,7 @@
 		<SettingsNav {section} onsection={show} />
 		<div class="@container min-w-0 flex-1 space-y-4">
 			{#if section === 'telephony'}
-				{#if settings && hasRole('admin')}
+				{#if settings && can('settings.manage')}
 					<form class="card space-y-4" onsubmit={save}>
 						<h2>{t('settings.dialing')}</h2>
 						<ErrorBox {error} />
@@ -254,11 +260,11 @@
 							<button class="btn btn-primary">{t('common.save')}</button>
 						</div>
 					</form>
-				{:else if hasRole('admin') && !settings && !net.settled}
+				{:else if can('settings.manage') && !settings && !net.settled}
 					<div class="card"><Skeleton lines={6} /></div>
 				{/if}
 			{:else if section === 'calls'}
-				{#if settings && hasRole('admin')}
+				{#if settings && can('settings.manage')}
 					<form class="card space-y-3" onsubmit={saveRecording}>
 						<h2>{t('rec.title')}</h2>
 						<p class="text-sm text-slate-600 dark:text-slate-300">{t('rec.hint')}</p>
@@ -316,16 +322,16 @@
 								/>
 								<p class="hint">{t('rec.vocabularyHint')}</p>
 							</div>
-							<TranscriptionSettings />
+							{#if can('transcription.settings')}<TranscriptionSettings />{/if}
 						{/if}
 						<div class="flex justify-end">
 							<button class="btn btn-primary">{t('common.save')}</button>
 						</div>
 					</form>
-				{:else if hasRole('admin') && !settings && !net.settled}
+				{:else if can('settings.manage') && !settings && !net.settled}
 					<div class="card"><Skeleton lines={6} /></div>
 				{/if}
-				{#if settings && hasRole('admin')}
+				{#if settings && can('settings.manage')}
 					<form class="card space-y-3" onsubmit={saveMusic}>
 						<h2>{t('music.title')}</h2>
 						<p class="text-sm text-slate-600 dark:text-slate-300">{t('music.hint')}</p>
@@ -377,13 +383,13 @@
 							<button class="btn btn-primary">{t('common.save')}</button>
 						</div>
 					</form>
-				{:else if hasRole('admin') && !settings && !net.settled}
+				{:else if can('settings.manage') && !settings && !net.settled}
 					<div class="card"><Skeleton lines={6} /></div>
 				{/if}
 			{:else if section === 'voicemail'}
-				{#if hasRole('admin')}<VoicemailControl />{/if}
+				{#if can('voicemail.settings')}<VoicemailControl />{/if}
 			{:else if section === 'email'}
-				{#if smtp && hasRole('admin')}
+				{#if smtp && can('voicemail.settings')}
 					<form class="card space-y-3" onsubmit={saveSmtp}>
 						<h2>{t('smtp.title')}</h2>
 						<p class="text-sm text-slate-600 dark:text-slate-300">{t('smtp.hint')}</p>
@@ -460,13 +466,11 @@
 					</form>
 				{/if}
 			{:else if section === 'security'}
-				{#if hasRole('admin')}<IdentitySettings />{/if}
-				{#if hasRole('admin')}<SipGuardSettings />{/if}
+				{#if can('identity.manage')}<IdentitySettings />{/if}
+				{#if can('security.manage')}<SipGuardSettings />{/if}
 			{:else if section === 'system'}
-				{#if hasRole('admin')}
-					<SystemDiagnostics />
-					<BackupSettings />
-				{/if}
+				{#if can('diagnostics.manage')}<SystemDiagnostics />{/if}
+				{#if can('backups.manage')}<BackupSettings /><BackupTargets />{/if}
 			{:else}
 				<form class="card max-w-md space-y-3" onsubmit={changePassword}>
 					<h2>{t('settings.account')}</h2>

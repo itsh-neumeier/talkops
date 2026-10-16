@@ -4,6 +4,8 @@
 - Date: 2026-10-12
 - Supersedes: ADR 0016 archive format and restore validation details.
 - Keeps: ADR 0016 offline restore and ADR 0008 application encryption.
+- Partly superseded by [ADR 0032](0032-automatic-deployment-capture.md): automatic
+  file discovery and the Portainer API connection.
 
 ## Context
 

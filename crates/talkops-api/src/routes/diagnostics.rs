@@ -9,7 +9,6 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use talkops_core::audit;
-use talkops_core::users::Role;
 use utoipa::ToSchema;
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
@@ -18,6 +17,7 @@ use crate::AppState;
 use crate::auth::AuthUser;
 use crate::diagnostics::{self, CaptureStatus, Channel, DiagnosticsError, LogLine};
 use crate::error::{ApiError, ApiResult};
+use talkops_core::roles::Permission;
 
 pub fn router() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
@@ -51,7 +51,7 @@ pub async fn get_diagnostics(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> ApiResult<Json<DiagnosticsView>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::DiagnosticsManage)?;
     let (freeswitch, channels) = match state.telephony.esl.get().await {
         Some(client) => {
             let status = client.api("status").await.ok();
@@ -102,7 +102,7 @@ pub async fn start_capture(
     auth: AuthUser,
     Json(req): Json<CaptureRequest>,
 ) -> ApiResult<Json<CaptureStatus>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::DiagnosticsManage)?;
     if !diagnostics::LEVELS.contains(&req.level.as_str()) {
         return Err(ApiError::BadRequest(format!(
             "level must be one of {}",
@@ -137,7 +137,7 @@ pub async fn stop_capture(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> ApiResult<Json<CaptureStatus>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::DiagnosticsManage)?;
     state.diagnostics.stop();
     audit::record(
         &state.db,
@@ -177,7 +177,7 @@ pub async fn log_lines(
     auth: AuthUser,
     Query(q): Query<LogQuery>,
 ) -> ApiResult<Json<LogPage>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::DiagnosticsManage)?;
     Ok(Json(LogPage {
         lines: state.diagnostics.lines_after(q.after, q.limit.min(5000)),
         capture: state.diagnostics.status(),
@@ -187,7 +187,7 @@ pub async fn log_lines(
 /// Empties the buffer.
 #[utoipa::path(delete, path = "/api/v1/diagnostics/log", tag = "system", responses((status = 204)))]
 pub async fn clear_log(State(state): State<AppState>, auth: AuthUser) -> ApiResult<StatusCode> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::DiagnosticsManage)?;
     state.diagnostics.clear();
     audit::record(
         &state.db,
@@ -204,7 +204,7 @@ pub async fn clear_log(State(state): State<AppState>, auth: AuthUser) -> ApiResu
 /// The whole buffer as a text file, to attach to a support request.
 #[utoipa::path(get, path = "/api/v1/diagnostics/log.txt", tag = "system", responses((status = 200, content_type = "text/plain")))]
 pub async fn download_log(State(state): State<AppState>, auth: AuthUser) -> ApiResult<Response> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::DiagnosticsManage)?;
     let name = format!(
         "talkops-freeswitch-{}.log",
         Utc::now().format("%Y%m%d-%H%M%S")
@@ -237,7 +237,7 @@ pub async fn restart(
     auth: AuthUser,
     Json(req): Json<RestartRequest>,
 ) -> ApiResult<StatusCode> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::DiagnosticsManage)?;
     let all = match req.target.as_str() {
         "freeswitch" => false,
         "all" => true,
@@ -308,7 +308,7 @@ pub async fn reset_sessions(
     auth: AuthUser,
     Json(req): Json<SessionsRequest>,
 ) -> ApiResult<Json<SessionsResult>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::DiagnosticsManage)?;
     let (hangup, reregister) = match req.action.as_str() {
         "hangup" => (true, false),
         "reregister" => (false, true),

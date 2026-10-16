@@ -4,6 +4,7 @@ pub mod active_calls;
 pub mod attendant;
 pub mod auth;
 pub mod backup;
+pub mod backup_targets;
 pub mod callcenter;
 pub mod cdr_spool;
 pub mod conference;
@@ -17,6 +18,8 @@ pub mod fsxml;
 pub mod ldap;
 pub mod mailer;
 pub mod phoneblock;
+pub mod portainer;
+pub mod rclone;
 pub mod recovery;
 pub mod retention;
 pub mod routes;
@@ -251,10 +254,12 @@ pub fn api_router() -> (Router<AppState>, utoipa::openapi::OpenApi) {
         .merge(routes::oidc::router())
         .merge(routes::identity::router())
         .merge(routes::users::router())
+        .merge(routes::roles::router())
         .merge(routes::extensions::router())
         .merge(routes::trunks::router())
         .merge(routes::settings::router())
         .merge(routes::transcription::router())
+        .merge(routes::transcription_jobs::router())
         .merge(routes::phones::router())
         .merge(routes::voicemail::router())
         .merge(routes::groups::router())
@@ -265,6 +270,7 @@ pub fn api_router() -> (Router<AppState>, utoipa::openapi::OpenApi) {
         .merge(routes::doors::router())
         .merge(routes::webrtc::router())
         .merge(routes::backups::router())
+        .merge(routes::backup_targets::router())
         .merge(routes::recovery::router())
         .merge(routes::diagnostics::router())
         .merge(routes::blocking::router())

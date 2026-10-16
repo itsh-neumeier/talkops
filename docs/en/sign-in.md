@@ -81,6 +81,7 @@ of a test user.
 
 OIDC: group names from the claim. LDAP: group DN or just the CN
 (`pbx-admins` matches `CN=pbx-admins,OU=Groups,…`). Case does not matter.
+An own role can also select directory users by group (see [users and roles](users-and-roles.md)).
 The role is taken from the directory at every login – roles changed in
 TalkOps for these accounts only last until then.
 

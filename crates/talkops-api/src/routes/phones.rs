@@ -17,7 +17,6 @@ use talkops_core::phones::{
     PhonebookSection, SectionInput,
 };
 use talkops_core::tenant::TenantId;
-use talkops_core::users::Role;
 use talkops_provisioning::yealink::{KeyType, LineKey};
 use talkops_provisioning::{PhoneModel, PhoneSetting};
 use tokio::io::AsyncWriteExt;
@@ -32,6 +31,7 @@ use crate::error::{ApiError, ApiResult};
 use crate::routes::provisioning::{
     base_url, firmware_path, media_path, media_type, render_phone_config, setting_values,
 };
+use talkops_core::roles::Permission;
 
 /// Largest firmware image accepted (Yealink images are 20–150 MB).
 const FIRMWARE_LIMIT: usize = 512 * 1024 * 1024;
@@ -231,7 +231,7 @@ pub async fn list_phones(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> ApiResult<Json<Vec<PhoneListItem>>> {
-    auth.require(Role::Operator)?;
+    auth.require_perm(Permission::PhonesView)?;
     let assigned = phones::assigned_extensions(&state.db, auth.tenant).await?;
     let list = phones::list(&state.db, auth.tenant)
         .await?
@@ -273,7 +273,7 @@ pub async fn create_phone(
     auth: AuthUser,
     Json(input): Json<PhoneInput>,
 ) -> ApiResult<Json<Phone>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::PhonesManage)?;
     validate_phone(&state, &input)?;
     validate_media(&state, &auth, &input).await?;
     let phone = phones::create(&state.db, auth.tenant, &input).await?;
@@ -296,7 +296,7 @@ pub async fn get_phone(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<Json<PhoneDetail>> {
-    auth.require(Role::Operator)?;
+    auth.require_perm(Permission::PhonesView)?;
     let phone = phones::get(&state.db, auth.tenant, id).await?;
     let accounts = phones::accounts(&state.db, phone.id)
         .await?
@@ -322,7 +322,7 @@ pub async fn update_phone(
     Path(id): Path<Uuid>,
     Json(input): Json<PhoneInput>,
 ) -> ApiResult<Json<Phone>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::PhonesManage)?;
     validate_phone(&state, &input)?;
     validate_media(&state, &auth, &input).await?;
     let phone = phones::update(&state.db, auth.tenant, id, &input).await?;
@@ -345,7 +345,7 @@ pub async fn delete_phone(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<StatusCode> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::PhonesManage)?;
     let phone = phones::get(&state.db, auth.tenant, id).await?;
     phones::delete(&state.db, auth.tenant, id).await?;
     audit::record(
@@ -380,7 +380,7 @@ pub async fn update_phone_account(
     Path((id, device_id)): Path<(Uuid, Uuid)>,
     Json(input): Json<AccountTexts>,
 ) -> ApiResult<StatusCode> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::PhonesManage)?;
     let device = talkops_core::extensions::set_phone_texts(
         &state.db,
         auth.tenant,
@@ -426,7 +426,7 @@ pub async fn resync_phone(
     body: Option<Json<ResyncRequest>>,
 ) -> ApiResult<Json<ResyncResult>> {
     let reboot = body.map(|Json(b)| b.reboot).unwrap_or_default();
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::PhonesManage)?;
     let phone = phones::get(&state.db, auth.tenant, id).await?;
     let mut notified = 0;
     // One NOTIFY per phone is enough; try the accounts until one is reachable.
@@ -457,7 +457,7 @@ pub async fn phone_config(
     headers: HeaderMap,
     Path(id): Path<Uuid>,
 ) -> ApiResult<Response> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::PhonesManage)?;
     let phone = phones::get(&state.db, auth.tenant, id).await?;
     let body = render_phone_config(&state, auth.tenant, &phone, &headers).await?;
     audit::record(
@@ -560,7 +560,7 @@ pub async fn get_phone_settings(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> ApiResult<Json<PhoneSettingsView>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::PhonesManage)?;
     Ok(Json(phone_settings_view(&state, auth.tenant).await?))
 }
 
@@ -572,7 +572,7 @@ pub async fn update_phone_settings(
     auth: AuthUser,
     Json(input): Json<PhoneSettingsInput>,
 ) -> ApiResult<Json<PhoneSettingsView>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::PhonesManage)?;
     check_setting_values(&state, &input.values)?;
     phones::set_phone_defaults(&state.db, auth.tenant, &input.values).await?;
     audit::record(
@@ -593,7 +593,7 @@ pub async fn phone_models(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> ApiResult<Json<Vec<PhoneModelInfo>>> {
-    auth.require(Role::Operator)?;
+    auth.require_perm(Permission::PhonesView)?;
     Ok(Json(state.phone_catalog.all().map(Into::into).collect()))
 }
 
@@ -605,7 +605,7 @@ pub async fn list_firmware(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> ApiResult<Json<Vec<Firmware>>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::PhonesManage)?;
     Ok(Json(phones::list_firmware(&state.db, auth.tenant).await?))
 }
 
@@ -625,7 +625,7 @@ pub async fn upload_firmware(
     auth: AuthUser,
     mut multipart: Multipart,
 ) -> ApiResult<Json<Firmware>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::PhonesManage)?;
     let id = Uuid::new_v4();
     let dir = state.provisioning_dir.join("firmware").join(id.to_string());
     let result = receive_firmware(&state, &mut multipart, id, &dir).await;
@@ -746,7 +746,7 @@ pub async fn update_firmware(
     Path(id): Path<Uuid>,
     Json(input): Json<FirmwareUpdate>,
 ) -> ApiResult<Json<Firmware>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::PhonesManage)?;
     let fw = phones::set_firmware_active(&state.db, auth.tenant, id, input.active).await?;
     audit::record(
         &state.db,
@@ -767,7 +767,7 @@ pub async fn delete_firmware(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<StatusCode> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::PhonesManage)?;
     let fw = phones::get_firmware(&state.db, auth.tenant, id).await?;
     phones::delete_firmware(&state.db, auth.tenant, id).await?;
     let dir = state.provisioning_dir.join("firmware").join(id.to_string());
@@ -794,7 +794,7 @@ pub async fn list_media(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> ApiResult<Json<Vec<PhoneMedia>>> {
-    auth.require(Role::Operator)?;
+    auth.require_perm(Permission::PhonesView)?;
     Ok(Json(phones::list_media(&state.db, auth.tenant).await?))
 }
 
@@ -846,7 +846,7 @@ pub async fn upload_media(
     auth: AuthUser,
     mut multipart: Multipart,
 ) -> ApiResult<Json<PhoneMedia>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::PhonesManage)?;
     let text_err =
         |e: axum::extract::multipart::MultipartError| ApiError::BadRequest(e.to_string());
     let (mut kind, mut name, mut data) = (None, String::new(), None);
@@ -917,7 +917,7 @@ pub async fn media_file(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<Response> {
-    auth.require(Role::Operator)?;
+    auth.require_perm(Permission::PhonesView)?;
     let m = phones::get_media(&state.db, auth.tenant, id).await?;
     let data = tokio::fs::read(media_path(&state, m.id, &m.filename))
         .await
@@ -933,7 +933,7 @@ pub async fn delete_media(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<StatusCode> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::PhonesManage)?;
     let m = phones::get_media(&state.db, auth.tenant, id).await?;
     phones::delete_media(&state.db, auth.tenant, id).await?;
     let dir = state.provisioning_dir.join("media").join(id.to_string());
@@ -970,7 +970,7 @@ pub async fn create_section(
     auth: AuthUser,
     Json(input): Json<SectionInput>,
 ) -> ApiResult<Json<PhonebookSection>> {
-    auth.require(Role::Operator)?;
+    auth.require_perm(Permission::PhonebookEdit)?;
     let section = phones::create_section(&state.db, auth.tenant, &input).await?;
     audit::record(
         &state.db,
@@ -992,7 +992,7 @@ pub async fn update_section(
     Path(id): Path<Uuid>,
     Json(input): Json<SectionInput>,
 ) -> ApiResult<Json<PhonebookSection>> {
-    auth.require(Role::Operator)?;
+    auth.require_perm(Permission::PhonebookEdit)?;
     let section = phones::update_section(&state.db, auth.tenant, id, &input).await?;
     audit::record(
         &state.db,
@@ -1013,7 +1013,7 @@ pub async fn delete_section(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<StatusCode> {
-    auth.require(Role::Operator)?;
+    auth.require_perm(Permission::PhonebookEdit)?;
     let section = phones::get_section(&state.db, auth.tenant, id).await?;
     phones::delete_section(&state.db, auth.tenant, id).await?;
     audit::record(
@@ -1046,7 +1046,7 @@ pub async fn create_contact(
     auth: AuthUser,
     Json(input): Json<ContactInput>,
 ) -> ApiResult<Json<Contact>> {
-    auth.require(Role::Operator)?;
+    auth.require_perm(Permission::PhonebookEdit)?;
     let c = phones::create_contact(&state.db, auth.tenant, &input).await?;
     audit::record(
         &state.db,
@@ -1068,7 +1068,7 @@ pub async fn import_contacts(
     auth: AuthUser,
     Json(input): Json<ImportRequest>,
 ) -> ApiResult<Json<ImportReport>> {
-    auth.require(Role::Operator)?;
+    auth.require_perm(Permission::PhonebookEdit)?;
     let report = contact_import::import(&state.db, auth.tenant, &input).await?;
     if !input.dry_run {
         audit::record(
@@ -1093,7 +1093,7 @@ pub async fn update_contact(
     Path(id): Path<Uuid>,
     Json(input): Json<ContactInput>,
 ) -> ApiResult<Json<Contact>> {
-    auth.require(Role::Operator)?;
+    auth.require_perm(Permission::PhonebookEdit)?;
     let c = phones::update_contact(&state.db, auth.tenant, id, &input).await?;
     audit::record(
         &state.db,
@@ -1114,7 +1114,7 @@ pub async fn delete_contact(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<StatusCode> {
-    auth.require(Role::Operator)?;
+    auth.require_perm(Permission::PhonebookEdit)?;
     phones::delete_contact(&state.db, auth.tenant, id).await?;
     audit::record(
         &state.db,
@@ -1172,7 +1172,7 @@ pub async fn provisioning_info(
     auth: AuthUser,
     headers: HeaderMap,
 ) -> ApiResult<Json<ProvisioningInfo>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::PhonesManage)?;
     let info = info(&state, &auth, &headers, false).await?;
     audit::record(
         &state.db,
@@ -1194,7 +1194,7 @@ pub async fn regenerate_provisioning(
     auth: AuthUser,
     headers: HeaderMap,
 ) -> ApiResult<Json<ProvisioningInfo>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::PhonesManage)?;
     let info = info(&state, &auth, &headers, true).await?;
     audit::record(
         &state.db,

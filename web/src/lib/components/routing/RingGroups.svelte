@@ -7,7 +7,7 @@
 	import MemberPicker from '#lib/components/routing/MemberPicker.svelte';
 	import { describe, loadTargets, targets } from '#lib/destinations.svelte.ts';
 	import { t } from '#lib/i18n/index.svelte.ts';
-	import { hasRole } from '#lib/session.svelte.ts';
+	import { can } from '#lib/session.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
 
 	const blank = () => ({
@@ -66,7 +66,7 @@
 <div class="space-y-3">
 	<div class="flex items-center justify-between">
 		<p class="text-sm text-slate-600 dark:text-slate-300">{t('groups.hint')}</p>
-		{#if hasRole('admin')}<button class="btn btn-primary" onclick={() => edit(null)}
+		{#if can('routing.manage')}<button class="btn btn-primary" onclick={() => edit(null)}
 				>{t('groups.new')}</button
 			>{/if}
 	</div>
@@ -100,7 +100,7 @@
 							<td class="col-opt-lg">{g.members.length}</td>
 							<td class="col-opt-lg">{describe(g.fallback_type, g.fallback_id)?.label ?? '—'}</td>
 							<td class="space-x-1 text-right whitespace-nowrap">
-								{#if hasRole('admin')}
+								{#if can('routing.manage')}
 									<button class="btn btn-sm" onclick={() => edit(g)}>{t('common.edit')}</button>
 									<button class="btn btn-sm btn-danger" onclick={() => remove(g)}
 										>{t('common.delete')}</button

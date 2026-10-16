@@ -9,7 +9,6 @@ use talkops_core::audit;
 use talkops_core::extensions::{
     self, Device, DeviceInput, Extension, ExtensionInput, SipPasswordFormat,
 };
-use talkops_core::users::Role;
 use talkops_core::{phones, settings};
 use utoipa::ToSchema;
 use utoipa_axum::router::OpenApiRouter;
@@ -20,6 +19,7 @@ use crate::AppState;
 use crate::auth::AuthUser;
 use crate::error::{ApiError, ApiResult};
 use crate::fsxml::SIP_DOMAIN;
+use talkops_core::roles::Permission;
 
 pub fn router() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
@@ -91,8 +91,12 @@ async fn check_owner(
     ext: &Extension,
     write: bool,
 ) -> ApiResult<()> {
-    let needed = if write { Role::Admin } else { Role::Operator };
-    if auth.role >= needed || ext.user_id == Some(auth.id) {
+    let needed = if write {
+        Permission::ExtensionsManage
+    } else {
+        Permission::ExtensionsView
+    };
+    if auth.can(needed) || ext.user_id == Some(auth.id) {
         let _ = state;
         Ok(())
     } else {
@@ -106,7 +110,7 @@ pub async fn list_extensions(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> ApiResult<Json<Vec<Extension>>> {
-    auth.require(Role::Operator)?;
+    auth.require_perm(Permission::ExtensionsView)?;
     Ok(Json(extensions::list(&state.db, auth.tenant).await?))
 }
 
@@ -117,7 +121,7 @@ pub async fn create_extension(
     auth: AuthUser,
     Json(input): Json<ExtensionInput>,
 ) -> ApiResult<Json<Extension>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::ExtensionsManage)?;
     let emergency = emergency_numbers(&state, &auth).await?;
     let ext = extensions::create(&state.db, auth.tenant, &input, &emergency).await?;
     audit::record(
@@ -153,7 +157,7 @@ pub async fn update_extension(
     Path(id): Path<Uuid>,
     Json(input): Json<ExtensionInput>,
 ) -> ApiResult<Json<Extension>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::ExtensionsManage)?;
     let emergency = emergency_numbers(&state, &auth).await?;
     let ext = extensions::update(&state.db, auth.tenant, id, &input, &emergency).await?;
     audit::record(
@@ -175,7 +179,7 @@ pub async fn delete_extension(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<StatusCode> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::ExtensionsManage)?;
     let ext = extensions::get(&state.db, auth.tenant, id).await?;
     extensions::delete(&state.db, auth.tenant, id).await?;
     talkops_core::trunks::forget_extension(&state.db, auth.tenant, id).await?;
@@ -214,7 +218,7 @@ pub async fn create_device(
     Path(id): Path<Uuid>,
     Json(input): Json<DeviceInput>,
 ) -> ApiResult<Json<DeviceCredentials>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::ExtensionsManage)?;
     check_phone_slot(&state, &auth, &input).await?;
     let ext = extensions::get(&state.db, auth.tenant, id).await?;
     let (device, password) =
@@ -245,7 +249,7 @@ pub async fn update_device(
     Path(id): Path<Uuid>,
     Json(input): Json<DeviceInput>,
 ) -> ApiResult<Json<Device>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::ExtensionsManage)?;
     check_phone_slot(&state, &auth, &input).await?;
     let before = extensions::get_device(&state.db, auth.tenant, id).await?;
     let device = extensions::update_device(&state.db, auth.tenant, id, &input).await?;
@@ -283,7 +287,7 @@ pub async fn delete_device(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<StatusCode> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::ExtensionsManage)?;
     let device = extensions::get_device(&state.db, auth.tenant, id).await?;
     extensions::delete_device(&state.db, auth.tenant, id).await?;
     audit::record(
@@ -300,7 +304,9 @@ pub async fn delete_device(
 
 /// Browser credentials belong to the browser user, not the extension owner.
 fn check_browser_owner(auth: &AuthUser, device: &Device) -> ApiResult<()> {
-    if auth.role != Role::Admin && device.browser_user_id.is_some_and(|id| id != auth.id) {
+    if !auth.can(Permission::ExtensionsManage)
+        && device.browser_user_id.is_some_and(|id| id != auth.id)
+    {
         return Err(ApiError::Forbidden);
     }
     Ok(())
@@ -366,7 +372,7 @@ pub async fn reset_device_password(
         .sip_password_format
         .filter(|f| *f != device.sip_password_format);
     if format.is_some() {
-        auth.require(Role::Admin)?;
+        auth.require_perm(Permission::ExtensionsManage)?;
     }
     let (password, used) =
         extensions::reset_device_password(&state.db, auth.tenant, &state.secrets, id, format)

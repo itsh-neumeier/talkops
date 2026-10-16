@@ -34,6 +34,14 @@ export async function request<T>(method: string, path: string, body?: unknown): 
 }
 
 async function send<T>(method: string, path: string, body?: unknown): Promise<T> {
+	return (await sendWithHeaders<T>(method, path, body)).data;
+}
+
+async function sendWithHeaders<T>(
+	method: string,
+	path: string,
+	body?: unknown
+): Promise<{ data: T; headers: Headers }> {
 	const headers: Record<string, string> = { 'X-Requested-With': 'TalkOps' };
 	if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
 	if (body !== undefined) headers['Content-Type'] = 'application/json';
@@ -43,17 +51,31 @@ async function send<T>(method: string, path: string, body?: unknown): Promise<T>
 		body: body === undefined ? undefined : JSON.stringify(body),
 		credentials: 'same-origin'
 	});
-	if (res.status === 204) return undefined as T;
+	if (res.status === 204) return { data: undefined as T, headers: res.headers };
 	const data = await res.json().catch(() => ({}));
 	if (!res.ok) {
 		if (res.status === 401 && !path.startsWith('/auth/login') && path !== '/auth/me')
 			onUnauthorized();
 		throw new ApiError(res.status, data.error ?? 'error', data.message ?? res.statusText);
 	}
-	return data as T;
+	return { data: data as T, headers: res.headers };
+}
+
+/** A GET of a list with the number of all matches in `X-Total-Count`. */
+async function getPage<T>(path: string): Promise<{ items: T[]; total: number }> {
+	requestStarted();
+	try {
+		const { data, headers } = await sendWithHeaders<T[]>('GET', path);
+		const header = headers.get('X-Total-Count');
+		const total = header === null ? NaN : Number(header);
+		return { items: data, total: Number.isFinite(total) ? total : data.length };
+	} finally {
+		requestFinished();
+	}
 }
 
 export const api = {
+	getPage,
 	get: <T>(path: string) => request<T>('GET', path),
 	post: <T>(path: string, body?: unknown) => request<T>('POST', path, body ?? {}),
 	put: <T>(path: string, body: unknown) => request<T>('PUT', path, body),
@@ -64,12 +86,77 @@ export const api = {
 
 export type Role = 'admin' | 'operator' | 'user';
 
+/** Permission keys (see talkops_core::roles). */
+export type Permission =
+	| 'calls.active'
+	| 'calls.view_all'
+	| 'calls.live_transcript'
+	| 'calls.live_transcript_all'
+	| 'recordings.access_all'
+	| 'recordings.delete'
+	| 'recordings.retranscribe'
+	| 'transcriptions.view'
+	| 'transcriptions.manage'
+	| 'voicemail.access_all'
+	| 'voicemail.settings'
+	| 'phonebook.edit'
+	| 'extensions.view'
+	| 'extensions.manage'
+	| 'softphone.any_extension'
+	| 'users.view'
+	| 'users.manage'
+	| 'routing.view'
+	| 'routing.manage'
+	| 'routing.override'
+	| 'blocking.manage'
+	| 'blocking.settings'
+	| 'trunks.view'
+	| 'trunks.manage'
+	| 'phones.view'
+	| 'phones.manage'
+	| 'doors.manage'
+	| 'settings.manage'
+	| 'transcription.settings'
+	| 'security.manage'
+	| 'identity.manage'
+	| 'backups.manage'
+	| 'diagnostics.manage'
+	| 'audit.view';
+
+export interface PermissionInfo {
+	key: Permission;
+	/** Group in the editor, e.g. `calls` or `system`. */
+	area: string;
+	/** Gives access to secrets, the system or more rights. */
+	sensitive: boolean;
+}
+
+export interface RoleRecord {
+	id: string;
+	/** Built-in role, or null for an own role. */
+	builtin: Role | null;
+	name: string;
+	description: string;
+	/** Empty for the admin role, which has all permissions. */
+	permissions: Permission[];
+	directory_group: string;
+	users: number;
+	updated_at: string;
+}
+
+export interface RolesOverview {
+	permissions: PermissionInfo[];
+	roles: RoleRecord[];
+}
+
 export interface User {
 	id: string;
 	username: string;
 	display_name: string;
 	email: string | null;
 	role: Role;
+	/** Own role; null: the built-in role in `role`. */
+	role_id: string | null;
 	enabled: boolean;
 	auth_source: string;
 	last_login_at: string | null;
@@ -79,6 +166,8 @@ export interface User {
 export interface Me {
 	user: User;
 	csrf_token: string;
+	/** Permission keys of the user's role; admins get all keys. */
+	permissions: Permission[];
 }
 
 export interface Component {
@@ -309,6 +398,14 @@ export interface Call {
 	billsec: number;
 	hangup_cause: string;
 	recording_id: string | null;
+	dest_extension_id?: string | null;
+	number_id?: string | null;
+	/** Resolved caller (extension or phone book name). */
+	caller?: CallParty;
+	/** Resolved called party; the answering extension of inbound calls. */
+	called?: CallParty;
+	/** Inbound: the own number that the caller dialed. */
+	via_number?: string | null;
 }
 
 export type StatsRange = '1h' | '1d' | '1w' | '1m';
@@ -860,4 +957,69 @@ export interface DoorEvent {
 	detail: Record<string, unknown>;
 	has_snapshot: boolean;
 	created_at: string;
+}
+
+// --- transcription jobs -------------------------------------------------------
+
+export type EngineChoice =
+	| { kind: 'local'; model: 'base' | 'fast' | 'accurate' | 'best' | 'german' }
+	| { kind: 'cloud'; provider_id: string; model: string };
+
+export interface TranscribeOption {
+	choice: EngineChoice;
+	/** Cloud connection name; empty for local models. */
+	provider: string;
+	eta_secs: number;
+	/** The estimate comes from measured runs on this server. */
+	measured: boolean;
+	cost_usd: number | null;
+	/** The engine of the automatic first pass. */
+	default: boolean;
+}
+
+export interface TranscribeOptions {
+	audio_secs: number;
+	queue_secs: number;
+	current_engine: string | null;
+	options: TranscribeOption[];
+}
+
+export type JobState = 'queued' | 'running' | 'done' | 'failed' | 'paused' | 'cancelled';
+
+export interface TranscriptionJob {
+	id: string;
+	status: JobState;
+	priority: number;
+	progress: number | null;
+	pass: number;
+	engine: EngineChoice | null;
+	engine_key: string;
+	recording_id: string | null;
+	voicemail_id: string | null;
+	audio_secs: number;
+	caller_number: string | null;
+	destination: string | null;
+	call_started_at: string | null;
+	requested_by: string | null;
+	attempts: number;
+	last_error: string | null;
+	control: 'pause' | 'stop' | null;
+	created_at: string;
+	started_at: string | null;
+	run_started_at: string | null;
+	finished_at: string | null;
+	eta_secs: number | null;
+	resumable: boolean;
+}
+
+export interface WorkerStatus {
+	worker_id: string;
+	cpu_percent: number;
+	cpus: number;
+	load1: number;
+	rss_bytes: number;
+	mem_used_bytes: number;
+	mem_total_bytes: number;
+	job_id: string | null;
+	updated_at: string;
 }

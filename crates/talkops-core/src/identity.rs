@@ -293,6 +293,8 @@ pub struct ExternalAccount {
     pub display_name: String,
     pub email: Option<String>,
     pub role: Role,
+    /// Directory groups; an own role with one of these groups is used.
+    pub groups: Vec<String>,
 }
 
 /// Makes a user name valid for TalkOps (`[a-zA-Z0-9._@-]{1,64}`).
@@ -316,6 +318,17 @@ pub async fn upsert_user(pool: &PgPool, tenant: TenantId, a: &ExternalAccount) -
         a.display_name.trim().chars().take(128).collect()
     };
     let email = a.email.as_deref().map(str::trim).filter(|e| !e.is_empty());
+    // Admins keep the admin role; other users get an own role by group.
+    let role_id = if a.role == Role::Admin {
+        None
+    } else {
+        crate::roles::directory_role(pool, tenant, &a.groups).await?
+    };
+    let role = if role_id.is_some() {
+        Role::User
+    } else {
+        a.role
+    };
     let existing: Option<Uuid> = sqlx::query_scalar(
         "SELECT id FROM users WHERE tenant_id = $1 AND auth_source = $2 AND external_id = $3",
     )
@@ -327,14 +340,15 @@ pub async fn upsert_user(pool: &PgPool, tenant: TenantId, a: &ExternalAccount) -
     let id = match existing {
         Some(id) => {
             sqlx::query(
-                "UPDATE users SET display_name = $2, email = $3, role = $4, last_login_at = now(),
-                     updated_at = now()
+                "UPDATE users SET display_name = $2, email = $3, role = $4, role_id = $5,
+                     last_login_at = now(), updated_at = now()
                  WHERE id = $1",
             )
             .bind(id)
             .bind(&display)
             .bind(email)
-            .bind(a.role)
+            .bind(role)
+            .bind(role_id)
             .execute(pool)
             .await?;
             id
@@ -354,16 +368,17 @@ pub async fn upsert_user(pool: &PgPool, tenant: TenantId, a: &ExternalAccount) -
             }
             sqlx::query_scalar(
                 "INSERT INTO users (tenant_id, username, display_name, email, role, auth_source,
-                                    external_id, last_login_at)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, now()) RETURNING id",
+                                    external_id, last_login_at, role_id)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, now(), $8) RETURNING id",
             )
             .bind(tenant)
             .bind(&username)
             .bind(&display)
             .bind(email)
-            .bind(a.role)
+            .bind(role)
             .bind(a.source)
             .bind(&a.external_id)
+            .bind(role_id)
             .fetch_one(pool)
             .await?
         }

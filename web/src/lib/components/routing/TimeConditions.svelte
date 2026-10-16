@@ -7,7 +7,7 @@
 	import Modal from '#lib/components/Modal.svelte';
 	import { describe, loadTargets, targets } from '#lib/destinations.svelte.ts';
 	import { t, type MessageKey } from '#lib/i18n/index.svelte.ts';
-	import { hasRole } from '#lib/session.svelte.ts';
+	import { can } from '#lib/session.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
 
 	const days = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
@@ -106,7 +106,7 @@
 <div class="space-y-3">
 	<div class="flex items-center justify-between gap-2">
 		<p class="text-sm text-slate-600 dark:text-slate-300">{t('tc.hint')}</p>
-		{#if hasRole('admin')}<button class="btn btn-primary" onclick={() => edit(null)}
+		{#if can('routing.manage')}<button class="btn btn-primary" onclick={() => edit(null)}
 				>{t('tc.new')}</button
 			>{/if}
 	</div>
@@ -146,7 +146,7 @@
 									<option value="open">{t('tc.forceOpen')}</option>
 									<option value="closed">{t('tc.forceClosed')}</option>
 								</select>
-								{#if hasRole('admin')}
+								{#if can('routing.manage')}
 									<button class="btn btn-sm" onclick={() => edit(c)}>{t('common.edit')}</button>
 									<button class="btn btn-sm btn-danger" onclick={() => remove(c)}
 										>{t('common.delete')}</button

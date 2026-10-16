@@ -1,4 +1,5 @@
-//! User management (admin) .
+//! User management. Changing users needs `users.manage`; only admins give
+//! the admin role or change users with more rights than themselves.
 
 use axum::Json;
 use axum::extract::{Path, State};
@@ -15,6 +16,7 @@ use uuid::Uuid;
 use crate::AppState;
 use crate::auth::AuthUser;
 use crate::error::{ApiError, ApiResult};
+use talkops_core::roles::{self, Permission};
 
 pub fn router() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
@@ -22,6 +24,48 @@ pub fn router() -> OpenApiRouter<AppState> {
         .routes(routes!(get_user, update_user, delete_user))
         .routes(routes!(set_user_password))
         .routes(routes!(reset_user_totp))
+}
+
+/// Resolves the role choice of a request (`role_id` of any role, else the
+/// built-in `role`) into the stored form, and checks that the caller may
+/// give it: only admins give the admin role, and nobody gives a role with
+/// permissions that they do not have.
+async fn assignable(
+    state: &AppState,
+    auth: &AuthUser,
+    role: Role,
+    role_id: Option<Uuid>,
+) -> ApiResult<(Role, Option<Uuid>)> {
+    let (role, own, permissions) = match role_id {
+        Some(id) => {
+            let (role, own, record) = roles::assignment(&state.db, auth.tenant, id)
+                .await
+                .map_err(|_| ApiError::BadRequest("unknown role".into()))?;
+            (role, own, record.permission_set())
+        }
+        None => (
+            role,
+            None,
+            roles::of_user(&state.db, auth.tenant, role, None).await?,
+        ),
+    };
+    if !auth.is_admin() && (role == Role::Admin || !auth.permissions.covers(&permissions)) {
+        return Err(ApiError::Forbidden);
+    }
+    Ok((role, own))
+}
+
+/// Users with more rights than the caller (admins, or roles with other
+/// permissions) can only be changed by admins.
+async fn manageable(state: &AppState, auth: &AuthUser, user: &User) -> ApiResult<()> {
+    if auth.is_admin() {
+        return Ok(());
+    }
+    let theirs = roles::of_user(&state.db, auth.tenant, user.role, user.role_id).await?;
+    if user.role == Role::Admin || !auth.permissions.covers(&theirs) {
+        return Err(ApiError::Forbidden);
+    }
+    Ok(())
 }
 
 #[derive(Deserialize, ToSchema)]
@@ -35,7 +79,7 @@ pub async fn list_users(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> ApiResult<Json<Vec<User>>> {
-    auth.require(Role::Operator)?;
+    auth.require_perm(Permission::UsersView)?;
     Ok(Json(users::list(&state.db, auth.tenant).await?))
 }
 
@@ -46,7 +90,13 @@ pub async fn create_user(
     auth: AuthUser,
     Json(input): Json<NewUser>,
 ) -> ApiResult<Json<User>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::UsersManage)?;
+    let (role, role_id) = assignable(&state, &auth, input.role, input.role_id).await?;
+    let input = NewUser {
+        role,
+        role_id,
+        ..input
+    };
     let user = users::create(&state.db, auth.tenant, &input).await?;
     audit::record(
         &state.db,
@@ -54,7 +104,7 @@ pub async fn create_user(
         "create",
         "user",
         Some(user.id.to_string()),
-        json!({"username": user.username, "role": user.role}),
+        json!({"username": user.username, "role": user.role, "role_id": user.role_id}),
     )
     .await?;
     Ok(Json(user))
@@ -68,7 +118,7 @@ pub async fn get_user(
     Path(id): Path<Uuid>,
 ) -> ApiResult<Json<User>> {
     if auth.id != id {
-        auth.require(Role::Operator)?;
+        auth.require_perm(Permission::UsersView)?;
     }
     Ok(Json(users::get(&state.db, auth.tenant, id).await?))
 }
@@ -81,8 +131,15 @@ pub async fn update_user(
     Path(id): Path<Uuid>,
     Json(input): Json<UserUpdate>,
 ) -> ApiResult<Json<User>> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::UsersManage)?;
     let before = users::get(&state.db, auth.tenant, id).await?;
+    manageable(&state, &auth, &before).await?;
+    let (role, role_id) = assignable(&state, &auth, input.role, input.role_id).await?;
+    let input = UserUpdate {
+        role,
+        role_id,
+        ..input
+    };
     let demotes_admin = before.role == Role::Admin
         && before.enabled
         && (input.role != Role::Admin || !input.enabled);
@@ -101,7 +158,7 @@ pub async fn update_user(
         "update",
         "user",
         Some(id.to_string()),
-        json!({"role": user.role, "enabled": user.enabled}),
+        json!({"role": user.role, "role_id": user.role_id, "enabled": user.enabled}),
     )
     .await?;
     Ok(Json(user))
@@ -114,13 +171,14 @@ pub async fn delete_user(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<StatusCode> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::UsersManage)?;
     if id == auth.id {
         return Err(ApiError::BadRequest(
             "you cannot delete your own account".into(),
         ));
     }
     let user = users::get(&state.db, auth.tenant, id).await?;
+    manageable(&state, &auth, &user).await?;
     if user.role == Role::Admin
         && user.enabled
         && users::enabled_admin_count(&state.db, auth.tenant).await? <= 1
@@ -150,8 +208,10 @@ pub async fn set_user_password(
     Path(id): Path<Uuid>,
     Json(input): Json<SetPassword>,
 ) -> ApiResult<StatusCode> {
-    auth.require(Role::Admin)?;
-    if users::get(&state.db, auth.tenant, id).await?.auth_source != "local" {
+    auth.require_perm(Permission::UsersManage)?;
+    let user = users::get(&state.db, auth.tenant, id).await?;
+    manageable(&state, &auth, &user).await?;
+    if user.auth_source != "local" {
         return Err(ApiError::BadRequest(
             "this account logs in through the directory".into(),
         ));
@@ -178,8 +238,9 @@ pub async fn reset_user_totp(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<StatusCode> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::UsersManage)?;
     let user = users::get(&state.db, auth.tenant, id).await?;
+    manageable(&state, &auth, &user).await?;
     talkops_core::mfa::disable(&state.db, id).await?;
     users::delete_user_sessions(&state.db, id).await?;
     audit::record(

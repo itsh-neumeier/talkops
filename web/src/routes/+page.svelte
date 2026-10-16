@@ -18,7 +18,7 @@
 	import ActiveCalls from '#lib/components/ActiveCalls.svelte';
 	import GettingStarted from '#lib/components/GettingStarted.svelte';
 	import { formatDateTime, formatDuration, t, type MessageKey } from '#lib/i18n/index.svelte.ts';
-	import { hasRole } from '#lib/session.svelte.ts';
+	import { can, isAdmin } from '#lib/session.svelte.ts';
 
 	const ranges: { id: StatsRange; key: MessageKey }[] = [
 		{ id: '1h', key: 'dash.range.1h' },
@@ -42,10 +42,10 @@
 		try {
 			status = await fetchStatus();
 			recent = await api.get<Call[]>('/calls?limit=8');
-			if (hasRole('operator')) {
+			if (can('calls.active')) {
 				[live, trunks, stats, active] = await Promise.all([
 					api.get<LiveStatus>('/telephony/status'),
-					api.get<TrunkDetail[]>('/trunks'),
+					can('trunks.view') ? api.get<TrunkDetail[]>('/trunks') : Promise.resolve([]),
 					api.get<CallStats>(`/stats/calls?range=${range}`),
 					api.get<ActiveCall[]>('/telephony/calls')
 				]);
@@ -57,7 +57,7 @@
 	}
 
 	async function loadOnce() {
-		if (!hasRole('admin')) return;
+		if (!can('backups.manage')) return;
 		try {
 			const b = await api.get<{ settings: { last_run_at: string | null } }>('/backups');
 			lastBackup = b.settings.last_run_at;
@@ -105,14 +105,12 @@
 
 <div class="space-y-4">
 	<PageHeader title={t('nav.dashboard')} />
-	{#if hasRole('admin')}<GettingStarted
-			registrations={live ? live.registrations.length : null}
-		/>{/if}
+	{#if isAdmin()}<GettingStarted registrations={live ? live.registrations.length : null} />{/if}
 	{#if failed}
 		<p class="card text-red-600 dark:text-red-400">{t('status.error')}</p>
 	{/if}
 
-	{#if hasRole('operator') && stats}
+	{#if can('calls.active') && stats}
 		<div class="grid grid-cols-2 gap-3 @3xl:grid-cols-5">
 			{#each [['dash.kpi.active', String(active.filter((c) => c.state !== 'ringing').length)], ['dash.kpi.calls', String(stats.total)], ['dash.kpi.missed', String(stats.missed)], ['dash.kpi.answerRate', stats.answer_rate === null ? '—' : `${stats.answer_rate.toLocaleString()} %`], ['dash.kpi.avgTalk', formatDuration(stats.avg_talk_secs)]] as const as [key, value] (key)}
 				<div class="card">
@@ -193,7 +191,7 @@
 									>{/if}
 							</dd>
 						</div>
-						{#if hasRole('admin')}
+						{#if can('backups.manage')}
 							<div class="flex justify-between py-1.5">
 								<dt class="text-slate-500">{t('dash.lastBackup')}</dt>
 								<dd>{lastBackup ? formatDateTime(lastBackup) : '—'}</dd>
@@ -223,7 +221,7 @@
 				{/if}
 			</section>
 		</div>
-	{:else if hasRole('operator') && !net.settled}
+	{:else if can('calls.active') && !net.settled}
 		<div class="grid grid-cols-1 gap-4 @3xl:grid-cols-3">
 			<div class="card @3xl:col-span-2"><Skeleton lines={8} /></div>
 			<div class="card"><Skeleton lines={5} /></div>
@@ -240,8 +238,8 @@
 		</section>
 	{/if}
 
-	<div class="grid grid-cols-1 gap-4 {hasRole('operator') ? '@3xl:grid-cols-2' : ''}">
-		{#if hasRole('operator')}
+	<div class="grid grid-cols-1 gap-4 {can('calls.active') ? '@3xl:grid-cols-2' : ''}">
+		{#if can('calls.active')}
 			<ActiveCalls calls={active} {now} />
 		{/if}
 		<section class="card space-y-2">

@@ -6,7 +6,7 @@
 	import { loadTargets, targets } from '#lib/destinations.svelte.ts';
 	import { ICONS, typeKey, walk } from '#lib/flow.ts';
 	import { t } from '#lib/i18n/index.svelte.ts';
-	import { hasRole } from '#lib/session.svelte.ts';
+	import { can } from '#lib/session.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
 
 	let error = $state('');
@@ -32,7 +32,7 @@
 <div class="space-y-3">
 	<div class="flex items-center justify-between gap-2">
 		<p class="text-sm text-slate-600 dark:text-slate-300">{t('flow.listHint')}</p>
-		{#if hasRole('admin')}<a class="btn btn-primary" href="/routing/attendants/new"
+		{#if can('routing.manage')}<a class="btn btn-primary" href="/routing/attendants/new"
 				>{t('flow.new')}</a
 			>{/if}
 	</div>
@@ -66,9 +66,9 @@
 			</div>
 			<span class="space-x-1">
 				<a class="btn btn-sm" href="/routing/attendants/{a.id}"
-					>{hasRole('admin') ? t('common.edit') : t('flow.view')}</a
+					>{can('routing.manage') ? t('common.edit') : t('flow.view')}</a
 				>
-				{#if hasRole('admin')}
+				{#if can('routing.manage')}
 					<button class="btn btn-sm btn-danger" onclick={() => remove(a)}
 						>{t('common.delete')}</button
 					>

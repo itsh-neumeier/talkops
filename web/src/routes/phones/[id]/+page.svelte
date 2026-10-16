@@ -20,7 +20,7 @@
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
 	import Modal from '#lib/components/Modal.svelte';
 	import { formatDateTime, t } from '#lib/i18n/index.svelte.ts';
-	import { hasRole } from '#lib/session.svelte.ts';
+	import { can } from '#lib/session.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
 
 	const id = $derived(page.params.id);
@@ -229,7 +229,7 @@
 	<PageHeader
 		back={{ href: '/phones', label: t('nav.phones') }}
 		heading={phone ? heading : undefined}
-		actions={phone && hasRole('admin') ? actions : undefined}
+		actions={phone && can('phones.manage') ? actions : undefined}
 	/>
 	{#snippet heading()}
 		{phone!.name}
@@ -287,7 +287,7 @@
 									>{a.extension_number}</a
 								>
 								{a.display_name}
-								{#if hasRole('admin')}
+								{#if can('phones.manage')}
 									<button
 										class="btn btn-sm ml-1"
 										title={t('phones.unassign')}
@@ -303,7 +303,7 @@
 										class="input"
 										maxlength="32"
 										placeholder={a.extension_number}
-										disabled={!hasRole('admin')}
+										disabled={!can('phones.manage')}
 										bind:value={texts[a.device_id].phone_label}
 									/>
 								</div>
@@ -314,7 +314,7 @@
 										class="input"
 										maxlength="64"
 										placeholder={a.display_name}
-										disabled={!hasRole('admin')}
+										disabled={!can('phones.manage')}
 										bind:value={texts[a.device_id].phone_display_name}
 									/>
 								</div>
@@ -323,7 +323,7 @@
 					{/each}
 				</ul>
 			{/if}
-			{#if hasRole('admin')}
+			{#if can('phones.manage')}
 				{#if slotsFree}
 					<div
 						class="flex flex-wrap items-end gap-2 border-t border-slate-100 pt-3 dark:border-slate-800"
@@ -489,7 +489,7 @@
 			</section>
 		{/if}
 
-		{#if hasRole('admin')}
+		{#if can('phones.manage')}
 			<div class="flex justify-end">
 				<button class="btn btn-primary" onclick={save}>{t('common.save')}</button>
 			</div>

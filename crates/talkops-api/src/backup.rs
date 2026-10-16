@@ -11,6 +11,7 @@
 //! deployment/<file>      selected Compose and environment files (encrypted archives only)
 //! ```
 
+use crate::rclone::Rclone;
 use crate::recovery::{self, DeploymentInfo, FileInfo};
 use age::secrecy::SecretString;
 use std::collections::BTreeMap;
@@ -63,6 +64,10 @@ pub struct BackupConfig {
     pub project_name: String,
     pub profiles: String,
     pub restore_max_bytes: u64,
+    /// Transfer tool for backup targets.
+    pub rclone: Rclone,
+    /// Allowed directories of local backup targets.
+    pub target_roots: Vec<PathBuf>,
 }
 
 impl BackupConfig {
@@ -87,6 +92,13 @@ impl BackupConfig {
             project_name: s.compose_project.clone(),
             profiles: s.compose_profiles.clone(),
             restore_max_bytes: s.restore_max_bytes,
+            rclone: Rclone::new(s.rclone.clone()),
+            target_roots: s
+                .backup_target_roots
+                .iter()
+                .filter(|p| !p.as_os_str().is_empty())
+                .cloned()
+                .collect(),
             volumes: vec![
                 ("voicemail", s.voicemail_dir.clone()),
                 ("sounds", s.sounds_dir.clone()),
@@ -414,8 +426,31 @@ fn write_archive<W: Write>(
     Ok(tar.into_inner()?.finish()?)
 }
 
+/// The creation time in an archive name (local time).
+pub fn stamp(name: &str) -> Option<chrono::NaiveDateTime> {
+    if !valid_name(name) {
+        return None;
+    }
+    let stamp = &name[PREFIX.len()..PREFIX.len() + 15];
+    chrono::NaiveDateTime::parse_from_str(stamp, "%Y%m%d-%H%M%S").ok()
+}
+
 /// Writes a checksum inventory and encrypts the archive when a password is set.
 pub async fn create(cfg: &BackupConfig, db: &PgPool, include_recordings: bool) -> Result<String> {
+    create_in(cfg, db, include_recordings, &cfg.dir).await
+}
+
+/// Like [`create`], but writes the archive into `out_dir`: a directory in
+/// the backup directory (same file system), e.g. for archives that only
+/// go to backup targets.
+pub async fn create_in(
+    cfg: &BackupConfig,
+    db: &PgPool,
+    include_recordings: bool,
+    out_dir: &Path,
+) -> Result<String> {
+    // The stack from Portainer, when connected (ADR 0032).
+    crate::portainer::refresh(cfg, db).await;
     let _guard = BUSY.try_lock().map_err(|_| BackupError::Busy)?;
     let _file_lock = file_lock(&cfg.dir)?;
     let _db_lock = talkops_core::db::operation_guard(&cfg.database_url, false).await?;
@@ -436,7 +471,7 @@ pub async fn create(cfg: &BackupConfig, db: &PgPool, include_recordings: bool) -
         now.with_timezone(&Local).format("%Y%m%d-%H%M%S"),
         if cfg.password.is_some() { ".age" } else { "" }
     );
-    if cfg.dir.join(&name).exists() {
+    if out_dir.join(&name).exists() {
         return Err(BackupError::Busy);
     }
     let temp = tempfile::tempdir_in(&cfg.dir)?;
@@ -472,7 +507,7 @@ pub async fn create(cfg: &BackupConfig, db: &PgPool, include_recordings: bool) -
         deployment: Some(info),
     };
     let part = temp.path().join("archive.part");
-    let target = cfg.dir.join(&name);
+    let target = out_dir.join(&name);
     let password = cfg.password.clone();
     tokio::task::spawn_blocking(move || -> Result<()> {
         let file = recovery::private_file(&part)?;
@@ -706,8 +741,10 @@ pub fn due(settings: &backups::BackupSettings, now: DateTime<Local>) -> bool {
     }
 }
 
-/// Checks every minute whether the daily backup is due.
-pub fn spawn(db: PgPool, cfg: Arc<BackupConfig>) {
+/// Checks every minute whether the daily backup or a backup target is due.
+/// A target that is due in the same minute as the daily backup receives
+/// that archive; other runs create an archive only for the targets.
+pub fn spawn(db: PgPool, cfg: Arc<BackupConfig>, secrets: talkops_core::crypto::SecretBox) {
     tokio::spawn(async move {
         loop {
             tokio::time::sleep(Duration::from_secs(60)).await;
@@ -715,13 +752,17 @@ pub fn spawn(db: PgPool, cfg: Arc<BackupConfig>) {
             let Ok(settings) = backups::get(&db, tenant).await else {
                 continue;
             };
-            if !due(&settings, Local::now()) || is_busy() {
-                continue;
+            let mut fresh = None;
+            if due(&settings, Local::now()) && !is_busy() {
+                match run_scheduled(&cfg, &db, tenant).await {
+                    Ok(name) => {
+                        tracing::info!(file = %name, "backup written");
+                        fresh = Some((name, settings.include_recordings));
+                    }
+                    Err(err) => tracing::warn!(error = %err, "backup failed"),
+                }
             }
-            match run_scheduled(&cfg, &db, tenant).await {
-                Ok(name) => tracing::info!(file = %name, "backup written"),
-                Err(err) => tracing::warn!(error = %err, "backup failed"),
-            }
+            crate::backup_targets::tick(&cfg, &db, &secrets, tenant, fresh).await;
         }
     });
 }

@@ -11,8 +11,10 @@ use axum::response::Response;
 use serde::Deserialize;
 use serde_json::json;
 use talkops_core::recordings::{self, Recording, SearchHit, Source, Transcript};
-use talkops_core::users::Role;
+use talkops_core::transcription_jobs::{self as tjobs, EngineChoice, Scope};
+use talkops_core::transcription_profiles::{self as profiles, Purpose};
 use talkops_core::{audit, extensions};
+use talkops_core::{settings::TranscriptionQuality, transcription_api};
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
 use uuid::Uuid;
@@ -20,6 +22,7 @@ use uuid::Uuid;
 use crate::AppState;
 use crate::auth::AuthUser;
 use crate::error::{ApiError, ApiResult};
+use talkops_core::roles::Permission;
 
 pub fn router() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
@@ -27,6 +30,7 @@ pub fn router() -> OpenApiRouter<AppState> {
         .routes(routes!(recording_audio))
         .routes(routes!(recording_transcript))
         .routes(routes!(search))
+        .routes(routes!(transcribe_options, transcribe_again))
 }
 
 /// Extensions of the logged-in user.
@@ -44,7 +48,7 @@ async fn accessible(state: &AppState, auth: &AuthUser, id: Uuid) -> ApiResult<(R
     let involved = recordings::extensions_of(&state.db, rec.id).await?;
     let own = own_extensions(state, auth).await?;
     let mine = involved.iter().any(|e| own.contains(e));
-    if mine || auth.role >= Role::Admin {
+    if mine || auth.can(Permission::RecordingsAccessAll) {
         Ok((rec, mine))
     } else {
         // Do not reveal that the recording exists.
@@ -111,7 +115,7 @@ pub async fn delete_recording(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<StatusCode> {
-    auth.require(Role::Admin)?;
+    auth.require_perm(Permission::RecordingsDelete)?;
     let rec = recordings::delete(&state.db, auth.tenant, id).await?;
     if let Err(err) = tokio::fs::remove_file(state.media.recordings.join(&rec.file)).await {
         tracing::warn!(error = %err, file = %rec.file, "cannot remove recording file");
@@ -136,7 +140,7 @@ pub async fn search(
     Query(q): Query<SearchQuery>,
 ) -> ApiResult<Json<Vec<SearchHit>>> {
     let own;
-    let scope = if auth.role >= Role::Admin {
+    let scope = if auth.can(Permission::RecordingsAccessAll) {
         None
     } else {
         own = own_extensions(&state, &auth).await?;
@@ -145,4 +149,172 @@ pub async fn search(
     Ok(Json(
         recordings::search(&state.db, auth.tenant, &q.q, scope, q.limit.unwrap_or(50)).await?,
     ))
+}
+
+/// A model that can transcribe a recording again.
+#[derive(serde::Serialize, utoipa::ToSchema)]
+pub struct TranscribeOption {
+    pub choice: EngineChoice,
+    /// Cloud connection name; empty for local models.
+    pub provider: String,
+    /// Estimated processing time in seconds (without the queue).
+    pub eta_secs: f32,
+    /// The estimate comes from measured runs on this server.
+    pub measured: bool,
+    /// Estimated cost in USD (cloud models with a known price).
+    pub cost_usd: Option<f64>,
+    /// The engine of the automatic first pass.
+    pub default: bool,
+}
+
+#[derive(serde::Serialize, utoipa::ToSchema)]
+pub struct TranscribeOptions {
+    pub audio_secs: i32,
+    /// Estimated wait for the jobs before a new one.
+    pub queue_secs: f32,
+    /// Engine of the current transcript, e.g. `whisper:large-v3-turbo-q5_0`.
+    pub current_engine: Option<String>,
+    pub options: Vec<TranscribeOption>,
+}
+
+/// Cloud models that can transcribe a file (not the realtime models).
+fn file_models(kind: &str) -> Vec<String> {
+    if kind != "openai" {
+        return Vec::new();
+    }
+    profiles::OPENAI_PRICES
+        .iter()
+        .map(|(m, _)| *m)
+        .filter(|m| !m.contains("live") && !m.contains("realtime") && !m.contains("diarize"))
+        .map(str::to_owned)
+        .collect()
+}
+
+/// Models to transcribe a recording again, with time and cost estimates.
+#[utoipa::path(get, path = "/api/v1/recordings/{id}/transcribe", tag = "recordings", params(("id" = Uuid, Path)), responses((status = 200, body = TranscribeOptions)))]
+pub async fn transcribe_options(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<Uuid>,
+) -> ApiResult<Json<TranscribeOptions>> {
+    auth.require_perm(Permission::RecordingsRetranscribe)?;
+    let (rec, _) = accessible(&state, &auth, id).await?;
+    let speeds = tjobs::speeds(&state.db).await?;
+    let default = profiles::engine(&state.db, auth.tenant, Purpose::Recording)
+        .await?
+        .map(|e| tjobs::engine_key(&e));
+    let profile_list = profiles::list(&state.db, auth.tenant).await?;
+    let audio = rec.duration_secs.max(1) as f32;
+    let mut options = Vec::new();
+    let mut push = |choice: EngineChoice, provider: String, price: Option<f64>| {
+        let key = choice.key();
+        let measured = speeds.get(&key).copied();
+        options.push(TranscribeOption {
+            eta_secs: audio * measured.unwrap_or_else(|| tjobs::default_speed(&key)),
+            measured: measured.is_some(),
+            cost_usd: price.map(|p| audio as f64 / 60.0 * p),
+            default: default.as_deref() == Some(key.as_str()),
+            choice,
+            provider,
+        });
+    };
+    for q in [
+        TranscriptionQuality::Base,
+        TranscriptionQuality::Fast,
+        TranscriptionQuality::German,
+        TranscriptionQuality::Accurate,
+        TranscriptionQuality::Best,
+    ] {
+        push(
+            EngineChoice::Local {
+                model: q.as_str().to_owned(),
+            },
+            String::new(),
+            None,
+        );
+    }
+    for provider in transcription_api::list(&state.db, auth.tenant).await? {
+        let mut models = file_models(&provider.kind);
+        for p in profile_list
+            .iter()
+            .filter(|p| p.engine == "cloud" && p.provider_id == Some(provider.id) && !p.realtime)
+        {
+            if !models.contains(&p.model) {
+                models.push(p.model.clone());
+            }
+        }
+        for model in models {
+            let price = profile_list
+                .iter()
+                .find(|p| p.provider_id == Some(provider.id) && p.model == model)
+                .and_then(|p| p.price_per_minute)
+                .or_else(|| profiles::list_price(&provider.kind, &model));
+            push(
+                EngineChoice::Cloud {
+                    provider_id: provider.id,
+                    model,
+                },
+                provider.name.clone(),
+                price,
+            );
+        }
+    }
+    let active = tjobs::list(&state.db, auth.tenant, &Scope::All, false).await?;
+    let queue_secs = active
+        .iter()
+        .filter_map(|j| j.eta_secs)
+        .fold(0.0f32, f32::max);
+    let current_engine =
+        recordings::transcript_of(&state.db, auth.tenant, Source::Recording(rec.id))
+            .await
+            .ok()
+            .map(|t| t.engine)
+            .filter(|e| !e.is_empty());
+    Ok(Json(TranscribeOptions {
+        audio_secs: rec.duration_secs,
+        queue_secs,
+        current_engine,
+        options,
+    }))
+}
+
+#[derive(Deserialize, utoipa::ToSchema)]
+pub struct TranscribeRequest {
+    pub engine: EngineChoice,
+}
+
+#[derive(serde::Serialize, utoipa::ToSchema)]
+pub struct TranscribeStarted {
+    pub job_id: Uuid,
+}
+
+/// Transcribes a recording again with the selected model. The current
+/// transcript stays until the new one is complete.
+#[utoipa::path(post, path = "/api/v1/recordings/{id}/transcribe", tag = "recordings", params(("id" = Uuid, Path)), request_body = TranscribeRequest, responses((status = 200, body = TranscribeStarted)))]
+pub async fn transcribe_again(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<Uuid>,
+    Json(input): Json<TranscribeRequest>,
+) -> ApiResult<Json<TranscribeStarted>> {
+    auth.require_perm(Permission::RecordingsRetranscribe)?;
+    if !talkops_core::settings::get(&state.db, auth.tenant)
+        .await?
+        .transcription_enabled
+    {
+        return Err(ApiError::BadRequest("transcription is switched off".into()));
+    }
+    let (rec, _) = accessible(&state, &auth, id).await?;
+    let job_id =
+        tjobs::enqueue_manual(&state.db, auth.tenant, rec.id, &input.engine, auth.id).await?;
+    let _ = audit::record(
+        &state.db,
+        &auth.actor(),
+        "transcribe",
+        "recording",
+        Some(rec.id.to_string()),
+        json!({"engine": input.engine.key(), "job": job_id}),
+    )
+    .await;
+    Ok(Json(TranscribeStarted { job_id }))
 }

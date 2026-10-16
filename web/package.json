@@ -1,7 +1,7 @@
 {
 	"name": "talkops-web",
 	"private": true,
-	"version": "1.7.13",
+	"version": "1.7.14",
 	"type": "module",
 	"license": "AGPL-3.0-only",
 	"scripts": {

@@ -1,15 +1,23 @@
 <script lang="ts" module>
+	import type { Permission } from '#lib/api.ts';
+	import { can } from '#lib/session.svelte.ts';
+
 	export type Section =
 		'telephony' | 'calls' | 'voicemail' | 'email' | 'security' | 'system' | 'account';
-	export const sections: { id: Section; icon: string; admin: boolean }[] = [
-		{ id: 'telephony', icon: '☎', admin: true },
-		{ id: 'calls', icon: '🎵', admin: true },
-		{ id: 'voicemail', icon: '📮', admin: true },
-		{ id: 'email', icon: '✉', admin: true },
-		{ id: 'security', icon: '🛡', admin: true },
-		{ id: 'system', icon: '⚙', admin: true },
-		{ id: 'account', icon: '👤', admin: false }
+	/** Settings sections; a section shows when the user has one of `perms`. */
+	export const sections: { id: Section; icon: string; perms: Permission[] }[] = [
+		{ id: 'telephony', icon: '☎', perms: ['settings.manage'] },
+		{ id: 'calls', icon: '🎵', perms: ['settings.manage'] },
+		{ id: 'voicemail', icon: '📮', perms: ['voicemail.settings'] },
+		{ id: 'email', icon: '✉', perms: ['voicemail.settings'] },
+		{ id: 'security', icon: '🛡', perms: ['identity.manage', 'security.manage'] },
+		{ id: 'system', icon: '⚙', perms: ['diagnostics.manage', 'backups.manage'] },
+		{ id: 'account', icon: '👤', perms: [] }
 	];
+
+	export function sectionVisible(s: { perms: Permission[] }): boolean {
+		return s.perms.length === 0 || s.perms.some((p) => can(p));
+	}
 	type PageKey =
 		| 'nav.myPhones'
 		| 'nav.extensions'
@@ -28,25 +36,37 @@
 		href: string;
 		key: PageKey;
 		icon: string;
-		role: 'admin' | 'operator' | 'user';
+		/** Needed permission; none for personal pages. */
+		perm: Permission | null;
 		group: 'personal' | 'setup';
 	}[] = [
-		{ href: '/me', key: 'nav.myPhones', icon: '📱', role: 'user', group: 'personal' },
-		{ href: '/extensions', key: 'nav.extensions', icon: '☏', role: 'operator', group: 'setup' },
-		{ href: '/users', key: 'nav.users', icon: '👥', role: 'operator', group: 'setup' },
-		{ href: '/routing', key: 'nav.routing', icon: '🔀', role: 'operator', group: 'setup' },
-		{ href: '/trunks', key: 'nav.trunks', icon: '🔌', role: 'operator', group: 'setup' },
-		{ href: '/numbers', key: 'nav.numbers', icon: '#', role: 'operator', group: 'setup' },
-		{ href: '/phones', key: 'nav.phones', icon: '📟', role: 'operator', group: 'setup' },
-		{ href: '/door-stations', key: 'nav.doorStations', icon: '🚪', role: 'admin', group: 'setup' },
-		{ href: '/audit', key: 'nav.audit', icon: '📜', role: 'admin', group: 'setup' }
+		{ href: '/me', key: 'nav.myPhones', icon: '📱', perm: null, group: 'personal' },
+		{
+			href: '/extensions',
+			key: 'nav.extensions',
+			icon: '☏',
+			perm: 'extensions.view',
+			group: 'setup'
+		},
+		{ href: '/users', key: 'nav.users', icon: '👥', perm: 'users.view', group: 'setup' },
+		{ href: '/routing', key: 'nav.routing', icon: '🔀', perm: 'routing.view', group: 'setup' },
+		{ href: '/trunks', key: 'nav.trunks', icon: '🔌', perm: 'trunks.view', group: 'setup' },
+		{ href: '/numbers', key: 'nav.numbers', icon: '#', perm: 'trunks.view', group: 'setup' },
+		{ href: '/phones', key: 'nav.phones', icon: '📟', perm: 'phones.view', group: 'setup' },
+		{
+			href: '/door-stations',
+			key: 'nav.doorStations',
+			icon: '🚪',
+			perm: 'doors.manage',
+			group: 'setup'
+		},
+		{ href: '/audit', key: 'nav.audit', icon: '📜', perm: 'audit.view', group: 'setup' }
 	];
 </script>
 
 <script lang="ts">
 	import { page } from '$app/state';
 	import { t } from '#lib/i18n/index.svelte.ts';
-	import { hasRole } from '#lib/session.svelte.ts';
 
 	let {
 		section = null,
@@ -58,9 +78,10 @@
 		onsection?: (id: Section) => void;
 	} = $props();
 
-	const visible = $derived(sections.filter((s) => !s.admin || hasRole('admin')));
-	const personal = $derived(settingsPages.filter((p) => p.group === 'personal' && hasRole(p.role)));
-	const pages = $derived(settingsPages.filter((p) => p.group === 'setup' && hasRole(p.role)));
+	const visible = $derived(sections.filter(sectionVisible));
+	const allowed = (p: { perm: Permission | null }) => !p.perm || can(p.perm);
+	const personal = $derived(settingsPages.filter((p) => p.group === 'personal' && allowed(p)));
+	const pages = $derived(settingsPages.filter((p) => p.group === 'setup' && allowed(p)));
 	const path = $derived(page.url.pathname);
 
 	// In the horizontal strip (narrow screens) keep the active entry visible.

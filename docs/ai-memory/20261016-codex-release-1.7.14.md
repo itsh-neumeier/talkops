@@ -5,7 +5,7 @@
 - Task ID: 20261016-codex-release-1.7.14
 - Date: 2026-10-16, Europe/Berlin
 - Tool: Codex
-- Status: In progress
+- Status: Completed
 - Branch: codex/release-1.7.14
 - Base commit: 702507b39fb1cf80db4ce5a0f9dd3d339b9da68c
 - Related commits or PR: Integration corrections 1bad7389a7f97f1dc477c840e200d0cc3e9d6692; [integration PR 35](https://github.com/itsh-neumeier/talkops/pull/35)
@@ -18,8 +18,8 @@ Keep foreign local work. Remove only unchanged, integrated remote branches.
 
 ## Result
 
-All six ready source heads are integrated with merge commits. Publication
-has not started. No contribution is omitted. The four promised UI/API tasks
+All six ready source heads and PR 35 are merged into main. Version 1.7.14
+is published. Registry verification and all additional tag checks passed. No contribution is omitted. The four promised UI/API tasks
 and both backup tasks are present. No separate Codex feature PR is assigned.
 
 | PR | Contributor | Exact head | Dependencies | Migration |
@@ -72,32 +72,31 @@ and both backup tasks are present. No separate Codex feature PR is assigned.
   heads are ancestors; all seven browser suites remain in CI.
 - Not run locally: full Rust/DB/LDAP tests (Windows GNU lacks dlltool.exe),
   Linux image/Compose/SIPp/browser stack (Docker Linux daemon unavailable).
-  Required Linux CI and E2E are pending for the final integration head.
+  Linux CI and E2E passed on the final integration head.
 - Manual integration review used source changes, API/UI contracts and tests.
   CodeRabbit CLI is unavailable. FreeSWITCH source/workflow are unchanged.
-- Superseded candidate ea9de61: PR CI 38858462646 found a duplicate local
-  `std::io::Write` import after the backup merge. Keep the shared module import
-  and remove the duplicate. Web browser and Compose checks passed on that head.
-  Repeat all final-head gates after this correction.
+- Superseded candidate ea9de61: PR CI 38858462646 found an unused local
+  `std::io::Write` import after the backup merge. Remove it. All final-head
+  gates passed after the correction. Earlier runs are superseded.
 - STE review: short-sentence/manual clarity review. Full official standard
   unavailable; full language review pending, separate from functional checks.
 
 ## Dependencies and open work
 
-- Required gates: final candidate CI/E2E; merged exact-main CI/E2E; unused tag;
-  Release workflow; GH release; three amd64/arm64 manifests and moving tags.
+- Passed gates: final candidate CI/E2E; exact-main CI/E2E before tag; Release;
+  GitHub release; three amd64/arm64 manifests, OCI labels and moving tags.
 - Live SMB storage and Portainer were unavailable. Tests use protocol services,
   a fake Portainer API and real TLS certificate pin checks. Extra Git-stack
   files and backup failure emails are outside this contribution.
-- No deployed UI is available here. Check CLI versions in image CI and OCI
-  version/revision labels after publication.
+- No deployed UI is available here. CI CLI versions and all six published
+  OCI version/revision labels were verified.
 - VTO-to-VTH missing picture and percent-encoded CDR spool import remain open
   separate work. Preserve rejected spool files.
 
 ## Next action
 
-Create the integration PR. Pass all checks before merge. Verify exact main,
-then push the new tag once. Verify artifacts before reporting success.
+None. Release 1.7.14 and its artifacts are verified. The integration PR has
+the release record. Keep the separate hardware and CDR follow-up work.
 
 ## References
 
@@ -106,3 +105,71 @@ then push the new tag once. Verify artifacts before reporting success.
   `20261015-claude-roles-permissions.md`, `20261015-claude-transcription-jobs.md`,
   `20261015-claude-motion-polish.md`, `20261015-claude-backup-targets.md`,
   `20261015-claude-backup-deployment-capture.md` in this directory.
+
+## Main merge checkpoint
+
+- Final candidate: 057e2bea587d2c598872edc16612bb7b1680c30d.
+- PR CI 38858886905 and E2E 38858886884 passed. Push CI 38858882436
+  and E2E 38858882201 attempt 2 passed. All 12 final-head checks are green.
+- Push E2E attempt 1 failed at the unchanged Piper duration assertion. Logs
+  did not print durations. No render error was logged. The cause is unknown.
+  It did not recur in the independent PR run or the full rerun. No assertion
+  was changed or waived. The ignored real-whisper test was not run in CI.
+- Both new integration tests passed. rclone WebDAV/FTP/SFTP/S3 transfers and
+  real self-signed TLS pin tests passed. Server and worker report 1.7.14.
+- Merged at 2026-10-16T06:26:15Z. Main commit:
+  0f128ad210028b386081db0bdae90c210ff84523.
+  The main tree equals the candidate tree. All six heads are ancestors.
+- Source PRs 29-34 and integration PR 35 are merged. No open PR remains.
+- Exact-main CI 38861196732 and E2E 38861196707 passed before the tag push.
+- This checkpoint is local documentation only. It does not change main or
+  restart its checks. The final summary will use an immutable audit reference.
+## Tag checkpoint
+
+- Exact-main CI 38861196732 and E2E 38861196707 passed on the unchanged
+  main commit. The latest-main run checks passed immediately before tagging.
+- Scope recheck: no open PR. All source heads are included. Versions match.
+- Annotated tag v1.7.14 was pushed once. Tag object:
+  dab752803d18c14ac54335f7df3c2209aede3bf8.
+  Peeled target: 0f128ad210028b386081db0bdae90c210ff84523.
+- Release workflow and artifact verification passed. No published tag was moved.
+
+## Publication verification
+
+- Release 38862917854 passed all six native builds, three manifest jobs and
+  GitHub release creation. Additional tag CI 38862918000 and FreeSWITCH
+  38862917817 passed. Tag E2E 38862917820 passed too.
+- GitHub release: https://github.com/itsh-neumeier/talkops/releases/tag/v1.7.14
+- Published at 2026-10-16T06:51:21Z. It is the latest stable release, not a
+  draft or prerelease. English release notes list all six source contributions.
+- Registry inspection passed for talkops-server, talkops-media-worker and
+  talkops-freeswitch. Each versioned manifest contains linux/amd64 and
+  linux/arm64. All six OCI configurations report version v1.7.14 and revision
+  0f128ad210028b386081db0bdae90c210ff84523. For every image, tags 1.7 and
+  latest have the same platform digests as 1.7.14.
+
+| Image | Architecture | Published platform digest |
+| --- | --- | --- |
+| talkops-server | amd64 | sha256:6dcfbbf0e5c5918326ce9168ef7fd29f7030b6fbfab5cd0b70b290989485ce47 |
+| talkops-server | arm64 | sha256:55c26aafe7330612a605df207ba20763f8ad2b6a9c238be21a1446566dd0296e |
+| talkops-media-worker | amd64 | sha256:91ee4b42fc426d3d9737b6a478f0bfdbb2fe1e8bcb66e39515da7f5d724ff4d8 |
+| talkops-media-worker | arm64 | sha256:d0f841f2bc8deb87fcce9993e11dd2a812c4dc6993d3af23ce9be48ecc162393 |
+| talkops-freeswitch | amd64 | sha256:66c38d105cb53e5af68cc0d3d068e20225c3c27e72f57494e193b371d54621a5 |
+| talkops-freeswitch | arm64 | sha256:687f71e9d96a04e49d9a677ecaafdec674eb3204d25595d952bcdce5efefa5be |
+## Branch cleanup
+
+- Checked all six remote source heads and the integration head unchanged.
+  Confirmed ancestry in the release commit. Deleted the seven integrated
+  remote branches in one atomic push with expected-head guards. No history
+  was rewritten. GitHub now has only main, and no open PR remains.
+- Foreign local branches, worktrees and unpublished primary documentation
+  remain. This task's local release branch is removed after archiving.
+## Final record
+
+- All release gates passed. No agreed contribution is omitted or blocked.
+- Final summary reference: audit/release-1.7.14. Its difference from the release
+  commit contains only this task summary. It does not move the release tag or
+  change the published code. The owned worktree stays at the audit commit.
+- PR 35 stores the complete scope, exact heads, checks, release link and a
+  permanent link to the final summary. Documentation-only audit checks are
+  separate from the already passed release checks.

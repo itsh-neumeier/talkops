@@ -8,7 +8,7 @@
 - Status: Completed
 - Branch: `claude/notifications` (stacked on `claude/mail-design-editor`)
 - Base commit: `da03f9f` (head of PR #40)
-- Related commits or PR: Pending (see PR body)
+- Related commits or PR: https://github.com/itsh-neumeier/talkops/pull/44
 
 ## Goal
 

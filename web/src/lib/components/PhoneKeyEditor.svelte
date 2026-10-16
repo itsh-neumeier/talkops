@@ -103,7 +103,7 @@
 		contactId = id;
 		const c = matches.find((c) => c.id === id);
 		draft.value = c ? (contactNumbers(c)[0]?.value ?? '') : '';
-		if (c) draft.label = c.name.slice(0, 32);
+		if (c) draft.label = Array.from(c.name).slice(0, 32).join('');
 	}
 	function pickExtension(number: string) {
 		extensionNumber = number;

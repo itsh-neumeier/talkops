@@ -61,6 +61,8 @@ call flags change; no dependency is required.
 
 - The user approved the expanded 21-model scope and the interactive design.
   Conference phones, DECT devices and expansion modules are outside this task.
+- Shorten copied contact labels by Unicode code point. The browser regression
+  places an emoji at the 32-character boundary to prevent malformed labels.
 - Keep the existing line_keys JSON storage. Copy a contact number and name;
   later contact edits do not automatically change a saved phone key.
 - The picker offers global contacts and draft-assigned phonebooks. It offers

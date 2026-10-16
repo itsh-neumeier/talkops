@@ -41,7 +41,7 @@ await context.route('**/api/**', async route => {
   else if(path==='/api/v1/phone-settings')value={catalog:[],values:{}};
   else if(path==='/api/v1/phonebook-sections')value=[{id:'suppliers',name:'Lieferanten'},{id:'private',name:'Privat'}];
   else if(path==='/api/v1/contacts')value=[
-    {id:'c1',name:'Elektro Beispiel',company:'Service',section_id:'suppliers',phone_work:'+49305550101',phone_mobile:'+491705550101',phone_other:''},
+    {id:'c1',name:'Elektro Beispiel, Kundendienst 🔧 GmbH',company:'Service',section_id:'suppliers',phone_work:'+49305550101',phone_mobile:'+491705550101',phone_other:''},
     {id:'c2',name:'Globaler Kontakt',company:'',section_id:null,phone_work:'+49895550102',phone_mobile:'',phone_other:''},
     {id:'c3',name:'Privater Kontakt',company:'',section_id:'private',phone_work:'+49405550103',phone_mobile:'',phone_other:''}
   ];
@@ -93,6 +93,7 @@ try {
   await d.getByLabel('Telefonbuch',{exact:true}).selectOption('suppliers');
   await d.getByLabel('Kontakt suchen').fill('Elektro');
   await d.getByRole('button',{name:/Elektro Beispiel/}).click();
+  assert.equal(await d.getByLabel('Beschriftung',{exact:true}).inputValue(),'Elektro Beispiel, Kundendienst 🔧','label limit must keep Unicode code points intact');
   await d.getByLabel('Rufnummer oder Funktionscode',{exact:true}).selectOption('+491705550101');
   await d.getByLabel('Beschriftung',{exact:true}).fill('Elektriker mobil');
   if(screenshots)await d.screenshot({path:join(screenshots,'contact-dialog.png')});

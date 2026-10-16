@@ -20,7 +20,8 @@ auf der Seite der Nebenstelle:
 - **Per E-Mail senden** – an die E-Mail-Adresse des Benutzers der Nebenstelle,
   optional mit Aufnahme als WAV-Anhang. Bei eingeschalteter Transkription
   enthält die Mail auch den Text der Nachricht (siehe
-  [Aufzeichnung & Transkription](aufzeichnung.md)).
+  [Aufzeichnung & Transkription](aufzeichnung.md)). Design und Text der Mail
+  änderst du unter [E-Mail: Design und Texte](e-mail.md).
 
 ## Sprechgeschwindigkeit
 

@@ -38,6 +38,7 @@ nächste freie Nummer; überholte ADRs werden nicht gelöscht, sondern auf
 | [0030](0030-transcription-jobs-control.md) | Transcription jobs: progress, pause, resume and manual runs | Accepted |
 | [0031](0031-backup-targets-with-rclone.md) | Backup targets with rclone | Accepted |
 | [0032](0032-automatic-deployment-capture.md) | Automatic deployment capture and Portainer API | Accepted |
+| [0034](0034-mail-design-and-templates.md) | Mail design and editable mail templates | Accepted |
 
 
 Vorlage: [`template.md`](template.md)

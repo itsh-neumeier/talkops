@@ -97,6 +97,7 @@ jobs:
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/roles.mjs
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/call-list.mjs
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/transcriptions.mjs
+          PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/motion.mjs
 
   compose:
     name: Compose files

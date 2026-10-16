@@ -147,7 +147,7 @@
 		{#if session.user}
 			<nav
 				class="{menuOpen
-					? 'flex'
+					? 'menu-in flex'
 					: 'hidden'} fixed inset-x-0 top-(--header-h) z-20 max-h-[calc(100dvh-var(--header-h))] flex-col gap-1 overflow-y-auto border-b border-slate-200 bg-white p-2 shadow-lg md:sticky md:flex md:h-[calc(100dvh-var(--header-h))] md:max-h-none md:w-56 md:shrink-0 md:border-r md:border-b-0 md:bg-transparent md:shadow-none dark:border-slate-800 dark:bg-slate-900 md:dark:bg-transparent"
 				aria-label={t('nav.menu')}
 			>
@@ -163,13 +163,15 @@
 		{/if}
 		<main class="@container min-w-0 flex-1 p-4">
 			{#if session.loaded && (session.user || publicPaths.includes(page.url.pathname))}
-				{@render children()}
+				{#key page.url.pathname}
+					<div class="page-in">{@render children()}</div>
+				{/key}
 				{#if session.user && phoneOwner === session.user.id}
 					{#key phoneOwner}<Softphone full={page.url.pathname === '/phone'} />{/key}
 				{/if}
 			{:else}
 				<div class="space-y-4" aria-label={t('common.loading')}>
-					<div class="h-7 w-48 animate-pulse rounded bg-slate-200 dark:bg-slate-700"></div>
+					<div class="skeleton"><div class="skeleton-bar h-7 w-48"></div></div>
 					<div class="card"><Skeleton lines={6} /></div>
 				</div>
 			{/if}

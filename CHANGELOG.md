@@ -6,6 +6,66 @@ All notable changes to TalkOps. The format follows
 
 ## [Unreleased]
 
+## [1.7.14] – 2026-10-16
+
+### Added
+
+- Filter the call log by date, direction, caller, destination, result and
+  recording. Sort by time or duration. Show phonebook names and distinguish
+  busy calls from declined calls. Keep filters in the page URL.
+- Create roles with individual permissions. Assign roles directly or through
+  LDAP and OIDC groups. The role editor prevents users from assigning rights
+  that exceed their own rights. Existing users keep their default access.
+- Transcribe a recording again with a selected local or cloud model. Show
+  time and cost estimates. The transcription jobs page shows progress, worker
+  resources and controls for pause, resume, stop and priority. Local jobs use
+  checkpoints on resume; cloud jobs start a new request.
+- Send encrypted backups to SMB, S3, WebDAV, SFTP, FTP/FTPS or local targets.
+  Set schedules and retention for each target. Browse targets and restore
+  through the setup assistant or CLI. Use mounted local paths for NFS and USB.
+- Capture Compose and environment files automatically. Optionally read the
+  selected Portainer stack before each backup, including backups sent to a
+  target. Encrypt the saved Portainer token and support certificate pins.
+  Exclude the backup password from captured environment files.
+
+### Changed
+
+- Use consistent page, menu and dialog motion. Delay loading skeletons to
+  avoid short flashes. Respect the reduced-motion preference.
+- Include checksum-pinned rclone v1.75.2 in the server image for backup
+  targets. No Cargo or web dependency upgrade is included.
+
+### Fixed
+
+- Apply the new `backups.manage` permission to backup targets and Portainer
+  settings. Refresh Portainer data before archives are made in target staging.
+
+### Upgrade notes
+
+- Back up the database before the update. Run the server and media worker at
+  the same version. Four migrations run in this order:
+  `20261101000001_roles_permissions`,
+  `20261101000002_transcription_jobs`,
+  `20261102000001_backup_targets`, and
+  `20261102000002_portainer_connection`.
+- Existing access defaults and SIP settings stay. Grant the new transcription
+  permissions explicitly to non-admin roles. Checkpoint resume can change
+  wording near the cut point.
+- Production Compose mounts the deployment folder read-only. Keep unrelated
+  private files outside that folder. Make `.env` readable by UID 10001.
+  An explicit deployment file list keeps its previous behavior.
+- Remote backup targets require an encrypted archive. Use a separate target
+  folder for each TalkOps server so retention applies to the correct archives.
+
+### Known limitations
+
+- Real SMB storage and a live Portainer installation were not available for
+  release tests. Protocol services, a Portainer test server and certificate
+  pin tests provide automated coverage. Extra files from Git-based Portainer
+  stacks and backup failure email notifications are not included.
+- The VTO-to-VTH missing-picture cause and the percent-encoded FreeSWITCH CDR
+  spool import defect remain separate work. Preserve rejected CDR spool files.
+
 ## [1.7.13] – 2026-10-15
 
 ### Added

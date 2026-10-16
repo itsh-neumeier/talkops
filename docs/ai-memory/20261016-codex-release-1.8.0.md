@@ -21,7 +21,8 @@ work. Record the breaking backup API and the fixed version in the release notes.
 All eight ready source heads and PR45 are merged into main. None was in
 the base. No open contribution is omitted or pending. All features are from
 Claude Code; Codex supplies integration, validation and release work.
-Publication has not started. The final 1.7.14 audit history is preserved too.
+Version 1.8.0 is published and registry verification passed. The additional
+tag E2E is pending. The final 1.7.14 audit history is preserved too.
 
 | PR | Exact source head | Dependency | Migration ID |
 | --- | --- | --- | --- |
@@ -105,8 +106,7 @@ Publication has not started. The final 1.7.14 audit history is preserved too.
 
 ## Next action
 
-Wait for exact-main CI/E2E on 7d7990b99e9f02c126ad3983da633476a22a9708.
-Recheck the latest run IDs, scope, main and tag. Publish once and verify artifacts.
+Wait for tag E2E38945722771. Archive the final summary and complete PR45.
 
 ## References
 
@@ -148,7 +148,7 @@ only Cargo workspace and npm root version fields change to 1.8.0.
   7d7990b99e9f02c126ad3983da633476a22a9708.
   Its tree equals the tested candidate; all eight exact heads are ancestors.
 - Source PRs37-44 and integration PR45 are merged. No open PR remains.
-- Exact-main CI38943496152 and E2E38943496202 are pending. Do not tag yet.
+- Exact-main CI38943496152 and E2E38943496202 passed before the tag push.
 - This checkpoint is committed locally only. Do not push the batch branch
   after merge. Final audit documentation stays separate from released code.
 ## Tag checkpoint
@@ -159,5 +159,46 @@ only Cargo workspace and npm root version fields change to 1.8.0.
 - Annotated v1.8.0 was pushed once to 7d7990b99e9f02c126ad3983da633476a22a9708.
   Tag object: b29171493399297c658589c32adda9238ff9e97e.
 - Code and web versions match 1.8.0. The tag was unused; no published tag moved.
-- Release workflow, GitHub release and registry verification are pending.
-  Do not report publication success before artifact checks pass.
+- Release workflow, GitHub release and registry verification passed.
+
+## Publication and registry verification
+
+- Release38945722759 passed all six native builds, three manifest jobs and
+  GitHub release creation. Tag CI38945722845 and FreeSWITCH38945722748 passed.
+  Additional tag E2E38945722771 is still running.
+- Release: https://github.com/itsh-neumeier/talkops/releases/tag/v1.8.0
+- Published at 2026-10-16T18:21:15Z. It is the latest stable release, not a
+  draft or prerelease. English release notes cover all eight contributions.
+- All three versioned manifests contain linux/amd64 and linux/arm64. All six
+  OCI configurations report v1.8.0 and revision
+  7d7990b99e9f02c126ad3983da633476a22a9708.
+  Moving tags 1.8 and latest match the versioned platform digests.
+- Server and worker CLI versions were checked in CI. No deployed UI or Linux
+  runtime is available locally; do not claim a manual production UI test.
+
+| Image | Architecture | Published platform digest |
+| --- | --- | --- |
+| talkops-server | amd64 | sha256:75d950647d73ee4022c1caab5446c5450b8c29a4022c9b191badeb8b5dd3db02 |
+| talkops-server | arm64 | sha256:ff0155223e35110317a0e5c126a6b7e411c1c4b34a77a881c102f1d6e3aa5d8c |
+| talkops-media-worker | amd64 | sha256:46d5c9b49218832decfadb01cca523093c8cd89e33351008087562bd5c28b371 |
+| talkops-media-worker | arm64 | sha256:008fbb04a96f61b45be6e99f247c31de7387e63dfe5d7a30f904c2f3d76b845c |
+| talkops-freeswitch | amd64 | sha256:4c1b12610462c6d7afc3c97d225cfef63c8aa59ecae5e9705028f6dd6251a90b |
+| talkops-freeswitch | arm64 | sha256:9c72567eb26d5e66bf92778c1eb39283649cd903f7aabc1825d4cf5e6da16740 |
+## Branch cleanup and later arrivals
+
+- All eight remote source heads and the batch head were unchanged and were
+  ancestors of the release commit. Deleted those nine integrated branches
+  atomically with expected-head guards. No history was rewritten.
+- Keep the unmerged closed-PR36 branch claude/vigilant-tesla-ef0027 at
+  37f8a18aa2971c1a570821d150dcf0941fae12eb. It is not an ancestor of the release.
+- New PR46, Codex country flags/loading, was created at 2026-10-16T18:18:01Z.
+  Head f81e140b62abec0e709bd737f3d6d7d07fd1e4f2; branch codex/call-flags-skeleton;
+  base main at the release commit. It was created after the tag push
+  (Release run created at 18:13:49Z) and was a draft with pending checks.
+  Its handoff asks for the next release. It is not part of 1.8.0. Keep its
+  branch; do not change the published tag or silently add a later contribution.
+- Current GitHub branches: main, claude/vigilant-tesla-ef0027 and
+  codex/call-flags-skeleton. Current open PR: 46. No agreed 1.8.0 source was
+  omitted; the pre-tag open-PR check was empty.
+- Foreign local worktrees, branches and unpublished primary documentation
+  remain. Only the owned batch branch can be removed after final audit.

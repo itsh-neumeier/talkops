@@ -38,6 +38,7 @@ nächste freie Nummer; überholte ADRs werden nicht gelöscht, sondern auf
 | [0030](0030-transcription-jobs-control.md) | Transcription jobs: progress, pause, resume and manual runs | Accepted |
 | [0031](0031-backup-targets-with-rclone.md) | Backup targets with rclone | Accepted |
 | [0032](0032-automatic-deployment-capture.md) | Automatic deployment capture and Portainer API | Accepted |
+| [0033](0033-cactus-whistle-evaluation.md) | Cactus Whistle as a local transcription engine | Rejected |
 
 
 Vorlage: [`template.md`](template.md)

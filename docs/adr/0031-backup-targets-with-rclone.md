@@ -1,6 +1,6 @@
 # 0031 - Backup targets with rclone
 
-- Status: Accepted
+- Status: Accepted; storage parts superseded by [ADR 0036](0036-storage-targets.md)
 - Date: 2026-10-15
 - Extends: ADR 0016 (scheduled backups) and ADR 0021 (encrypted recovery backups).
 

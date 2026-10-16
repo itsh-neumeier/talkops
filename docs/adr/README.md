@@ -36,8 +36,9 @@ nächste freie Nummer; überholte ADRs werden nicht gelöscht, sondern auf
 | [0028](0028-device-media-settings.md) | Media settings per device and door call ringing | Accepted |
 | [0029](0029-roles-and-permissions.md) | Roles with fine-grained permissions | Accepted |
 | [0030](0030-transcription-jobs-control.md) | Transcription jobs: progress, pause, resume and manual runs | Accepted |
-| [0031](0031-backup-targets-with-rclone.md) | Backup targets with rclone | Accepted |
+| [0031](0031-backup-targets-with-rclone.md) | Backup targets with rclone | Accepted; storage parts superseded by 0036 |
 | [0032](0032-automatic-deployment-capture.md) | Automatic deployment capture and Portainer API | Accepted |
+| [0036](0036-storage-targets.md) | Storage targets as a shared area | Accepted |
 
 
 Vorlage: [`template.md`](template.md)

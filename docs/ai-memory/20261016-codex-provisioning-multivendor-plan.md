@@ -8,7 +8,8 @@
 - Status: In progress. Proposal prepared; application changes require user review.
 - Branch: codex/provisioning-multivendor-plan
 - Base commit: 86772ec0c31990f7a29a639ffb90db6ebef217e2
-- Related commits or PR: Pending
+- Related PR: https://github.com/itsh-neumeier/talkops/pull/49 (draft)
+- Initial proposal commit: 7610aa5
 
 ## Goal
 
@@ -24,6 +25,7 @@ Scanned all 433 files in all 70 Yealink directories at FusionPBX commit
 be0d0e3220e6b3666775fa46db6f1accc60c79c6. Recorded 49 vendor function entries.
 Created a local interactive T41P form proposal and a 70-directory source viewer.
 No application, phone, DHCP or release setting changed.
+Committed and pushed the proposal branch. Created draft PR 49 for review.
 
 The worktree is C:/Users/timo/.codex/worktrees/provisioning-multivendor-plan/talkops.
 The app worktree tool returned `Not a git repository` because the chat root is
@@ -78,6 +80,7 @@ The remote target was verified as main at the base commit. No PR was open.
 - Passed: Independent comparison against all 433 original Git blobs. Checked
   3,779 parameter references, directory sections, file counts and local links.
 - Passed: node --check docs/research/survey-yealink-templates.cjs.
+- Passed: git diff --cached --check before the proposal commit.
 - Passed: Interactive proposal in headless Edge/Playwright. Selected every
   source directory, checked 13 T41P programmable IDs, 15 line keys, conditional
   fields, line-position limits, draft changes and call-state selection.
@@ -105,7 +108,7 @@ The remote target was verified as main at the base commit. No PR was open.
 
 ## Next action
 
-Publish the proposal as a draft PR. Present the preview and request feedback.
+Present draft PR 49 and the preview. Request feedback on the concrete proposal.
 Implement only after the user reviews the concrete proposal. Preserve the task
 branch and refresh the verified target before starting implementation.
 

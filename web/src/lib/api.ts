@@ -120,6 +120,7 @@ export type Permission =
 	| 'security.manage'
 	| 'identity.manage'
 	| 'backups.manage'
+	| 'storage.manage'
 	| 'diagnostics.manage'
 	| 'audit.view';
 

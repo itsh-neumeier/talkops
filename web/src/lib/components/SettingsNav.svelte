@@ -3,7 +3,15 @@
 	import { can } from '#lib/session.svelte.ts';
 
 	export type Section =
-		'telephony' | 'calls' | 'voicemail' | 'email' | 'security' | 'system' | 'backup' | 'account';
+		| 'telephony'
+		| 'calls'
+		| 'voicemail'
+		| 'email'
+		| 'security'
+		| 'system'
+		| 'backup'
+		| 'storage'
+		| 'account';
 	/** Settings sections; a section shows when the user has one of `perms`. */
 	export const sections: { id: Section; icon: string; perms: Permission[] }[] = [
 		{ id: 'telephony', icon: '☎', perms: ['settings.manage'] },
@@ -13,6 +21,7 @@
 		{ id: 'security', icon: '🛡', perms: ['identity.manage', 'security.manage'] },
 		{ id: 'system', icon: '⚙', perms: ['diagnostics.manage'] },
 		{ id: 'backup', icon: '💾', perms: ['backups.manage'] },
+		{ id: 'storage', icon: '🗄', perms: ['storage.manage'] },
 		{ id: 'account', icon: '👤', perms: [] }
 	];
 

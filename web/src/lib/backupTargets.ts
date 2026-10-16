@@ -1,5 +1,5 @@
-// Backup targets (ADR 0031): types and helpers shared by the settings page
-// and the restore assistant.
+// Storage targets (ADR 0036) and backup jobs (ADR 0031): types and helpers
+// shared by the settings page and the restore assistant.
 
 export type TargetKind = 'local' | 'smb' | 's3' | 'ftp' | 'webdav' | 'sftp';
 export const targetKinds: TargetKind[] = ['smb', 's3', 'webdav', 'sftp', 'ftp', 'local'];
@@ -69,10 +69,15 @@ export type Activity = {
 	done: boolean;
 };
 
+/** A backup job on a storage target. Connection fields come from the storage target. */
 export type BackupTarget = {
 	id: string;
 	name: string;
 	enabled: boolean;
+	storage_target_id: string;
+	storage_name: string;
+	/** Sub-folder below the folder of the storage target. */
+	folder: string;
 	config: TargetConfig;
 	path: string;
 	allow_insecure: boolean;
@@ -92,6 +97,33 @@ export type BackupTarget = {
 
 export type TargetsOverview = {
 	targets: BackupTarget[];
+	encryption_configured: boolean;
+	roots: string[];
+};
+
+/** A feature that uses storage targets (`StoragePurpose` in the API). */
+export type StoragePurpose = 'backup';
+
+export type StorageUsage = { purpose: StoragePurpose; id: string; name: string };
+
+export type StorageTarget = {
+	id: string;
+	name: string;
+	config: TargetConfig;
+	path: string;
+	allow_insecure: boolean;
+	bwlimit_kbps: number | null;
+	has_secret: boolean;
+	last_test_at: string | null;
+	last_test_ok: boolean | null;
+	last_test_error: string | null;
+	created_at: string;
+	updated_at: string;
+	used_by: StorageUsage[];
+};
+
+export type StorageOverview = {
+	targets: StorageTarget[];
 	encryption_configured: boolean;
 	roots: string[];
 };

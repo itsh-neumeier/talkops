@@ -18,7 +18,7 @@ work. Record the breaking backup API and the fixed version in the release notes.
 
 ## Result
 
-All eight ready source heads are integrated with merge commits. None was in
+All eight ready source heads and PR45 are merged into main. None was in
 the base. No open contribution is omitted or pending. All features are from
 Claude Code; Codex supplies integration, validation and release work.
 Publication has not started. The final 1.7.14 audit history is preserved too.
@@ -105,8 +105,8 @@ Publication has not started. The final 1.7.14 audit history is preserved too.
 
 ## Next action
 
-Pass checks on the final 1.8.0 candidate, merge PR 45 and pass exact-main
-CI/E2E. Recheck scope and tag, then publish and verify all artifacts.
+Wait for exact-main CI/E2E on 7d7990b99e9f02c126ad3983da633476a22a9708.
+Recheck the latest run IDs, scope, main and tag. Publish once and verify artifacts.
 
 ## References
 
@@ -131,3 +131,23 @@ CI/E2E. Recheck scope and tag, then publish and verify all artifacts.
 - Use fresh final-version CI/E2E and exact-main checks before publication.
 Version metadata validated against eaad6df7bac6107d4ee44fa8b2381c7b7d713cde:
 only Cargo workspace and npm root version fields change to 1.8.0.
+
+## Main merge checkpoint
+
+- Final candidate d2e76cafa68daeb96c54b8f9ad022e5bd55f6ee9 passed all 12 checks.
+  PR CI38941246995 and E2E38941247001; push CI38941241180 and E2E38941241187.
+  The full SIPp/browser stack passed on both events. CLI smoke checks report
+  talkops 1.8.0 and talkops-media-worker 1.8.0. Svelte: 0 errors/warnings.
+- Existing backup migration, delegated backup/Portainer permissions, target
+  staging capture and transcription-party tests passed. All ten browser
+  suites passed. No test was weakened and no gate was waived.
+- Body-to-final source differences: PR-link-only summary changes, except
+  PR38's order-independent door-event test fix. All exact heads were checked.
+- Rechecked all eight source heads and main unchanged before merge.
+- PR45 merged at 2026-10-16T17:56:12Z. Release main commit:
+  7d7990b99e9f02c126ad3983da633476a22a9708.
+  Its tree equals the tested candidate; all eight exact heads are ancestors.
+- Source PRs37-44 and integration PR45 are merged. No open PR remains.
+- Exact-main CI38943496152 and E2E38943496202 are pending. Do not tag yet.
+- This checkpoint is committed locally only. Do not push the batch branch
+  after merge. Final audit documentation stays separate from released code.

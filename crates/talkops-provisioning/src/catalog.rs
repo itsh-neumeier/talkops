@@ -132,6 +132,10 @@ pub enum SettingKind {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PhoneSetting {
+    #[serde(default)]
+    pub vendor: String,
+    #[serde(default)]
+    pub models: Vec<String>,
     /// Stable name used in the database and the UI texts.
     pub key: String,
     /// UI section (`tones`, `display` …).
@@ -221,7 +225,8 @@ impl PhoneCatalog {
                     return Err(err(&path, "duplicate model id".into()));
                 }
             }
-            for setting in file.settings {
+            for mut setting in file.settings {
+                setting.vendor = file.vendor.clone();
                 let problem = if settings.iter().any(|s| s.key == setting.key) {
                     Some("duplicate key")
                 } else if setting.kind == SettingKind::Choice && setting.values.is_empty() {
@@ -284,7 +289,11 @@ impl PhoneCatalog {
     ) -> Vec<(String, String)> {
         self.settings
             .iter()
-            .filter(|s| s.families.contains(&model.family))
+            .filter(|s| {
+                s.vendor == model.vendor
+                    && s.families.contains(&model.family)
+                    && (s.models.is_empty() || s.models.contains(&model.id))
+            })
             .filter_map(|s| {
                 let value = phone.get(&s.key).or_else(|| global.get(&s.key))?;
                 s.allows(value).then(|| (s.param.clone(), value.clone()))

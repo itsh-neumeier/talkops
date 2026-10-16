@@ -1,121 +1,123 @@
-# Provisioning profiles and complete Yealink template research
+# Provisioning profiles and complete Yealink template library
 
 ## Task state
 
 - Task ID: 20261016-codex-provisioning-multivendor-plan
 - Date: 2026-10-16, Europe/Berlin
 - Tool: Codex
-- Status: In progress. Proposal prepared; application changes require user review.
+- Status: In progress. Approved implementation; final checks running.
 - Branch: codex/provisioning-multivendor-plan
 - Base commit: 86772ec0c31990f7a29a639ffb90db6ebef217e2
-- Related PR: https://github.com/itsh-neumeier/talkops/pull/49 (draft)
-- Initial proposal commit: 7610aa5
+- PR: https://github.com/itsh-neumeier/talkops/pull/49
+- Proposal commits: 7610aa5, 160c205
 
 ## Goal
 
-Complete T41P key provisioning. Use the entire FusionPBX Yealink template
-library as the source for adaptation. Prepare forms for more than one vendor.
-Investigate T41P provisioning through DHCP option 66 and HTTPS.
-The user explicitly requires a proposal before implementation.
+Complete T41P key provisioning. Import the full FusionPBX Yealink source library.
+Prepare model and vendor driven forms. Support explicit phone transport settings
+and diagnose failed HTTPS resync downloads. Submit a tested PR for the release chat.
 
 ## Result
 
-Prepared a review proposal, a complete directory matrix and a source inventory.
-Scanned all 433 files in all 70 Yealink directories at FusionPBX commit
-be0d0e3220e6b3666775fa46db6f1accc60c79c6. Recorded 49 vendor function entries.
-Created a local interactive T41P form proposal and a 70-directory source viewer.
-No application, phone, DHCP or release setting changed.
-Committed and pushed the proposal branch. Created draft PR 49 for review.
-
-The worktree is C:/Users/timo/.codex/worktrees/provisioning-multivendor-plan/talkops.
-The app worktree tool returned `Not a git repository` because the chat root is
-the parent of the repository. Used `git worktree add` with an explicit branch.
-Added only this new worktree path to Git safe.directory for its UNC metadata.
-The original checkout has a local commit and three untracked Dahua summaries.
-These foreign changes were preserved. No uncommitted changes were copied.
-The remote target was verified as main at the base commit. No PR was open.
+The user reviewed the proposal and approved implementation. Added programmable
+keys, expansion module profiles, ordered call-state softkeys, transport overrides,
+a redacted draft preview, a source library and versioned native templates.
+The initial API regression and new database tests pass. Final UI and Rust checks
+are in progress. No production phone, DHCP or release setting changed.
 
 ## Changes
 
-- docs/provisioning-multivendor-proposal.md: Scope, findings, design, transport
-  diagnosis, storage implications, proposed checks and release notes.
-- docs/research/yealink-template-inventory.md: Matrix and individual sections
-  for all 70 source directories, with pinned source links.
-- docs/research/yealink-template-inventory.json: All 433 Git blobs, parameter
-  patterns, first source lines, key loops, literal slots and comment references.
-- docs/research/survey-yealink-templates.cjs: Reproducible, read-only source scan.
-  Requires the pinned FusionPBX checkout. It does not execute upstream code.
-- Local review preview outside the repository:
-  C:/Users/timo/.codex/visualizations/2026/10/16/01a1466e-ddf1-7fa1-8f12-a6babaace19c/yealink-provisioning-review.html.
+- `crates/talkops-provisioning/reference/`: All 433 original Git blobs from 70
+  upstream directories at be0d0e3220e6b3666775fa46db6f1accc60c79c6. Includes
+  provenance, MPL-1.1 license and a reproducible source verification check.
+- `crates/talkops-provisioning/profiles/yealink.json`: Explicit key capabilities
+  for the existing 21 desk models. Unknown vendors receive no Yealink fallback.
+- `crates/talkops-provisioning/src/{adapter,keys,library}.rs`: Vendor dispatch,
+  semantic assignments, endpoint validation and bounded template evaluation.
+- `crates/talkops-core/src/phone_provisioning.rs`: Tenant options, immutable
+  template revisions, active pointers and bounded configuration request records.
+- `crates/talkops-api/src/routes/provisioning_admin.rs`: Privileged, audited
+  transport and template operations. Source inspection does not execute Smarty.
+- `crates/talkops-api/src/routes/{phones,provisioning}.rs`: Boot and softkey files,
+  per-device endpoints, draft previews, request results and old-client compatibility.
+- `web/src/lib/components/PhoneProvisioningEditor.svelte`: Capability driven
+  programmable and expansion keys, contact numbers and call-state layouts.
+- `web/src/lib/components/ProvisioningTransport.svelte`: Server settings and
+  recent download results, separate from the SIP NOTIFY result.
+- `web/src/routes/phones/templates/+page.svelte`: Source viewer, native template
+  cloning, immutable drafts, validation, activation and revision restore.
+- `migrations/20261105000001_provisioning_profiles.sql`: Phone overrides, tenant
+  settings, template revisions and diagnostic records.
+- `docs/adr/0038-vendor-provisioning-profiles.md`, `docs/en/provisioning.md` and
+  `docs/de/provisionierung.md`: Design, operation, diagnosis and upgrade notes.
+- `.github/workflows/ci.yml`: Source integrity and provisioning browser checks.
 
 ## Decisions
 
-- Proposal only until user feedback. Commit/push/PR authorization permits
-  publishing the proposal, but does not authorize the requested runtime changes
-  before review. The release chat owns target merges and publication.
-- PR 47 is already merged in 1.8.1. Reuse its line-key editor and 21 desk models.
-- The T41P needs programmable keys and separate call-state softkey layouts.
-  Map idle softkeys to IDs 1-4, arrows 5-8, OK/cancel 9/10, mute 13,
-  redial 17 and message 18. Verify the profile on the actual firmware.
-- The user reports T41P firmware 36.83.0.120. The screenshots show 13 controls.
-- Templates contain copied blocks. T41P source has 27 literal line slots and
-  expansion/memory blocks; these do not prove hardware capability. Some
-  programmable fields incorrectly reference key 1 inside the loop.
-- Numeric function IDs differ between the FusionPBX registry, template
-  comments and current Yealink guidance. Use model/firmware profiles.
-- Keep upstream Smarty sources separate from active MiniJinja templates.
-  Plan an adapter interface, vendor/model capability forms, safe template
-  cloning/versioning and explicit device provisioning endpoints.
-- Both reported URLs used /provisioning/. The first chat spelling was a typo.
-  Do not diagnose that typo as the incident cause.
-- Manual LAN HTTP works on T41P. AX86R works with HTTPS through DHCP option 66.
-  Compare device DHCP responses, auth and TLS. Next useful T41P test: manual
-  HTTPS on the same endpoint. Do not assume the firmware lacks HTTPS support.
-- DHCP option 66 is address delivery, not proof of a TFTP transfer.
+- The user approved the reviewed proposal with "Passt so gerne übernehmen".
+  Commit, push and PR publication are authorized. The release chat owns merging,
+  versions, tags and publication.
+- Use only the task worktree at
+  C:/Users/timo/.codex/worktrees/provisioning-multivendor-plan/talkops.
+  The original checkout's local commit and untracked Dahua summaries are preserved.
+- The remote default is main. Its head still matches the base commit.
+- T41P firmware is 36.83.0.120. Its programmable IDs are 1–10, 13, 17 and 18.
+  Copied source blocks do not establish hardware capabilities. The T41P profile
+  exposes no expansion module. All new mappings need real-device verification.
+- Keep raw Smarty reference files separate from native MiniJinja templates.
+  Source folders do not imply 70 supported active models. Adapted models remain
+  the existing catalog; additional vendor renderers are extension points.
+- Use modern codes by default and an explicit legacy code profile.
+- Reset sends effective profile defaults. Omission alone would retain old values.
+- Templates have tenant/model scope, immutable revisions, strict variables,
+  output/evaluation/recursion limits and no filesystem or network loader.
+- Both URLs used /provisioning/. The initial chat spelling was only a typo.
+- AX86R HTTPS works via DHCP option 66. T41P HTTPS resync fails; LAN HTTP resync
+  works immediately. The root cause remains unconfirmed. DHCP 66 delivers an
+  address and does not prove a TFTP transfer. No global TLS checks are disabled.
+- Device endpoint overrides apply to common values repeated in the MAC file,
+  assets and callbacks. This prevents a web HTTPS request from replacing a saved
+  phone HTTP exception. The server default remains available to other phones.
 
 ## Checks
 
-- Passed: Source scan assertions: pinned revision, 433 files, 70 directories,
-  function registry and T41P programmable/call-state blocks.
-- Passed: Independent comparison against all 433 original Git blobs. Checked
-  3,779 parameter references, directory sections, file counts and local links.
-- Passed: node --check docs/research/survey-yealink-templates.cjs.
-- Passed: git diff --cached --check before the proposal commit.
-- Passed: Interactive proposal in headless Edge/Playwright. Selected every
-  source directory, checked 13 T41P programmable IDs, 15 line keys, conditional
-  fields, line-position limits, draft changes and call-state selection.
-- Passed: Preview at 320/736 px in light/dark appearance. No horizontal
-  overflow or page errors. Inspected representative screenshots.
-- Passed: Read-only HEAD requests to HTTPS and internal HTTP T41P common CFG
-  endpoints returned 401 with the TalkOps Basic-auth challenge. HTTPS completed
-  with normal computer certificate validation. Local DNS resolved the domain
-  to the internal server address. No authenticated configuration was fetched.
-- Not run: Rust/web application suites and hardware tests. No runtime code
-  changed; user review and phone-level diagnosis remain pending.
-- STE review: Used repository clarity rules. The full official standard was
-  unavailable. Full language review is pending.
+- Passed: Original source research and comparison of all 433 Git blobs.
+- Passed: Initial 10 existing phone API tests and 3 new PostgreSQL integration
+  tests for overrides, preview redaction, resync, templates and tenant isolation.
+- Passed: Web lint, Svelte check (0 errors, 0 warnings), 34 web unit tests and build.
+- In progress: Final renderer/API tests after preview and bounded writer changes;
+  browser flows, full clippy and CI on the implementation commit.
+- Earlier failures: C: filled during a debug test build. Cleaned only task package
+  outputs with cargo clean, then moved test outputs to the larger A: volume.
+  Browser checks found a Svelte proxy clone error; snapshot cloning fixes it.
+- Not run: Actual T41P/AX86R hardware tests and packet capture. No device access.
+- Review: CodeRabbit CLI is absent. Use direct code review; do not claim a CLI run.
+- STE review: Applied repository clarity rules. The full standard was unavailable.
+  Full language review remains pending.
 
 ## Dependencies and open work
 
-- Required PR dependencies: None. Migration IDs: None. Package changes: None.
-- Future schema changes need fresh, unique migration IDs after approval.
-  The proposal does not reserve an ID or change the database.
-- Confirm whether both T41P attempts used the same provisioning credentials.
-- Run manual HTTPS on T41P and compare DHCP replies. TLS/firmware is a hypothesis,
-  not a confirmed root cause. The AX86R firmware has not been recorded.
-- Review template-editor scope, key groups and delivery order with the user.
-- Proposed release notes describe future implementation, not this docs-only PR.
+- Required PR dependencies: None. Includes the already merged PR 47 behavior.
+- Migration ID: 20261105000001. Apply before starting the new API.
+- Cargo: Enable existing MiniJinja loader/fuel features. Add direct serde_json and
+  url use to the provisioning crate. No dependency versions or release versions
+  changed. Cargo.lock has one new dependency edge.
+- Keep existing secrets and assignments. Clients that omit provisioning preserve
+  saved overrides. Templates become effective after activation, assignment and a
+  phone download; activation alone does not send a resync.
+- HTTPS root cause needs a phone-level TLS/DNS/auth comparison. TLS failures before
+  HTTP leave no TalkOps request entry. The HTTP exception is a LAN workaround.
 
 ## Next action
 
-Present draft PR 49 and the preview. Request feedback on the concrete proposal.
-Implement only after the user reviews the concrete proposal. Preserve the task
-branch and refresh the verified target before starting implementation.
+Finish final checks, fix findings, update this summary and the PR, then hand off
+the verified feature branch to the release chat. Do not merge or publish a release.
 
 ## References
 
+- docs/provisioning-multivendor-proposal.md
+- docs/research/yealink-template-inventory.md
+- docs/research/yealink-template-inventory.json
 - docs/ai-memory/20261016-codex-yealink-t41p-dss.md
 - docs/ai-memory/20261012-codex-yealink-internal-phonebook.md
-- docs/provisioning-multivendor-proposal.md
 - docs/release-workflow.md
-- https://github.com/itsh-neumeier/talkops/pull/47

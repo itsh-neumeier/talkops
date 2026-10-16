@@ -263,6 +263,7 @@ pub fn api_router() -> (Router<AppState>, utoipa::openapi::OpenApi) {
         .merge(routes::transcription::router())
         .merge(routes::transcription_jobs::router())
         .merge(routes::phones::router())
+        .merge(routes::provisioning_admin::router())
         .merge(routes::voicemail::router())
         .merge(routes::mail::router())
         .merge(routes::notifications::router())
@@ -323,6 +324,14 @@ pub fn app(state: AppState, web_dir: Option<&Path>) -> Router {
         .route(
             "/provisioning/{*path}",
             axum::routing::get(routes::provisioning::serve),
+        )
+        .route(
+            "/provisioning",
+            axum::routing::get(|| async { axum::http::StatusCode::NOT_FOUND }),
+        )
+        .route(
+            "/provisioning/",
+            axum::routing::get(|| async { axum::http::StatusCode::NOT_FOUND }),
         )
         .with_state(state);
 

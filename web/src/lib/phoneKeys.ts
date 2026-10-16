@@ -1,3 +1,4 @@
+import { keyNeedsAccount, keyNeedsNumber } from './provisioning.ts';
 import type { Contact, LineKey, PhoneAccount, PhoneModel } from './api.ts';
 
 /** The same effective layout as the provisioning renderer, without mutating overrides. */
@@ -63,14 +64,33 @@ export function keyValidation(
 	accounts: PhoneAccount[]
 ): string | null {
 	if (unsupportedKey(key, model)) return 'phonekeys.invalidSlot';
-	if (key.type !== 'none' && !accounts.some((a) => a.account_index === key.account))
+	if (
+		keyNeedsAccount(key.type) &&
+		!(key.account === 0 && ['speed_dial', 'intercom'].includes(key.type)) &&
+		!accounts.some((a) => a.account_index === key.account)
+	)
 		return 'phonekeys.missingAccount';
 	if (Array.from(key.label).length > 32) return 'phonekeys.longLabel';
 	if (key.type === 'speed_dial' && !model.speed_dial_keys) return 'phonekeys.noSpeedDial';
-	if (key.type === 'speed_dial' || key.type === 'blf') {
+	if (keyNeedsNumber(key.type)) {
 		const park = key.type === 'blf' && /^park\+\*7[1-9]$/.test(key.value);
 		if (!park && (!/^[0-9*#+]+$/.test(key.value) || key.value.length > 32))
 			return 'phonekeys.invalidNumber';
+	}
+	if (key.type === 'xml_browser') {
+		try {
+			const url = new URL(key.value);
+			if (
+				!['http:', 'https:'].includes(url.protocol) ||
+				url.username ||
+				url.password ||
+				url.search ||
+				url.hash
+			)
+				return 'phonekeys.invalidNumber';
+		} catch {
+			return 'phonekeys.invalidNumber';
+		}
 	}
 	return null;
 }

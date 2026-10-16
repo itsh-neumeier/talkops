@@ -1,8 +1,11 @@
 //! Phone provisioning: model catalog, Yealink configuration files and the
 //! XML remote phonebook. Pure rendering – data access lives in the API crate.
 
+pub mod adapter;
 pub mod catalog;
 pub mod dial_now;
+pub mod keys;
+pub mod library;
 pub mod phonebook;
 pub mod yealink;
 

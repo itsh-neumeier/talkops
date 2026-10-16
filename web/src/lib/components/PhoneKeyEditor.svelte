@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { keyNeedsAccount, keyNeedsNumber } from '#lib/provisioning.ts';
 	import { tick } from 'svelte';
 	import type {
 		Contact,
@@ -60,13 +61,17 @@
 	const matches = $derived(contactsForPhone(contacts, sectionIds, book, search));
 	const selectedContact = $derived(matches.find((c) => c.id === contactId));
 	const numbers = $derived(selectedContact ? contactNumbers(selectedContact) : []);
-	const types = $derived<KeyType[]>([
-		...(draft.key <= (model.line_key_limit ?? model.accounts) ? ['line' as const] : []),
-		'blf',
-		...(model.speed_dial_keys ? ['speed_dial' as const] : []),
-		'none'
-	]);
-	const targetNeeded = $derived(draft.type === 'speed_dial' || draft.type === 'blf');
+	const types = $derived<KeyType[]>(
+		(
+			model.key_capabilities?.line_functions ?? [
+				'line',
+				'blf',
+				...(model.speed_dial_keys ? ['speed_dial' as const] : []),
+				'none'
+			]
+		).filter((kind) => kind !== 'line' || draft.key <= (model.line_key_limit ?? model.accounts))
+	);
+	const targetNeeded = $derived(keyNeedsNumber(draft.type) || draft.type === 'xml_browser');
 	const sources = $derived(sourceTabs());
 	function sourceTabs(): { id: 'book' | 'internal' | 'manual'; label: string }[] {
 		return [
@@ -107,7 +112,7 @@
 	}
 	function pickExtension(number: string) {
 		extensionNumber = number;
-		draft.value = number ? (draft.type === 'blf' ? number : `**${number}`) : '';
+		draft.value = number ? (['blf', 'pickup'].includes(draft.type) ? number : `**${number}`) : '';
 		const ext = extensions.find((e) => e.number === number);
 		if (ext) draft.label = Array.from(ext.display_name).slice(0, 32).join('');
 	}
@@ -122,7 +127,8 @@
 		if (draft.type === 'blf') {
 			source = 'internal';
 			pickExtension(extensionNumber);
-		} else if (source === 'internal') pickExtension(extensionNumber);
+		} else if (!['speed_dial', 'intercom', 'pickup'].includes(draft.type)) source = 'manual';
+		else if (source === 'internal') pickExtension(extensionNumber);
 	}
 	function edit(n: number, event: MouseEvent) {
 		if (disabled) return;
@@ -456,7 +462,7 @@
 						bind:value={draft.label}
 						maxlength="32"
 					/></label
-				><label for="key-account"
+				><label for="key-account" hidden={!keyNeedsAccount(draft.type)}
 					>{t('phones.account')}<select
 						id="key-account"
 						aria-label={t('phones.account')}

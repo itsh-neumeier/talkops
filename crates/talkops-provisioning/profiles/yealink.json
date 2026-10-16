@@ -1,0 +1,2232 @@
+{
+  "t31g": {
+    "programmable": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      13,
+      14,
+      17,
+      18
+    ],
+    "expansion_modules": 0,
+    "expansion_keys": 0,
+    "softkey_states": {
+      "call_in": [
+        "Empty",
+        "Answer",
+        "Forward",
+        "Silence",
+        "Reject"
+      ],
+      "call_failed": [
+        "Empty",
+        "Cancel",
+        "Back",
+        "Redial"
+      ],
+      "connecting": [
+        "Empty",
+        "Cancel",
+        "EndCall"
+      ],
+      "dialing": [
+        "Empty",
+        "Send",
+        "IME",
+        "Delete",
+        "Cancel"
+      ],
+      "ring_back": [
+        "Empty",
+        "Cancel",
+        "EndCall"
+      ],
+      "talking": [
+        "Empty",
+        "Hold",
+        "Transfer",
+        "Conference",
+        "EndCall",
+        "NewCall",
+        "Swap"
+      ]
+    },
+    "programmable_functions": [
+      "none",
+      "speed_dial",
+      "forward",
+      "dnd",
+      "redial",
+      "call_return",
+      "pickup",
+      "intercom",
+      "xml_browser",
+      "history",
+      "directory",
+      "menu",
+      "status",
+      "prefix",
+      "local_phonebook",
+      "xml_phonebook",
+      "switch_account_up",
+      "switch_account_down",
+      "keypad_lock"
+    ],
+    "line_functions": [
+      "none",
+      "line",
+      "blf",
+      "speed_dial",
+      "forward",
+      "dnd",
+      "pickup",
+      "voicemail",
+      "dtmf",
+      "intercom",
+      "xml_browser",
+      "directory",
+      "prefix",
+      "keypad_lock",
+      "xml_phonebook",
+      "local_phonebook",
+      "conference",
+      "transfer",
+      "hold"
+    ],
+    "firmware_profiles": [
+      "yealink-v83",
+      "fusionpbx-legacy"
+    ]
+  },
+  "t33g": {
+    "programmable": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      13,
+      17,
+      18
+    ],
+    "expansion_modules": 0,
+    "expansion_keys": 0,
+    "softkey_states": {
+      "call_in": [
+        "Empty",
+        "Answer",
+        "Forward",
+        "Silence",
+        "Reject"
+      ],
+      "call_failed": [
+        "Empty",
+        "Cancel",
+        "Back",
+        "Redial"
+      ],
+      "connecting": [
+        "Empty",
+        "Cancel",
+        "EndCall"
+      ],
+      "dialing": [
+        "Empty",
+        "Send",
+        "IME",
+        "Delete",
+        "Cancel"
+      ],
+      "ring_back": [
+        "Empty",
+        "Cancel",
+        "EndCall"
+      ],
+      "talking": [
+        "Empty",
+        "Hold",
+        "Transfer",
+        "Conference",
+        "EndCall",
+        "NewCall",
+        "Swap"
+      ]
+    },
+    "programmable_functions": [
+      "none",
+      "speed_dial",
+      "forward",
+      "dnd",
+      "redial",
+      "call_return",
+      "pickup",
+      "intercom",
+      "xml_browser",
+      "history",
+      "directory",
+      "menu",
+      "status",
+      "prefix",
+      "local_phonebook",
+      "xml_phonebook",
+      "switch_account_up",
+      "switch_account_down",
+      "keypad_lock"
+    ],
+    "line_functions": [
+      "none",
+      "line",
+      "blf",
+      "speed_dial",
+      "forward",
+      "dnd",
+      "pickup",
+      "voicemail",
+      "dtmf",
+      "intercom",
+      "xml_browser",
+      "directory",
+      "prefix",
+      "keypad_lock",
+      "xml_phonebook",
+      "local_phonebook",
+      "conference",
+      "transfer",
+      "hold"
+    ],
+    "firmware_profiles": [
+      "yealink-v83",
+      "fusionpbx-legacy"
+    ]
+  },
+  "t41p": {
+    "programmable": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      13,
+      17,
+      18
+    ],
+    "expansion_modules": 0,
+    "expansion_keys": 0,
+    "softkey_states": {
+      "call_in": [
+        "Empty",
+        "Answer",
+        "Forward",
+        "Silence",
+        "Reject"
+      ],
+      "call_failed": [
+        "Empty",
+        "Cancel",
+        "Back",
+        "Redial"
+      ],
+      "connecting": [
+        "Empty",
+        "Cancel",
+        "EndCall"
+      ],
+      "dialing": [
+        "Empty",
+        "Send",
+        "IME",
+        "Delete",
+        "Cancel"
+      ],
+      "ring_back": [
+        "Empty",
+        "Cancel",
+        "EndCall"
+      ],
+      "talking": [
+        "Empty",
+        "Hold",
+        "Transfer",
+        "Conference",
+        "EndCall",
+        "NewCall",
+        "Swap"
+      ]
+    },
+    "programmable_functions": [
+      "none",
+      "speed_dial",
+      "forward",
+      "dnd",
+      "redial",
+      "call_return",
+      "pickup",
+      "intercom",
+      "xml_browser",
+      "history",
+      "directory",
+      "menu",
+      "status",
+      "prefix",
+      "local_phonebook",
+      "xml_phonebook",
+      "switch_account_up",
+      "switch_account_down",
+      "keypad_lock"
+    ],
+    "line_functions": [
+      "none",
+      "line",
+      "blf",
+      "speed_dial",
+      "forward",
+      "dnd",
+      "pickup",
+      "voicemail",
+      "dtmf",
+      "intercom",
+      "xml_browser",
+      "directory",
+      "prefix",
+      "keypad_lock",
+      "xml_phonebook",
+      "local_phonebook",
+      "conference",
+      "transfer",
+      "hold"
+    ],
+    "firmware_profiles": [
+      "yealink-v83",
+      "fusionpbx-legacy"
+    ]
+  },
+  "t41s": {
+    "programmable": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      13,
+      17,
+      18
+    ],
+    "expansion_modules": 0,
+    "expansion_keys": 0,
+    "softkey_states": {
+      "call_in": [
+        "Empty",
+        "Answer",
+        "Forward",
+        "Silence",
+        "Reject"
+      ],
+      "call_failed": [
+        "Empty",
+        "Cancel",
+        "Back",
+        "Redial"
+      ],
+      "connecting": [
+        "Empty",
+        "Cancel",
+        "EndCall"
+      ],
+      "dialing": [
+        "Empty",
+        "Send",
+        "IME",
+        "Delete",
+        "Cancel"
+      ],
+      "ring_back": [
+        "Empty",
+        "Cancel",
+        "EndCall"
+      ],
+      "talking": [
+        "Empty",
+        "Hold",
+        "Transfer",
+        "Conference",
+        "EndCall",
+        "NewCall",
+        "Swap"
+      ]
+    },
+    "programmable_functions": [
+      "none",
+      "speed_dial",
+      "forward",
+      "dnd",
+      "redial",
+      "call_return",
+      "pickup",
+      "intercom",
+      "xml_browser",
+      "history",
+      "directory",
+      "menu",
+      "status",
+      "prefix",
+      "local_phonebook",
+      "xml_phonebook",
+      "switch_account_up",
+      "switch_account_down",
+      "keypad_lock"
+    ],
+    "line_functions": [
+      "none",
+      "line",
+      "blf",
+      "speed_dial",
+      "forward",
+      "dnd",
+      "pickup",
+      "voicemail",
+      "dtmf",
+      "intercom",
+      "xml_browser",
+      "directory",
+      "prefix",
+      "keypad_lock",
+      "xml_phonebook",
+      "local_phonebook",
+      "conference",
+      "transfer",
+      "hold"
+    ],
+    "firmware_profiles": [
+      "yealink-v83",
+      "fusionpbx-legacy"
+    ]
+  },
+  "t42u": {
+    "programmable": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      13,
+      17,
+      18
+    ],
+    "expansion_modules": 0,
+    "expansion_keys": 0,
+    "softkey_states": {
+      "call_in": [
+        "Empty",
+        "Answer",
+        "Forward",
+        "Silence",
+        "Reject"
+      ],
+      "call_failed": [
+        "Empty",
+        "Cancel",
+        "Back",
+        "Redial"
+      ],
+      "connecting": [
+        "Empty",
+        "Cancel",
+        "EndCall"
+      ],
+      "dialing": [
+        "Empty",
+        "Send",
+        "IME",
+        "Delete",
+        "Cancel"
+      ],
+      "ring_back": [
+        "Empty",
+        "Cancel",
+        "EndCall"
+      ],
+      "talking": [
+        "Empty",
+        "Hold",
+        "Transfer",
+        "Conference",
+        "EndCall",
+        "NewCall",
+        "Swap"
+      ]
+    },
+    "programmable_functions": [
+      "none",
+      "speed_dial",
+      "forward",
+      "dnd",
+      "redial",
+      "call_return",
+      "pickup",
+      "intercom",
+      "xml_browser",
+      "history",
+      "directory",
+      "menu",
+      "status",
+      "prefix",
+      "local_phonebook",
+      "xml_phonebook",
+      "switch_account_up",
+      "switch_account_down",
+      "keypad_lock"
+    ],
+    "line_functions": [
+      "none",
+      "line",
+      "blf",
+      "speed_dial",
+      "forward",
+      "dnd",
+      "pickup",
+      "voicemail",
+      "dtmf",
+      "intercom",
+      "xml_browser",
+      "directory",
+      "prefix",
+      "keypad_lock",
+      "xml_phonebook",
+      "local_phonebook",
+      "conference",
+      "transfer",
+      "hold"
+    ],
+    "firmware_profiles": [
+      "yealink-v83",
+      "fusionpbx-legacy"
+    ]
+  },
+  "t43u": {
+    "programmable": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      13,
+      17,
+      18
+    ],
+    "expansion_modules": 3,
+    "expansion_keys": 60,
+    "softkey_states": {
+      "call_in": [
+        "Empty",
+        "Answer",
+        "Forward",
+        "Silence",
+        "Reject"
+      ],
+      "call_failed": [
+        "Empty",
+        "Cancel",
+        "Back",
+        "Redial"
+      ],
+      "connecting": [
+        "Empty",
+        "Cancel",
+        "EndCall"
+      ],
+      "dialing": [
+        "Empty",
+        "Send",
+        "IME",
+        "Delete",
+        "Cancel"
+      ],
+      "ring_back": [
+        "Empty",
+        "Cancel",
+        "EndCall"
+      ],
+      "talking": [
+        "Empty",
+        "Hold",
+        "Transfer",
+        "Conference",
+        "EndCall",
+        "NewCall",
+        "Swap"
+      ]
+    },
+    "programmable_functions": [
+      "none",
+      "speed_dial",
+      "forward",
+      "dnd",
+      "redial",
+      "call_return",
+      "pickup",
+      "intercom",
+      "xml_browser",
+      "history",
+      "directory",
+      "menu",
+      "status",
+      "prefix",
+      "local_phonebook",
+      "xml_phonebook",
+      "switch_account_up",
+      "switch_account_down",
+      "keypad_lock"
+    ],
+    "line_functions": [
+      "none",
+      "line",
+      "blf",
+      "speed_dial",
+      "forward",
+      "dnd",
+      "pickup",
+      "voicemail",
+      "dtmf",
+      "intercom",
+      "xml_browser",
+      "directory",
+      "prefix",
+      "keypad_lock",
+      "xml_phonebook",
+      "local_phonebook",
+      "conference",
+      "transfer",
+      "hold"
+    ],
+    "firmware_profiles": [
+      "yealink-v83",
+      "fusionpbx-legacy"
+    ]
+  },
+  "t46g": {
+    "programmable": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      12,
+      13,
+      14,
+      17,
+      18
+    ],
+    "expansion_modules": 6,
+    "expansion_keys": 40,
+    "softkey_states": {
+      "call_in": [
+        "Empty",
+        "Answer",
+        "Forward",
+        "Silence",
+        "Reject"
+      ],
+      "call_failed": [
+        "Empty",
+        "Cancel",
+        "Back",
+        "Redial"
+      ],
+      "connecting": [
+        "Empty",
+        "Cancel",
+        "EndCall"
+      ],
+      "dialing": [
+        "Empty",
+        "Send",
+        "IME",
+        "Delete",
+        "Cancel"
+      ],
+      "ring_back": [
+        "Empty",
+        "Cancel",
+        "EndCall"
+      ],
+      "talking": [
+        "Empty",
+        "Hold",
+        "Transfer",
+        "Conference",
+        "EndCall",
+        "NewCall",
+        "Swap"
+      ]
+    },
+    "programmable_functions": [
+      "none",
+      "speed_dial",
+      "forward",
+      "dnd",
+      "redial",
+      "call_return",
+      "pickup",
+      "intercom",
+      "xml_browser",
+      "history",
+      "directory",
+      "menu",
+      "status",
+      "prefix",
+      "local_phonebook",
+      "xml_phonebook",
+      "switch_account_up",
+      "switch_account_down",
+      "keypad_lock"
+    ],
+    "line_functions": [
+      "none",
+      "line",
+      "blf",
+      "speed_dial",
+      "forward",
+      "dnd",
+      "pickup",
+      "voicemail",
+      "dtmf",
+      "intercom",
+      "xml_browser",
+      "directory",
+      "prefix",
+      "keypad_lock",
+      "xml_phonebook",
+      "local_phonebook",
+      "conference",
+      "transfer",
+      "hold"
+    ],
+    "firmware_profiles": [
+      "yealink-v83",
+      "fusionpbx-legacy"
+    ]
+  },
+  "t46s": {
+    "programmable": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      12,
+      13,
+      14,
+      17,
+      18
+    ],
+    "expansion_modules": 6,
+    "expansion_keys": 40,
+    "softkey_states": {
+      "call_in": [
+        "Empty",
+        "Answer",
+        "Forward",
+        "Silence",
+        "Reject"
+      ],
+      "call_failed": [
+        "Empty",
+        "Cancel",
+        "Back",
+        "Redial"
+      ],
+      "connecting": [
+        "Empty",
+        "Cancel",
+        "EndCall"
+      ],
+      "dialing": [
+        "Empty",
+        "Send",
+        "IME",
+        "Delete",
+        "Cancel"
+      ],
+      "ring_back": [
+        "Empty",
+        "Cancel",
+        "EndCall"
+      ],
+      "talking": [
+        "Empty",
+        "Hold",
+        "Transfer",
+        "Conference",
+        "EndCall",
+        "NewCall",
+        "Swap"
+      ]
+    },
+    "programmable_functions": [
+      "none",
+      "speed_dial",
+      "forward",
+      "dnd",
+      "redial",
+      "call_return",
+      "pickup",
+      "intercom",
+      "xml_browser",
+      "history",
+      "directory",
+      "menu",
+      "status",
+      "prefix",
+      "local_phonebook",
+      "xml_phonebook",
+      "switch_account_up",
+      "switch_account_down",
+      "keypad_lock"
+    ],
+    "line_functions": [
+      "none",
+      "line",
+      "blf",
+      "speed_dial",
+      "forward",
+      "dnd",
+      "pickup",
+      "voicemail",
+      "dtmf",
+      "intercom",
+      "xml_browser",
+      "directory",
+      "prefix",
+      "keypad_lock",
+      "xml_phonebook",
+      "local_phonebook",
+      "conference",
+      "transfer",
+      "hold"
+    ],
+    "firmware_profiles": [
+      "yealink-v83",
+      "fusionpbx-legacy"
+    ]
+  },
+  "t46u": {
+    "programmable": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      12,
+      13,
+      14,
+      17,
+      18
+    ],
+    "expansion_modules": 3,
+    "expansion_keys": 60,
+    "softkey_states": {
+      "call_in": [
+        "Empty",
+        "Answer",
+        "Forward",
+        "Silence",
+        "Reject"
+      ],
+      "call_failed": [
+        "Empty",
+        "Cancel",
+        "Back",
+        "Redial"
+      ],
+      "connecting": [
+        "Empty",
+        "Cancel",
+        "EndCall"
+      ],
+      "dialing": [
+        "Empty",
+        "Send",
+        "IME",
+        "Delete",
+        "Cancel"
+      ],
+      "ring_back": [
+        "Empty",
+        "Cancel",
+        "EndCall"
+      ],
+      "talking": [
+        "Empty",
+        "Hold",
+        "Transfer",
+        "Conference",
+        "EndCall",
+        "NewCall",
+        "Swap"
+      ]
+    },
+    "programmable_functions": [
+      "none",
+      "speed_dial",
+      "forward",
+      "dnd",
+      "redial",
+      "call_return",
+      "pickup",
+      "intercom",
+      "xml_browser",
+      "history",
+      "directory",
+      "menu",
+      "status",
+      "prefix",
+      "local_phonebook",
+      "xml_phonebook",
+      "switch_account_up",
+      "switch_account_down",
+      "keypad_lock"
+    ],
+    "line_functions": [
+      "none",
+      "line",
+      "blf",
+      "speed_dial",
+      "forward",
+      "dnd",
+      "pickup",
+      "voicemail",
+      "dtmf",
+      "intercom",
+      "xml_browser",
+      "directory",
+      "prefix",
+      "keypad_lock",
+      "xml_phonebook",
+      "local_phonebook",
+      "conference",
+      "transfer",
+      "hold"
+    ],
+    "firmware_profiles": [
+      "yealink-v83",
+      "fusionpbx-legacy"
+    ]
+  },
+  "t48g": {
+    "programmable": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      12,
+      13,
+      14,
+      17,
+      18
+    ],
+    "expansion_modules": 6,
+    "expansion_keys": 40,
+    "softkey_states": {
+      "call_in": [
+        "Empty",
+        "Answer",
+        "Forward",
+        "Silence",
+        "Reject"
+      ],
+      "call_failed": [
+        "Empty",
+        "Cancel",
+        "Back",
+        "Redial"
+      ],
+      "connecting": [
+        "Empty",
+        "Cancel",
+        "EndCall"
+      ],
+      "dialing": [
+        "Empty",
+        "Send",
+        "IME",
+        "Delete",
+        "Cancel"
+      ],
+      "ring_back": [
+        "Empty",
+        "Cancel",
+        "EndCall"
+      ],
+      "talking": [
+        "Empty",
+        "Hold",
+        "Transfer",
+        "Conference",
+        "EndCall",
+        "NewCall",
+        "Swap"
+      ]
+    },
+    "programmable_functions": [
+      "none",
+      "speed_dial",
+      "forward",
+      "dnd",
+      "redial",
+      "call_return",
+      "pickup",
+      "intercom",
+      "xml_browser",
+      "history",
+      "directory",
+      "menu",
+      "status",
+      "prefix",
+      "local_phonebook",
+      "xml_phonebook",
+      "switch_account_up",
+      "switch_account_down",
+      "keypad_lock"
+    ],
+    "line_functions": [
+      "none",
+      "line",
+      "blf",
+      "speed_dial",
+      "forward",
+      "dnd",
+      "pickup",
+      "voicemail",
+      "dtmf",
+      "intercom",
+      "xml_browser",
+      "directory",
+      "prefix",
+      "keypad_lock",
+      "xml_phonebook",
+      "local_phonebook",
+      "conference",
+      "transfer",
+      "hold"
+    ],
+    "firmware_profiles": [
+      "yealink-v83",
+      "fusionpbx-legacy"
+    ]
+  },
+  "t48s": {
+    "programmable": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      12,
+      13,
+      14,
+      17,
+      18
+    ],
+    "expansion_modules": 6,
+    "expansion_keys": 40,
+    "softkey_states": {
+      "call_in": [
+        "Empty",
+        "Answer",
+        "Forward",
+        "Silence",
+        "Reject"
+      ],
+      "call_failed": [
+        "Empty",
+        "Cancel",
+        "Back",
+        "Redial"
+      ],
+      "connecting": [
+        "Empty",
+        "Cancel",
+        "EndCall"
+      ],
+      "dialing": [
+        "Empty",
+        "Send",
+        "IME",
+        "Delete",
+        "Cancel"
+      ],
+      "ring_back": [
+        "Empty",
+        "Cancel",
+        "EndCall"
+      ],
+      "talking": [
+        "Empty",
+        "Hold",
+        "Transfer",
+        "Conference",
+        "EndCall",
+        "NewCall",
+        "Swap"
+      ]
+    },
+    "programmable_functions": [
+      "none",
+      "speed_dial",
+      "forward",
+      "dnd",
+      "redial",
+      "call_return",
+      "pickup",
+      "intercom",
+      "xml_browser",
+      "history",
+      "directory",
+      "menu",
+      "status",
+      "prefix",
+      "local_phonebook",
+      "xml_phonebook",
+      "switch_account_up",
+      "switch_account_down",
+      "keypad_lock"
+    ],
+    "line_functions": [
+      "none",
+      "line",
+      "blf",
+      "speed_dial",
+      "forward",
+      "dnd",
+      "pickup",
+      "voicemail",
+      "dtmf",
+      "intercom",
+      "xml_browser",
+      "directory",
+      "prefix",
+      "keypad_lock",
+      "xml_phonebook",
+      "local_phonebook",
+      "conference",
+      "transfer",
+      "hold"
+    ],
+    "firmware_profiles": [
+      "yealink-v83",
+      "fusionpbx-legacy"
+    ]
+  },
+  "t48u": {
+    "programmable": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      12,
+      13,
+      14,
+      17,
+      18
+    ],
+    "expansion_modules": 3,
+    "expansion_keys": 60,
+    "softkey_states": {
+      "call_in": [
+        "Empty",
+        "Answer",
+        "Forward",
+        "Silence",
+        "Reject"
+      ],
+      "call_failed": [
+        "Empty",
+        "Cancel",
+        "Back",
+        "Redial"
+      ],
+      "connecting": [
+        "Empty",
+        "Cancel",
+        "EndCall"
+      ],
+      "dialing": [
+        "Empty",
+        "Send",
+        "IME",
+        "Delete",
+        "Cancel"
+      ],
+      "ring_back": [
+        "Empty",
+        "Cancel",
+        "EndCall"
+      ],
+      "talking": [
+        "Empty",
+        "Hold",
+        "Transfer",
+        "Conference",
+        "EndCall",
+        "NewCall",
+        "Swap"
+      ]
+    },
+    "programmable_functions": [
+      "none",
+      "speed_dial",
+      "forward",
+      "dnd",
+      "redial",
+      "call_return",
+      "pickup",
+      "intercom",
+      "xml_browser",
+      "history",
+      "directory",
+      "menu",
+      "status",
+      "prefix",
+      "local_phonebook",
+      "xml_phonebook",
+      "switch_account_up",
+      "switch_account_down",
+      "keypad_lock"
+    ],
+    "line_functions": [
+      "none",
+      "line",
+      "blf",
+      "speed_dial",
+      "forward",
+      "dnd",
+      "pickup",
+      "voicemail",
+      "dtmf",
+      "intercom",
+      "xml_browser",
+      "directory",
+      "prefix",
+      "keypad_lock",
+      "xml_phonebook",
+      "local_phonebook",
+      "conference",
+      "transfer",
+      "hold"
+    ],
+    "firmware_profiles": [
+      "yealink-v83",
+      "fusionpbx-legacy"
+    ]
+  },
+  "t53": {
+    "programmable": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      13,
+      17,
+      18
+    ],
+    "expansion_modules": 3,
+    "expansion_keys": 60,
+    "softkey_states": {
+      "call_in": [
+        "Empty",
+        "Answer",
+        "Forward",
+        "Silence",
+        "Reject"
+      ],
+      "call_failed": [
+        "Empty",
+        "Cancel",
+        "Back",
+        "Redial"
+      ],
+      "connecting": [
+        "Empty",
+        "Cancel",
+        "EndCall"
+      ],
+      "dialing": [
+        "Empty",
+        "Send",
+        "IME",
+        "Delete",
+        "Cancel"
+      ],
+      "ring_back": [
+        "Empty",
+        "Cancel",
+        "EndCall"
+      ],
+      "talking": [
+        "Empty",
+        "Hold",
+        "Transfer",
+        "Conference",
+        "EndCall",
+        "NewCall",
+        "Swap"
+      ]
+    },
+    "programmable_functions": [
+      "none",
+      "speed_dial",
+      "forward",
+      "dnd",
+      "redial",
+      "call_return",
+      "pickup",
+      "intercom",
+      "xml_browser",
+      "history",
+      "directory",
+      "menu",
+      "status",
+      "prefix",
+      "local_phonebook",
+      "xml_phonebook",
+      "switch_account_up",
+      "switch_account_down",
+      "keypad_lock"
+    ],
+    "line_functions": [
+      "none",
+      "line",
+      "blf",
+      "speed_dial",
+      "forward",
+      "dnd",
+      "pickup",
+      "voicemail",
+      "dtmf",
+      "intercom",
+      "xml_browser",
+      "directory",
+      "prefix",
+      "keypad_lock",
+      "xml_phonebook",
+      "local_phonebook",
+      "conference",
+      "transfer",
+      "hold"
+    ],
+    "firmware_profiles": [
+      "yealink-v83",
+      "fusionpbx-legacy"
+    ]
+  },
+  "t53w": {
+    "programmable": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      13,
+      17,
+      18
+    ],
+    "expansion_modules": 3,
+    "expansion_keys": 60,
+    "softkey_states": {
+      "call_in": [
+        "Empty",
+        "Answer",
+        "Forward",
+        "Silence",
+        "Reject"
+      ],
+      "call_failed": [
+        "Empty",
+        "Cancel",
+        "Back",
+        "Redial"
+      ],
+      "connecting": [
+        "Empty",
+        "Cancel",
+        "EndCall"
+      ],
+      "dialing": [
+        "Empty",
+        "Send",
+        "IME",
+        "Delete",
+        "Cancel"
+      ],
+      "ring_back": [
+        "Empty",
+        "Cancel",
+        "EndCall"
+      ],
+      "talking": [
+        "Empty",
+        "Hold",
+        "Transfer",
+        "Conference",
+        "EndCall",
+        "NewCall",
+        "Swap"
+      ]
+    },
+    "programmable_functions": [
+      "none",
+      "speed_dial",
+      "forward",
+      "dnd",
+      "redial",
+      "call_return",
+      "pickup",
+      "intercom",
+      "xml_browser",
+      "history",
+      "directory",
+      "menu",
+      "status",
+      "prefix",
+      "local_phonebook",
+      "xml_phonebook",
+      "switch_account_up",
+      "switch_account_down",
+      "keypad_lock"
+    ],
+    "line_functions": [
+      "none",
+      "line",
+      "blf",
+      "speed_dial",
+      "forward",
+      "dnd",
+      "pickup",
+      "voicemail",
+      "dtmf",
+      "intercom",
+      "xml_browser",
+      "directory",
+      "prefix",
+      "keypad_lock",
+      "xml_phonebook",
+      "local_phonebook",
+      "conference",
+      "transfer",
+      "hold"
+    ],
+    "firmware_profiles": [
+      "yealink-v83",
+      "fusionpbx-legacy"
+    ]
+  },
+  "t54w": {
+    "programmable": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      12,
+      13,
+      14,
+      17,
+      18
+    ],
+    "expansion_modules": 3,
+    "expansion_keys": 60,
+    "softkey_states": {
+      "call_in": [
+        "Empty",
+        "Answer",
+        "Forward",
+        "Silence",
+        "Reject"
+      ],
+      "call_failed": [
+        "Empty",
+        "Cancel",
+        "Back",
+        "Redial"
+      ],
+      "connecting": [
+        "Empty",
+        "Cancel",
+        "EndCall"
+      ],
+      "dialing": [
+        "Empty",
+        "Send",
+        "IME",
+        "Delete",
+        "Cancel"
+      ],
+      "ring_back": [
+        "Empty",
+        "Cancel",
+        "EndCall"
+      ],
+      "talking": [
+        "Empty",
+        "Hold",
+        "Transfer",
+        "Conference",
+        "EndCall",
+        "NewCall",
+        "Swap"
+      ]
+    },
+    "programmable_functions": [
+      "none",
+      "speed_dial",
+      "forward",
+      "dnd",
+      "redial",
+      "call_return",
+      "pickup",
+      "intercom",
+      "xml_browser",
+      "history",
+      "directory",
+      "menu",
+      "status",
+      "prefix",
+      "local_phonebook",
+      "xml_phonebook",
+      "switch_account_up",
+      "switch_account_down",
+      "keypad_lock"
+    ],
+    "line_functions": [
+      "none",
+      "line",
+      "blf",
+      "speed_dial",
+      "forward",
+      "dnd",
+      "pickup",
+      "voicemail",
+      "dtmf",
+      "intercom",
+      "xml_browser",
+      "directory",
+      "prefix",
+      "keypad_lock",
+      "xml_phonebook",
+      "local_phonebook",
+      "conference",
+      "transfer",
+      "hold"
+    ],
+    "firmware_profiles": [
+      "yealink-v83",
+      "fusionpbx-legacy"
+    ]
+  },
+  "t57w": {
+    "programmable": [
+      1,
+      2,
+      3,
+      4,
+      12,
+      13,
+      14,
+      17,
+      18
+    ],
+    "expansion_modules": 3,
+    "expansion_keys": 60,
+    "softkey_states": {
+      "call_in": [
+        "Empty",
+        "Answer",
+        "Forward",
+        "Silence",
+        "Reject"
+      ],
+      "call_failed": [
+        "Empty",
+        "Cancel",
+        "Back",
+        "Redial"
+      ],
+      "connecting": [
+        "Empty",
+        "Cancel",
+        "EndCall"
+      ],
+      "dialing": [
+        "Empty",
+        "Send",
+        "IME",
+        "Delete",
+        "Cancel"
+      ],
+      "ring_back": [
+        "Empty",
+        "Cancel",
+        "EndCall"
+      ],
+      "talking": [
+        "Empty",
+        "Hold",
+        "Transfer",
+        "Conference",
+        "EndCall",
+        "NewCall",
+        "Swap"
+      ]
+    },
+    "programmable_functions": [
+      "none",
+      "speed_dial",
+      "forward",
+      "dnd",
+      "redial",
+      "call_return",
+      "pickup",
+      "intercom",
+      "xml_browser",
+      "history",
+      "directory",
+      "menu",
+      "status",
+      "prefix",
+      "local_phonebook",
+      "xml_phonebook",
+      "switch_account_up",
+      "switch_account_down",
+      "keypad_lock"
+    ],
+    "line_functions": [
+      "none",
+      "line",
+      "blf",
+      "speed_dial",
+      "forward",
+      "dnd",
+      "pickup",
+      "voicemail",
+      "dtmf",
+      "intercom",
+      "xml_browser",
+      "directory",
+      "prefix",
+      "keypad_lock",
+      "xml_phonebook",
+      "local_phonebook",
+      "conference",
+      "transfer",
+      "hold"
+    ],
+    "firmware_profiles": [
+      "yealink-v83",
+      "fusionpbx-legacy"
+    ]
+  },
+  "t58w": {
+    "programmable": [
+      1,
+      2,
+      3,
+      4,
+      12,
+      13,
+      14,
+      17,
+      18
+    ],
+    "expansion_modules": 3,
+    "expansion_keys": 60,
+    "softkey_states": {
+      "call_in": [
+        "Empty",
+        "Answer",
+        "Forward",
+        "Silence",
+        "Reject"
+      ],
+      "call_failed": [
+        "Empty",
+        "Cancel",
+        "Back",
+        "Redial"
+      ],
+      "connecting": [
+        "Empty",
+        "Cancel",
+        "EndCall"
+      ],
+      "dialing": [
+        "Empty",
+        "Send",
+        "IME",
+        "Delete",
+        "Cancel"
+      ],
+      "ring_back": [
+        "Empty",
+        "Cancel",
+        "EndCall"
+      ],
+      "talking": [
+        "Empty",
+        "Hold",
+        "Transfer",
+        "Conference",
+        "EndCall",
+        "NewCall",
+        "Swap"
+      ]
+    },
+    "programmable_functions": [
+      "none",
+      "speed_dial",
+      "forward",
+      "dnd",
+      "redial",
+      "call_return",
+      "pickup",
+      "intercom",
+      "xml_browser",
+      "history",
+      "directory",
+      "menu",
+      "status",
+      "prefix",
+      "local_phonebook",
+      "xml_phonebook",
+      "switch_account_up",
+      "switch_account_down",
+      "keypad_lock"
+    ],
+    "line_functions": [
+      "none",
+      "line",
+      "blf",
+      "speed_dial",
+      "forward",
+      "dnd",
+      "pickup",
+      "voicemail",
+      "dtmf",
+      "intercom",
+      "xml_browser",
+      "directory",
+      "prefix",
+      "keypad_lock",
+      "xml_phonebook",
+      "local_phonebook",
+      "conference",
+      "transfer",
+      "hold"
+    ],
+    "firmware_profiles": [
+      "yealink-v83",
+      "fusionpbx-legacy"
+    ]
+  },
+  "vp59": {
+    "programmable": [
+      1,
+      2,
+      3,
+      4,
+      12,
+      13,
+      14,
+      17,
+      18
+    ],
+    "expansion_modules": 0,
+    "expansion_keys": 0,
+    "softkey_states": {
+      "call_in": [
+        "Empty",
+        "Answer",
+        "Forward",
+        "Silence",
+        "Reject"
+      ],
+      "call_failed": [
+        "Empty",
+        "Cancel",
+        "Back",
+        "Redial"
+      ],
+      "connecting": [
+        "Empty",
+        "Cancel",
+        "EndCall"
+      ],
+      "dialing": [
+        "Empty",
+        "Send",
+        "IME",
+        "Delete",
+        "Cancel"
+      ],
+      "ring_back": [
+        "Empty",
+        "Cancel",
+        "EndCall"
+      ],
+      "talking": [
+        "Empty",
+        "Hold",
+        "Transfer",
+        "Conference",
+        "EndCall",
+        "NewCall",
+        "Swap"
+      ]
+    },
+    "programmable_functions": [
+      "none",
+      "speed_dial",
+      "forward",
+      "dnd",
+      "redial",
+      "call_return",
+      "pickup",
+      "intercom",
+      "xml_browser",
+      "history",
+      "directory",
+      "menu",
+      "status",
+      "prefix",
+      "local_phonebook",
+      "xml_phonebook",
+      "switch_account_up",
+      "switch_account_down",
+      "keypad_lock"
+    ],
+    "line_functions": [
+      "none",
+      "line",
+      "blf",
+      "speed_dial",
+      "forward",
+      "dnd",
+      "pickup",
+      "voicemail",
+      "dtmf",
+      "intercom",
+      "xml_browser",
+      "directory",
+      "prefix",
+      "keypad_lock",
+      "xml_phonebook",
+      "local_phonebook",
+      "conference",
+      "transfer",
+      "hold"
+    ],
+    "firmware_profiles": [
+      "yealink-v83",
+      "fusionpbx-legacy"
+    ]
+  },
+  "t73w": {
+    "programmable": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      12,
+      13,
+      14,
+      17,
+      18
+    ],
+    "expansion_modules": 0,
+    "expansion_keys": 0,
+    "softkey_states": {
+      "call_in": [
+        "Empty",
+        "Answer",
+        "Forward",
+        "Silence",
+        "Reject"
+      ],
+      "call_failed": [
+        "Empty",
+        "Cancel",
+        "Back",
+        "Redial"
+      ],
+      "connecting": [
+        "Empty",
+        "Cancel",
+        "EndCall"
+      ],
+      "dialing": [
+        "Empty",
+        "Send",
+        "IME",
+        "Delete",
+        "Cancel"
+      ],
+      "ring_back": [
+        "Empty",
+        "Cancel",
+        "EndCall"
+      ],
+      "talking": [
+        "Empty",
+        "Hold",
+        "Transfer",
+        "Conference",
+        "EndCall",
+        "NewCall",
+        "Swap"
+      ]
+    },
+    "programmable_functions": [
+      "none",
+      "speed_dial",
+      "forward",
+      "dnd",
+      "redial",
+      "call_return",
+      "pickup",
+      "intercom",
+      "xml_browser",
+      "history",
+      "directory",
+      "menu",
+      "status",
+      "prefix",
+      "local_phonebook",
+      "xml_phonebook",
+      "switch_account_up",
+      "switch_account_down",
+      "keypad_lock"
+    ],
+    "line_functions": [
+      "none",
+      "line",
+      "blf",
+      "speed_dial",
+      "forward",
+      "dnd",
+      "pickup",
+      "voicemail",
+      "dtmf",
+      "intercom",
+      "xml_browser",
+      "directory",
+      "prefix",
+      "keypad_lock",
+      "xml_phonebook",
+      "local_phonebook",
+      "conference",
+      "transfer",
+      "hold"
+    ],
+    "firmware_profiles": [
+      "yealink-v83",
+      "fusionpbx-legacy"
+    ]
+  },
+  "t85w": {
+    "programmable": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      12,
+      13,
+      14,
+      17,
+      18,
+      19
+    ],
+    "expansion_modules": 0,
+    "expansion_keys": 0,
+    "softkey_states": {
+      "call_in": [
+        "Empty",
+        "Answer",
+        "Forward",
+        "Silence",
+        "Reject"
+      ],
+      "call_failed": [
+        "Empty",
+        "Cancel",
+        "Back",
+        "Redial"
+      ],
+      "connecting": [
+        "Empty",
+        "Cancel",
+        "EndCall"
+      ],
+      "dialing": [
+        "Empty",
+        "Send",
+        "IME",
+        "Delete",
+        "Cancel"
+      ],
+      "ring_back": [
+        "Empty",
+        "Cancel",
+        "EndCall"
+      ],
+      "talking": [
+        "Empty",
+        "Hold",
+        "Transfer",
+        "Conference",
+        "EndCall",
+        "NewCall",
+        "Swap"
+      ]
+    },
+    "programmable_functions": [
+      "none",
+      "speed_dial",
+      "forward",
+      "dnd",
+      "redial",
+      "call_return",
+      "pickup",
+      "intercom",
+      "xml_browser",
+      "history",
+      "directory",
+      "menu",
+      "status",
+      "prefix",
+      "local_phonebook",
+      "xml_phonebook",
+      "switch_account_up",
+      "switch_account_down",
+      "keypad_lock"
+    ],
+    "line_functions": [
+      "none",
+      "line",
+      "blf",
+      "speed_dial",
+      "forward",
+      "dnd",
+      "pickup",
+      "voicemail",
+      "dtmf",
+      "intercom",
+      "xml_browser",
+      "directory",
+      "prefix",
+      "keypad_lock",
+      "xml_phonebook",
+      "local_phonebook",
+      "conference",
+      "transfer",
+      "hold"
+    ],
+    "firmware_profiles": [
+      "yealink-v83",
+      "fusionpbx-legacy"
+    ]
+  },
+  "t87w": {
+    "programmable": [
+      1,
+      2,
+      3,
+      4,
+      12,
+      13,
+      14,
+      17,
+      18,
+      19
+    ],
+    "expansion_modules": 0,
+    "expansion_keys": 0,
+    "softkey_states": {
+      "call_in": [
+        "Empty",
+        "Answer",
+        "Forward",
+        "Silence",
+        "Reject"
+      ],
+      "call_failed": [
+        "Empty",
+        "Cancel",
+        "Back",
+        "Redial"
+      ],
+      "connecting": [
+        "Empty",
+        "Cancel",
+        "EndCall"
+      ],
+      "dialing": [
+        "Empty",
+        "Send",
+        "IME",
+        "Delete",
+        "Cancel"
+      ],
+      "ring_back": [
+        "Empty",
+        "Cancel",
+        "EndCall"
+      ],
+      "talking": [
+        "Empty",
+        "Hold",
+        "Transfer",
+        "Conference",
+        "EndCall",
+        "NewCall",
+        "Swap"
+      ]
+    },
+    "programmable_functions": [
+      "none",
+      "speed_dial",
+      "forward",
+      "dnd",
+      "redial",
+      "call_return",
+      "pickup",
+      "intercom",
+      "xml_browser",
+      "history",
+      "directory",
+      "menu",
+      "status",
+      "prefix",
+      "local_phonebook",
+      "xml_phonebook",
+      "switch_account_up",
+      "switch_account_down",
+      "keypad_lock"
+    ],
+    "line_functions": [
+      "none",
+      "line",
+      "blf",
+      "speed_dial",
+      "forward",
+      "dnd",
+      "pickup",
+      "voicemail",
+      "dtmf",
+      "intercom",
+      "xml_browser",
+      "directory",
+      "prefix",
+      "keypad_lock",
+      "xml_phonebook",
+      "local_phonebook",
+      "conference",
+      "transfer",
+      "hold"
+    ],
+    "firmware_profiles": [
+      "yealink-v83",
+      "fusionpbx-legacy"
+    ]
+  }
+}

@@ -1,6 +1,6 @@
 # Provisioning profiles, phone keys and transport setup
 
-Status: Proposed. User review is required before application changes.
+Status: Approved by the user on 2026-10-16. Implementation is in progress.
 Date: 2026-10-16, Europe/Berlin.
 
 ## Goal and review boundary
@@ -9,10 +9,11 @@ Complete the Yealink T41P key controls. Import the complete FusionPBX Yealink
 template library as a source for adaptation. Prepare the forms and rendering
 interfaces for more than one phone vendor.
 
-This proposal and its research records do not change runtime behaviour.
-The user requested a proposal before implementation. Commit and PR permission
-does not remove that review boundary. The release chat owns integration,
-version changes, tags and publication.
+The user reviewed the proposal and approved implementation on 2026-10-16.
+The user also reports that T41P resync fails through HTTPS and works again
+through HTTP. This document records the approved design; the implementation
+and its final test results are recorded in the task summary and PR 49.
+The release chat owns integration, version changes, tags and publication.
 
 ## Verified starting point
 

@@ -529,7 +529,33 @@ export interface AuditEntry {
 	created_at: string;
 }
 
-export type KeyType = 'none' | 'line' | 'blf' | 'speed_dial';
+export type KeyType =
+	| 'conference'
+	| 'transfer'
+	| 'hold'
+	| 'none'
+	| 'line'
+	| 'blf'
+	| 'speed_dial'
+	| 'forward'
+	| 'dnd'
+	| 'redial'
+	| 'call_return'
+	| 'pickup'
+	| 'voicemail'
+	| 'dtmf'
+	| 'intercom'
+	| 'xml_browser'
+	| 'history'
+	| 'directory'
+	| 'menu'
+	| 'status'
+	| 'prefix'
+	| 'local_phonebook'
+	| 'xml_phonebook'
+	| 'switch_account_up'
+	| 'switch_account_down'
+	| 'keypad_lock';
 
 export interface LineKey {
 	key: number;
@@ -540,6 +566,7 @@ export interface LineKey {
 }
 
 export interface Phone {
+	provisioning?: PhoneProvisioning;
 	id: string;
 	mac: string;
 	model: string;
@@ -563,6 +590,8 @@ export interface PhoneListItem extends Phone {
 
 /** A comfort setting from the phone catalog (key tone, display …). */
 export interface PhoneSettingInfo {
+	models?: string[];
+	vendor?: string;
 	key: string;
 	group: string;
 	kind: 'bool' | 'choice';
@@ -594,6 +623,7 @@ export interface PhoneDetail extends Phone {
 }
 
 export interface PhoneModel {
+	key_capabilities?: KeyCapabilities;
 	id: string;
 	name: string;
 	vendor: string;
@@ -1153,4 +1183,46 @@ export interface WorkerStatus {
 	mem_total_bytes: number;
 	job_id: string | null;
 	updated_at: string;
+}
+
+export interface PhoneProvisioning {
+	endpoint?: string;
+	sip_host?: string;
+	firmware_profile?: string;
+	template_id?: string | null;
+	keys?: ProvisioningKey[];
+	softkeys?: Record<string, string[]>;
+}
+export interface ProvisioningKey extends LineKey {
+	group: string;
+	history_type: number;
+	phonebook: number;
+}
+export interface KeyCapabilities {
+	programmable: number[];
+	expansion_modules: number;
+	expansion_keys: number;
+	softkey_states: Record<string, string[]>;
+	programmable_functions: KeyType[];
+	line_functions: KeyType[];
+	firmware_profiles: string[];
+}
+export interface ProvisioningTemplate {
+	id: string;
+	name: string;
+	vendor: string;
+	model: string;
+	active_revision: number | null;
+}
+export interface ProvisioningRevision {
+	revision: number;
+	files: Record<string, string>;
+	created_at: string;
+}
+export interface ProvisioningRequest {
+	mac: string | null;
+	filename: string;
+	scheme: string;
+	status: number;
+	created_at: string;
 }

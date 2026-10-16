@@ -9,8 +9,8 @@ use serde::{Deserialize, Serialize};
 use crate::catalog::{PhoneFamily, PhoneModel};
 use crate::cfg_value;
 
-const COMMON: &str = include_str!("../templates/yealink/common.cfg");
-const MAC: &str = include_str!("../templates/yealink/mac.cfg");
+pub const COMMON: &str = include_str!("../templates/yealink/common.cfg");
+pub const MAC: &str = include_str!("../templates/yealink/mac.cfg");
 
 fn env() -> &'static Environment<'static> {
     static ENV: OnceLock<Environment<'static>> = OnceLock::new();
@@ -28,6 +28,28 @@ fn env() -> &'static Environment<'static> {
 #[derive(Debug, thiserror::Error)]
 #[error("template rendering failed: {0}")]
 pub struct RenderError(#[from] minijinja::Error);
+
+fn render_bounded(
+    template: minijinja::Template<'_, '_>,
+    context: minijinja::Value,
+) -> Result<String, RenderError> {
+    struct Limited(Vec<u8>);
+    impl std::io::Write for Limited {
+        fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+            if self.0.len() + bytes.len() > 262144 {
+                return Err(std::io::Error::other("configuration exceeds 256 KiB"));
+            }
+            self.0.extend_from_slice(bytes);
+            Ok(bytes.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+    let mut writer = Limited(Vec::new());
+    template.render_captured_to(context, &mut writer)?;
+    Ok(String::from_utf8(writer.0).expect("MiniJinja emits UTF-8"))
+}
 
 /// Where phones fetch configuration and report events.
 #[derive(Debug, Clone, Serialize)]
@@ -108,24 +130,48 @@ pub fn render_common(
     locale: &Locale,
     language: &str,
 ) -> Result<String, RenderError> {
+    render_common_with(
+        prov,
+        admin_password,
+        locale,
+        language,
+        &std::collections::BTreeMap::new(),
+    )
+}
+pub fn render_common_with(
+    prov: &Provisioning,
+    admin_password: &str,
+    locale: &Locale,
+    language: &str,
+    templates: &std::collections::BTreeMap<String, String>,
+) -> Result<String, RenderError> {
     let (internal_name, contacts_name) = if language == "de" {
         ("Intern", "Kontakte")
     } else {
         ("Internal", "Contacts")
     };
     let auth = prov.authenticated_base();
-    Ok(env().get_template("common.cfg")?.render(context! {
-        prov => context! {
-            url => cfg_value(&prov.base_url),
-            username => cfg_value(&prov.username),
-            password => cfg_value(&prov.password),
-            base_url => cfg_value(&auth),
-            events_url => cfg_value(&format!("{}/events?key={}", prov.base_url, url_part(&prov.password))),
+    let custom_env = if templates.is_empty() {
+        None
+    } else {
+        Some(crate::library::template_env(templates)?)
+    };
+    let renderer = custom_env.as_ref().unwrap_or_else(|| env());
+    render_bounded(
+        renderer.get_template("common.cfg")?,
+        context! {
+            prov => context! {
+                url => cfg_value(&prov.base_url),
+                username => cfg_value(&prov.username),
+                password => cfg_value(&prov.password),
+                base_url => cfg_value(&auth),
+                events_url => cfg_value(&format!("{}/events?key={}", prov.base_url, url_part(&prov.password))),
+            },
+            admin_password => cfg_value(admin_password),
+            locale => locale,
+            phonebook => context! { internal_name, contacts_name },
         },
-        admin_password => cfg_value(admin_password),
-        locale => locale,
-        phonebook => context! { internal_name, contacts_name },
-    })?)
+    )
 }
 
 /// A SIP account placed on the phone (account N / DECT handset N).
@@ -186,6 +232,28 @@ pub enum KeyType {
     /// Busy lamp field for an extension (with pickup on press while ringing).
     Blf,
     SpeedDial,
+    Conference,
+    Transfer,
+    Hold,
+    Forward,
+    Dnd,
+    Redial,
+    CallReturn,
+    Pickup,
+    Voicemail,
+    Dtmf,
+    Intercom,
+    XmlBrowser,
+    History,
+    Directory,
+    Menu,
+    Status,
+    Prefix,
+    LocalPhonebook,
+    XmlPhonebook,
+    SwitchAccountUp,
+    SwitchAccountDown,
+    KeypadLock,
 }
 
 impl KeyType {
@@ -196,6 +264,28 @@ impl KeyType {
             KeyType::SpeedDial => 13,
             KeyType::Line => 15,
             KeyType::Blf => 16,
+            KeyType::Conference => 1,
+            KeyType::Transfer => 3,
+            KeyType::Hold => 4,
+            KeyType::Forward => 2,
+            KeyType::Dnd => 5,
+            KeyType::Redial => 6,
+            KeyType::CallReturn => 7,
+            KeyType::Pickup => 9,
+            KeyType::Voicemail => 12,
+            KeyType::Dtmf => 11,
+            KeyType::Intercom => 14,
+            KeyType::XmlBrowser => 27,
+            KeyType::History => 28,
+            KeyType::Directory => 61,
+            KeyType::Menu => 30,
+            KeyType::Status => 33,
+            KeyType::Prefix => 40,
+            KeyType::LocalPhonebook => 43,
+            KeyType::XmlPhonebook => 22,
+            KeyType::SwitchAccountUp => 51,
+            KeyType::SwitchAccountDown => 52,
+            KeyType::KeypadLock => 50,
         }
     }
 }
@@ -261,6 +351,8 @@ pub struct PhoneSetup<'a> {
     /// Comfort settings as (parameter, value), see
     /// [`crate::PhoneCatalog::effective_settings`].
     pub settings: Vec<(String, String)>,
+    pub provisioning: crate::keys::Overrides,
+    pub asset_base: String,
 }
 
 #[derive(Serialize)]
@@ -303,6 +395,13 @@ pub fn effective_keys(setup: &PhoneSetup<'_>) -> Vec<LineKey> {
 
 /// Renders the per-phone configuration (`<mac>.cfg`).
 pub fn render_phone(setup: &PhoneSetup<'_>) -> Result<String, RenderError> {
+    render_phone_with(setup, &std::collections::BTreeMap::new())
+}
+
+pub fn render_phone_with(
+    setup: &PhoneSetup<'_>,
+    templates: &std::collections::BTreeMap<String, String>,
+) -> Result<String, RenderError> {
     let accounts: Vec<Account> = setup
         .accounts
         .iter()
@@ -330,8 +429,14 @@ pub fn render_phone(setup: &PhoneSetup<'_>) -> Result<String, RenderError> {
             let value = cfg_value(&k.value);
             RenderedKey {
                 key: k.key,
-                type_code: k.kind.code(),
-                account: k.account.clamp(1, setup.model.accounts),
+                type_code: crate::keys::type_code(k.kind, &setup.provisioning.firmware_profile),
+                account: if k.account == 0
+                    && matches!(k.kind, KeyType::SpeedDial | KeyType::Intercom)
+                {
+                    0
+                } else {
+                    k.account.clamp(1, setup.model.accounts)
+                },
                 pickup_value: if k.kind == KeyType::Blf && !value.starts_with("park+") {
                     format!("*8*{value}")
                 } else {
@@ -360,29 +465,144 @@ pub fn render_phone(setup: &PhoneSetup<'_>) -> Result<String, RenderError> {
         .iter()
         .map(|(name, priority)| context! { name, priority, enable => u8::from(*priority > 0) })
         .collect();
-    Ok(env().get_template("mac.cfg")?.render(context! {
-        profile_codecs,
-        ringtone => media(&setup.ringtone, setup.model.ringtone_max_kb > 0),
-        wallpaper => media(&setup.wallpaper, setup.model.wallpaper),
-        phonebooks,
-        unused_phonebooks,
-        settings => setup
-            .settings
+    let custom_env = if templates.is_empty() {
+        None
+    } else {
+        Some(crate::library::template_env(templates)?)
+    };
+    let renderer = custom_env.as_ref().unwrap_or_else(|| env());
+    render_bounded(
+        renderer.get_template("mac.cfg")?,
+        context! {
+            extra_parameters => extra_parameters(setup),
+            profile_codecs,
+            ringtone => media(&setup.ringtone, setup.model.ringtone_max_kb > 0),
+            wallpaper => media(&setup.wallpaper, setup.model.wallpaper),
+            phonebooks,
+            unused_phonebooks,
+            settings => setup
+                .settings
+                .iter()
+                .map(|(param, value)| context! { param => cfg_value(param), value => cfg_value(value) })
+                .collect::<Vec<_>>(),
+            dial_now => (1..=crate::dial_now::MAX_RULES)
+                .map(|i| context! { index => i, rule => setup.dial_now.get(i - 1).map(|r| cfg_value(r)).unwrap_or_default() })
+                .collect::<Vec<_>>(),
+            phone => context! { name => cfg_value(&setup.name), mac => setup.mac.clone() },
+            model => setup.model,
+            accounts => accounts,
+            unused_accounts => unused,
+            keys => keys,
+            server => context! { host => cfg_value(&setup.sip_host), port => setup.sip_port },
+            firmware_url => setup.firmware_url.as_deref().map(cfg_value),
+            voicemail_code => cfg_value(&setup.voicemail_code),
+        },
+    )
+}
+
+fn extra_parameters(setup: &PhoneSetup<'_>) -> Vec<(String, String)> {
+    let mut params = Vec::new();
+    let caps = crate::keys::capabilities(setup.model);
+    let mut effective = setup.provisioning.keys.clone();
+    // Restore explicit defaults when an override is removed; omission would retain
+    // the previous provisioned value on the handset.
+    for slot in &caps.programmable {
+        if !effective
             .iter()
-            .map(|(param, value)| context! { param => cfg_value(param), value => cfg_value(value) })
-            .collect::<Vec<_>>(),
-        dial_now => (1..=crate::dial_now::MAX_RULES)
-            .map(|i| context! { index => i, rule => setup.dial_now.get(i - 1).map(|r| cfg_value(r)).unwrap_or_default() })
-            .collect::<Vec<_>>(),
-        phone => context! { name => cfg_value(&setup.name), mac => setup.mac.clone() },
-        model => setup.model,
-        accounts => accounts,
-        unused_accounts => unused,
-        keys => keys,
-        server => context! { host => cfg_value(&setup.sip_host), port => setup.sip_port },
-        firmware_url => setup.firmware_url.as_deref().map(cfg_value),
-        voicemail_code => cfg_value(&setup.voicemail_code),
-    })?)
+            .any(|key| key.group == "programmable" && key.key == *slot)
+        {
+            let kind = match slot {
+                1 | 5 => KeyType::History,
+                2 | 6 => KeyType::Directory,
+                3 => KeyType::Dnd,
+                4 => KeyType::Menu,
+                7 => KeyType::SwitchAccountUp,
+                8 => KeyType::SwitchAccountDown,
+                9 => KeyType::Status,
+                _ => KeyType::None,
+            };
+            effective.push(crate::keys::Key {
+                group: "programmable".into(),
+                key: *slot,
+                kind,
+                value: String::new(),
+                label: String::new(),
+                account: 0,
+                history_type: 0,
+                phonebook: 0,
+            });
+        }
+    }
+    for module in 1..=caps.expansion_modules {
+        for slot in 1..=caps.expansion_keys {
+            let group = format!("expansion_{module}");
+            if !effective
+                .iter()
+                .any(|key| key.group == group && key.key == slot)
+            {
+                effective.push(crate::keys::Key {
+                    group,
+                    key: slot,
+                    kind: KeyType::None,
+                    value: String::new(),
+                    label: String::new(),
+                    account: 0,
+                    history_type: 0,
+                    phonebook: 0,
+                });
+            }
+        }
+    }
+    for key in &effective {
+        let prefix = if key.group == "programmable" {
+            format!("programablekey.{}", key.key)
+        } else {
+            format!(
+                "expansion_module.{}.key.{}",
+                key.group.trim_start_matches("expansion_"),
+                key.key
+            )
+        };
+        for (field, value) in [
+            (
+                "type",
+                crate::keys::type_code(key.kind, &setup.provisioning.firmware_profile).to_string(),
+            ),
+            ("line", key.account.to_string()),
+            ("value", cfg_value(&key.value)),
+            ("label", cfg_value(&key.label)),
+            ("history_type", key.history_type.to_string()),
+            ("xml_phonebook", key.phonebook.to_string()),
+            (
+                "extension",
+                if key.kind == KeyType::Blf {
+                    format!("*8*{}", key.value)
+                } else {
+                    String::new()
+                },
+            ),
+        ] {
+            params.push((format!("{prefix}.{field}"), value));
+        }
+    }
+    if !crate::keys::capabilities(setup.model)
+        .softkey_states
+        .is_empty()
+    {
+        params.push((
+            "phone_setting.custom_softkey_enable".into(),
+            u8::from(!setup.provisioning.softkeys.is_empty()).to_string(),
+        ));
+        for state in crate::keys::capabilities(setup.model).softkey_states.keys() {
+            let url = if setup.provisioning.softkeys.contains_key(state) {
+                format!("{}/softkeys/{}/{state}.xml", setup.asset_base, setup.mac)
+            } else {
+                String::new()
+            };
+            params.push((format!("custom_softkey_{state}.url"), url));
+        }
+    }
+    params
 }
 
 #[cfg(test)]
@@ -453,6 +673,8 @@ mod tests {
     fn desk_phone_config() {
         let c = catalog();
         let setup = PhoneSetup {
+            provisioning: Default::default(),
+            asset_base: String::new(),
             name: "Empfang".into(),
             mac: "805ec0123456".into(),
             model: c.get("t54w").unwrap(),
@@ -557,6 +779,8 @@ mod tests {
         let c = catalog();
         for model in c.all().filter(|m| m.family == PhoneFamily::Desk) {
             let mut setup = PhoneSetup {
+                provisioning: Default::default(),
+                asset_base: String::new(),
                 name: model.name.clone(),
                 mac: "805ec0123456".into(),
                 model,
@@ -620,6 +844,8 @@ mod tests {
         let c = catalog();
         for id in ["ax83h", "ax86r"] {
             let setup = PhoneSetup {
+                provisioning: Default::default(),
+                asset_base: String::new(),
                 name: "Lager".into(),
                 mac: "249ad8123456".into(),
                 model: c.get(id).unwrap(),
@@ -685,6 +911,8 @@ mod tests {
     fn dect_base_config() {
         let c = catalog();
         let setup = PhoneSetup {
+            provisioning: Default::default(),
+            asset_base: String::new(),
             name: "DECT".into(),
             mac: "805ec0abcdef".into(),
             model: c.get("w70b").unwrap(),

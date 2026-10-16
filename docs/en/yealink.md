@@ -1,5 +1,8 @@
 # Setting up Yealink phones
 
+For device transport overrides, additional key groups, templates and resync
+diagnostics, see [Provisioning profiles and templates](provisioning.md).
+
 TalkOps configures Yealink desk phones (T3x, T4x, T5x, VP59, CP9x0), DECT
 bases (W60B, W70B, W80B) and Wi-Fi handsets (AX83H, AX86R) automatically: SIP
 accounts, line keys with BLF, phonebooks, time zone, language, admin password

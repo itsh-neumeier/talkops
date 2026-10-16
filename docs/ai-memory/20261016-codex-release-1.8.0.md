@@ -151,3 +151,13 @@ only Cargo workspace and npm root version fields change to 1.8.0.
 - Exact-main CI38943496152 and E2E38943496202 are pending. Do not tag yet.
 - This checkpoint is committed locally only. Do not push the batch branch
   after merge. Final audit documentation stays separate from released code.
+## Tag checkpoint
+
+- Exact-main CI38943496152 and E2E38943496202 passed. The latest-main run IDs
+  were checked immediately before tagging. Remote main stayed at the release
+  commit. No open PR remained; all eight source heads are ancestors.
+- Annotated v1.8.0 was pushed once to 7d7990b99e9f02c126ad3983da633476a22a9708.
+  Tag object: b29171493399297c658589c32adda9238ff9e97e.
+- Code and web versions match 1.8.0. The tag was unused; no published tag moved.
+- Release workflow, GitHub release and registry verification are pending.
+  Do not report publication success before artifact checks pass.

@@ -209,6 +209,38 @@ e.g. *Family* only in the living room, *Suppliers* only in the office:
 
 A deleted section disappears with its contacts from the phones as well.
 
+### Find, sort and filter contacts
+
+The *Phone book* page loads all contacts. The browser sorts and filters
+them, so each change shows at once.
+
+- **Sort:** click the column title **Name**, **Company** or **Section**.
+  A second click changes the order (ascending, descending). The arrow shows
+  the current order. Contacts without a company are at the end of the
+  company order. In the section order, the global phone book is first.
+- **Filter:** a column with a filter has a funnel button. A colored dot
+  shows an active filter.
+
+  | Column | Filter |
+  | --- | --- |
+  | Work, Mobile, Other | All, with number or without number. |
+  | Section | One or more phone books: *Global* and the sections. |
+
+- **Search:** the search field finds text in the name, the company, the
+  section name and the numbers. A search with digits only, for example
+  `0951123`, also finds `+49 951 123…`.
+- **Reset all filters** clears the filters and the search. The sort order
+  does not change.
+
+The page address contains the filters and the sort order. A reload or a
+copied link thus shows the same list. A link from the call log or from the
+active calls (`/phonebook?contact=<id>`) highlights the entry. When the
+current filters hide the entry, the page replaces them with the section of
+the entry.
+
+The *Section* column and its filter are visible only when sections exist.
+On a narrow screen, the *Other* column is not visible.
+
 ### Upgrade and call pickup
 
 `**101` now calls extension `101`. It no longer picks up a ringing call.

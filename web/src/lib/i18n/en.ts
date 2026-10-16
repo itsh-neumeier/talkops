@@ -693,7 +693,11 @@ export default {
 	'media.unreadable': 'The file could not be read. Choose an audio or image file.',
 	'contacts.sections': 'Sections',
 	'contacts.section': 'Section',
-	'contacts.allSections': 'All sections',
+	'contacts.searchPlaceholder': 'Search name, company, number or section',
+	'contacts.withNumber': 'With number',
+	'contacts.withoutNumber': 'Without number',
+	'contacts.noMatches': 'No contacts match the filters.',
+	'contacts.shown': '{shown} of {total} contacts',
 	'contacts.global': 'Global (all phones)',
 	'contacts.deleteSectionConfirm': 'Delete the section “{name}” with all its contacts?',
 	'contacts.sectionsHint':

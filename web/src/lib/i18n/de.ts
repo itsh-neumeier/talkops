@@ -698,7 +698,11 @@ const de: Record<keyof typeof en, string> = {
 	'media.unreadable': 'Die Datei konnte nicht gelesen werden. Wähle eine Audio- bzw. Bilddatei.',
 	'contacts.sections': 'Bereiche',
 	'contacts.section': 'Bereich',
-	'contacts.allSections': 'Alle Bereiche',
+	'contacts.searchPlaceholder': 'Name, Firma, Nummer oder Bereich suchen',
+	'contacts.withNumber': 'Mit Nummer',
+	'contacts.withoutNumber': 'Ohne Nummer',
+	'contacts.noMatches': 'Keine Kontakte passen zu den Filtern.',
+	'contacts.shown': '{shown} von {total} Kontakten',
 	'contacts.global': 'Global (alle Telefone)',
 	'contacts.deleteSectionConfirm': 'Bereich „{name}“ mit allen Kontakten löschen?',
 	'contacts.sectionsHint':

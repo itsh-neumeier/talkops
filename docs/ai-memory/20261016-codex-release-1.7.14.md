@@ -124,3 +124,13 @@ tag. Push the new tag once. Verify artifacts before reporting success.
 - Exact-main CI 38861196732 and E2E 38861196707 are pending. Do not tag yet.
 - This checkpoint is local documentation only. It does not change main or
   restart its checks. The final summary will use an immutable audit reference.
+## Tag checkpoint
+
+- Exact-main CI 38861196732 and E2E 38861196707 passed on the unchanged
+  main commit. The latest-main run checks passed immediately before tagging.
+- Scope recheck: no open PR. All source heads are included. Versions match.
+- Annotated tag v1.7.14 was pushed once. Tag object:
+  dab752803d18c14ac54335f7df3c2209aede3bf8.
+  Peeled target: 0f128ad210028b386081db0bdae90c210ff84523.
+- Release workflow and artifact verification are pending. No published tag
+  was moved. Do not report success until artifacts are checked.

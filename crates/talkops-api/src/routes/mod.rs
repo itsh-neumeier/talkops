@@ -1,5 +1,6 @@
 pub mod attendants;
 pub mod audio;
+pub mod audit;
 pub mod auth;
 pub mod backup_targets;
 pub mod backups;

@@ -451,18 +451,22 @@ pub fn join_path(base: &str, folder: &str) -> String {
 pub enum StoragePurpose {
     /// A backup job (`backup_targets`).
     Backup,
+    /// The automatic audit export (`audit_settings`, ADR 0037).
+    AuditExport,
 }
 
 impl StoragePurpose {
     pub fn key(self) -> &'static str {
         match self {
             Self::Backup => "backup",
+            Self::AuditExport => "audit_export",
         }
     }
 
     pub fn from_key(key: &str) -> Option<Self> {
         match key {
             "backup" => Some(Self::Backup),
+            "audit_export" => Some(Self::AuditExport),
             _ => None,
         }
     }
@@ -480,7 +484,9 @@ pub struct StorageUsage {
 /// All users of the storage targets of a tenant: `(storage_target_id,
 /// purpose, id, name)`. Each feature adds one `UNION ALL` part.
 const USAGE_SQL: &str = "SELECT storage_target_id, 'backup' AS purpose, id, name
-    FROM backup_targets WHERE tenant_id = $1";
+    FROM backup_targets WHERE tenant_id = $1
+    UNION ALL SELECT storage_target_id, 'audit_export', tenant_id, 'Audit export'
+    FROM audit_settings WHERE tenant_id = $1 AND storage_target_id IS NOT NULL";
 
 /// The users of each storage target of the tenant, by name.
 pub async fn usages(

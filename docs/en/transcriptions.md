@@ -38,7 +38,41 @@ Buttons:
 | Move up | The waiting job goes to the front of the queue. |
 
 The tab **History** shows the jobs of the last 7 days that finished, failed
-or stopped.
+or stopped (at most the newest 1000 jobs).
+
+### History: parties, sort and filter
+
+The column **Parties** shows the caller and the called party of the call or
+the voicemail. The phone book supplies the names, the same as in the
+[call log](call-log.md): click a name to open the phone book entry. For an
+inbound call, the line below shows the own number that the caller dialed.
+
+- **Sort:** click the column title **Time**, **Duration** or **Result**.
+  A second click changes the order (descending, ascending). **Duration** is
+  the processing time. Jobs that did not run are at the end.
+- **Filter:** a column with a filter has a funnel button. A colored dot
+  shows an active filter.
+
+  | Column | Filter |
+  | --- | --- |
+  | Time | Today, yesterday, or a range of dates in the last 7 days (both days included). |
+  | Direction | One or more directions. A voicemail from an extension is internal; other voicemails are inbound. |
+  | Model | One or more models of the jobs in the history. |
+  | Result | Done, failed, stopped. |
+
+- **Search:** the search field finds text in the names and numbers of the
+  parties and in the name of the user who started the job. A search with
+  digits only, for example `0911 2193`, also finds `+49 911 2193…`.
+- **Reset all filters** clears the filters and the search. The sort order
+  does not change.
+
+The browser filters and sorts the loaded history, so each change shows at
+once. The page address contains the tab, the filters and the sort order.
+A reload or a copied link thus shows the same list. The history reloads
+every 30 seconds while the tab is open; the active jobs reload every
+2 seconds.
+
+On a narrow screen, the columns *Model* and *Duration* are not visible.
 
 ## Resources
 
@@ -66,6 +100,9 @@ then follows changes slowly. Resumed runs are not measured.
   `{"engine": {"kind": "local", "model": "accurate"}}` or
   `{"engine": {"kind": "cloud", "provider_id": "…", "model": "gpt-transcribe"}}`.
 - `GET /api/v1/transcription-jobs` (`?history=true` for the history).
+  Each job has `direction`, `caller_number` and `caller_name`. History
+  entries also have the resolved parties `caller` and `called` and, for
+  inbound calls, `via_number` (the same as `GET /api/v1/calls`).
 - `POST /api/v1/transcription-jobs/{id}` with
   `{"action": "pause" | "resume" | "stop" | "prioritize"}`.
 - `GET /api/v1/transcription-workers`: resource usage.

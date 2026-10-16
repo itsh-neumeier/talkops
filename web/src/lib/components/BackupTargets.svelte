@@ -2,57 +2,46 @@
 	import { onDestroy, onMount } from 'svelte';
 	import { api } from '#lib/api.ts';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
-	import FolderBrowser from '#lib/components/FolderBrowser.svelte';
 	import Modal from '#lib/components/Modal.svelte';
-	import TargetConnectionFields from '#lib/components/TargetConnectionFields.svelte';
 	import { formatDateTime, i18n, t, type MessageKey } from '#lib/i18n/index.svelte.ts';
+	import { can } from '#lib/session.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
 	import {
-		defaultConfig,
 		defaultRetention,
 		defaultSchedule,
 		describe,
 		hasDay,
+		joinPath,
 		runTimes,
-		secretChange,
 		toggleDay,
 		type BackupTarget,
-		type BrowseResult,
 		type Entry,
 		type Retention,
 		type Schedule,
-		type TargetConfig,
-		type TargetSecret,
-		type TargetsOverview,
-		type TestReport
+		type StorageOverview,
+		type TargetsOverview
 	} from '#lib/backupTargets.ts';
 
 	type Draft = {
 		id?: string;
 		name: string;
 		enabled: boolean;
-		config: TargetConfig;
-		path: string;
-		allow_insecure: boolean;
+		storage_target_id: string;
+		folder: string;
 		include_recordings: boolean;
 		schedule: Schedule;
 		retention: Retention;
-		bwlimit_kbps: number | null;
-		has_secret: boolean;
 	};
 
 	let data = $state<TargetsOverview | null>(null);
+	let storage = $state<StorageOverview | null>(null);
 	let error = $state('');
 	let info = $state('');
 	let timer: ReturnType<typeof setTimeout> | undefined;
 
 	let editing = $state(false);
 	let draft = $state<Draft>(newDraft());
-	let secret = $state<TargetSecret>({});
 	let formError = $state('');
-	let formInfo = $state('');
-	let browsing = $state(false);
-	let testing = $state(false);
 	let saving = $state(false);
 
 	let archivesOpen = $state(false);
@@ -65,20 +54,20 @@
 		return {
 			name: '',
 			enabled: true,
-			config: defaultConfig('smb'),
-			path: '',
-			allow_insecure: false,
+			storage_target_id: storage?.targets[0]?.id ?? '',
+			folder: '',
 			include_recordings: true,
 			schedule: defaultSchedule(),
-			retention: defaultRetention(),
-			bwlimit_kbps: null,
-			has_secret: false
+			retention: defaultRetention()
 		};
 	}
 
 	async function load() {
 		try {
-			data = await api.get<TargetsOverview>('/backup-targets');
+			[data, storage] = await Promise.all([
+				api.get<TargetsOverview>('/backup-targets'),
+				api.get<StorageOverview>('/storage-targets')
+			]);
 		} catch (err) {
 			error = errorMessage(err);
 		}
@@ -132,60 +121,16 @@
 					id: x.id,
 					name: x.name,
 					enabled: x.enabled,
-					config: structuredClone($state.snapshot(x.config)),
-					path: x.path,
-					allow_insecure: x.allow_insecure,
+					storage_target_id: x.storage_target_id,
+					folder: x.folder,
 					include_recordings: x.include_recordings,
 					schedule: { ...x.schedule },
-					retention: { ...x.retention },
-					bwlimit_kbps: x.bwlimit_kbps,
-					has_secret: x.has_secret
+					retention: { ...x.retention }
 				}
 			: newDraft();
-		secret = {};
 		formError = '';
-		formInfo = '';
-		browsing = false;
 		editing = true;
 	}
-
-	function connection() {
-		return {
-			id: draft.id,
-			config: $state.snapshot(draft.config),
-			path: draft.path,
-			allow_insecure: draft.allow_insecure,
-			secret: secretChange($state.snapshot(secret))
-		};
-	}
-
-	function pinned(keys: string, fingerprint: string) {
-		if (draft.config.kind === 'sftp') draft.config.host_keys = keys;
-		formInfo = t('targets.hostKeyPinned', { fingerprint });
-	}
-
-	async function test() {
-		testing = true;
-		formError = '';
-		formInfo = '';
-		try {
-			const report = await api.post<TestReport>('/backup-targets/test', connection());
-			formInfo = t('targets.testOk');
-			if (report.host_keys && report.fingerprint) pinned(report.host_keys, report.fingerprint);
-		} catch (err) {
-			formError = errorMessage(err);
-		} finally {
-			testing = false;
-		}
-	}
-
-	const browseFn = (path: string) =>
-		api.post<BrowseResult>('/backup-targets/browse', { ...connection(), path });
-	const mkdirFn = (parent: string, name: string) =>
-		api.post<void>('/backup-targets/folders', {
-			connection: { ...connection(), path: parent },
-			name
-		});
 
 	function setTime(value: string) {
 		const [h, m] = value.split(':').map(Number);
@@ -203,14 +148,11 @@
 			const body = {
 				name: draft.name,
 				enabled: draft.enabled,
-				config: $state.snapshot(draft.config),
-				path: draft.path,
-				allow_insecure: draft.allow_insecure,
+				storage_target_id: draft.storage_target_id,
+				folder: draft.folder,
 				include_recordings: draft.include_recordings,
 				schedule: $state.snapshot(draft.schedule),
-				retention: $state.snapshot(draft.retention),
-				bwlimit_kbps: draft.bwlimit_kbps ? Number(draft.bwlimit_kbps) : null,
-				secret: secretChange($state.snapshot(secret))
+				retention: $state.snapshot(draft.retention)
 			};
 			if (draft.id) await api.put(`/backup-targets/${draft.id}`, body);
 			else await api.post('/backup-targets', body);
@@ -294,26 +236,28 @@
 		return `${(bytes / 1048576).toFixed(1)} MB`;
 	}
 	const kindLabel = (kind: string) => t(`targets.kind.${kind}` as MessageKey);
-	const pathHint = $derived(
-		draft.config.kind === 's3'
-			? t('targets.pathS3')
-			: draft.config.kind === 'smb'
-				? t('targets.pathSmb')
-				: draft.config.kind === 'local'
-					? t('targets.pathLocal')
-					: t('targets.pathOther')
-	);
+	const selected = $derived(storage?.targets.find((x) => x.id === draft.storage_target_id));
 </script>
 
 {#if data}
 	<div class="card space-y-4">
 		<div class="flex flex-wrap items-center justify-between gap-2">
 			<h2>{t('targets.title')}</h2>
-			<button class="btn btn-primary" type="button" onclick={() => edit()}
-				>{t('targets.add')}</button
+			<button
+				class="btn btn-primary"
+				type="button"
+				disabled={!storage?.targets.length}
+				onclick={() => edit()}>{t('targets.add')}</button
 			>
 		</div>
 		<p class="text-sm text-slate-600 dark:text-slate-300">{t('targets.hint')}</p>
+		{#if storage && !storage.targets.length}<p class="hint">
+				{t('targets.noStorage')}
+				{#if can('storage.manage')}<a
+						class="text-teal-700 hover:underline dark:text-teal-300"
+						href="/settings?section=storage">{t('targets.manageStorage')}</a
+					>{/if}
+			</p>{/if}
 		{#if !data.encryption_configured}<p class="hint text-amber-700 dark:text-amber-400">
 				{t('targets.encryptionMissing')}
 			</p>{/if}
@@ -336,7 +280,9 @@
 							<tr>
 								<td>
 									<span class="font-medium">{x.name}</span>
-									<span class="block text-xs text-slate-500">{kindLabel(x.config.kind)}</span>
+									<span class="block text-xs text-slate-500"
+										>{x.storage_name} · {kindLabel(x.config.kind)}</span
+									>
 									<span class="block font-mono text-xs break-all text-slate-500"
 										>{describe(x.config, x.path)}</span
 									>
@@ -406,46 +352,24 @@
 				><input type="checkbox" bind:checked={draft.enabled} /> {t('common.enabled')}</label
 			>
 		</div>
-		<TargetConnectionFields
-			bind:config={draft.config}
-			bind:secret
-			bind:allowInsecure={draft.allow_insecure}
-			hasSecret={draft.has_secret}
-			roots={data?.roots ?? []}
-			idPrefix="bt"
-		/>
-		<div>
-			<label for="bt-path">{t('targets.path')}</label>
-			<div class="flex gap-2">
-				<input id="bt-path" class="input font-mono" bind:value={draft.path} />
-				<button type="button" class="btn" onclick={() => (browsing = !browsing)}
-					>{t('targets.browse')}</button
-				>
+		<div class="grid grid-cols-1 gap-3 @lg:grid-cols-2">
+			<div>
+				<label for="bt-storage">{t('targets.storage')}</label>
+				<select id="bt-storage" class="input" bind:value={draft.storage_target_id} required>
+					{#each storage?.targets ?? [] as x (x.id)}<option value={x.id}
+							>{x.name} ({kindLabel(x.config.kind)})</option
+						>{/each}
+				</select>
 			</div>
-			<p class="hint">{pathHint}</p>
+			<div>
+				<label for="bt-folder">{t('targets.folder')}</label>
+				<input id="bt-folder" class="input font-mono" bind:value={draft.folder} />
+			</div>
 		</div>
-		{#if browsing}
-			<FolderBrowser
-				kind={draft.config.kind}
-				start={draft.path}
-				roots={data?.roots ?? []}
-				browse={browseFn}
-				mkdir={mkdirFn}
-				onPinned={pinned}
-				onSelect={(p) => {
-					draft.path = p;
-					browsing = false;
-				}}
-			/>
-		{/if}
-		<div class="flex flex-wrap items-center gap-2">
-			<button type="button" class="btn" disabled={testing} onclick={test}
-				>{testing ? t('common.loading') : t('targets.test')}</button
-			>
-			{#if formInfo}<span class="text-sm text-emerald-700 dark:text-emerald-400">{formInfo}</span
-				>{/if}
-		</div>
-
+		{#if selected}<p class="hint font-mono break-all">
+				{describe(selected.config, joinPath(selected.path, draft.folder.replace(/^\/+/, '')))}
+			</p>{/if}
+		<p class="hint">{t('targets.folderHint')}</p>
 		<fieldset class="space-y-2 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
 			<legend class="px-1 text-sm font-medium">{t('targets.schedule')}</legend>
 			<div class="flex flex-wrap gap-1" role="group" aria-label={t('targets.weekdays')}>
@@ -509,23 +433,10 @@
 			<p class="hint">{retentionText(draft.retention)}</p>
 		</fieldset>
 
-		<div class="grid grid-cols-1 gap-3 @lg:grid-cols-2">
-			<label class="flex items-center gap-2"
-				><input type="checkbox" bind:checked={draft.include_recordings} />
-				{t('backup.recordings')}</label
-			>
-			<div>
-				<label for="bt-bw">{t('targets.bwlimit')}</label>
-				<input
-					id="bt-bw"
-					class="input"
-					type="number"
-					min="1"
-					bind:value={draft.bwlimit_kbps}
-					placeholder={t('targets.unlimited')}
-				/>
-			</div>
-		</div>
+		<label class="flex items-center gap-2"
+			><input type="checkbox" bind:checked={draft.include_recordings} />
+			{t('backup.recordings')}</label
+		>
 		<div class="flex justify-end gap-2">
 			<button type="button" class="btn" onclick={() => (editing = false)}
 				>{t('common.cancel')}</button

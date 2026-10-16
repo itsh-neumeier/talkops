@@ -84,5 +84,10 @@ pub async fn record_run(
     .bind(error)
     .execute(pool)
     .await?;
+    let (event, params) = match result {
+        Ok(f) => ("backup.succeeded", serde_json::json!({ "file": f })),
+        Err(e) => ("backup.failed", serde_json::json!({ "error": e })),
+    };
+    crate::notifications::emit_logged(pool, tenant, event, "", params).await;
     Ok(())
 }

@@ -104,13 +104,28 @@ impl Guard {
             return;
         }
         match sip_guard::ban(&self.db, tenant, ip, n as i32, user, s.ban_minutes).await {
-            Ok(ban) => tracing::warn!(
-                %ip,
-                failures = n,
-                user,
-                until = %ban.banned_until,
-                "too many failed SIP logins, address banned"
-            ),
+            Ok(ban) => {
+                tracing::warn!(
+                    %ip,
+                    failures = n,
+                    user,
+                    until = %ban.banned_until,
+                    "too many failed SIP logins, address banned"
+                );
+                talkops_core::notifications::emit_logged(
+                    &self.db,
+                    tenant,
+                    "security.sip_ban",
+                    &ip.to_string(),
+                    serde_json::json!({
+                        "ip": ip.to_string(),
+                        "failures": n,
+                        "sip_user": user.chars().take(64).collect::<String>(),
+                        "until": ban.banned_until.to_rfc3339(),
+                    }),
+                )
+                .await;
+            }
             Err(err) => tracing::error!(%ip, error = %err, "cannot store SIP ban"),
         }
     }

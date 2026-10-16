@@ -25,7 +25,7 @@ kopieren; Backups auf derselben Platte helfen bei einem Plattenausfall nicht.
 (Standard) sichert TalkOps diese Dateien des Verzeichnisses automatisch:
 `.env`, `*.env`, `docker-compose*.yml`/`.yaml` und `compose*.yml`/`.yaml`.
 TalkOps lässt Links, Dateien über 1 MiB, für UID 10001 nicht lesbare Dateien
-und Dateien mit dem Backup-Passwort aus. **Einstellungen → System → Backups**
+und Dateien mit dem Backup-Passwort aus. **Einstellungen → Backup**
 zeigt gesicherte und ausgelassene Dateien.
 
 1. Eine separate Passwortdatei erstellen. Der ausführende Benutzer ist Eigentümer;
@@ -79,7 +79,7 @@ stattdessen die Portainer-API:
 
 1. In Portainer unter **My account → Access tokens** ein Token anlegen. Einen
    Benutzer verwenden, der den TalkOps-Stack lesen darf.
-2. In TalkOps **Einstellungen → System → Backups** öffnen und auf
+2. In TalkOps **Einstellungen → Backup** öffnen und auf
    **Portainer verbinden** klicken.
 3. Die Portainer-URL eingeben, z. B. `https://127.0.0.1:9443`. `http://` ist
    nur für `127.0.0.1` erlaubt.
@@ -116,8 +116,20 @@ Passwort nicht in die importierte `.env` aufnehmen und separat aufbewahren.
 
 ## Sicherungsziele
 
-Sicherungsziele erhalten Kopien der Backup-Archive. Unter
-**Einstellungen > System > Sicherungsziele** auf **Ziel hinzufügen** klicken.
+Sicherungsziele erhalten Kopien der Backup-Archive. Ein Sicherungsziel hat
+zwei Teile (ADR 0036):
+
+- Ein **Speicherziel** enthält die Verbindung: Protokoll, Server, Ordner,
+  Passwort oder Schlüssel und Upload-Limit. Unter **Einstellungen → Speicher**
+  auf **Speicherziel hinzufügen** klicken. Dafür ist die Berechtigung
+  `storage.manage` nötig. Andere Funktionen können später dieselben
+  Speicherziele nutzen.
+- Ein **Sicherungsauftrag** wählt ein Speicherziel und optional einen
+  Unterordner. Er hat Zeitplan, Aufbewahrung und die Einstellung für
+  Aufzeichnungen. Unter **Einstellungen → Backup → Sicherungsaufträge** auf
+  **Auftrag hinzufügen** klicken. Dafür ist die Berechtigung `backups.manage`
+  nötig.
+
 TalkOps kopiert die Archive mit [rclone](https://rclone.org). Das Server-Image
 enthält eine fest eingestellte rclone-Version.
 
@@ -142,9 +154,16 @@ Regeln:
   Passwortfeld behält den gespeicherten Wert.
 - Für jeden TalkOps-Server einen eigenen Ordner verwenden. Die Aufbewahrung
   löscht TalkOps-Archive im Ordner, aber keine anderen Dateien.
+- Jeder Sicherungsauftrag braucht einen eigenen Ordner. TalkOps lehnt einen
+  zweiten Auftrag mit demselben Speicherziel und Unterordner ab.
+- Eine Änderung am Speicherziel gilt für alle Aufträge, die es nutzen. Die
+  Spalte **Verwendet von** zeigt diese Aufträge. Ein verwendetes Speicherziel
+  lässt sich nicht löschen. Zuerst den Auftrag löschen oder auf ein anderes
+  Speicherziel verschieben.
 
 ### Ordner-Browser und Verbindungstest
 
+Der Editor des Speicherziels enthält Ordner-Browser und Verbindungstest.
 **Durchsuchen** zeigt eine Ordnerebene. Einen Ordner wählen und auf **Diesen
 Ordner verwenden** klicken. **Ordner anlegen** erstellt einen neuen Ordner.
 S3 zeigt die Buckets und SMB die Freigaben, wenn der Server das erlaubt.
@@ -157,24 +176,28 @@ Den Fingerabdruck vor dem Speichern mit dem Server vergleichen
 (`ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub`). Spätere Verbindungen
 lehnen einen anderen Host-Schlüssel ab.
 
+**Testen** in der Liste der Speicherziele prüft die gespeicherte Verbindung.
+Die Liste zeigt Ergebnis und Zeitpunkt des letzten Tests.
+
 ### Zeitplan
 
-Jedes Ziel hat einen eigenen Zeitplan in der Zeitzone des Containers (`TZ`):
+Jeder Sicherungsauftrag hat einen eigenen Zeitplan in der Zeitzone des
+Containers (`TZ`):
 
-- Wochentage wählen. Ein Ziel ohne Wochentag läuft nur mit **Jetzt sichern**.
+- Wochentage wählen. Ein Auftrag ohne Wochentag läuft nur mit **Jetzt sichern**.
 - Uhrzeit des ersten Laufs des Tages festlegen.
 - Optional: den Lauf alle 1 bis 12 Stunden bis Mitternacht wiederholen.
 
-Ist ein Ziel in derselben Minute fällig wie die tägliche lokale Sicherung,
-erhält es dieses Archiv. Für andere Läufe schreibt TalkOps ein Archiv in einen
-temporären Ordner im Backups-Volume, kopiert es zu allen fälligen Zielen und
+Ist ein Auftrag in derselben Minute fällig wie die tägliche lokale Sicherung,
+erhält er dieses Archiv. Für andere Läufe schreibt TalkOps ein Archiv in einen
+temporären Ordner im Backups-Volume, kopiert es zu allen fälligen Aufträgen und
 löscht es danach. Das Backups-Volume braucht Platz für ein Archiv.
-**Gesprächsaufzeichnungen einschließen** ist eine Einstellung je Ziel.
+**Gesprächsaufzeichnungen einschließen** ist eine Einstellung je Auftrag.
 
 ### Intelligente Aufbewahrung
 
-Nach jedem Upload behält TalkOps ein Archiv auf dem Ziel, wenn eine dieser
-Regeln es auswählt:
+Nach jedem Upload behält TalkOps ein Archiv im Ordner des Auftrags, wenn eine
+dieser Regeln es auswählt:
 
 - **Neueste Archive**: die neuesten N Archive (mindestens 1).
 - **Täglich**: das neueste Archiv jedes Tages für N Tage.
@@ -199,7 +222,8 @@ lokales Ziel:
 docker compose -f docker-compose.yml -f docker-compose.targets.yml up -d
 ```
 
-Danach ein lokales Ziel mit dem Ordner `/var/lib/talkops/targets/nfs` anlegen.
+Danach ein lokales Speicherziel mit dem Ordner `/var/lib/talkops/targets/nfs`
+anlegen.
 Der Export muss Schreibzugriff für UID/GID 10001 erlauben. Eine USB-Platte oder
 ein anderer Host-Ordner funktioniert genauso mit einem Bind-Mount (siehe
 Kommentar in `docker-compose.targets.yml`). In Portainer dieselbe
@@ -207,15 +231,22 @@ Volume-Definition in den Stack übernehmen.
 
 ### Status und Überwachung
 
-Die Liste zeigt Status, letzten erfolgreichen Lauf, letzten Fehler und nächsten
-Lauf je Ziel. Ein fehlgeschlagenes Ziel hält die anderen Ziele nicht an. Nach
-Änderungen an Netzwerk, Passwort oder Ziel die Liste prüfen.
+Die Auftragsliste zeigt Status, letzten erfolgreichen Lauf, letzten Fehler und
+nächsten Lauf je Auftrag. Ein fehlgeschlagener Auftrag hält die anderen nicht
+an. Nach Änderungen an Netzwerk, Passwort oder Speicherziel die Liste prüfen.
+
+### Update von TalkOps 1.7
+
+Das Update verschiebt die Verbindung jedes Sicherungsziels in ein Speicherziel
+mit demselben Namen. Der Sicherungsauftrag behält Zeitplan, Aufbewahrung,
+letzten Lauf und Archive. Rollen mit `backups.manage` erhalten zusätzlich
+`storage.manage`. Es ist nichts zu tun.
 
 ## Wiederherstellung von einem Sicherungsziel
 
 Im Betrieb:
 
-1. Beim Ziel auf **Archive** klicken.
+1. Beim Sicherungsauftrag auf **Archive** klicken.
 2. Beim Archiv auf **Auf diesen Server** klicken. TalkOps lädt das Archiv in die
    lokale Sicherungsliste. Vorhandene Archive werden nie ersetzt.
 3. Das Archiv offline wiederherstellen:

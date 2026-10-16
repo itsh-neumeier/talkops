@@ -10,6 +10,7 @@ use talkops_core::extensions::{self, Device, Extension};
 use talkops_core::phones::{self, Contact, PhonebookSection};
 use talkops_core::settings;
 use talkops_core::tenant::TenantId;
+use talkops_core::transcription_jobs::JobView;
 use talkops_core::trunks::{self, PhoneNumber};
 use talkops_esl::Frame;
 use uuid::Uuid;
@@ -30,6 +31,18 @@ pub struct Party {
     /// All phone book entries with this number when `ambiguous`, ordered by
     /// phone book (global first) and name; empty otherwise.
     pub matches: Vec<ContactMatch>,
+}
+
+/// Resolved parties of a transcription job (see `Directory::job_parties`).
+#[derive(Debug, Clone, Default, Serialize, utoipa::ToSchema)]
+pub struct JobParties {
+    /// The direction of the call; for a voicemail derived from the caller.
+    #[serde(skip)]
+    pub direction: Option<Direction>,
+    pub caller: Option<Party>,
+    pub called: Option<Party>,
+    /// Inbound call: the own number that the caller dialed.
+    pub via_number: Option<String>,
 }
 
 /// One phone book entry that has the number of a call party.
@@ -335,8 +348,10 @@ impl Directory {
         out
     }
 
-    /// The parties of a call record: caller, called party and, for inbound
-    /// calls, the own number that was dialed.
+    /// The parties of a call record: caller, called party and the own number
+    /// of the call. For inbound calls, this is the dialed number. For outbound
+    /// calls, this is the number that supplied the caller ID. Internal calls
+    /// and records without a known number have no own number.
     pub fn record_parties(&self, c: &Cdr) -> (Party, Party, Option<String>) {
         let number = || {
             self.numbers
@@ -363,13 +378,70 @@ impl Directory {
             Direction::Outbound => {
                 let caller = self.party(&c.caller_number, &c.caller_name, c.extension_id);
                 let called = self.external_party(&c.destination, "", c.extension_id);
-                (caller, called, None)
+                (caller, called, number())
             }
             Direction::Internal => (
                 self.party(&c.caller_number, &c.caller_name, c.extension_id),
                 self.party(&c.destination, "", c.dest_extension_id),
                 None,
             ),
+        }
+    }
+
+    /// The parties of a transcription job: the parties of the recorded call
+    /// (as in the call log), or the caller and the box of a voicemail. A
+    /// voicemail from an extension is internal, else inbound.
+    pub fn job_parties(&self, j: &JobView) -> JobParties {
+        let caller_number = j.caller_number.as_deref().unwrap_or_default();
+        let caller_name = j.caller_name.as_deref().unwrap_or_default();
+        let destination = j.destination.as_deref().unwrap_or_default();
+        if let Some(direction) = j.direction {
+            let at = j.call_started_at.unwrap_or(j.created_at);
+            let record = Cdr {
+                id: Uuid::nil(),
+                call_uuid: String::new(),
+                direction,
+                caller_number: caller_number.to_owned(),
+                caller_name: caller_name.to_owned(),
+                destination: destination.to_owned(),
+                extension_id: j.extension_id,
+                dest_extension_id: j.dest_extension_id,
+                trunk_id: None,
+                number_id: j.number_id,
+                started_at: at,
+                answered_at: None,
+                ended_at: at,
+                duration_secs: 0,
+                billsec: 0,
+                hangup_cause: String::new(),
+                recording_id: j.recording_id,
+            };
+            let (caller, called, via_number) = self.record_parties(&record);
+            return JobParties {
+                direction: Some(direction),
+                caller: Some(caller),
+                called: Some(called),
+                via_number,
+            };
+        }
+        if j.voicemail_id.is_none() {
+            return JobParties::default();
+        }
+        let box_owner = j.extension_id;
+        let internal = self.party(caller_number, caller_name, None);
+        let (direction, caller) = if internal.extension_id.is_some() {
+            (Direction::Internal, internal)
+        } else {
+            (
+                Direction::Inbound,
+                self.external_party(caller_number, caller_name, box_owner),
+            )
+        };
+        JobParties {
+            direction: Some(direction),
+            caller: Some(caller),
+            called: Some(self.party(destination, "", box_owner)),
+            via_number: None,
         }
     }
 
@@ -956,7 +1028,28 @@ mod tests {
         let (caller, called, via) = dir.record_parties(&outbound);
         assert_eq!(caller.extension_id, Some(ext));
         assert_eq!(called.name, "Family Vollmeier (Maria)");
-        assert_eq!(via, None);
+        assert_eq!(via.as_deref(), Some("+4995431241"));
+
+        // Older or unrouted outbound records have no number.
+        let unknown = Cdr {
+            number_id: None,
+            ..outbound.clone()
+        };
+        assert_eq!(dir.record_parties(&unknown).2, None);
+        let deleted = Cdr {
+            number_id: Some(Uuid::new_v4()),
+            ..outbound.clone()
+        };
+        assert_eq!(dir.record_parties(&deleted).2, None);
+
+        // Internal calls never show an own number.
+        let internal = Cdr {
+            direction: Direction::Internal,
+            destination: "101".into(),
+            dest_extension_id: Some(ext),
+            ..outbound
+        };
+        assert_eq!(dir.record_parties(&internal).2, None);
 
         assert_eq!(
             dir.contact_numbers("vollmeier"),

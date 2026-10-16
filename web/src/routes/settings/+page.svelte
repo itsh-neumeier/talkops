@@ -4,6 +4,7 @@
 	import { net } from '#lib/net.svelte.ts';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
+	import { replaceState } from '$app/navigation';
 	import { api, type PhoneNumber, type Settings, type SmtpSettings } from '#lib/api.ts';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
 	import AudioPicker, { type AudioMode } from '#lib/components/AudioPicker.svelte';
@@ -13,10 +14,16 @@
 	import BackupTargets from '#lib/components/BackupTargets.svelte';
 	import IdentitySettings from '#lib/components/IdentitySettings.svelte';
 	import SipGuardSettings from '#lib/components/SipGuardSettings.svelte';
-	import SystemDiagnostics from '#lib/components/SystemDiagnostics.svelte';
+	import StorageTargets from '#lib/components/StorageTargets.svelte';
+	import SystemDiagnostics, {
+		isSystemTab,
+		type SystemTab
+	} from '#lib/components/SystemDiagnostics.svelte';
 	import TranscriptionSettings from '#lib/components/TranscriptionSettings.svelte';
 	import TwoFactor from '#lib/components/TwoFactor.svelte';
 	import VoicemailControl from '#lib/components/VoicemailControl.svelte';
+	import MailDesign from '#lib/components/MailDesign.svelte';
+	import NotificationSettings from '#lib/components/NotificationSettings.svelte';
 	import SettingsNav, {
 		sections,
 		sectionVisible,
@@ -26,16 +33,31 @@
 	import { can, logout } from '#lib/session.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
 
+	// Deep links: `?section=system&tab=diagnostics`; `#section` from older links still works.
 	function initialSection(): Section {
-		const hash = page.url.hash.slice(1);
+		const wanted = page.url.searchParams.get('section') ?? page.url.hash.slice(1);
 		const allowed = sections.filter((s) => sectionVisible(s));
-		const found = allowed.find((s) => s.id === hash);
-		return found?.id ?? allowed[0]?.id ?? 'account';
+		const found = allowed.find((s) => s.id === wanted);
+		// Backups were part of "System" before; keep old links useful.
+		const moved = wanted === 'system' && allowed.find((s) => s.id === 'backup');
+		return found?.id ?? (moved ? 'backup' : (allowed[0]?.id ?? 'account'));
 	}
 	let section = $state<Section>(initialSection());
+	const tabParam = page.url.searchParams.get('tab');
+	let systemTab = $state<SystemTab>(isSystemTab(tabParam) ? tabParam : 'status');
+
+	function syncUrl() {
+		const query = new URLSearchParams({ section });
+		if (section === 'system') query.set('tab', systemTab);
+		replaceState(`?${query}`, page.state);
+	}
 	function show(id: Section) {
 		section = id;
-		history.replaceState(history.state, '', `#${id}`);
+		syncUrl();
+	}
+	function showTab(id: SystemTab) {
+		systemTab = id;
+		syncUrl();
 	}
 
 	let settings = $state<Settings | null>(null);
@@ -464,13 +486,22 @@
 							<button class="btn btn-primary">{t('common.save')}</button>
 						</div>
 					</form>
+					<MailDesign />
 				{/if}
+			{:else if section === 'notifications'}
+				{#if can('notifications.manage')}<NotificationSettings />{/if}
 			{:else if section === 'security'}
 				{#if can('identity.manage')}<IdentitySettings />{/if}
 				{#if can('security.manage')}<SipGuardSettings />{/if}
 			{:else if section === 'system'}
-				{#if can('diagnostics.manage')}<SystemDiagnostics />{/if}
+				{#if can('diagnostics.manage')}<SystemDiagnostics
+						bind:tab={systemTab}
+						onchange={showTab}
+					/>{/if}
+			{:else if section === 'backup'}
 				{#if can('backups.manage')}<BackupSettings /><BackupTargets />{/if}
+			{:else if section === 'storage'}
+				{#if can('storage.manage')}<StorageTargets />{/if}
 			{:else}
 				<form class="card max-w-md space-y-3" onsubmit={changePassword}>
 					<h2>{t('settings.account')}</h2>

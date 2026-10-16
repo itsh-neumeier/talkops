@@ -1,6 +1,9 @@
 <script lang="ts">
 	import PageHeader from '#lib/components/PageHeader.svelte';
 	import SkeletonRows from '#lib/components/SkeletonRows.svelte';
+	import ColumnFilter from '#lib/components/ColumnFilter.svelte';
+	import FilterOptions from '#lib/components/FilterOptions.svelte';
+	import SortButton from '#lib/components/SortButton.svelte';
 	import { net } from '#lib/net.svelte.ts';
 	import { onMount, tick, untrack } from 'svelte';
 	import { page } from '$app/state';
@@ -8,19 +11,35 @@
 	import ContactImport from '#lib/components/ContactImport.svelte';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
 	import Modal from '#lib/components/Modal.svelte';
-	import { t } from '#lib/i18n/index.svelte.ts';
+	import { i18n, t } from '#lib/i18n/index.svelte.ts';
 	import { can } from '#lib/session.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
+	import { syncAddress } from '#lib/list/address.ts';
+	import { ariaSort, nextSort } from '#lib/list/sort.ts';
+	import {
+		GLOBAL,
+		PRESENCES,
+		activeFilters,
+		anyFilter as hasFilter,
+		emptyFilters,
+		knownSections,
+		matches,
+		pageQuery,
+		parseFilters,
+		sortContacts,
+		type NumberKind,
+		type PhonebookFilters,
+		type Presence,
+		type SortKey
+	} from '#lib/phonebook/filters.ts';
 
 	let contacts = $state<Contact[]>([]);
 	let sections = $state<PhonebookSection[]>([]);
-	/** '' = all, 'global' = without section, else a section id. */
-	let shown = $state('');
+	let filters = $state<PhonebookFilters>(parseFilters(page.url.searchParams));
 	let sectionsOpen = $state(false);
 	let importOpen = $state(false);
 	let newSection = $state('');
 	let error = $state('');
-	let search = $state('');
 	let editOpen = $state(false);
 	let editing = $state<Contact | null>(null);
 	const empty = () => ({
@@ -32,22 +51,41 @@
 		section_id: '' as string
 	});
 	let form = $state(empty());
-	/** Contact from `?contact=<id>` (live call overview): shown and highlighted. */
+	/** Contact from `?contact=<id>` (call list, live calls): shown and highlighted. */
 	let highlighted = $state('');
+	/** The `?contact=` value that was already shown (not again after a filter change). */
+	let handled = '';
 	let loaded = $state(false);
-
-	const filtered = $derived(
-		contacts.filter(
-			(c) =>
-				(shown === '' || (shown === 'global' ? c.section_id === null : c.section_id === shown)) &&
-				[c.name, c.company, c.phone_work, c.phone_mobile, c.phone_other].some((v) =>
-					v.toLowerCase().includes(search.trim().toLowerCase())
-				)
-		)
-	);
 
 	const sectionName = (id: string | null) =>
 		id ? (sections.find((s) => s.id === id)?.name ?? '') : t('contacts.global');
+
+	const active = $derived(activeFilters(filters));
+	const anyFilter = $derived(hasFilter(filters));
+	const filtered = $derived(
+		sortContacts(
+			contacts.filter((c) => matches(c, filters, sectionName(c.section_id))),
+			filters,
+			sectionName,
+			i18n.locale
+		)
+	);
+	const sectionOptions = $derived([
+		{ value: GLOBAL, label: t('contacts.global') },
+		...sections.map((s) => ({ value: s.id, label: s.name }))
+	]);
+	const numberColumns: { kind: NumberKind; label: string; opt: string }[] = $derived([
+		{ kind: 'work', label: t('contacts.work'), opt: '' },
+		{ kind: 'mobile', label: t('contacts.mobile'), opt: '' },
+		{ kind: 'other', label: t('contacts.other'), opt: 'col-opt-lg' }
+	]);
+	const cols = $derived(sections.length > 0 ? 6 : 5);
+
+	// The address follows the filters (a reload or a link shows the same list).
+	$effect(() => {
+		const query = pageQuery(filters, highlighted || (page.url.searchParams.get('contact') ?? ''));
+		untrack(() => syncAddress('/phonebook', query));
+	});
 
 	async function load() {
 		try {
@@ -55,6 +93,11 @@
 				api.get<Contact[]>('/contacts'),
 				api.get<PhonebookSection[]>('/phonebook-sections')
 			]);
+			const known = knownSections(
+				filters,
+				sections.map((s) => s.id)
+			);
+			if (known.length !== filters.section.length) filters.section = known;
 			loaded = true;
 		} catch (err) {
 			error = errorMessage(err);
@@ -64,15 +107,22 @@
 
 	$effect(() => {
 		const id = page.url.searchParams.get('contact') ?? '';
-		if (!loaded || !id) return;
-		// Runs once per address, not again after a reload of the list.
+		if (!loaded || !id || id === handled) return;
+		// Runs once for each linked entry, not again after a filter change or a reload.
 		untrack(() => {
+			handled = id;
 			const target = contacts.find((c) => c.id === id);
 			if (!target) return;
-			// Show the phone book of the entry, so that it is visible.
-			shown = sections.length > 0 ? (target.section_id ?? 'global') : '';
-			search = '';
 			highlighted = id;
+			// Show the phone book of the entry, so that it is visible.
+			if (!matches(target, filters, sectionName(target.section_id))) {
+				filters = {
+					...emptyFilters(),
+					sort: filters.sort,
+					order: filters.order,
+					section: sections.length > 0 ? [target.section_id ?? GLOBAL] : []
+				};
+			}
 			const smooth = !matchMedia('(prefers-reduced-motion: reduce)').matches;
 			tick().then(() =>
 				document
@@ -82,11 +132,29 @@
 		});
 	});
 
+	function sortBy(key: SortKey) {
+		({ sort: filters.sort, order: filters.order } = nextSort(filters, key, 'asc'));
+	}
+
+	function resetAll() {
+		filters = { ...emptyFilters(), sort: filters.sort, order: filters.order };
+	}
+
+	const presenceLabel = (p: Presence) =>
+		t(
+			p === 'with'
+				? 'contacts.withNumber'
+				: p === 'without'
+					? 'contacts.withoutNumber'
+					: 'common.all'
+		);
+
 	function open(c: Contact | null) {
 		editing = c;
+		const one = filters.section.length === 1 ? filters.section[0] : GLOBAL;
 		form = c
 			? { ...c, section_id: c.section_id ?? '' }
-			: { ...empty(), section_id: shown === '' || shown === 'global' ? '' : shown };
+			: { ...empty(), section_id: one === GLOBAL ? '' : one };
 		editOpen = true;
 	}
 
@@ -131,7 +199,7 @@
 		if (!confirm(t('contacts.deleteSectionConfirm', { name: sec.name }))) return;
 		try {
 			await api.del(`/phonebook-sections/${sec.id}`);
-			if (shown === sec.id) shown = '';
+			filters.section = filters.section.filter((s) => s !== sec.id);
 			await load();
 		} catch (err) {
 			error = errorMessage(err);
@@ -161,27 +229,87 @@
 	</PageHeader>
 	<ErrorBox {error} />
 	<div class="flex flex-wrap items-center gap-2">
-		<input class="input max-w-sm" placeholder={t('common.search')} bind:value={search} />
-		{#if sections.length > 0}
-			<select class="input w-auto" bind:value={shown} aria-label={t('contacts.section')}>
-				<option value="">{t('contacts.allSections')}</option>
-				<option value="global">{t('contacts.global')}</option>
-				{#each sections as sec (sec.id)}<option value={sec.id}>{sec.name}</option>{/each}
-			</select>
-		{/if}
+		<input
+			class="input max-w-sm"
+			type="search"
+			placeholder={t('contacts.searchPlaceholder')}
+			aria-label={t('common.search')}
+			bind:value={filters.search}
+		/>
 	</div>
 	<div class="card scroll-x">
-		{#if contacts.length === 0 && net.settled}
+		{#if contacts.length === 0 && loaded && net.settled}
 			<p class="text-sm text-slate-500">{t('contacts.none')}</p>
 		{:else}
 			<table class="table">
 				<thead>
-					<tr
-						><th>{t('common.name')}</th><th>{t('contacts.work')}</th><th>{t('contacts.mobile')}</th
-						><th class="col-opt-lg">{t('contacts.other')}</th><th class="col-opt"
-							>{t('contacts.section')}</th
-						><th></th></tr
-					>
+					<tr>
+						<th
+							aria-sort={ariaSort(
+								filters.sort === 'name' || filters.sort === 'company',
+								filters.order
+							)}
+						>
+							<span class="inline-flex flex-wrap items-center gap-x-1 whitespace-nowrap">
+								<SortButton
+									label={t('common.name')}
+									active={filters.sort === 'name'}
+									order={filters.order}
+									onclick={() => sortBy('name')}
+								/>
+								<span class="text-slate-400 dark:text-slate-500" aria-hidden="true">·</span>
+								<SortButton
+									label={t('contacts.company')}
+									active={filters.sort === 'company'}
+									order={filters.order}
+									onclick={() => sortBy('company')}
+								/>
+							</span>
+						</th>
+						{#each numberColumns as col (col.kind)}
+							<th class={col.opt}>
+								<span class="inline-flex items-center gap-1 whitespace-nowrap">
+									{col.label}
+									<ColumnFilter
+										label={col.label}
+										active={active[col.kind]}
+										onreset={() => (filters[col.kind] = '')}
+									>
+										<FilterOptions
+											single
+											options={PRESENCES.map((p) => ({ value: p, label: presenceLabel(p) }))}
+											selected={[filters[col.kind]]}
+											onchange={([v]) => (filters[col.kind] = v as Presence)}
+										/>
+									</ColumnFilter>
+								</span>
+							</th>
+						{/each}
+						{#if sections.length > 0}
+							<th aria-sort={ariaSort(filters.sort === 'section', filters.order)}>
+								<span class="inline-flex items-center gap-1 whitespace-nowrap">
+									<SortButton
+										label={t('contacts.section')}
+										active={filters.sort === 'section'}
+										order={filters.order}
+										onclick={() => sortBy('section')}
+									/>
+									<ColumnFilter
+										label={t('contacts.section')}
+										active={active.section}
+										onreset={() => (filters.section = [])}
+									>
+										<FilterOptions
+											options={sectionOptions}
+											selected={filters.section}
+											onchange={(v) => (filters.section = v)}
+										/>
+									</ColumnFilter>
+								</span>
+							</th>
+						{/if}
+						<th></th>
+					</tr>
 				</thead>
 				<tbody>
 					{#each filtered as c (c.id)}
@@ -200,7 +328,9 @@
 							<td class="font-mono text-sm">{c.phone_work}</td>
 							<td class="font-mono text-sm">{c.phone_mobile}</td>
 							<td class="col-opt-lg font-mono text-sm">{c.phone_other}</td>
-							<td class="col-opt text-sm text-slate-500">{sectionName(c.section_id)}</td>
+							{#if sections.length > 0}
+								<td class="text-sm text-slate-500">{sectionName(c.section_id)}</td>
+							{/if}
 							<td class="space-x-1 text-right whitespace-nowrap">
 								{#if can('phonebook.edit')}
 									<button class="btn btn-sm" onclick={() => open(c)}>{t('common.edit')}</button>
@@ -211,10 +341,35 @@
 							</td>
 						</tr>
 					{:else}
-						{#if !net.settled}<SkeletonRows cols={6} />{/if}
+						{#if !loaded || !net.settled}<SkeletonRows {cols} />
+						{:else}
+							<tr>
+								<td
+									colspan={cols}
+									class="py-8 text-center text-sm text-slate-500 dark:text-slate-400"
+								>
+									{t('contacts.noMatches')}
+									{#if anyFilter}
+										<div class="mt-2">
+											<button class="btn btn-sm" onclick={resetAll}>{t('filter.resetAll')}</button>
+										</div>
+									{/if}
+								</td>
+							</tr>
+						{/if}
 					{/each}
 				</tbody>
 			</table>
+			{#if loaded && contacts.length > 0}
+				<div
+					class="flex flex-wrap items-center justify-between gap-2 pt-3 text-sm text-slate-500 dark:text-slate-400"
+				>
+					<span>{t('contacts.shown', { shown: filtered.length, total: contacts.length })}</span>
+					{#if anyFilter}
+						<button class="btn btn-sm" onclick={resetAll}>{t('filter.resetAll')}</button>
+					{/if}
+				</div>
+			{/if}
 		{/if}
 	</div>
 </div>

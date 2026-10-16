@@ -1,8 +1,7 @@
-//! Backup targets (ADR 0031): local folders, SMB shares, S3 buckets, FTP,
-//! WebDAV and SFTP servers that receive copies of the backup archives. Each
-//! target has its own schedule and retention. The server copies the archives
-//! with rclone (`talkops_api::backup_targets`). Passwords and keys are stored
-//! encrypted (ADR 0008) and never returned.
+//! Backup targets (ADR 0031, ADR 0036): backup jobs that copy the backup
+//! archives to a storage target (`storage_targets`). Each job has its own
+//! schedule, retention, recordings setting and an optional sub-folder. The
+//! server copies the archives with rclone (`talkops_api::backup_targets`).
 
 use std::collections::HashSet;
 
@@ -14,164 +13,13 @@ use uuid::Uuid;
 
 use crate::crypto::SecretBox;
 use crate::error::{CoreError, CoreResult};
+// The connection types moved to `storage_targets` (ADR 0036).
+use crate::storage_targets::{self, join_path};
+pub use crate::storage_targets::{
+    FtpTls, S3_PROVIDERS, TargetConfig, TargetConnection, TargetSecret, WEBDAV_VENDORS,
+    normalize_path,
+};
 use crate::tenant::TenantId;
-
-/// S3 providers that the UI offers. rclone knows more; `Other` covers any
-/// S3-compatible service.
-pub const S3_PROVIDERS: &[&str] = &[
-    "AWS",
-    "Ceph",
-    "Cloudflare",
-    "DigitalOcean",
-    "Hetzner",
-    "IDrive",
-    "IONOS",
-    "Minio",
-    "OVHcloud",
-    "Rclone",
-    "Scaleway",
-    "SeaweedFS",
-    "Synology",
-    "Wasabi",
-    "Other",
-];
-
-/// WebDAV server types that rclone handles specially.
-pub const WEBDAV_VENDORS: &[&str] = &["nextcloud", "owncloud", "infinitescale", "rclone", "other"];
-
-/// TLS mode of an FTP connection.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
-#[serde(rename_all = "lowercase")]
-pub enum FtpTls {
-    /// `AUTH TLS` on the normal port (FTPES), the recommended mode.
-    Explicit,
-    /// TLS from the first byte (FTPS, usually port 990).
-    Implicit,
-    /// Plain FTP. Needs `allow_insecure`.
-    None,
-}
-
-/// Protocol and connection settings of a target, without secrets.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
-#[serde(tag = "kind", rename_all = "lowercase")]
-pub enum TargetConfig {
-    /// A directory in the container, below `TALKOPS_BACKUP_TARGET_ROOTS`
-    /// (USB disk, NFS or SMB volume mounted by the host).
-    Local,
-    /// SMB 2/3 share, without a kernel mount.
-    Smb {
-        host: String,
-        #[serde(default)]
-        port: Option<u16>,
-        #[serde(default)]
-        user: String,
-        #[serde(default)]
-        domain: String,
-    },
-    /// S3 bucket at AWS or an S3-compatible service.
-    S3 {
-        provider: String,
-        /// Required for all providers except AWS.
-        #[serde(default)]
-        endpoint: String,
-        #[serde(default)]
-        region: String,
-        access_key_id: String,
-        /// Path-style URLs (`endpoint/bucket`), needed by most self-hosted services.
-        #[serde(default)]
-        path_style: bool,
-    },
-    Ftp {
-        host: String,
-        #[serde(default)]
-        port: Option<u16>,
-        #[serde(default)]
-        user: String,
-        tls: FtpTls,
-    },
-    Webdav {
-        /// Base URL, e.g. `https://cloud.example.com/remote.php/dav/files/USER`.
-        url: String,
-        vendor: String,
-        #[serde(default)]
-        user: String,
-    },
-    Sftp {
-        host: String,
-        #[serde(default)]
-        port: Option<u16>,
-        user: String,
-        /// Pinned host keys, `algorithm base64-key`, comma-separated.
-        #[serde(default)]
-        host_keys: String,
-    },
-}
-
-impl TargetConfig {
-    pub fn kind(&self) -> &'static str {
-        match self {
-            Self::Local => "local",
-            Self::Smb { .. } => "smb",
-            Self::S3 { .. } => "s3",
-            Self::Ftp { .. } => "ftp",
-            Self::Webdav { .. } => "webdav",
-            Self::Sftp { .. } => "sftp",
-        }
-    }
-
-    /// The archive leaves this host.
-    pub fn is_remote(&self) -> bool {
-        !matches!(self, Self::Local)
-    }
-}
-
-/// Passwords and keys of a target. Never returned by the API.
-#[derive(Clone, Default, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
-pub struct TargetSecret {
-    /// SMB, FTP, WebDAV and SFTP password.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub password: Option<String>,
-    /// S3 secret access key.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub secret_access_key: Option<String>,
-    /// SFTP private key in PEM format (OpenSSH, unencrypted).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub private_key: Option<String>,
-}
-
-impl std::fmt::Debug for TargetSecret {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str("TargetSecret(..)")
-    }
-}
-
-impl TargetSecret {
-    fn fields(&mut self) -> [&mut Option<String>; 3] {
-        [
-            &mut self.password,
-            &mut self.secret_access_key,
-            &mut self.private_key,
-        ]
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.password.is_none() && self.secret_access_key.is_none() && self.private_key.is_none()
-    }
-
-    /// Applies a change: a missing field keeps the stored value, an empty
-    /// field removes it.
-    pub fn merge(mut self, change: Option<&TargetSecret>) -> TargetSecret {
-        if let Some(change) = change {
-            let mut change = change.clone();
-            for (stored, new) in self.fields().into_iter().zip(change.fields()) {
-                if let Some(value) = new.take() {
-                    *stored = Some(value).filter(|v| !v.is_empty());
-                }
-            }
-        }
-        self
-    }
-}
 
 /// When a target receives a new archive (local time of the container).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
@@ -197,7 +45,7 @@ impl Default for Schedule {
 }
 
 impl Schedule {
-    fn validate(&self) -> CoreResult<()> {
+    pub fn validate(&self) -> CoreResult<()> {
         if !(0..=127).contains(&self.weekdays)
             || !(0..=23).contains(&self.hour)
             || !(0..=59).contains(&self.minute)
@@ -291,7 +139,7 @@ impl Default for Retention {
 }
 
 impl Retention {
-    fn validate(&self) -> CoreResult<()> {
+    pub fn validate(&self) -> CoreResult<()> {
         if !(1..=1000).contains(&self.keep_last)
             || !(0..=3660).contains(&self.keep_daily)
             || !(0..=520).contains(&self.keep_weekly)
@@ -354,280 +202,29 @@ impl Retention {
     }
 }
 
-/// Where and how a target connects. Used for saved targets, the folder
-/// browser and restore before setup.
-#[derive(Debug, Clone, Deserialize, utoipa::ToSchema)]
-pub struct TargetConnection {
-    pub config: TargetConfig,
-    /// Folder on the target. S3: `bucket/prefix`, SMB: `share/folder`,
-    /// local: absolute path.
-    #[serde(default)]
-    pub path: String,
-    #[serde(default)]
-    pub allow_insecure: bool,
-    #[serde(default)]
-    pub secret: TargetSecret,
-}
-
-fn valid_text(s: &str, max: usize) -> bool {
-    s.chars().count() <= max && !s.chars().any(char::is_control)
-}
-
-fn valid_host(host: &str) -> bool {
-    !host.is_empty()
-        && host.len() <= 253
-        && host
-            .chars()
-            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_' | ':' | '[' | ']'))
-}
-
-fn valid_url(url: &str, allow_insecure: bool) -> CoreResult<()> {
-    if !crate::transcription_api::valid_url(url) {
-        return Err(CoreError::Validation(
-            "the URL must start with https:// or http://".into(),
-        ));
-    }
-    if url.starts_with("http://") && !allow_insecure {
-        return Err(CoreError::Validation(
-            "http:// sends data without encryption; allow insecure transport or use https://"
-                .into(),
-        ));
-    }
-    Ok(())
-}
-
-/// Removes surrounding slashes and checks the segments of a target path.
-pub fn normalize_path(path: &str, absolute: bool) -> CoreResult<String> {
-    let path = path.trim();
-    if path.len() > 1024 || path.chars().any(|c| c.is_control() || c == '\\') {
-        return Err(CoreError::Validation("invalid path".into()));
-    }
-    let segments: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
-    if segments.iter().any(|s| *s == "." || *s == "..") {
-        return Err(CoreError::Validation(
-            "the path must not contain . or ..".into(),
-        ));
-    }
-    if absolute {
-        if !path.starts_with('/') {
-            return Err(CoreError::Validation(
-                "a local target needs an absolute path".into(),
-            ));
-        }
-        Ok(format!("/{}", segments.join("/")))
-    } else {
-        Ok(segments.join("/"))
-    }
-}
-
-impl TargetConnection {
-    /// Checks the settings and normalizes the path. `for_browse` allows an
-    /// incomplete path (no bucket or share yet) and an SFTP target without
-    /// a pinned host key, so the browser can list buckets and the test can
-    /// pin the key.
-    pub fn validate(&mut self, for_browse: bool) -> CoreResult<()> {
-        let insecure = self.allow_insecure;
-        let check_port = |p: &Option<u16>| {
-            if *p == Some(0) {
-                Err(CoreError::Validation("invalid port".into()))
-            } else {
-                Ok(())
-            }
-        };
-        let check_host = |h: &mut String| {
-            *h = h.trim().to_owned();
-            if valid_host(h) {
-                Ok(())
-            } else {
-                Err(CoreError::Validation("invalid host name".into()))
-            }
-        };
-        let check_user = |u: &mut String, required: bool| {
-            *u = u.trim().to_owned();
-            if !valid_text(u, 200) || (required && u.is_empty()) {
-                Err(CoreError::Validation("invalid user name".into()))
-            } else {
-                Ok(())
-            }
-        };
-        let needs_root_segment = match &mut self.config {
-            TargetConfig::Local => {
-                self.path = normalize_path(&self.path, true)?;
-                false
-            }
-            TargetConfig::Smb {
-                host,
-                port,
-                user,
-                domain,
-            } => {
-                check_host(host)?;
-                check_port(port)?;
-                check_user(user, false)?;
-                *domain = domain.trim().to_owned();
-                if !valid_text(domain, 100) {
-                    return Err(CoreError::Validation("invalid domain".into()));
-                }
-                true
-            }
-            TargetConfig::S3 {
-                provider,
-                endpoint,
-                region,
-                access_key_id,
-                ..
-            } => {
-                if !S3_PROVIDERS.contains(&provider.as_str()) {
-                    return Err(CoreError::Validation("unknown S3 provider".into()));
-                }
-                *endpoint = endpoint.trim().trim_end_matches('/').to_owned();
-                if endpoint.is_empty() {
-                    if provider != "AWS" {
-                        return Err(CoreError::Validation(
-                            "this S3 provider needs an endpoint URL".into(),
-                        ));
-                    }
-                } else {
-                    valid_url(endpoint, insecure)?;
-                }
-                *region = region.trim().to_owned();
-                if region.len() > 64
-                    || !region
-                        .chars()
-                        .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
-                {
-                    return Err(CoreError::Validation("invalid region".into()));
-                }
-                *access_key_id = access_key_id.trim().to_owned();
-                if access_key_id.is_empty()
-                    || access_key_id.len() > 200
-                    || access_key_id
-                        .chars()
-                        .any(|c| c.is_whitespace() || c.is_control())
-                {
-                    return Err(CoreError::Validation("invalid access key ID".into()));
-                }
-                if self.secret.secret_access_key.is_none() {
-                    return Err(CoreError::Validation("enter the secret access key".into()));
-                }
-                true
-            }
-            TargetConfig::Ftp {
-                host,
-                port,
-                user,
-                tls,
-            } => {
-                check_host(host)?;
-                check_port(port)?;
-                check_user(user, false)?;
-                if *tls == FtpTls::None && !insecure {
-                    return Err(CoreError::Validation(
-                        "plain FTP sends passwords without encryption; allow insecure transport or use TLS".into(),
-                    ));
-                }
-                false
-            }
-            TargetConfig::Webdav { url, vendor, user } => {
-                *url = url.trim().trim_end_matches('/').to_owned();
-                valid_url(url, insecure)?;
-                if !WEBDAV_VENDORS.contains(&vendor.as_str()) {
-                    return Err(CoreError::Validation("unknown WebDAV server type".into()));
-                }
-                check_user(user, false)?;
-                false
-            }
-            TargetConfig::Sftp {
-                host,
-                port,
-                user,
-                host_keys,
-            } => {
-                check_host(host)?;
-                check_port(port)?;
-                check_user(user, true)?;
-                *host_keys = host_keys
-                    .split(',')
-                    .map(str::trim)
-                    .filter(|k| !k.is_empty())
-                    .collect::<Vec<_>>()
-                    .join(",");
-                let valid_key = |k: &str| {
-                    let mut parts = k.split(' ');
-                    matches!(
-                        (parts.next(), parts.next(), parts.next()),
-                        (Some(a), Some(b), None)
-                            if !a.is_empty() && a.len() <= 64 && a.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '@' | '.'))
-                            && !b.is_empty() && b.len() <= 4096 && b.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '/' | '='))
-                    )
-                };
-                if host_keys.split(',').filter(|k| !k.is_empty()).count() > 16
-                    || !host_keys
-                        .split(',')
-                        .filter(|k| !k.is_empty())
-                        .all(valid_key)
-                {
-                    return Err(CoreError::Validation("invalid host key".into()));
-                }
-                if host_keys.is_empty() && !for_browse {
-                    return Err(CoreError::Validation(
-                        "test the connection and accept the host key of the SFTP server".into(),
-                    ));
-                }
-                if self.secret.password.is_none() && self.secret.private_key.is_none() {
-                    return Err(CoreError::Validation(
-                        "enter a password or a private key".into(),
-                    ));
-                }
-                false
-            }
-        };
-        if !matches!(self.config, TargetConfig::Local) {
-            // SFTP paths without a leading slash start in the home folder.
-            let rooted = matches!(self.config, TargetConfig::Sftp { .. })
-                && self.path.trim().starts_with('/');
-            self.path = normalize_path(&self.path, false)?;
-            if rooted {
-                self.path.insert(0, '/');
-            }
-            if needs_root_segment && self.path.is_empty() && !for_browse {
-                return Err(CoreError::Validation(match self.config {
-                    TargetConfig::S3 { .. } => "select a bucket".into(),
-                    _ => "select a share".into(),
-                }));
-            }
-        }
-        for value in [
-            &self.secret.password,
-            &self.secret.secret_access_key,
-            &self.secret.private_key,
-        ]
-        .into_iter()
-        .flatten()
-        {
-            if value.len() > 16384 {
-                return Err(CoreError::Validation("secret value too long".into()));
-            }
-        }
-        Ok(())
-    }
-}
-
-/// A target as shown in the UI (without secrets).
+/// A backup job as shown in the UI. The connection fields come from the
+/// storage target and are read-only here.
 #[derive(Debug, Clone, Serialize, utoipa::ToSchema)]
 pub struct BackupTarget {
     pub id: Uuid,
     pub name: String,
     pub enabled: bool,
+    /// The storage target that receives the archives.
+    pub storage_target_id: Uuid,
+    pub storage_name: String,
+    /// Sub-folder below the folder of the storage target; `""` = that folder.
+    pub folder: String,
+    /// Protocol of the storage target.
     pub config: TargetConfig,
+    /// Folder of the archives: the storage target folder plus `folder`.
     pub path: String,
     pub allow_insecure: bool,
+    pub bwlimit_kbps: Option<i32>,
+    /// The storage target has a password or key.
+    pub has_secret: bool,
     pub include_recordings: bool,
     pub schedule: Schedule,
     pub retention: Retention,
-    pub bwlimit_kbps: Option<i32>,
-    /// A password or key is stored.
-    pub has_secret: bool,
     pub last_run_at: Option<DateTime<Utc>>,
     pub last_success_at: Option<DateTime<Utc>>,
     pub last_file: Option<String>,
@@ -640,22 +237,16 @@ pub struct BackupTargetInput {
     pub name: String,
     #[serde(default = "yes")]
     pub enabled: bool,
-    pub config: TargetConfig,
+    pub storage_target_id: Uuid,
+    /// Optional sub-folder below the folder of the storage target.
     #[serde(default)]
-    pub path: String,
-    #[serde(default)]
-    pub allow_insecure: bool,
+    pub folder: String,
     #[serde(default = "yes")]
     pub include_recordings: bool,
     #[serde(default)]
     pub schedule: Schedule,
     #[serde(default)]
     pub retention: Retention,
-    #[serde(default)]
-    pub bwlimit_kbps: Option<i32>,
-    /// Changed secrets: a missing field keeps the stored value, `""` removes it.
-    #[serde(default)]
-    pub secret: Option<TargetSecret>,
 }
 
 fn yes() -> bool {
@@ -667,9 +258,14 @@ struct Row {
     id: Uuid,
     name: String,
     enabled: bool,
+    storage_target_id: Uuid,
+    storage_name: String,
+    folder: String,
     settings: Json<TargetConfig>,
-    path: String,
+    storage_path: String,
     allow_insecure: bool,
+    bwlimit_kbps: Option<i32>,
+    has_secret: bool,
     include_recordings: bool,
     weekdays: i16,
     hour: i16,
@@ -680,8 +276,6 @@ struct Row {
     keep_weekly: i16,
     keep_monthly: i16,
     keep_yearly: i16,
-    bwlimit_kbps: Option<i32>,
-    has_secret: bool,
     last_run_at: Option<DateTime<Utc>>,
     last_success_at: Option<DateTime<Utc>>,
     last_file: Option<String>,
@@ -695,9 +289,14 @@ impl From<Row> for BackupTarget {
             id: r.id,
             name: r.name,
             enabled: r.enabled,
+            storage_target_id: r.storage_target_id,
+            storage_name: r.storage_name,
+            path: join_path(&r.storage_path, &r.folder),
+            folder: r.folder,
             config: r.settings.0,
-            path: r.path,
             allow_insecure: r.allow_insecure,
+            bwlimit_kbps: r.bwlimit_kbps,
+            has_secret: r.has_secret,
             include_recordings: r.include_recordings,
             schedule: Schedule {
                 weekdays: r.weekdays,
@@ -712,8 +311,6 @@ impl From<Row> for BackupTarget {
                 keep_monthly: r.keep_monthly,
                 keep_yearly: r.keep_yearly,
             },
-            bwlimit_kbps: r.bwlimit_kbps,
-            has_secret: r.has_secret,
             last_run_at: r.last_run_at,
             last_success_at: r.last_success_at,
             last_file: r.last_file,
@@ -723,19 +320,22 @@ impl From<Row> for BackupTarget {
     }
 }
 
-const COLUMNS: &str = "id, name, enabled, settings, path, allow_insecure, include_recordings,
-    weekdays, hour, minute, every_hours, keep_last, keep_daily, keep_weekly, keep_monthly,
-    keep_yearly, bwlimit_kbps, secret_enc IS NOT NULL AS has_secret, last_run_at,
-    last_success_at, last_file, last_error, created_at";
+const SELECT: &str = "SELECT b.id, b.name, b.enabled, b.storage_target_id,
+    s.name AS storage_name, b.folder, s.settings, s.path AS storage_path, s.allow_insecure,
+    s.bwlimit_kbps, s.secret_enc IS NOT NULL AS has_secret, b.include_recordings,
+    b.weekdays, b.hour, b.minute, b.every_hours, b.keep_last, b.keep_daily, b.keep_weekly,
+    b.keep_monthly, b.keep_yearly, b.last_run_at, b.last_success_at, b.last_file,
+    b.last_error, b.created_at
+    FROM backup_targets b JOIN storage_targets s ON s.id = b.storage_target_id";
 
 pub async fn list(pool: &PgPool, tenant: TenantId) -> CoreResult<Vec<BackupTarget>> {
-    let sql = format!("SELECT {COLUMNS} FROM backup_targets WHERE tenant_id = $1 ORDER BY name");
+    let sql = format!("{SELECT} WHERE b.tenant_id = $1 ORDER BY b.name");
     let rows: Vec<Row> = sqlx::query_as(&sql).bind(tenant).fetch_all(pool).await?;
     Ok(rows.into_iter().map(Into::into).collect())
 }
 
 pub async fn get(pool: &PgPool, tenant: TenantId, id: Uuid) -> CoreResult<BackupTarget> {
-    let sql = format!("SELECT {COLUMNS} FROM backup_targets WHERE tenant_id = $1 AND id = $2");
+    let sql = format!("{SELECT} WHERE b.tenant_id = $1 AND b.id = $2");
     let row: Row = sqlx::query_as(&sql)
         .bind(tenant)
         .bind(id)
@@ -744,28 +344,8 @@ pub async fn get(pool: &PgPool, tenant: TenantId, id: Uuid) -> CoreResult<Backup
     Ok(row.into())
 }
 
-/// The decrypted secrets of a target.
-pub async fn secret(
-    pool: &PgPool,
-    tenant: TenantId,
-    secrets: &SecretBox,
-    id: Uuid,
-) -> CoreResult<TargetSecret> {
-    let stored: Option<String> = sqlx::query_scalar(
-        "SELECT secret_enc FROM backup_targets WHERE tenant_id = $1 AND id = $2",
-    )
-    .bind(tenant)
-    .bind(id)
-    .fetch_one(pool)
-    .await?;
-    match stored {
-        None => Ok(TargetSecret::default()),
-        Some(enc) => serde_json::from_str(&secrets.decrypt(&enc)?)
-            .map_err(|_| CoreError::Validation("stored target secret is invalid".into())),
-    }
-}
-
-/// The saved connection of a target, with decrypted secrets.
+/// The connection of a job: the storage target with decrypted secrets and
+/// the folder of the job.
 pub async fn connection(
     pool: &PgPool,
     tenant: TenantId,
@@ -773,111 +353,72 @@ pub async fn connection(
     id: Uuid,
 ) -> CoreResult<(BackupTarget, TargetConnection)> {
     let target = get(pool, tenant, id).await?;
-    let secret = secret(pool, tenant, secrets, id).await?;
-    let conn = TargetConnection {
-        config: target.config.clone(),
-        path: target.path.clone(),
-        allow_insecure: target.allow_insecure,
-        secret,
-    };
+    let (_, mut conn) =
+        storage_targets::connection(pool, tenant, secrets, target.storage_target_id).await?;
+    conn.path = target.path.clone();
     Ok((target, conn))
 }
 
-/// Checks an input against the stored secret; returns the checked
-/// connection (with the merged secret).
-pub fn check(input: &BackupTargetInput, stored: TargetSecret) -> CoreResult<TargetConnection> {
-    let name = input.name.trim();
-    if name.is_empty() || !valid_text(name, 100) {
-        return Err(CoreError::Validation(
-            "name must have 1 to 100 characters".into(),
-        ));
-    }
+/// Checks an input; returns the normalized sub-folder.
+pub fn check(input: &BackupTargetInput) -> CoreResult<String> {
+    storage_targets::check_name(&input.name)?;
     input.schedule.validate()?;
     input.retention.validate()?;
-    if input
-        .bwlimit_kbps
-        .is_some_and(|b| !(1..=10_000_000).contains(&b))
-    {
-        return Err(CoreError::Validation("invalid bandwidth limit".into()));
-    }
-    let mut conn = TargetConnection {
-        config: input.config.clone(),
-        path: input.path.clone(),
-        allow_insecure: input.allow_insecure,
-        secret: stored.merge(input.secret.as_ref()),
-    };
-    conn.validate(false)?;
-    Ok(conn)
-}
-
-fn encrypt_secret(secrets: &SecretBox, secret: &TargetSecret) -> CoreResult<Option<String>> {
-    if secret.is_empty() {
-        return Ok(None);
-    }
-    Ok(Some(secrets.encrypt(
-        &serde_json::to_string(secret).expect("secret JSON"),
-    )?))
+    normalize_path(&input.folder, false)
 }
 
 pub async fn create(
     pool: &PgPool,
     tenant: TenantId,
-    secrets: &SecretBox,
     input: &BackupTargetInput,
 ) -> CoreResult<BackupTarget> {
-    let conn = check(input, TargetSecret::default())?;
-    write(pool, tenant, secrets, None, input, &conn).await
+    let folder = check(input)?;
+    let id = write(pool, tenant, None, input, &folder).await?;
+    get(pool, tenant, id).await
 }
 
 pub async fn update(
     pool: &PgPool,
     tenant: TenantId,
-    secrets: &SecretBox,
     id: Uuid,
     input: &BackupTargetInput,
 ) -> CoreResult<BackupTarget> {
-    let stored = secret(pool, tenant, secrets, id).await?;
-    let conn = check(input, stored)?;
-    write(pool, tenant, secrets, Some(id), input, &conn).await
+    let folder = check(input)?;
+    write(pool, tenant, Some(id), input, &folder).await?;
+    get(pool, tenant, id).await
 }
 
 async fn write(
     pool: &PgPool,
     tenant: TenantId,
-    secrets: &SecretBox,
     id: Option<Uuid>,
     input: &BackupTargetInput,
-    conn: &TargetConnection,
-) -> CoreResult<BackupTarget> {
-    let secret_enc = encrypt_secret(secrets, &conn.secret)?;
+    folder: &str,
+) -> CoreResult<Uuid> {
     let sql = match id {
-        None => format!(
-            "INSERT INTO backup_targets (tenant_id, id, name, enabled, kind, settings, path,
-                 allow_insecure, include_recordings, weekdays, hour, minute, every_hours,
-                 keep_last, keep_daily, keep_weekly, keep_monthly, keep_yearly, bwlimit_kbps,
-                 secret_enc)
-             VALUES ($1, COALESCE($2, gen_random_uuid()), $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
-                 $18, $19, $20)
-             RETURNING {COLUMNS}"
-        ),
-        Some(_) => format!(
-            "UPDATE backup_targets SET name = $3, enabled = $4, kind = $5, settings = $6,
-                 path = $7, allow_insecure = $8, include_recordings = $9, weekdays = $10,
-                 hour = $11, minute = $12, every_hours = $13, keep_last = $14,
-                 keep_daily = $15, keep_weekly = $16, keep_monthly = $17, keep_yearly = $18,
-                 bwlimit_kbps = $19, secret_enc = $20, updated_at = now()
-             WHERE tenant_id = $1 AND id = $2 RETURNING {COLUMNS}"
-        ),
+        None => {
+            "INSERT INTO backup_targets (tenant_id, id, name, enabled, storage_target_id, folder,
+                 include_recordings, weekdays, hour, minute, every_hours,
+                 keep_last, keep_daily, keep_weekly, keep_monthly, keep_yearly)
+             VALUES ($1, COALESCE($2, gen_random_uuid()), $3, $4, $5, $6, $7, $8, $9, $10, $11,
+                 $12, $13, $14, $15, $16)
+             RETURNING id"
+        }
+        Some(_) => {
+            "UPDATE backup_targets SET name = $3, enabled = $4, storage_target_id = $5,
+                 folder = $6, include_recordings = $7, weekdays = $8, hour = $9, minute = $10,
+                 every_hours = $11, keep_last = $12, keep_daily = $13, keep_weekly = $14,
+                 keep_monthly = $15, keep_yearly = $16, updated_at = now()
+             WHERE tenant_id = $1 AND id = $2 RETURNING id"
+        }
     };
-    let row: Row = sqlx::query_as(&sql)
+    let id: Uuid = sqlx::query_scalar(sql)
         .bind(tenant)
         .bind(id)
         .bind(input.name.trim())
         .bind(input.enabled)
-        .bind(conn.config.kind())
-        .bind(Json(&conn.config))
-        .bind(&conn.path)
-        .bind(conn.allow_insecure)
+        .bind(input.storage_target_id)
+        .bind(folder)
         .bind(input.include_recordings)
         .bind(input.schedule.weekdays)
         .bind(input.schedule.hour)
@@ -888,11 +429,19 @@ async fn write(
         .bind(input.retention.keep_weekly)
         .bind(input.retention.keep_monthly)
         .bind(input.retention.keep_yearly)
-        .bind(input.bwlimit_kbps)
-        .bind(secret_enc)
         .fetch_one(pool)
-        .await?;
-    Ok(row.into())
+        .await
+        .map_err(|err| match &err {
+            sqlx::Error::Database(db)
+                if db.constraint() == Some("backup_targets_folder_unique") =>
+            {
+                CoreError::Conflict(
+                    "another backup job already uses this folder of the storage target".into(),
+                )
+            }
+            _ => err.into(),
+        })?;
+    Ok(id)
 }
 
 pub async fn delete(pool: &PgPool, tenant: TenantId, id: Uuid) -> CoreResult<()> {
@@ -913,17 +462,28 @@ pub async fn record_run(pool: &PgPool, id: Uuid, result: Result<&str, &str>) -> 
         Ok(f) => (Some(f), None),
         Err(e) => (None, Some(e.chars().take(1000).collect::<String>())),
     };
-    sqlx::query(
+    let row: Option<(TenantId, String)> = sqlx::query_as(
         "UPDATE backup_targets SET last_run_at = now(),
              last_success_at = CASE WHEN $2::text IS NULL THEN last_success_at ELSE now() END,
              last_file = COALESCE($2, last_file), last_error = $3
-         WHERE id = $1",
+         WHERE id = $1
+         RETURNING tenant_id, name",
     )
     .bind(id)
     .bind(file)
-    .bind(error)
-    .execute(pool)
+    .bind(&error)
+    .fetch_optional(pool)
     .await?;
+    if let Some((tenant, name)) = row {
+        let (event, params) = match &error {
+            None => ("backup.target_ok", serde_json::json!({ "name": name })),
+            Some(e) => (
+                "backup.target_failed",
+                serde_json::json!({ "name": name, "error": e }),
+            ),
+        };
+        crate::notifications::emit_logged(pool, tenant, event, &id.to_string(), params).await;
+    }
     Ok(())
 }
 
@@ -1059,208 +619,89 @@ mod tests {
         assert_eq!(kept, HashSet::from([1, 2, 4]));
     }
 
-    #[test]
-    fn secret_merge() {
-        let stored = TargetSecret {
-            password: Some("old".into()),
-            secret_access_key: Some("key".into()),
-            private_key: None,
-        };
-        let change = TargetSecret {
-            password: Some("new".into()),
-            secret_access_key: Some(String::new()),
-            private_key: None,
-        };
-        let merged = stored.clone().merge(Some(&change));
-        assert_eq!(merged.password.as_deref(), Some("new"));
-        assert_eq!(merged.secret_access_key, None);
-        assert_eq!(stored.clone().merge(None), stored);
-        assert_eq!(format!("{stored:?}"), "TargetSecret(..)");
+    async fn storage(pool: &PgPool, secrets: &SecretBox, name: &str) -> Uuid {
+        let input: storage_targets::StorageTargetInput =
+            serde_json::from_value(serde_json::json!({
+                "name": name,
+                "config": {"kind": "smb", "host": "nas.local", "user": "backup"},
+                "path": "talkops",
+                "bwlimit_kbps": 500,
+                "secret": {"password": "smb-password"}
+            }))
+            .unwrap();
+        storage_targets::create(pool, TenantId::DEFAULT, secrets, &input)
+            .await
+            .unwrap()
+            .id
     }
 
-    fn conn(config: TargetConfig, path: &str) -> TargetConnection {
-        TargetConnection {
-            config,
-            path: path.into(),
-            allow_insecure: false,
-            secret: TargetSecret::default(),
-        }
-    }
-
-    #[test]
-    fn connection_validation() {
-        let mut local = conn(TargetConfig::Local, "/var/lib/talkops/targets//usb/");
-        local.validate(false).unwrap();
-        assert_eq!(local.path, "/var/lib/talkops/targets/usb");
-        assert!(
-            conn(TargetConfig::Local, "relative")
-                .validate(false)
-                .is_err()
-        );
-        assert!(
-            conn(TargetConfig::Local, "/var/lib/talkops/targets/../../etc")
-                .validate(false)
-                .is_err()
-        );
-
-        let smb = TargetConfig::Smb {
-            host: " nas.local ".into(),
-            port: None,
-            user: "backup".into(),
-            domain: String::new(),
-        };
-        let mut c = conn(smb.clone(), "/talkops/");
-        c.validate(false).unwrap();
-        assert_eq!(c.path, "talkops");
-        assert!(conn(smb.clone(), "").validate(false).is_err());
-        assert!(conn(smb, "").validate(true).is_ok());
-        let bad_host = TargetConfig::Smb {
-            host: "nas/../x".into(),
-            port: None,
-            user: String::new(),
-            domain: String::new(),
-        };
-        assert!(conn(bad_host, "share").validate(false).is_err());
-
-        let s3 = TargetConfig::S3 {
-            provider: "Minio".into(),
-            endpoint: "http://minio:9000".into(),
-            region: String::new(),
-            access_key_id: "AKIA".into(),
-            path_style: true,
-        };
-        let mut c = conn(s3.clone(), "bucket/talkops");
-        c.secret.secret_access_key = Some("s".into());
-        assert!(
-            c.clone().validate(false).is_err(),
-            "http needs allow_insecure"
-        );
-        c.allow_insecure = true;
-        c.validate(false).unwrap();
-        assert!(conn(s3, "bucket").validate(false).is_err(), "secret key");
-
-        let ftp = TargetConfig::Ftp {
-            host: "ftp.example.com".into(),
-            port: Some(21),
-            user: "u".into(),
-            tls: FtpTls::None,
-        };
-        assert!(conn(ftp.clone(), "").validate(false).is_err());
-        let mut c = conn(ftp, "");
-        c.allow_insecure = true;
-        c.validate(false).unwrap();
-
-        let dav = TargetConfig::Webdav {
-            url: "https://cloud.example.com/remote.php/dav/files/u/".into(),
-            vendor: "nextcloud".into(),
-            user: "u".into(),
-        };
-        let mut c = conn(dav, "Backups");
-        c.validate(false).unwrap();
-        assert!(matches!(&c.config, TargetConfig::Webdav { url, .. } if !url.ends_with('/')));
-
-        let sftp = TargetConfig::Sftp {
-            host: "backup.example.com".into(),
-            port: None,
-            user: "u".into(),
-            host_keys: String::new(),
-        };
-        let mut c = conn(sftp, "talkops");
-        c.secret.password = Some("p".into());
-        assert!(c.clone().validate(false).is_err(), "host key required");
-        c.validate(true).unwrap();
-        let pinned = TargetConfig::Sftp {
-            host: "backup.example.com".into(),
-            port: None,
-            user: "u".into(),
-            host_keys: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIA==, ".into(),
-        };
-        let mut c = conn(pinned, "talkops");
-        c.secret.password = Some("p".into());
-        c.validate(false).unwrap();
-        let injected = TargetConfig::Sftp {
-            host: "backup.example.com".into(),
-            port: None,
-            user: "u".into(),
-            host_keys: "ssh-ed25519 AAAA\nproxy_command=x".into(),
-        };
-        let mut c = conn(injected, "talkops");
-        c.secret.password = Some("p".into());
-        assert!(c.validate(true).is_err());
-    }
-
-    #[test]
-    fn config_json_shape() {
-        let json = serde_json::to_value(TargetConfig::Ftp {
-            host: "h".into(),
-            port: None,
-            user: String::new(),
-            tls: FtpTls::Explicit,
-        })
-        .unwrap();
-        assert_eq!(json["kind"], "ftp");
-        assert_eq!(json["tls"], "explicit");
-        let local: TargetConfig = serde_json::from_str(r#"{"kind":"local"}"#).unwrap();
-        assert_eq!(local, TargetConfig::Local);
-    }
-
-    #[sqlx::test(migrator = "crate::db::MIGRATOR")]
-    async fn store_targets_with_encrypted_secrets(pool: PgPool) {
-        let secrets = SecretBox::from_hex(&"ab".repeat(32)).unwrap();
-        let tenant = TenantId::DEFAULT;
-        let input = BackupTargetInput {
-            name: "NAS".into(),
+    fn job(name: &str, storage: Uuid, folder: &str) -> BackupTargetInput {
+        BackupTargetInput {
+            name: name.into(),
             enabled: true,
-            config: TargetConfig::Smb {
-                host: "nas.local".into(),
-                port: None,
-                user: "backup".into(),
-                domain: String::new(),
-            },
-            path: "talkops".into(),
-            allow_insecure: false,
+            storage_target_id: storage,
+            folder: folder.into(),
             include_recordings: false,
             schedule: Schedule::default(),
             retention: Retention::default(),
-            bwlimit_kbps: Some(1000),
-            secret: Some(TargetSecret {
-                password: Some("smb-password".into()),
-                ..TargetSecret::default()
-            }),
-        };
-        let created = create(&pool, tenant, &secrets, &input).await.unwrap();
-        assert!(created.has_secret);
-        assert!(!created.include_recordings);
-        let raw: String = sqlx::query_scalar("SELECT secret_enc FROM backup_targets")
-            .fetch_one(&pool)
-            .await
-            .unwrap();
-        assert!(!raw.contains("smb-password"));
-        assert!(
-            serde_json::to_string(&created)
-                .unwrap()
-                .find("smb-password")
-                .is_none()
-        );
+        }
+    }
 
-        // An update without a secret keeps the stored password.
-        let mut change = input.clone();
-        change.name = "NAS 2".into();
-        change.secret = None;
-        let updated = update(&pool, tenant, &secrets, created.id, &change)
+    #[sqlx::test(migrator = "crate::db::MIGRATOR")]
+    async fn jobs_use_a_storage_target(pool: PgPool) {
+        let secrets = SecretBox::from_hex(&"ab".repeat(32)).unwrap();
+        let tenant = TenantId::DEFAULT;
+        let nas = storage(&pool, &secrets, "NAS").await;
+        let created = create(&pool, tenant, &job("Nightly", nas, "/daily/"))
             .await
             .unwrap();
-        assert_eq!(updated.name, "NAS 2");
+        assert_eq!(created.storage_name, "NAS");
+        assert_eq!(created.folder, "daily");
+        assert_eq!(created.path, "talkops/daily");
+        assert_eq!(created.bwlimit_kbps, Some(500));
+        assert!(created.has_secret && !created.include_recordings);
+        assert!(
+            !serde_json::to_string(&created)
+                .unwrap()
+                .contains("smb-password")
+        );
         let (_, conn) = connection(&pool, tenant, &secrets, created.id)
             .await
             .unwrap();
+        assert_eq!(conn.path, "talkops/daily");
         assert_eq!(conn.secret.password.as_deref(), Some("smb-password"));
 
-        // The name is unique per tenant.
+        // Two jobs in one folder would delete the archives of each other.
+        let err = create(&pool, tenant, &job("Hourly", nas, "daily"))
+            .await
+            .unwrap_err();
+        assert!(
+            matches!(&err, CoreError::Conflict(m) if m.contains("folder")),
+            "{err}"
+        );
+        let hourly = create(&pool, tenant, &job("Hourly", nas, ""))
+            .await
+            .unwrap();
+        assert_eq!(hourly.path, "talkops");
         assert!(matches!(
-            create(&pool, tenant, &secrets, &change).await,
-            Err(CoreError::Conflict(_))
+            create(&pool, tenant, &job("Bad", nas, "../x")).await,
+            Err(CoreError::Validation(_))
         ));
+        assert!(matches!(
+            create(&pool, tenant, &job("Unknown", Uuid::new_v4(), "")).await,
+            Err(CoreError::Validation(_))
+        ));
+
+        // Move a job to another storage target.
+        let usb = storage(&pool, &secrets, "USB").await;
+        let mut change = job("Hourly", usb, "");
+        change.include_recordings = true;
+        let moved = update(&pool, tenant, hourly.id, &change).await.unwrap();
+        assert_eq!(moved.storage_name, "USB");
+        assert!(moved.include_recordings);
+        let users = storage_targets::usages(&pool, tenant).await.unwrap();
+        assert_eq!(users[&nas].len(), 1);
+        assert_eq!(users[&usb][0].name, "Hourly");
 
         record_run(&pool, created.id, Err("connection refused"))
             .await
@@ -1273,11 +714,122 @@ mod tests {
             .unwrap();
         let ok = get(&pool, tenant, created.id).await.unwrap();
         assert!(ok.last_error.is_none() && ok.last_success_at.is_some());
-        assert_eq!(list(&pool, tenant).await.unwrap().len(), 1);
+        assert_eq!(list(&pool, tenant).await.unwrap().len(), 2);
         delete(&pool, tenant, created.id).await.unwrap();
         assert!(matches!(
             delete(&pool, tenant, created.id).await,
             Err(CoreError::NotFound)
         ));
+        storage_targets::delete(&pool, tenant, nas).await.unwrap();
+    }
+
+    /// Migration 20261104000001 with rows from before the migration: each
+    /// backup target becomes a storage target with the same ID and name.
+    #[sqlx::test(migrations = false)]
+    async fn migration_moves_connections_to_storage_targets(pool: PgPool) {
+        const STORAGE: i64 = 20261104000001;
+        for m in crate::db::MIGRATOR.iter().filter(|m| m.version < STORAGE) {
+            sqlx::raw_sql(&m.sql).execute(&pool).await.unwrap();
+        }
+        let tenant = TenantId::DEFAULT;
+        let nas = Uuid::new_v4();
+        let usb = Uuid::new_v4();
+        sqlx::query(
+            r#"INSERT INTO backup_targets (id, tenant_id, name, kind, settings, secret_enc, path,
+                 allow_insecure, include_recordings, weekdays, every_hours, keep_last,
+                 bwlimit_kbps, last_file)
+             VALUES ($1, $3, 'NAS', 'smb', '{"kind":"smb","host":"nas"}', 'enc-data',
+                     'share/talkops', false, false, 31, 6, 5, 2000, 'talkops-1.tar.gz.age'),
+                    ($2, $3, 'USB', 'local', '{"kind":"local"}', NULL,
+                     '/var/lib/talkops/targets/usb', true, true, 127, 0, 3, NULL, NULL)"#,
+        )
+        .bind(nas)
+        .bind(usb)
+        .bind(tenant)
+        .execute(&pool)
+        .await
+        .unwrap();
+        sqlx::query(
+            "UPDATE roles SET permissions = ARRAY['backups.manage'] WHERE builtin = 'operator'",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        for m in crate::db::MIGRATOR.iter().filter(|m| m.version >= STORAGE) {
+            sqlx::raw_sql(&m.sql).execute(&pool).await.unwrap();
+        }
+
+        type StorageRow = (
+            Uuid,
+            String,
+            String,
+            Option<String>,
+            String,
+            bool,
+            Option<i32>,
+        );
+        let storage: Vec<StorageRow> = sqlx::query_as(
+            "SELECT id, name, kind, secret_enc, path, allow_insecure, bwlimit_kbps
+             FROM storage_targets ORDER BY name",
+        )
+        .fetch_all(&pool)
+        .await
+        .unwrap();
+        assert_eq!(
+            storage,
+            [
+                (
+                    nas,
+                    "NAS".into(),
+                    "smb".into(),
+                    Some("enc-data".into()),
+                    "share/talkops".into(),
+                    false,
+                    Some(2000)
+                ),
+                (
+                    usb,
+                    "USB".into(),
+                    "local".into(),
+                    None,
+                    "/var/lib/talkops/targets/usb".into(),
+                    true,
+                    None
+                ),
+            ]
+        );
+        let jobs = list(&pool, tenant).await.unwrap();
+        assert_eq!(jobs.len(), 2);
+        assert_eq!(jobs[0].id, nas);
+        assert_eq!(jobs[0].storage_target_id, nas);
+        assert_eq!(jobs[0].path, "share/talkops");
+        assert_eq!(jobs[0].folder, "");
+        assert_eq!(jobs[0].bwlimit_kbps, Some(2000));
+        assert!(jobs[0].has_secret);
+        assert_eq!(jobs[0].schedule.weekdays, 31);
+        assert_eq!(jobs[0].schedule.every_hours, 6);
+        assert_eq!(jobs[0].retention.keep_last, 5);
+        assert_eq!(jobs[0].last_file.as_deref(), Some("talkops-1.tar.gz.age"));
+        assert!(!jobs[0].include_recordings && jobs[1].include_recordings);
+        assert!(jobs[1].allow_insecure && jobs[1].config == TargetConfig::Local);
+        let perms: Vec<String> =
+            sqlx::query_scalar("SELECT permissions FROM roles WHERE builtin = 'operator'")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(perms, ["backups.manage", "storage.manage"]);
+        // The used storage target cannot be deleted.
+        assert!(
+            sqlx::query("DELETE FROM storage_targets WHERE id = $1")
+                .bind(nas)
+                .execute(&pool)
+                .await
+                .is_err()
+        );
+        // A tenant deletion removes both tables.
+        sqlx::query("DELETE FROM tenants")
+            .execute(&pool)
+            .await
+            .unwrap();
     }
 }

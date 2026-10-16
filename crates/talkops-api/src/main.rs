@@ -287,6 +287,7 @@ async fn serve(config: Config) -> anyhow::Result<()> {
         talkops_api::voicemail::handle(session, vm_ctx.clone())
     }));
     talkops_api::mailer::spawn(state.db.clone(), state.secrets.clone(), state.media.clone());
+    talkops_api::notifier::spawn(state.db.clone(), state.secrets.clone(), state.media.clone());
     talkops_api::retention::spawn(db.clone(), state.media.clone());
     talkops_api::cdr_spool::spawn(state.clone(), config.storage.cdr_spool_dir.clone());
     match talkops_core::attendant::adopt_legacy_greetings(&db, &state.media.sounds).await {
@@ -295,6 +296,7 @@ async fn serve(config: Config) -> anyhow::Result<()> {
         Err(err) => tracing::warn!(error = %err, "cannot move voice menu greetings"),
     }
     talkops_api::sip_guard::spawn(db.clone(), state.telephony.esl.clone());
+    talkops_api::audit_export::spawn(db.clone(), state.backup.clone(), state.secrets.clone());
     if let Some(cfg) = &state.backup {
         backup::spawn(db.clone(), cfg.clone(), state.secrets.clone());
     }

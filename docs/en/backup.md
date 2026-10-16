@@ -26,8 +26,7 @@ Copy archives to another machine. Same-disk backups cannot survive disk failure.
 default), TalkOps captures these files of the directory automatically:
 `.env`, `*.env`, `docker-compose*.yml`/`.yaml` and `compose*.yml`/`.yaml`.
 TalkOps leaves out links, files larger than 1 MiB, files that UID 10001
-cannot read and files that contain the backup password. **Settings → System →
-Backups** shows the captured and the left-out files.
+cannot read and files that contain the backup password. **Settings → Backup** shows the captured and the left-out files.
 
 1. Create a separate password file. The operator owns the file; group 10001
    gives the container read access:
@@ -79,7 +78,7 @@ Portainer API instead:
 
 1. In Portainer, open **My account → Access tokens** and add a token. Use a
    user that can read the TalkOps stack.
-2. In TalkOps, open **Settings → System → Backups** and click
+2. In TalkOps, open **Settings → Backup** and click
    **Connect Portainer**.
 3. Enter the Portainer URL, for example `https://127.0.0.1:9443`.
    `http://` is allowed only for `127.0.0.1`.
@@ -113,8 +112,18 @@ that password in imported `.env` files. Store a separate recovery copy.
 
 ## Backup targets
 
-Backup targets receive copies of the backup archives. Open
-**Settings > System > Backup targets** and click **Add target**.
+Backup targets receive copies of the backup archives. A backup target has
+two parts (ADR 0036):
+
+- A **storage target** holds the connection: protocol, server, folder,
+  password or key and upload limit. Open **Settings → Storage** and click
+  **Add storage target**. This needs the permission `storage.manage`.
+  Other features can use the same storage targets later.
+- A **backup job** selects a storage target and an optional sub-folder. It
+  has the schedule, the retention and the recordings setting. Open
+  **Settings → Backup → Backup jobs** and click **Add backup job**. This
+  needs the permission `backups.manage`.
+
 TalkOps copies the archives with [rclone](https://rclone.org). The server
 image contains a pinned rclone release.
 
@@ -139,9 +148,15 @@ Rules:
   the stored value.
 - Use a separate folder for each TalkOps server. Retention deletes TalkOps
   archives in the folder. It does not delete other files.
+- Each backup job needs its own folder. TalkOps refuses a second job with
+  the same storage target and sub-folder.
+- A change of a storage target applies to all jobs that use it. The list
+  **Used by** shows these jobs. You cannot delete a storage target that a
+  job uses. Delete the job or move it to another storage target first.
 
 ### Folder browser and connection test
 
+The storage target editor has the folder browser and the connection test.
 **Browse** shows one folder level. Select a folder and click **Use this
 folder**. **Create folder** makes a new folder. S3 shows the buckets and SMB
 shows the shares when the server permits it. Otherwise, type the bucket or
@@ -153,24 +168,27 @@ and shows its SHA-256 fingerprint. Compare the fingerprint with the server
 (`ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub`) before you save the
 target. Later connections refuse a different host key.
 
+**Test** in the storage target list tests the saved connection. The list
+shows the result and the time of the last test.
+
 ### Schedule
 
-Each target has its own schedule in the time zone of the container (`TZ`):
+Each backup job has its own schedule in the time zone of the container (`TZ`):
 
-- Select the weekdays. A target with no weekday runs only with **Back up now**.
+- Select the weekdays. A job with no weekday runs only with **Back up now**.
 - Set the time of the first run of the day.
 - Optional: repeat the run every 1 to 12 hours until midnight.
 
-A target that is due in the same minute as the daily local backup receives
+A job that is due in the same minute as the daily local backup receives
 that archive. For other runs, TalkOps writes an archive into a temporary
-folder in the backups volume, copies it to all due targets and deletes it.
+folder in the backups volume, copies it to all due jobs and deletes it.
 The backups volume needs free space for one archive. **Include call
-recordings** is a setting of each target.
+recordings** is a setting of each job.
 
 ### Smart retention
 
-After each upload, TalkOps keeps an archive on the target when one of these
-rules selects it:
+After each upload, TalkOps keeps an archive in the folder of the job when one
+of these rules selects it:
 
 - **Latest archives**: the newest N archives (at least 1).
 - **Daily**: the newest archive of each day for N days.
@@ -194,7 +212,7 @@ Let the Docker daemon of the host mount them and use a local target:
 docker compose -f docker-compose.yml -f docker-compose.targets.yml up -d
 ```
 
-Then add a local target with the folder `/var/lib/talkops/targets/nfs`. The
+Then add a local storage target with the folder `/var/lib/talkops/targets/nfs`. The
 export must allow writes for UID/GID 10001. A USB disk or another host folder
 works the same way with a bind mount (see the comment in
 `docker-compose.targets.yml`). In Portainer, add the same volume definition to
@@ -202,15 +220,23 @@ the stack.
 
 ### Status and monitoring
 
-The list shows the status, the last successful run, the last error and the
-next run of each target. A failed target does not stop the other targets.
-Check the list after changes to the network, the password or the target.
+The job list shows the status, the last successful run, the last error and
+the next run of each job. A failed job does not stop the other jobs.
+Check the list after changes to the network, the password or the storage
+target.
+
+### Update from TalkOps 1.7
+
+The update moves the connection of each backup target into a storage target
+with the same name. The backup job keeps its schedule, retention, last run
+and archives. Roles with `backups.manage` also get `storage.manage`. No
+action is necessary.
 
 ## Restore from a backup target
 
 In operation:
 
-1. Click **Archives** at the target.
+1. Click **Archives** at the backup job.
 2. Click **To this server** for the archive. TalkOps downloads the archive
    into the local backup list. Existing archives are never replaced.
 3. Restore the archive offline:

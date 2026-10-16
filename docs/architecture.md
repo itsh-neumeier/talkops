@@ -309,7 +309,10 @@ Loopback-Quellen (bzw. `TALKOPS_FS_PEERS`), nie über einen Reverse-Proxy
 
 Sicherungsziele (SMB, S3, WebDAV, SFTP, FTP, lokale Ordner) erhalten Kopien der
 Archive mit eigenem Zeitplan und eigener Aufbewahrung; die Übertragung macht
-rclone ([ADR 0031](adr/0031-backup-targets-with-rclone.md)).
+rclone ([ADR 0031](adr/0031-backup-targets-with-rclone.md)). Die Verbindungen
+liegen als Speicherziele (`storage_targets`) getrennt von den
+Sicherungsaufträgen; weitere Funktionen nutzen dieselben Speicherziele
+([ADR 0036](adr/0036-storage-targets.md)).
 
 Alle Images nutzen UID/GID **10001**, damit die gemeinsamen Volumes ohne
 `chmod 777` beschreibbar sind.

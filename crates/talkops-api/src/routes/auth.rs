@@ -1,5 +1,7 @@
 //! Login, logout, session info, password change and first-run setup.
 
+use std::time::Duration;
+
 use axum::Json;
 use axum::extract::{FromRequestParts, State};
 use axum::http::request::Parts;
@@ -9,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use talkops_core::audit;
 use talkops_core::crypto;
 use talkops_core::mfa;
+use talkops_core::notifications;
 use talkops_core::tenant::TenantId;
 use talkops_core::users::{self, NewUser, Role, User};
 use utoipa::ToSchema;
@@ -188,6 +191,24 @@ pub(crate) async fn new_session(
     let cookie = HeaderValue::from_str(&session::session_cookie(&s.token, meta.https))
         .map_err(|e| ApiError::Internal(e.to_string()))?;
     let permissions = permission_keys(state, &user).await?;
+    if user.role == Role::Admin
+        && let Some(ip) = meta.ip.as_deref()
+    {
+        match notifications::new_login_address(&state.db, user.tenant_id, user.id, ip).await {
+            Ok(true) => {
+                notifications::emit_logged(
+                    &state.db,
+                    user.tenant_id,
+                    "security.admin_new_ip",
+                    ip,
+                    serde_json::json!({ "user": user.username, "ip": ip }),
+                )
+                .await;
+            }
+            Ok(false) => {}
+            Err(err) => tracing::warn!(error = %err, "cannot store login address"),
+        }
+    }
     Ok((
         cookie,
         Me {
@@ -217,6 +238,16 @@ pub async fn login(
 ) -> ApiResult<Response> {
     let key = meta.ip.clone().unwrap_or_default();
     if !state.limiter.allow(&key) {
+        if crate::notifier::once_per(&format!("login_blocked:{key}"), Duration::from_secs(900)) {
+            notifications::emit_logged(
+                &state.db,
+                TenantId::DEFAULT,
+                "security.login_blocked",
+                &key,
+                serde_json::json!({ "ip": key }),
+            )
+            .await;
+        }
         return Err(ApiError::TooManyRequests);
     }
     let local =

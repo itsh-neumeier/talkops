@@ -1,10 +1,12 @@
 // Filter and sort state of the call list, kept in the address bar.
+import { parseOrder, pickList, queryString, type Order } from '../list/sort.ts';
+
+export type { Order };
 
 export type Direction = 'inbound' | 'outbound' | 'internal';
 export type Result = 'answered' | 'missed' | 'busy';
 export type RecordingFilter = '' | 'with' | 'transcript' | 'without';
 export type SortKey = 'time' | 'duration';
-export type Order = 'asc' | 'desc';
 
 export interface CallFilters {
 	/** Local date `YYYY-MM-DD`, inclusive. */
@@ -44,13 +46,6 @@ export function emptyFilters(): CallFilters {
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
-function pick<T extends string>(values: readonly T[], raw: string | null): T[] {
-	return (raw ?? '')
-		.split(',')
-		.filter((v): v is T => (values as readonly string[]).includes(v))
-		.filter((v, i, all) => all.indexOf(v) === i);
-}
-
 /** Reads the filters from the query string of the page address. */
 export function parseFilters(params: { get(name: string): string | null }): CallFilters {
 	const f = emptyFilters();
@@ -58,15 +53,15 @@ export function parseFilters(params: { get(name: string): string | null }): Call
 	const until = params.get('until') ?? '';
 	f.since = DATE.test(since) ? since : '';
 	f.until = DATE.test(until) ? until : '';
-	f.direction = pick(DIRECTIONS, params.get('direction'));
-	f.result = pick(RESULTS, params.get('result'));
+	f.direction = pickList(DIRECTIONS, params.get('direction'));
+	f.result = pickList(RESULTS, params.get('result'));
 	f.from = params.get('from') ?? '';
 	f.to = params.get('to') ?? '';
 	const rec = params.get('recording') ?? '';
 	f.recording = (RECORDING_FILTERS as string[]).includes(rec) ? (rec as RecordingFilter) : '';
 	f.search = params.get('search') ?? '';
 	f.sort = params.get('sort') === 'duration' ? 'duration' : 'time';
-	f.order = params.get('order') === 'asc' ? 'asc' : 'desc';
+	f.order = parseOrder(params.get('order'), 'desc');
 	return f;
 }
 
@@ -83,8 +78,7 @@ export function pageQuery(f: CallFilters): string {
 	if (f.search.trim()) p.set('search', f.search.trim());
 	if (f.sort !== 'time') p.set('sort', f.sort);
 	if (f.order !== 'desc') p.set('order', f.order);
-	const s = p.toString();
-	return s ? `?${s}` : '';
+	return queryString(p);
 }
 
 /** Start of a local day as an ISO time; `days` moves the date. */

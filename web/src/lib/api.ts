@@ -79,7 +79,9 @@ export const api = {
 	get: <T>(path: string) => request<T>('GET', path),
 	post: <T>(path: string, body?: unknown) => request<T>('POST', path, body ?? {}),
 	put: <T>(path: string, body: unknown) => request<T>('PUT', path, body),
-	del: (path: string) => request<void>('DELETE', path)
+	del: (path: string) => request<void>('DELETE', path),
+	/** DELETE that returns a JSON body. */
+	delJson: <T>(path: string) => request<T>('DELETE', path)
 };
 
 // --- types (mirror the Rust API) -------------------------------------------
@@ -120,8 +122,11 @@ export type Permission =
 	| 'security.manage'
 	| 'identity.manage'
 	| 'backups.manage'
+	| 'storage.manage'
 	| 'diagnostics.manage'
-	| 'audit.view';
+	| 'notifications.manage'
+	| 'audit.view'
+	| 'audit.manage';
 
 export interface PermissionInfo {
 	key: Permission;
@@ -404,7 +409,7 @@ export interface Call {
 	caller?: CallParty;
 	/** Resolved called party; the answering extension of inbound calls. */
 	called?: CallParty;
-	/** Inbound: the own number that the caller dialed. */
+	/** Own number: dialed (inbound) or caller ID (outbound). */
 	via_number?: string | null;
 }
 
@@ -514,6 +519,7 @@ export interface SearchHit {
 
 export interface AuditEntry {
 	id: number;
+	user_id: string | null;
 	username: string | null;
 	action: string;
 	entity_type: string;
@@ -742,6 +748,109 @@ export interface SmtpSettings {
 	username: string;
 	has_password: boolean;
 	from: string;
+}
+
+/** Mail branding (ADR 0034). */
+export interface MailBranding {
+	instance_name: string;
+	sender_name: string;
+	accent_color: string;
+	header_text: string;
+	footer_text: string;
+	has_logo: boolean;
+	logo_type: string | null;
+	logo_width: number | null;
+	logo_height: number | null;
+}
+
+export interface MailTemplateEntry {
+	kind: string;
+	language: 'de' | 'en';
+	subject: string;
+	body: string;
+	custom: boolean;
+	default_subject: string;
+	default_body: string;
+}
+
+export interface MailDesignView {
+	branding: MailBranding;
+	instance: { name: string; url: string; hostname: string; version: string };
+	kinds: { key: string; placeholders: string[] }[];
+	templates: MailTemplateEntry[];
+	common_placeholders: string[];
+	max_logo_bytes: number;
+}
+
+export type NotificationSeverity = 'info' | 'warning' | 'critical';
+
+export interface NotificationEventType {
+	key: string;
+	category: string;
+	severity: NotificationSeverity;
+	/** Problem events: the event that ends the problem. */
+	recovery: string | null;
+	/** False: no producer yet. */
+	implemented: boolean;
+}
+
+export interface NotificationRule {
+	event_type: string;
+	enabled: boolean;
+	min_severity: NotificationSeverity;
+	recipient_users: string[];
+	recipient_roles: string[];
+	recipient_emails: string[];
+	delay_secs: number;
+	send_recovery: boolean;
+	digest_secs: number;
+	rate_limit_per_hour: number;
+	/** True if changed from the defaults. */
+	custom: boolean;
+}
+
+export interface NotificationsView {
+	categories: string[];
+	event_types: NotificationEventType[];
+	rules: NotificationRule[];
+}
+
+export interface NotificationEvent {
+	id: number;
+	event_type: string;
+	source: string;
+	severity: NotificationSeverity;
+	params: Record<string, unknown>;
+	created_at: string;
+}
+
+export interface NotificationDelivery {
+	id: number;
+	event_type: string;
+	kind: 'alert' | 'recovery' | 'digest' | 'test';
+	subject: string;
+	recipients: string[];
+	status: string;
+	error: string | null;
+	event_count: number;
+	created_at: string;
+}
+
+export interface NotificationLog {
+	events: NotificationEvent[];
+	deliveries: NotificationDelivery[];
+}
+
+export interface NotificationTestResult {
+	status: string;
+	recipients: string[];
+	error: string | null;
+}
+
+export interface RenderedMail {
+	subject: string;
+	html: string;
+	text: string;
 }
 
 export type DestinationType =
@@ -998,7 +1107,14 @@ export interface TranscriptionJob {
 	voicemail_id: string | null;
 	audio_secs: number;
 	caller_number: string | null;
+	caller_name: string | null;
 	destination: string | null;
+	/** Direction of the call; in the history also for voicemails. */
+	direction: Call['direction'] | null;
+	/** History only: parties resolved through the phone book. */
+	caller?: CallParty | null;
+	called?: CallParty | null;
+	via_number?: string | null;
 	call_started_at: string | null;
 	requested_by: string | null;
 	attempts: number;

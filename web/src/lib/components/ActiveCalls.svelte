@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { ActiveCall } from '#lib/api.ts';
 	import { t, formatDuration, type MessageKey } from '#lib/i18n/index.svelte.ts';
-	import CallParty from './CallParty.svelte';
+	import CallSummary from './CallSummary.svelte';
 	import LiveTranscript from './LiveTranscript.svelte';
 	let { calls, now }: { calls: ActiveCall[]; now: number } = $props();
 	let selected = $state<ActiveCall | null>(null);
@@ -20,25 +20,7 @@
 			{#each calls as call (call.uuid)}
 				<li class="flex items-start justify-between gap-3 py-3 text-sm">
 					<div class="min-w-0 space-y-1 text-left">
-						{#if call.direction === 'inbound'}
-							<p>{t('dash.call.inbound')} <CallParty party={call.called} /></p>
-							<p>{t('dash.call.from')} <CallParty party={call.caller} /></p>
-						{:else if call.direction === 'outbound'}
-							<p>{t('dash.call.outbound')} <CallParty party={call.caller} /></p>
-							<p>
-								<span aria-hidden="true">→</span><span class="sr-only">{t('dash.call.to')}</span>
-								<CallParty party={call.called} />
-							</p>
-						{:else}
-							<p>
-								{t(call.direction === 'internal' ? 'dash.call.internal' : 'dash.call.unknown')}
-								<CallParty party={call.caller} />
-							</p>
-							<p>
-								<span aria-hidden="true">→</span><span class="sr-only">{t('dash.call.to')}</span>
-								<CallParty party={call.called} />
-							</p>
-						{/if}
+						<CallSummary direction={call.direction} caller={call.caller} called={call.called} />
 						{#if call.transcript_available}
 							<button
 								class="btn btn-sm mt-2"

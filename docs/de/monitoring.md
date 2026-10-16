@@ -77,24 +77,34 @@ groups:
 
 ## Fehlersuche in der Oberfläche
 
-**Einstellungen → System** (Admin):
+**Einstellungen → System** (Berechtigung `diagnostics.manage`) hat vier Reiter.
+Ein Link kann einen Reiter direkt öffnen, z. B.
+`/settings?section=system&tab=diagnostics`.
 
-- **Status**: Version, Laufzeit von TalkOps und FreeSWITCH, aktive Kanäle.
-- **Debug-Logging**: Stufe (Debug/Info/Notice/Warning), Dauer in Minuten
-  (1–60) und optional **SIP-Trace** wählen, *Starten*, das Problem nachstellen.
-  Das Log läuft live mit (filterbar), lässt sich mit *Kopieren* in die
-  Zwischenablage übernehmen (nur die angezeigten, ggf. gefilterten Zeilen)
-  oder als Textdatei herunterladen – an die Support-Anfrage hängen. Der Mitschnitt
-  endet nach der gewählten Zeit von selbst und schaltet den SIP-Trace wieder
-  ab. Das entspricht `fs_cli -x "sofia global siptrace on"` mit `/log debug`,
-  ohne Zugriff auf den Server.
-- **Aktive Kanäle**: wie `show channels` – Kanal, Anrufer, Ziel, Status,
-  Codec, Anwendung.
-- **Sitzungen beim Anbieter**: *Alle Gespräche beenden* (BYE für jedes
+- **Status** (`tab=status`): Version, Laufzeit von TalkOps und FreeSWITCH und
+  Anzahl aktiver Gesprächszweige. Mit der Berechtigung `trunks.view` zeigt eine
+  Tabelle den Registrierungsstatus und den letzten Fehler jedes Trunk-Kontos.
+  Mit der Berechtigung `calls.active` zeigt eine Tabelle die registrierten
+  Geräte. Die Tabelle **Aktive Kanäle** entspricht `show channels`: Kanal,
+  Anrufer, Ziel, Status, Codec, Anwendung.
+- **Diagnose** (`tab=diagnostics`): Debug-Logging. Stufe
+  (Debug/Info/Notice/Warning), Dauer in Minuten (1–60) und optional
+  **SIP-Trace** wählen, *Starten*, das Problem nachstellen. Das Log läuft live
+  mit (filterbar), lässt sich mit *Kopieren* in die Zwischenablage übernehmen
+  (nur die angezeigten, ggf. gefilterten Zeilen) oder als Textdatei
+  herunterladen – an die Support-Anfrage hängen. Der Mitschnitt endet nach der
+  gewählten Zeit von selbst und schaltet den SIP-Trace wieder ab. Das entspricht
+  `fs_cli -x "sofia global siptrace on"` mit `/log debug`, ohne Zugriff auf den
+  Server.
+- **Sitzungen** (`tab=sessions`): *Alle Gespräche beenden* (BYE für jedes
   Gespräch), *Trunks ab- und anmelden* oder beides. Hilft, wenn der Anbieter mit
   „403 Too many simultaneous sessions“ ablehnt. Trunk-Gespräche nutzen
   Session-Timer (600 s), damit der Anbieter verwaiste Gespräche selbst beendet.
-- **Neustart**: *FreeSWITCH neu starten* oder *Alle Dienste neu starten*
-  (FreeSWITCH, Media-Worker, TalkOps). Die Dienste beenden sich und Docker
-  startet sie dank `restart: unless-stopped` neu; laufende Gespräche werden
-  getrennt.
+- **Wartung** (`tab=maintenance`): *FreeSWITCH neu starten* oder *Alle Dienste
+  neu starten* (FreeSWITCH, Media-Worker, TalkOps). Die Dienste beenden sich und
+  Docker startet sie dank `restart: unless-stopped` neu; laufende Gespräche
+  werden getrennt.
+
+Sicherungen, die Portainer-Verbindung und Sicherungsziele liegen im eigenen
+Bereich **Einstellungen → Backup** (Berechtigung `backups.manage`). Siehe
+[Datensicherung und Wiederherstellung](datensicherung.md).

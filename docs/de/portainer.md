@@ -1,6 +1,6 @@
 # Betrieb mit Portainer
 
-Für vollständige Wiederherstellungsbackups TalkOps unter **Einstellungen → System → Backups** mit der Portainer-API verbinden. TalkOps liest dann vor jeder Sicherung Stack-Datei und Stack-Umgebung. Das Backup-Passwort separat bereitstellen. Siehe [Datensicherung und Wiederherstellung](datensicherung.md#portainer) für Verbindung, manuellen Import und Wiederherstellung auf einem neuen Host.
+Für vollständige Wiederherstellungsbackups TalkOps unter **Einstellungen → Backup** mit der Portainer-API verbinden. TalkOps liest dann vor jeder Sicherung Stack-Datei und Stack-Umgebung. Das Backup-Passwort separat bereitstellen. Siehe [Datensicherung und Wiederherstellung](datensicherung.md#portainer) für Verbindung, manuellen Import und Wiederherstellung auf einem neuen Host.
 
 `docker-compose.yml` verwendet ausschließlich fertige Images von GHCR und ist
 daher direkt als Portainer-Stack nutzbar.

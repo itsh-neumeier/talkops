@@ -39,7 +39,42 @@ Schaltflächen:
 | Vorziehen | Der wartende Job rückt an den Anfang der Warteschlange. |
 
 Der Tab **Verlauf** zeigt die fertigen, fehlgeschlagenen und gestoppten Jobs
-der letzten 7 Tage.
+der letzten 7 Tage (höchstens die neuesten 1000 Jobs).
+
+### Verlauf: Gesprächspartner, Sortierung und Filter
+
+Die Spalte **Gesprächspartner** zeigt Anrufer und Angerufenen des Gesprächs
+oder der Voicemail. Die Namen kommen aus dem Telefonbuch, wie in der
+[Anrufliste](anrufliste.md): ein Klick auf den Namen öffnet den
+Telefonbucheintrag. Bei eingehenden Anrufen zeigt die Zeile darunter die
+eigene Rufnummer, die der Anrufer gewählt hat.
+
+- **Sortieren:** auf den Spaltentitel **Zeit**, **Dauer** oder **Ergebnis**
+  klicken. Ein zweiter Klick kehrt die Reihenfolge um (absteigend,
+  aufsteigend). **Dauer** ist die Verarbeitungszeit. Jobs, die nicht liefen,
+  stehen am Ende.
+- **Filtern:** eine Spalte mit Filter hat eine Trichter-Schaltfläche. Ein
+  farbiger Punkt zeigt einen aktiven Filter.
+
+  | Spalte | Filter |
+  | --- | --- |
+  | Zeit | Heute, gestern oder ein Datumsbereich in den letzten 7 Tagen (beide Tage eingeschlossen). |
+  | Richtung | Eine oder mehrere Richtungen. Eine Voicemail von einer Nebenstelle ist intern, andere Voicemails sind eingehend. |
+  | Modell | Ein oder mehrere Modelle der Jobs im Verlauf. |
+  | Ergebnis | Fertig, fehlgeschlagen, gestoppt. |
+
+- **Suchen:** das Suchfeld findet Text in Namen und Nummern der
+  Gesprächspartner und im Namen des Benutzers, der den Job gestartet hat.
+  Eine Suche nur mit Ziffern, z. B. `0911 2193`, findet auch `+49 911 2193…`.
+- **Alle Filter zurücksetzen** löscht die Filter und die Suche. Die
+  Sortierung bleibt.
+
+Der Browser filtert und sortiert den geladenen Verlauf, daher wirkt jede
+Änderung sofort. Die Seitenadresse enthält Tab, Filter und Sortierung. Ein
+Neuladen oder ein kopierter Link zeigt daher dieselbe Liste. Der Verlauf lädt
+bei geöffnetem Tab alle 30 Sekunden neu, die aktiven Jobs alle 2 Sekunden.
+
+Auf schmalen Bildschirmen sind die Spalten *Modell* und *Dauer* ausgeblendet.
 
 ## Ressourcen
 

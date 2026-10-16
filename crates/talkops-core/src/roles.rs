@@ -83,8 +83,11 @@ permissions! {
     SecurityManage = "security.manage", "system", true;
     IdentityManage = "identity.manage", "system", true;
     BackupsManage = "backups.manage", "system", true;
+    StorageManage = "storage.manage", "system", true;
     DiagnosticsManage = "diagnostics.manage", "system", true;
+    NotificationsManage = "notifications.manage", "system", false;
     AuditView = "audit.view", "system", false;
+    AuditManage = "audit.manage", "system", true;
 }
 
 /// Permissions of the built-in `operator` role after the migration (the

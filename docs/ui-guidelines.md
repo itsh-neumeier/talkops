@@ -68,6 +68,26 @@ tablets and desktops.
 - Show `SkeletonRows.svelte` while a list loads. Show `EmptyRow.svelte`
   when a loaded list has no entries.
 
+## Sort and filter lists
+
+The call list and the phone book use the same parts. Use these parts for other sortable or filterable tables.
+
+- `SortButton.svelte` is the sort button in a column title. Set
+  `aria-sort` on the `th` with `ariaSort()` from `#lib/list/sort.ts`.
+  `nextSort()` gives the state after a click.
+- `ColumnFilter.svelte` is the funnel button and the filter panel of a
+  column. Put `FilterOptions.svelte` (check boxes, or radio buttons with
+  `single`) or other fields in the panel.
+- Keep the filters and the sort order in the page address. Write and read
+  the query string in a module of the list (for example
+  `#lib/calls/filters.ts`). Use `pickList()`, `parseOrder()` and
+  `queryString()` from `#lib/list/sort.ts`. `syncAddress()` from
+  `#lib/list/address.ts` replaces the address without a new history entry.
+- Sort and filter in the browser only when the page loads the full list.
+  Otherwise, send the filters to the API.
+- Show "*n* of *m*" below the table and **Reset all filters** when a filter
+  is active.
+
 ## Shapes and colors
 
 | Element | Corner radius |

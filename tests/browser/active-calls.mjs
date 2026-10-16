@@ -139,11 +139,14 @@ try {
   if (process.env.SCREENSHOT_DIR) await page.screenshot({ path: `${process.env.SCREENSHOT_DIR}/active-calls-shared-mobile.png` });
   await page.setViewportSize({ width: 1280, height: 900 });
   await card.getByRole('link', { name: /Gehe zu Eintrag/ }).nth(1).click();
-  await page.waitForURL('**/phonebook?contact=c-max');
+  await page.waitForURL(url => url.pathname === '/phonebook' && url.searchParams.get('contact') === 'c-max');
   const target = page.locator('tr[aria-current="true"]');
   await target.waitFor();
   assert.match(await target.textContent(), /Max Mustermann/);
-  assert.equal(await page.locator('select[aria-label="Bereich"]').inputValue(), neumeier);
+  // The entry is visible without filters, so the phone book filters stay unchanged.
+  assert.ok(await target.isVisible());
+  assert.equal(new URL(page.url()).searchParams.get('contact'), 'c-max');
+  assert.equal(await page.getByRole('button', { name: 'Bereich filtern (aktiv)' }).count(), 0);
   if (process.env.SCREENSHOT_DIR) await page.screenshot({ path: `${process.env.SCREENSHOT_DIR}/phonebook-highlight.png` });
   // A single entry: the name itself jumps to the entry, without a card.
   calls = [{ uuid: 'single', direction: 'inbound', caller: remote, called: local, started_at: started, answered_at: started, state: 'talking', transcript_available: false }];
@@ -151,7 +154,7 @@ try {
   await section.getByText('Eingehender Anruf an Nst:', { exact: false }).waitFor({ timeout: 20_000 });
   assert.equal(await section.getByRole('button', { name: /Telefonbucheinträge/ }).count(), 0);
   await section.getByRole('link', { name: 'Familie Vollmeier (Maria)', exact: true }).click();
-  await page.waitForURL('**/phonebook?contact=c-maria');
+  await page.waitForURL(url => url.pathname === '/phonebook' && url.searchParams.get('contact') === 'c-maria');
   assert.match(await page.locator('tr[aria-current="true"]').textContent(), /Familie Vollmeier/);
   assert.deepEqual(errors, []);
   await context.close();

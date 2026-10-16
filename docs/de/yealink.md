@@ -216,6 +216,39 @@ im Büro:
 Ein gelöschter Bereich verschwindet mit seinen Kontakten auch von den
 Telefonen.
 
+### Kontakte suchen, sortieren und filtern
+
+Die Seite *Telefonbuch* lädt alle Kontakte. Der Browser sortiert und filtert
+sie, daher wirkt jede Änderung sofort.
+
+- **Sortieren:** auf den Spaltentitel **Name**, **Firma** oder **Bereich**
+  klicken. Ein zweiter Klick kehrt die Reihenfolge um (aufsteigend,
+  absteigend). Der Pfeil zeigt die aktuelle Reihenfolge. Kontakte ohne Firma
+  stehen bei der Sortierung nach Firma am Ende. Bei der Sortierung nach
+  Bereich steht das globale Telefonbuch zuerst.
+- **Filtern:** eine Spalte mit Filter hat eine Trichter-Schaltfläche. Ein
+  farbiger Punkt zeigt einen aktiven Filter.
+
+  | Spalte | Filter |
+  | --- | --- |
+  | Geschäftlich, Mobil, Sonstige | Alle, mit Nummer oder ohne Nummer. |
+  | Bereich | Ein oder mehrere Telefonbücher: *Global* und die Bereiche. |
+
+- **Suchen:** das Suchfeld findet Text im Namen, in der Firma, im
+  Bereichsnamen und in den Nummern. Eine Suche nur mit Ziffern, z. B.
+  `0951123`, findet auch `+49 951 123…`.
+- **Alle Filter zurücksetzen** löscht die Filter und die Suche. Die
+  Sortierung bleibt.
+
+Die Seitenadresse enthält Filter und Sortierung. Ein Neuladen oder ein
+kopierter Link zeigt daher dieselbe Liste. Ein Link aus der Anrufliste oder
+den laufenden Gesprächen (`/phonebook?contact=<id>`) hebt den Eintrag hervor.
+Wenn die aktuellen Filter den Eintrag verbergen, ersetzt die Seite sie durch
+den Bereich des Eintrags.
+
+Die Spalte *Bereich* und ihr Filter erscheinen nur, wenn Bereiche existieren.
+Auf schmalen Bildschirmen ist die Spalte *Sonstige* ausgeblendet.
+
 ### Umstellung und Anrufübernahme
 
 `**101` ruft jetzt die Nebenstelle `101` an und übernimmt keinen klingelnden

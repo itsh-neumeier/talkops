@@ -2,10 +2,13 @@
 	import PageHeader from '#lib/components/PageHeader.svelte';
 	import SkeletonRows from '#lib/components/SkeletonRows.svelte';
 	import ColumnFilter from '#lib/components/ColumnFilter.svelte';
+	import FilterOptions from '#lib/components/FilterOptions.svelte';
+	import SortButton from '#lib/components/SortButton.svelte';
 	import { net } from '#lib/net.svelte.ts';
 	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
+	import { syncAddress } from '#lib/list/address.ts';
+	import { ariaSort as ariaSortOf, nextSort } from '#lib/list/sort.ts';
 	import { api, type Call, type CallParty, type Recording } from '#lib/api.ts';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
 	import TranscriptView from '#lib/components/TranscriptView.svelte';
@@ -25,6 +28,9 @@
 		pageQuery,
 		parseFilters,
 		type CallFilters,
+		type Direction,
+		type RecordingFilter,
+		type Result,
 		type SortKey
 	} from '#lib/calls/filters.ts';
 
@@ -64,10 +70,7 @@
 
 	async function load() {
 		const run = ++generation;
-		const query = pageQuery(filters);
-		if (query !== page.url.search) {
-			goto(`/calls${query}`, { replace: true, shallow: true });
-		}
+		syncAddress('/calls', pageQuery(filters));
 		try {
 			const res = await api.getPage<Call>(`/calls${apiQuery(filters, 0, PAGE)}`);
 			if (run !== generation) return;
@@ -104,17 +107,8 @@
 	}
 
 	function sortBy(key: SortKey) {
-		if (filters.sort === key) {
-			filters.order = filters.order === 'desc' ? 'asc' : 'desc';
-		} else {
-			filters.sort = key;
-			filters.order = 'desc';
-		}
+		({ sort: filters.sort, order: filters.order } = nextSort(filters, key));
 		load();
-	}
-
-	function toggle<T>(list: T[], value: T): T[] {
-		return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
 	}
 
 	function resetAll() {
@@ -154,33 +148,8 @@
 
 	const arrow = { inbound: '↙', outbound: '↗', internal: '↔' } as const;
 	const contactHref = (id: string) => `/phonebook?contact=${encodeURIComponent(id)}`;
-	const ariaSort = (key: SortKey) =>
-		filters.sort === key ? (filters.order === 'asc' ? 'ascending' : 'descending') : 'none';
+	const ariaSort = (key: SortKey) => ariaSortOf(filters.sort === key, filters.order);
 </script>
-
-{#snippet sortButton(key: SortKey, label: string)}
-	<button
-		type="button"
-		class="group inline-flex items-center gap-1 rounded-md font-medium transition-colors duration-150 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-teal-500 motion-reduce:transition-none dark:hover:text-slate-100 {filters.sort ===
-		key
-			? 'text-slate-900 dark:text-slate-100'
-			: ''}"
-		title={t('calls.sortBy', { column: label })}
-		onclick={() => sortBy(key)}
-	>
-		{label}
-		<span
-			class="inline-block text-xs transition-transform duration-200 motion-reduce:transition-none {filters.sort ===
-			key
-				? 'text-teal-600 dark:text-teal-400'
-				: 'text-slate-300 group-hover:text-slate-400 dark:text-slate-600'} {filters.sort === key &&
-			filters.order === 'asc'
-				? 'rotate-180'
-				: ''}"
-			aria-hidden="true">▼</span
-		>
-	</button>
-{/snippet}
 
 <!-- One side of a call: phone book name over the number, or number over the name. -->
 {#snippet party(p: CallParty | undefined, rawNumber: string, rawName: string)}
@@ -241,7 +210,12 @@
 				<tr>
 					<th aria-sort={ariaSort('time')}>
 						<span class="inline-flex items-center gap-1 whitespace-nowrap">
-							{@render sortButton('time', t('calls.time'))}
+							<SortButton
+								label={t('calls.time')}
+								active={filters.sort === 'time'}
+								order={filters.order}
+								onclick={() => sortBy('time')}
+							/>
 							<ColumnFilter
 								label={t('calls.time')}
 								active={active.time}
@@ -286,25 +260,18 @@
 									load();
 								}}
 							>
-								<div class="space-y-1">
-									{#each DIRECTIONS as d (d)}
-										<label
-											class="flex cursor-pointer items-center gap-2 rounded-md px-1 py-1 hover:bg-slate-50 dark:hover:bg-slate-800"
-										>
-											<input
-												type="checkbox"
-												class="h-4 w-4 accent-teal-600"
-												checked={filters.direction.includes(d)}
-												onchange={() => {
-													filters.direction = toggle(filters.direction, d);
-													load();
-												}}
-											/>
-											<span aria-hidden="true">{arrow[d]}</span>
-											{t(`dir.${d}`)}
-										</label>
-									{/each}
-								</div>
+								<FilterOptions
+									options={DIRECTIONS.map((d) => ({
+										value: d,
+										label: t(`dir.${d}`),
+										icon: arrow[d]
+									}))}
+									selected={filters.direction}
+									onchange={(v) => {
+										filters.direction = v as Direction[];
+										load();
+									}}
+								/>
 							</ColumnFilter>
 						</span>
 					</th>
@@ -358,7 +325,12 @@
 						</span>
 					</th>
 					<th class="col-opt" aria-sort={ariaSort('duration')}>
-						{@render sortButton('duration', t('calls.duration'))}
+						<SortButton
+							label={t('calls.duration')}
+							active={filters.sort === 'duration'}
+							order={filters.order}
+							onclick={() => sortBy('duration')}
+						/>
 					</th>
 					<th>
 						<span class="inline-flex items-center gap-1 whitespace-nowrap">
@@ -371,24 +343,14 @@
 									load();
 								}}
 							>
-								<div class="space-y-1">
-									{#each RESULTS as r (r)}
-										<label
-											class="flex cursor-pointer items-center gap-2 rounded-md px-1 py-1 hover:bg-slate-50 dark:hover:bg-slate-800"
-										>
-											<input
-												type="checkbox"
-												class="h-4 w-4 accent-teal-600"
-												checked={filters.result.includes(r)}
-												onchange={() => {
-													filters.result = toggle(filters.result, r);
-													load();
-												}}
-											/>
-											{t(`calls.result.${r}`)}
-										</label>
-									{/each}
-								</div>
+								<FilterOptions
+									options={RESULTS.map((r) => ({ value: r, label: t(`calls.result.${r}`) }))}
+									selected={filters.result}
+									onchange={(v) => {
+										filters.result = v as Result[];
+										load();
+									}}
+								/>
 							</ColumnFilter>
 						</span>
 					</th>
@@ -403,25 +365,18 @@
 									load();
 								}}
 							>
-								<div class="space-y-1">
-									{#each ['', ...RECORDING_FILTERS] as const as r (r)}
-										<label
-											class="flex cursor-pointer items-center gap-2 rounded-md px-1 py-1 hover:bg-slate-50 dark:hover:bg-slate-800"
-										>
-											<input
-												type="radio"
-												name="recording-filter"
-												class="h-4 w-4 accent-teal-600"
-												checked={filters.recording === r}
-												onchange={() => {
-													filters.recording = r;
-													load();
-												}}
-											/>
-											{t(r ? `calls.recording.${r}` : 'common.all')}
-										</label>
-									{/each}
-								</div>
+								<FilterOptions
+									single
+									options={(['', ...RECORDING_FILTERS] as const).map((r) => ({
+										value: r,
+										label: t(r ? `calls.recording.${r}` : 'common.all')
+									}))}
+									selected={[filters.recording]}
+									onchange={([v]) => {
+										filters.recording = v as RecordingFilter;
+										load();
+									}}
+								/>
 							</ColumnFilter>
 						</span>
 					</th>

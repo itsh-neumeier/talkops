@@ -8,7 +8,7 @@
 - Status: In progress
 - Branch: codex/release-1.7.14
 - Base commit: 702507b39fb1cf80db4ce5a0f9dd3d339b9da68c
-- Related commits or PR: Integration corrections 1bad7389a7f97f1dc477c840e200d0cc3e9d6692; integration PR pending
+- Related commits or PR: Integration corrections 1bad7389a7f97f1dc477c840e200d0cc3e9d6692; [integration PR 35](https://github.com/itsh-neumeier/talkops/pull/35)
 
 ## Goal
 

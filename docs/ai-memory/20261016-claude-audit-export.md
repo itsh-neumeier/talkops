@@ -8,7 +8,7 @@
 - Status: Completed
 - Branch: claude/audit-export (stacked on claude/storage-targets)
 - Base commit: 138335c (head of claude/storage-targets, PR #41)
-- Related commits or PR: Pending
+- Related commits or PR: https://github.com/itsh-neumeier/talkops/pull/43 (stacked on #41)
 
 ## Goal
 

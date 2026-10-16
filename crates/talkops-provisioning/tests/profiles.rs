@@ -130,6 +130,26 @@ fn rejects_unsupported_slots_injection_and_vendor_fallback() {
         assert!(keys::validate_endpoint(url, true).is_err(), "{url}");
     }
     assert!(keys::validate_endpoint("http://192.168.1.2:8095/provisioning/", true).is_ok());
+    assert!(
+        keys::validate_endpoint(
+            "https://phone-app.invalid/menu.xml?view=contacts&lang=de",
+            false
+        )
+        .is_ok()
+    );
+    let mut browser = setup(model);
+    browser.provisioning.keys = vec![Key {
+        group: "programmable".into(),
+        key: 18,
+        kind: KeyType::XmlBrowser,
+        value: "https://phone-app.invalid/menu.xml?view=contacts&lang=de".into(),
+        label: String::new(),
+        account: 0,
+        history_type: 0,
+        phonebook: 0,
+    }];
+    keys::validate(model, &browser.provisioning).unwrap();
+    assert!(adapter::render(&browser, &Default::default()).unwrap().contains("programablekey.18.value = https://phone-app.invalid/menu.xml?view=contacts&lang=de\n"));
     let mut unknown = model.clone();
     unknown.vendor = "other".into();
     assert!(adapter::render(&setup(&unknown), &Default::default()).is_err());

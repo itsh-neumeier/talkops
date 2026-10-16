@@ -199,11 +199,11 @@ pub fn validate_endpoint(value: &str, provisioning: bool) -> Result<(), String> 
         || !u.username().is_empty()
         || u.password().is_some()
         || u.fragment().is_some()
-        || u.query().is_some()
+        || (provisioning && u.query().is_some())
         || value.chars().any(char::is_control)
         || value.len() > 400
     {
-        return Err("use an HTTP(S) URL without credentials, query or fragment".into());
+        return Err("use an HTTP(S) URL without credentials or fragment; provisioning URLs must not have a query".into());
     }
     if provisioning && u.path().trim_end_matches('/') != "/provisioning" {
         return Err("endpoint path must be /provisioning".into());

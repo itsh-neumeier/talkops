@@ -116,6 +116,19 @@ test('key validation protects model limits, missing accounts and dial targets', 
 	assert.equal(keyValidation(key, model, accounts), null);
 	assert.equal(keyValidation({ ...key, account: 2 }, model, accounts), 'phonekeys.missingAccount');
 	assert.equal(keyValidation({ ...key, type: 'none' }, model, []), null);
+	assert.equal(
+		keyValidation(
+			{
+				...key,
+				type: 'xml_browser',
+				value: 'https://phone-app.invalid/menu.xml?view=contacts&lang=de',
+				account: 0
+			},
+			model,
+			[]
+		),
+		null
+	);
 	for (const value of ['${x}', '123\n456', '', '1'.repeat(33)])
 		assert.equal(keyValidation({ ...key, value }, model, accounts), 'phonekeys.invalidNumber');
 	for (const value of ['**103', '+4930555', '*97'])

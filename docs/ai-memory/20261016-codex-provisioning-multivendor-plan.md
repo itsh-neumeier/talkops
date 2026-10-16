@@ -3,9 +3,11 @@
 ## Task state
 
 - Task ID: 20261016-codex-provisioning-multivendor-plan
-- Date: 2026-10-16, Europe/Berlin
+- Started: 2026-10-16, Europe/Berlin
+- Updated: 2026-10-17, Europe/Berlin
 - Tool: Codex
-- Status: In progress. Approved implementation; final checks running.
+- Status: Software implementation and local checks completed. The PR records
+  publication, final automated validation and readiness.
 - Branch: codex/provisioning-multivendor-plan
 - Base commit: 86772ec0c31990f7a29a639ffb90db6ebef217e2
 - PR: https://github.com/itsh-neumeier/talkops/pull/49
@@ -25,8 +27,10 @@ The user reviewed the proposal and approved implementation. Added programmable
 keys, expansion module profiles, ordered call-state softkeys, transport overrides,
 a redacted draft preview, a source library and versioned native templates.
 The API regression and new database tests pass. Production UI checks pass.
-Linux CI passed Rust checks, web checks and both image builds at 317dd57.
-Final follow-up checks and E2E remain in progress. No production phone, DHCP or release setting changed.
+Linux CI passed Rust checks, web checks and both image builds at b9d4c42.
+The full SIPp and browser softphone E2E workflow also passed at that revision.
+Final automated results and readiness are recorded in the PR.
+No production phone, DHCP or release setting changed.
 
 ## Changes
 
@@ -106,7 +110,16 @@ Final follow-up checks and E2E remain in progress. No production phone, DHCP or 
 - Passed: Clippy with warnings denied for API, core and provisioning, all targets.
 - Passed at 317dd57 in Linux CI: full workspace fmt, clippy and tests; web checks;
   server and worker image build/smoke tests; Compose validation.
-- In progress: Final follow-up checks and E2E.
+- Passed at b9d4c42 in Linux CI: full workspace fmt/clippy and 375 Rust tests;
+  1 pre-existing test ignored. Web lint/check/unit/build and all browser suites,
+  Compose validation and both image build/smoke checks passed.
+  Evidence: https://github.com/itsh-neumeier/talkops/actions/runs/38972204079.
+- Passed: XML browser application URLs retain query parameters. Provisioning
+  base URLs still reject queries. Re-ran the 18 provisioning tests, 34 web unit
+  tests, web lint/check and affected-crate Clippy after this compatibility fix.
+- Passed at b9d4c42: full SIPp and browser softphone E2E workflow.
+  Evidence: https://github.com/itsh-neumeier/talkops/actions/runs/38972204141.
+- Current check revisions and final readiness: see PR 49.
 - Local full workspace Clippy fails on Windows in unchanged media-worker code:
   realtime::Streams::is_empty is unused in the Windows test target. The Linux
   workspace CI Clippy check passes. Local Docker tests cannot run because the
@@ -134,8 +147,9 @@ Final follow-up checks and E2E remain in progress. No production phone, DHCP or 
 
 ## Next action
 
-Finish final checks, fix findings, update this summary and the PR, then hand off
-the verified feature branch to the release chat. Do not merge or publish a release.
+The release chat must review the PR and its final checks, integrate the feature
+branch, and perform the real-phone acceptance check after deployment. This task
+does not merge the target branch, change release versions or publish a release.
 
 ## References
 

@@ -1,14 +1,14 @@
 {# MPL-1.1 derivative: FusionPBX 20143aec4366afc2755f336d3058243479d49d44, snom/320/{$mac}.xml, blob d5395696addd08894b367c94043bcd28053f30b2. #}{% set ns = namespace(keys=keys | default({}), contact_groups=contact_groups | default({})) %}<?xml version="1.0" encoding="utf-8"?>
 <settings>
 <phone-settings e="2">
-<language perm="">English</language>
+<language perm="">{{ ((snom_language | default(''))) | output }}</language>
 <display_method perm="">display_name_number</display_method>
 <keyboard_lock perm="">off</keyboard_lock>
 <enable_keyboard_lock perm="">off</enable_keyboard_lock>
 <transfer_on_hangup perm="">on</transfer_on_hangup>
 <transfer_on_hangup_with_starcode perm="">on</transfer_on_hangup_with_starcode>
 <update_policy perm="">{% if ((snom_update_policy is defined and snom_update_policy is not none)) %}{{ ((snom_update_policy | default(''))) | output }}{% else %}auto_update{% endif %}</update_policy>
-<firmware_status>{{ ((primary_url | default(''))) | output }}&amp;filename_firmware-{{ ((mac | default(''))) | output }}.xml</firmware_status>
+<firmware_status></firmware_status>
 <setting_server perm="RW">{{ ((primary_url | default(''))) | output }}</setting_server>
 <date_us_format>off</date_us_format>
 <time_24_format>on</time_24_format>
@@ -32,7 +32,7 @@
 <admin_mode_password_confirm>0000</admin_mode_password_confirm>
 {% endif %}
 <admin_mode>on</admin_mode>
-<language>English</language>
+<language>{{ ((snom_language | default(''))) | output }}</language>
 <utc_offset perm=""></utc_offset>
 <ntp_server perm="">192.53.103.104</ntp_server>
 <timezone>{{ ((snom_time_zone | default(''))) | output }}</timezone>

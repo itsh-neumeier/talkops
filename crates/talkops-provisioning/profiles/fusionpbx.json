@@ -84150,6 +84150,11 @@
         "name": "{$mac}.xml",
         "template": "sangoma/s300/{$mac}.xml.jinja",
         "format": "xml"
+      },
+      {
+        "name": "directory.xml",
+        "template": "htek/uc903/phonebook.xml.jinja",
+        "format": "xml"
       }
     ],
     "settings": [
@@ -84185,6 +84190,11 @@
       {
         "name": "{$mac}.xml",
         "template": "sangoma/s500/{$mac}.xml.jinja",
+        "format": "xml"
+      },
+      {
+        "name": "directory.xml",
+        "template": "htek/uc903/phonebook.xml.jinja",
         "format": "xml"
       }
     ],
@@ -84227,6 +84237,11 @@
       {
         "name": "{$mac}.xml",
         "template": "sangoma/s700/{$mac}.xml.jinja",
+        "format": "xml"
+      },
+      {
+        "name": "directory.xml",
+        "template": "htek/uc903/phonebook.xml.jinja",
         "format": "xml"
       }
     ],
@@ -84297,6 +84312,12 @@
     ],
     "settings": [
       {
+        "key": "snom_language",
+        "label": "language",
+        "kind": "text",
+        "copyable": true
+      },
+      {
         "key": "snom_time_zone",
         "label": "time zone",
         "kind": "text",
@@ -84332,6 +84353,12 @@
       }
     ],
     "settings": [
+      {
+        "key": "snom_language",
+        "label": "language",
+        "kind": "text",
+        "copyable": true
+      },
       {
         "key": "snom_time_zone",
         "label": "time zone",
@@ -84378,6 +84405,12 @@
         "copyable": true
       },
       {
+        "key": "snom_language",
+        "label": "language",
+        "kind": "text",
+        "copyable": true
+      },
+      {
         "key": "snom_update_policy",
         "label": "update policy",
         "kind": "text",
@@ -84410,6 +84443,12 @@
       {
         "key": "snom_dhcp",
         "label": "dhcp",
+        "kind": "text",
+        "copyable": true
+      },
+      {
+        "key": "snom_language",
+        "label": "language",
         "kind": "text",
         "copyable": true
       },
@@ -84452,6 +84491,12 @@
     ],
     "settings": [
       {
+        "key": "snom_language",
+        "label": "language",
+        "kind": "text",
+        "copyable": true
+      },
+      {
         "key": "snom_time_zone",
         "label": "time zone",
         "kind": "text",
@@ -84484,6 +84529,12 @@
       {
         "key": "snom_dhcp",
         "label": "dhcp",
+        "kind": "text",
+        "copyable": true
+      },
+      {
+        "key": "snom_language",
+        "label": "language",
         "kind": "text",
         "copyable": true
       },
@@ -84526,6 +84577,12 @@
     ],
     "settings": [
       {
+        "key": "snom_language",
+        "label": "language",
+        "kind": "text",
+        "copyable": true
+      },
+      {
         "key": "snom_update_policy",
         "label": "update policy",
         "kind": "text",
@@ -84563,6 +84620,12 @@
       {
         "key": "snom_dhcp",
         "label": "dhcp",
+        "kind": "text",
+        "copyable": true
+      },
+      {
+        "key": "snom_language",
+        "label": "language",
         "kind": "text",
         "copyable": true
       },
@@ -89159,8 +89222,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -90308,8 +90371,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -92184,8 +92247,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -93043,8 +93106,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -94284,6 +94347,16 @@
         "name": "{$mac}.cfg",
         "template": "yealink/cp965/{$mac}.cfg.jinja",
         "format": "text"
+      },
+      {
+        "name": "directory.xml",
+        "template": "yealink/t4x/directory.xml.jinja",
+        "format": "xml"
+      },
+      {
+        "name": "favorite_setting.xml",
+        "template": "yealink/t4x/favorite_setting.xml.jinja",
+        "format": "xml"
       }
     ],
     "settings": [
@@ -94884,8 +94957,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -97827,8 +97900,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -99660,8 +99733,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -100724,8 +100797,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -102558,8 +102631,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -103686,8 +103759,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -105514,8 +105587,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -106686,8 +106759,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -108752,8 +108825,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -110981,8 +111054,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -112128,8 +112201,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -114171,8 +114244,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -115229,8 +115302,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -116293,8 +116366,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -117381,8 +117454,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -118677,8 +118750,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -119771,8 +119844,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -121063,8 +121136,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -122121,8 +122194,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -123406,8 +123479,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -124697,8 +124770,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -126041,8 +126114,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -127541,8 +127614,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -128880,8 +128953,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -130056,8 +130129,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -131454,8 +131527,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -132859,8 +132932,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -133583,17 +133656,12 @@
         "format": "text"
       },
       {
-        "name": "{$mac}.boot",
-        "template": "yealink/t4x/{$mac}.boot.jinja",
-        "format": "text"
-      },
-      {
         "name": "{$mac}.cfg",
         "template": "yealink/t4x/{$mac}.cfg.jinja",
         "format": "text"
       },
       {
-        "name": "{mac}.boot",
+        "name": "{$mac}.boot",
         "template": "yealink/t4x/{mac}.boot.jinja",
         "format": "text"
       }
@@ -134070,8 +134138,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -135563,8 +135631,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -137208,8 +137276,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -138865,8 +138933,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -140486,8 +140554,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -142125,8 +142193,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -143644,8 +143712,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -145049,8 +145117,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -146562,8 +146630,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -147823,8 +147891,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -149169,8 +149237,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -150706,8 +150774,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -152375,8 +152443,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -154038,8 +154106,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -155707,8 +155775,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -157382,8 +157450,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -159051,8 +159119,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -160708,8 +160776,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -162365,8 +162433,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -164022,8 +164090,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",
@@ -165679,8 +165747,8 @@
       {
         "key": "yealink_lock_pin",
         "label": "lock pin",
-        "kind": "text",
-        "copyable": true
+        "kind": "secret",
+        "copyable": false
       },
       {
         "key": "yealink_lock_timeout",

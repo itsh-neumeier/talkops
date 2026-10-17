@@ -966,7 +966,7 @@ remote_phonebook.data.1.name = Users
 {% if ((yealink_remote_phonebook_1_url is defined and yealink_remote_phonebook_1_url is not none)) %}
 remote_phonebook.data.1.url =  {{ ((yealink_remote_phonebook_1_url | default(''))) | output }}
 {% else %}
-remote_phonebook.data.1.url = {{ ((artifact_base | default(''))) | output }}/?file=directory.xml&contacts=users
+remote_phonebook.data.1.url = {{ ((artifact_base | default(''))) | output }}/directory.xml?contacts=users
 {% endif %}
 
 {% if ((yealink_remote_phonebook_2_name is defined and yealink_remote_phonebook_2_name is not none)) %}
@@ -977,7 +977,7 @@ remote_phonebook.data.2.name = Groups
 {% if ((yealink_remote_phonebook_2_url is defined and yealink_remote_phonebook_2_url is not none)) %}
 remote_phonebook.data.2.url =  {{ ((yealink_remote_phonebook_2_url | default(''))) | output }}
 {% else %}
-remote_phonebook.data.2.url = {{ ((artifact_base | default(''))) | output }}/?file=directory.xml&contacts=groups
+remote_phonebook.data.2.url = {{ ((artifact_base | default(''))) | output }}/directory.xml?contacts=groups
 {% endif %}
 
 {% if ((yealink_remote_phonebook_3_name is defined and yealink_remote_phonebook_3_name is not none)) %}
@@ -988,7 +988,7 @@ remote_phonebook.data.3.name = Extensions
 {% if ((yealink_remote_phonebook_3_url is defined and yealink_remote_phonebook_3_url is not none)) %}
 remote_phonebook.data.3.url =  {{ ((yealink_remote_phonebook_3_url | default(''))) | output }}
 {% else %}
-remote_phonebook.data.3.url = {{ ((artifact_base | default(''))) | output }}/?file=directory.xml&contacts=extensions
+remote_phonebook.data.3.url = {{ ((artifact_base | default(''))) | output }}/directory.xml?contacts=extensions
 {% endif %}
 
 remote_phonebook.data.4.name = {{ ((yealink_remote_phonebook_4_name | default(''))) | output }}
@@ -1296,7 +1296,7 @@ super_search.url = {{ ((yealink_super_search_url | default(''))) | output }}
 ##                                   Directory Setting                               ##
 #######################################################################################
 #Configure the access URL of the directory setting file.
-directory_setting.url = {{ ((artifact_base | default(''))) | output }}/?file=favorite_setting.xml
+directory_setting.url = {{ ((artifact_base | default(''))) | output }}/favorite_setting.xml
 
 #######################################################################################
 ##            Configure the access URL of the  Wallpaper                             ##

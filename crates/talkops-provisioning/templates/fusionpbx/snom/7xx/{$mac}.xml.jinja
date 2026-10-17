@@ -1,14 +1,14 @@
 {# MPL-1.1 derivative: FusionPBX 20143aec4366afc2755f336d3058243479d49d44, snom/7xx/{$mac}.xml, blob a96fdd17fbd16ea00456713ff4328ad6d6729611. #}{% set ns = namespace(keys=keys | default({}), contact_groups=contact_groups | default({})) %}<?xml version="1.0" encoding="utf-8"?>
 <settings>
 <phone-settings e="2">
-<language perm="">English</language>
+<language perm="">{{ ((snom_language | default(''))) | output }}</language>
 <update_policy perm="">{% if ((snom_update_policy is defined and snom_update_policy is not none)) %}{{ ((snom_update_policy | default(''))) | output }}{% else %}auto_update{% endif %}</update_policy>
 <setting_server perm="RW">{{ ((primary_url | default(''))) | output }}</setting_server>
 {% if ((snom_dhcp is defined and snom_dhcp is not none)) %}<dhcp perm="R">{{ ((snom_dhcp | default(''))) | output }}</dhcp>{% endif %}
 <ntp_server perm="">{{ ((ntp_server_primary | default(''))) | output }}</ntp_server>
 <ntp_refresh_timer perm="">3600</ntp_refresh_timer>
 <timezone perm="">{{ ((snom_time_zone | default(''))) | output }}</timezone>
-<firmware_status perm="R">{{ ((artifact_base | default(''))) | output }}/firmware.xml</firmware_status>
+<firmware_status perm="R"></firmware_status>
 {% if ((admin_password is defined and admin_password is not none)) %}
 <http_user perm="">{{ ((admin_name | default(''))) | output }}</http_user>
 <http_pass perm="">{{ ((admin_password | default(''))) | output }}</http_pass>
@@ -100,7 +100,7 @@
 </functionKeys>
 <!--<setting-files>-->
 <!-- Include directory xml -->
-<!--<file url="{{ ((artifact_base | default(''))) | output }}/?file=directory.xml"></file>-->
+<!--<file url="{{ ((artifact_base | default(''))) | output }}/directory.xml"></file>-->
 <!--</setting-files>-->
 <tbook complete="true">
 {% set ns.x = 1 %}

@@ -1,7 +1,7 @@
 {# MPL-1.1 derivative: FusionPBX 20143aec4366afc2755f336d3058243479d49d44, snom/720/{$mac}.xml, blob f8133617df8857ad8aa22f0d688f17db34c519b6. #}{% set ns = namespace(keys=keys | default({}), contact_groups=contact_groups | default({})) %}<?xml version="1.0" encoding="utf-8"?>
 <settings>
 <phone-settings e="2">
-<language perm="">English</language>
+<language perm="">{{ ((snom_language | default(''))) | output }}</language>
 <redirect_number perm=""></redirect_number>
 <redirect_busy_number perm=""></redirect_busy_number>
 <redirect_time_number perm=""></redirect_time_number>

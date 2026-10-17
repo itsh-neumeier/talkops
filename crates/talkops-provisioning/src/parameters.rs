@@ -504,10 +504,14 @@ pub fn schema(model: &PhoneModel) -> Result<Vec<Field>, String> {
         for scalar in scalars(&body, artifact.format.starts_with("xml"))? {
             let lower = format!("{} {}", scalar.parameter, scalar.description).to_ascii_lowercase();
             let secret = [
-                "password", "passwd", "secret", "private", "psk", "wep_key", "wpa_key", "token",
+                "password", "passwd", "passcode", "pincode", "secret", "private", "psk", "wep_key",
+                "wpa_key", "token",
             ]
             .iter()
-            .any(|word| lower.contains(word));
+            .any(|word| lower.contains(word))
+                || lower
+                    .split(|c: char| !c.is_ascii_alphanumeric())
+                    .any(|word| word == "pin");
             let managed = scalar.value.contains("TALKOPS_MANAGED")
                 || scalar.value.contains("talkops-managed.invalid")
                 || scalar.value.contains("805ec0010203")

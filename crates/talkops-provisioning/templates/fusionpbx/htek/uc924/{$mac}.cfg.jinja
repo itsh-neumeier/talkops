@@ -933,7 +933,7 @@
         {% if ((htek_remote_phonebook_1_url is defined and htek_remote_phonebook_1_url is not none)) %}
         <P4401 para="RemotePhoneBook1.Url">{{ ((htek_remote_phonebook_1_url | default(''))) | output }}</P4401>
         {% else %}
-        <P4401 para="RemotePhoneBook1.Url">{{ ((artifact_base | default(''))) | output }}/?file=phonebook.xml&amp;contacts=users</P4401>        
+        <P4401 para="RemotePhoneBook1.Url">{{ ((artifact_base | default(''))) | output }}/phonebook.xml?contacts=users</P4401>        
         {% endif %}
         {% if ((htek_remote_phonebook_1_name is defined and htek_remote_phonebook_1_name is not none)) %}
         <P3316 para="RemotePhoneBook1.Name">{{ ((htek_remote_phonebook_1_name | default(''))) | output }}</P3316>
@@ -943,7 +943,7 @@
         {% if ((htek_remote_phonebook_2_url is defined and htek_remote_phonebook_2_url is not none)) %}
         <P4402 para="RemotePhoneBook2.Url">{{ ((htek_remote_phonebook_2_url | default(''))) | output }}</P4402>
         {% else %}
-        <P4402 para="RemotePhoneBook2.Url">{{ ((artifact_base | default(''))) | output }}/?file=phonebook.xml&amp;contacts=groups</P4402>
+        <P4402 para="RemotePhoneBook2.Url">{{ ((artifact_base | default(''))) | output }}/phonebook.xml?contacts=groups</P4402>
         {% endif %}
         {% if ((htek_remote_phonebook_2_name is defined and htek_remote_phonebook_2_name is not none)) %}
         <P3312 para="RemotePhoneBook2.Name">{{ ((htek_remote_phonebook_2_name | default(''))) | output }}</P3312>
@@ -953,7 +953,7 @@
         {% if ((htek_remote_phonebook_3_url is defined and htek_remote_phonebook_3_url is not none)) %}
         <P4403 para="RemotePhoneBook3.Url">{{ ((htek_remote_phonebook_3_url | default(''))) | output }}</P4403>
         {% else %}
-        <P4403 para="RemotePhoneBook3.Url">{{ ((artifact_base | default(''))) | output }}/?file=phonebook.xml&amp;contacts=extensions</P4403>
+        <P4403 para="RemotePhoneBook3.Url">{{ ((artifact_base | default(''))) | output }}/phonebook.xml?contacts=extensions</P4403>
         {% endif %}
         {% if ((htek_remote_phonebook_3_name is defined and htek_remote_phonebook_3_name is not none)) %}
         <P3313 para="RemotePhoneBook3.Name">{{ ((htek_remote_phonebook_3_name | default(''))) | output }}</P3313>

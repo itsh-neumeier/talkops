@@ -2022,7 +2022,7 @@
 {% elif ((grandstream_firmware_path is defined and grandstream_firmware_path is not none)) %}
     <P192>{{ ((grandstream_firmware_path | default(''))) | output }}</P192>
 {% else %}
-    <P192>{{ ((artifact_base | default(''))) | output }}/resources/firmware/</P192>
+    <P192>{{ ((grandstream_firmware_path | default(''))) | output }}</P192>
 {% endif %}
 
     <!-- Firmware HTTP/HTTPS Username -->

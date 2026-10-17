@@ -1,7 +1,7 @@
 {# MPL-1.1 derivative: FusionPBX 20143aec4366afc2755f336d3058243479d49d44, snom/820/{$mac}.xml, blob 93315886878b1f0e7ff74124bcf0562701d9a579. #}{% set ns = namespace(keys=keys | default({}), contact_groups=contact_groups | default({})) %}<settings>
 <phone-settings>
 <update_policy perm="">{% if ((snom_update_policy is defined and snom_update_policy is not none)) %}{{ ((snom_update_policy | default(''))) | output }}{% else %}auto_update{% endif %}</update_policy>
-<firmware_status>{{ ((primary_url | default(''))) | output }}&amp;filename_firmware-{{ ((mac | default(''))) | output }}.xml</firmware_status>
+<firmware_status></firmware_status>
 <date_us_format>off</date_us_format>
 <time_24_format>on</time_24_format>
 <challenge_response>off</challenge_response>
@@ -23,7 +23,7 @@
 <admin_mode_password>0000</admin_mode_password>
 <admin_mode_password_confirm>0000</admin_mode_password_confirm>
 {% endif %}
-<language>English</language>
+<language>{{ ((snom_language | default(''))) | output }}</language>
 <ntp_server>{{ ((ntp_server_primary | default(''))) | output }}</ntp_server>
 <timezone>AUS+10</timezone>
 <dst>3600 25.09 02:00:00 04.05 03:00:00</dst>

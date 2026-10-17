@@ -864,7 +864,7 @@
         </ldap>
         <xmlContact index="1">
             <Name>{% if ((fanvil_remote_phonebook_2_name is defined and fanvil_remote_phonebook_2_name is not none)) %}{{ ((fanvil_remote_phonebook_2_name | default(''))) | output }}{% else %}Users{% endif %}</Name>
-            <Addr>{{ ((primary_url | default(''))) | output }}&amp;file=directory.xml&amp;contacts=users</Addr>
+            <Addr>{{ ((artifact_base | default(''))) | output }}/directory.xml?contacts=users</Addr>
             <UserName>{% if ((http_auth_username is defined and http_auth_username is not none)) %}{{ ((http_auth_username | default(''))) | output }}{% endif %}</UserName>
             <PassWd>{% if ((http_auth_password is defined and http_auth_password is not none)) %}{{ ((http_auth_password | default(''))) | output }}{% endif %}</PassWd>
             <Sipline>-1</Sipline>
@@ -873,7 +873,7 @@
         </xmlContact>
         <xmlContact index="2">
             <Name>{% if ((fanvil_remote_phonebook_2_name is defined and fanvil_remote_phonebook_2_name is not none)) %}{{ ((fanvil_remote_phonebook_2_name | default(''))) | output }}{% else %}Groups{% endif %}</Name>
-            <Addr>{{ ((primary_url | default(''))) | output }}&amp;file=directory.xml&amp;contacts=groups</Addr>
+            <Addr>{{ ((artifact_base | default(''))) | output }}/directory.xml?contacts=groups</Addr>
             <UserName>{% if ((http_auth_username is defined and http_auth_username is not none)) %}{{ ((http_auth_username | default(''))) | output }}{% endif %}</UserName>
             <PassWd>{% if ((http_auth_password is defined and http_auth_password is not none)) %}{{ ((http_auth_password | default(''))) | output }}{% endif %}</PassWd>
             <Sipline>-1</Sipline>
@@ -882,7 +882,7 @@
         </xmlContact>
         <xmlContact index="3">
             <Name>{% if ((fanvil_remote_phonebook_3_name is defined and fanvil_remote_phonebook_3_name is not none)) %}{{ ((fanvil_remote_phonebook_3_name | default(''))) | output }}{% else %}Extensions{% endif %}</Name>
-            <Addr>{{ ((primary_url | default(''))) | output }}&amp;file=directory.xml&amp;contacts=extensions</Addr>
+            <Addr>{{ ((artifact_base | default(''))) | output }}/directory.xml?contacts=extensions</Addr>
             <UserName>{% if ((http_auth_username is defined and http_auth_username is not none)) %}{{ ((http_auth_username | default(''))) | output }}{% endif %}</UserName>
             <PassWd>{% if ((http_auth_password is defined and http_auth_password is not none)) %}{{ ((http_auth_password | default(''))) | output }}{% endif %}</PassWd>
             <Sipline>-1</Sipline>

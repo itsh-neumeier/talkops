@@ -25,8 +25,8 @@ authenticated template library. The server image includes this notice and
 the upstream license files in `/usr/share/doc/talkops`.
 
 The reference files are data. TalkOps does not execute upstream PHP or Smarty.
-The files under `crates/talkops-provisioning/templates/fusionpbx` are modified
-derivatives of these sources. They retain the MPL-1.1 terms. Each file identifies
+The source-derived files under `crates/talkops-provisioning/templates/fusionpbx`
+are modified derivatives of these sources. They retain the MPL-1.1 terms. Each file identifies
 its source commit, path and blob. The build scripts record and reproduce the
 conversion and TalkOps-specific changes. These derivative files are available
 in this repository and through authenticated native-template copies.
@@ -41,3 +41,7 @@ blobs from the same revision. Their hashes are in
 license notices. The literal function records in `profiles/functions.json` are
 derived data under the same MPL-1.1 terms. TalkOps parses those records at build
 time and does not execute either PHP file.
+
+The independently authored `groundwire/groundwire/directory.json.jinja` file
+implements the public web contacts format. It uses the TalkOps project license.
+It is not a derivative of a FusionPBX template.

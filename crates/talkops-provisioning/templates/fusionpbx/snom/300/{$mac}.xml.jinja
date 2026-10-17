@@ -6,7 +6,7 @@
 <enable_keyboard_lock perm="">off</enable_keyboard_lock>
 <transfer_on_hangup perm="">on</transfer_on_hangup>
 <update_policy perm="">{% if ((snom_update_policy is defined and snom_update_policy is not none)) %}{{ ((snom_update_policy | default(''))) | output }}{% else %}auto_update{% endif %}</update_policy>
-<firmware_status>{{ ((primary_url | default(''))) | output }}&amp;filename_firmware-{{ ((mac | default(''))) | output }}.xml</firmware_status>
+<firmware_status></firmware_status>
 <date_us_format>off</date_us_format>
 <time_24_format>on</time_24_format>
 <challenge_response>off</challenge_response>
@@ -29,7 +29,7 @@
 <admin_mode_password_confirm>0000</admin_mode_password_confirm>
 {% endif %}
 <admin_mode>on</admin_mode>
-<language perm="">English</language>
+<language perm="">{{ ((snom_language | default(''))) | output }}</language>
 <utc_offset perm=""></utc_offset>
 <ntp_server perm="">192.53.103.104</ntp_server>
 <timezone>{{ ((snom_time_zone | default(''))) | output }}</timezone>

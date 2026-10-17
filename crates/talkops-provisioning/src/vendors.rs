@@ -157,6 +157,7 @@ pub fn filename(pattern: &str, mac: &str) -> String {
         .replace("{$mac|upper}", &mac.to_ascii_uppercase())
         .replace("{$mac|lower}", &mac.to_ascii_lowercase())
         .replace("{$mac}", mac)
+        .replace("{mac}", mac)
         .replace("{$address}", mac)
 }
 pub fn valid_path(path: &str) -> bool {
@@ -290,6 +291,39 @@ pub fn environment(
                 .collect::<String>()
         },
     );
+    env.add_function(
+        "array_merge",
+        |left: Value, right: Value| -> Result<Value, Error> {
+            let merged = values(left)?
+                .into_iter()
+                .chain(values(right)?)
+                .collect::<Vec<_>>();
+            if merged.len() > 1024 {
+                return Err(Error::new(
+                    ErrorKind::InvalidOperation,
+                    "merged array exceeds 1024 entries",
+                ));
+            }
+            Ok(Value::from_iter(merged))
+        },
+    );
+    env.add_filter("truncate", |value: String, length: Option<usize>| {
+        let length = length.unwrap_or(80).min(4096);
+        if value.chars().count() <= length {
+            return value;
+        }
+        let suffix = "...".chars().take(length).collect::<String>();
+        let mut prefix = value
+            .chars()
+            .take(length.saturating_sub(suffix.len()))
+            .collect::<String>();
+        if let Some(boundary) = prefix.rfind(char::is_whitespace)
+            && boundary > 0
+        {
+            prefix.truncate(boundary);
+        }
+        format!("{prefix}{suffix}")
+    });
     env.add_filter("values", values);
     env.add_filter("int", |value: Value| {
         value
@@ -383,12 +417,21 @@ pub fn context(setup: &PhoneSetup<'_>, common: &Common<'_>) -> Value {
         accounts.insert(index.to_string(), row.clone());
         lines.push(row);
     }
-    let contacts=common.contacts.iter().flat_map(|entry|entry.numbers.iter().map(|(_,number)|json!({
-        "contact_name_given":entry.name,"contact_name_family":"","contact_organization":"",
-        "contact_work":number,"contact_cell":"","contact_home":"","phone_number":number,
-        "phone_extension":number,"phone_type":"work","category":"contacts","group_description":"TalkOps",
-        "name":entry.name,"number":number,
-    }))).collect::<Vec<_>>();
+    let contacts=common.contacts.iter().enumerate().flat_map(|(entry_index,entry)|entry.numbers.iter().map(move |(label,number)| {
+        let internal=label=="Extension";
+        let kind=match label.to_ascii_lowercase().as_str(){"mobile"|"cell"=>"mobile","home"=>"home",_=>"work"};
+        json!({
+            "contact_name_given":entry.name,"contact_name_family":"","contact_organization":"",
+            "effective_caller_id_name":entry.name,"contact_category":"TalkOps","contact_uuid":format!("entry-{entry_index}"),
+            "phone_number_work":if kind=="mobile"{""}else{number},"phone_number_mobile":if kind=="mobile"{number}else{""},
+            "contact_type":if setup.model.id=="grandstream-gxp2100"{"user"}else{"contact"},
+            "contact_work":number,"contact_cell":"","contact_home":"","phone_number":number,
+            "phone_extension":number,"phone_type":kind,"phone_label":kind,"phone_primary":1,
+            "numbers":[{"phone_number":number,"phone_extension":number,"phone_label":kind,"phone_primary":1}],
+            "category":if internal{"extensions"}else{"users"},"group_description":"TalkOps",
+            "name":entry.name,"number":number,
+        })
+    })).collect::<Vec<_>>();
     let primary = profile(&setup.model.id)
         .and_then(|p| {
             p.artifacts
@@ -406,7 +449,7 @@ pub fn context(setup: &PhoneSetup<'_>, common: &Common<'_>) -> Value {
         "voicemail_number":setup.voicemail_code,"ntp_server_primary":common.ntp_server,"ntp_server_secondary":common.ntp_server,
         "lines":lines,"account":accounts,"contacts":contacts,"contact_groups":{},
         "keys":{"line":[],"memory":[],"programmable":[],"expansion":[],"expansion-1":[],"expansion-2":[],"expansion-3":[]},
-        "smarty":{"get":{"contacts":"all"}},"provision_url":base,"artifact_base":authenticated,
+        "smarty":{"get":{"contacts":if setup.model.vendor=="zoiper"{"extensions"}else{"all"}}},"provision_url":base,"artifact_base":authenticated,
         "primary_url":primary_url,"provision_path":endpoint.as_ref().map(|u|u.path()),"provision_host":endpoint.as_ref().and_then(|u|u.host_str()),
         "groundwire_link":primary_url.replacen("https://","provlinkbs://",1).replacen("http://","provlink://",1),
     });
@@ -700,10 +743,19 @@ pub fn validate_for_model(
                 .vendor_settings
                 .insert("code".into(), "fixture-code".into());
         }
-        let contacts = [crate::phonebook::Entry {
-            name: "Office & Entry".into(),
-            numbers: vec![("Work".into(), "**101".into())],
-        }];
+        let contacts = [
+            crate::phonebook::Entry {
+                name: "Office & Entry".into(),
+                numbers: vec![
+                    ("Work".into(), "**101".into()),
+                    ("Mobile".into(), "**103".into()),
+                ],
+            },
+            crate::phonebook::Entry {
+                name: "Internal & Entry".into(),
+                numbers: vec![("Extension".into(), "**102".into())],
+            },
+        ];
         let common = Common {
             provisioning: &provisioning,
             admin_password: "REDACTED",
@@ -731,14 +783,92 @@ pub fn validate_for_model(
                 .collect();
         }
         let mut rendered = String::new();
+        let mut has_contact_export = false;
         for artifact in &profile(&model.id).ok_or("unknown profile")?.artifacts {
-            rendered.push_str(
-                &render(&setup, &common, Some(&artifact.name), files)
-                    .map_err(|e| {
-                        format!("{} / {} / {count} accounts: {e}", model.id, artifact.name)
-                    })?
-                    .0,
+            let body = render(&setup, &common, Some(&artifact.name), files)
+                .map_err(|e| format!("{} / {} / {count} accounts: {e}", model.id, artifact.name))?
+                .0;
+            has_contact_export |= files
+                .get(&artifact.name)
+                .is_some_and(|source| source.contains("(contacts | default("));
+            // Decode XML entities before checking URLs. HTML escaping also
+            // encodes slashes; scanning the wire representation misses them.
+            let inspected = crate::parameters::inspection_xml(&body);
+            let wrapped = format!(
+                "<fragments>{}</fragments>",
+                inspected
+                    .lines()
+                    .filter(|line| !line.trim_start().starts_with("<?xml"))
+                    .collect::<Vec<_>>()
+                    .join("\n")
             );
+            let references = if artifact.format.starts_with("xml") {
+                let document = roxmltree::Document::parse(&wrapped).map_err(|e| e.to_string())?;
+                document
+                    .descendants()
+                    .flat_map(|node| {
+                        let text = if node.is_text() { node.text() } else { None };
+                        text.into_iter()
+                            .chain(node.attributes().map(|a| a.value()))
+                            .map(str::to_owned)
+                            .collect::<Vec<_>>()
+                    })
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            } else {
+                body.lines()
+                    .filter(|line| {
+                        !line.trim_start().starts_with(['#', ';'])
+                            && !line.trim_start().starts_with("//")
+                    })
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            };
+            for base in [
+                common.provisioning.base_url.clone(),
+                common.provisioning.authenticated_base(),
+            ] {
+                let prefix = format!("{}/devices/{}/", base.trim_end_matches('/'), setup.mac);
+                for (_, tail) in references
+                    .match_indices(&prefix)
+                    .map(|(index, _)| (index, &references[index + prefix.len()..]))
+                {
+                    let end = tail
+                        .find(|c: char| c.is_whitespace() || matches!(c, '<' | '>' | '"' | '\''))
+                        .unwrap_or(tail.len());
+                    let path = tail[..end].split(['?', '#']).next().unwrap_or("");
+                    if !path.is_empty()
+                        && self::artifact(
+                            profile(&model.id).ok_or("unknown profile")?,
+                            path,
+                            &setup.mac,
+                        )
+                        .is_none()
+                    {
+                        return Err(format!(
+                            "{} / {} references undeclared device file: {path}",
+                            model.id, artifact.name
+                        ));
+                    }
+                    if tail.starts_with("?file=") || tail.starts_with("index.php?") {
+                        return Err(format!(
+                            "{} / {} retains a FusionPBX PHP query",
+                            model.id, artifact.name
+                        ));
+                    }
+                }
+            }
+            rendered.push_str(&body);
+        }
+        if has_contact_export && !rendered.contains("**101") && !rendered.contains("**102") {
+            return Err(format!("{} omits its contact fixtures", model.id));
+        }
+        if model.id == "grandstream-gxv3240"
+            && !["**101", "**102", "**103"]
+                .iter()
+                .all(|number| rendered.contains(number))
+        {
+            return Err(format!("{} loses grouped contact numbers", model.id));
         }
         for account in &setup.accounts {
             let ha1 = format!(

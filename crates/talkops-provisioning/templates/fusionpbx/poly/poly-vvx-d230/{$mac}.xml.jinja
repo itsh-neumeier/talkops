@@ -731,7 +731,7 @@
       {% if ((poly_provision_url is defined and poly_provision_url is not none)) %}
       <V X_UD="N" X_DV="">{{ ((poly_provision_url | default(''))) | output }}/${mac}.xml</V>
       {% else %}
-      <V X_UD="N" X_DV="">{{ ((artifact_base | default(''))) | output }}/${mac}.xml</V>
+      <V X_UD="N" X_DV="">{{ ((primary_url | default(''))) | output }}</V>
       {% endif %}
     </P>
     <P>

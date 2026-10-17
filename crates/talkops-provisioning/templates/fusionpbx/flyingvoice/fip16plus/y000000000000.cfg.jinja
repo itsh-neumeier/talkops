@@ -435,7 +435,7 @@ remote_phonebook.data.1.name = Users
 {% if ((flyingvoice_remote_phonebook_1_url is defined and flyingvoice_remote_phonebook_1_url is not none)) %}
 remote_phonebook.data.1.url =  {{ ((flyingvoice_remote_phonebook_1_url | default(''))) | output }}
 {% else %}
-remote_phonebook.data.1.url = {{ ((artifact_base | default(''))) | output }}/?file=directory.xml&contacts=users
+remote_phonebook.data.1.url = {{ ((artifact_base | default(''))) | output }}/directory.xml?contacts=users
 {% endif %}
 
 {% if ((flyingvoice_remote_phonebook_2_name is defined and flyingvoice_remote_phonebook_2_name is not none)) %}
@@ -446,7 +446,7 @@ remote_phonebook.data.2.name = Groups
 {% if ((flyingvoice_remote_phonebook_2_url is defined and flyingvoice_remote_phonebook_2_url is not none)) %}
 remote_phonebook.data.2.url =  {{ ((flyingvoice_remote_phonebook_2_url | default(''))) | output }}
 {% else %}
-remote_phonebook.data.2.url = {{ ((artifact_base | default(''))) | output }}/?file=directory.xml&contacts=groups
+remote_phonebook.data.2.url = {{ ((artifact_base | default(''))) | output }}/directory.xml?contacts=groups
 {% endif %}
 
 {% if ((flyingvoice_remote_phonebook_3_name is defined and flyingvoice_remote_phonebook_3_name is not none)) %}
@@ -457,7 +457,7 @@ remote_phonebook.data.3.name = Extensions
 {% if ((flyingvoice_remote_phonebook_3_url is defined and flyingvoice_remote_phonebook_3_url is not none)) %}
 remote_phonebook.data.3.url =  {{ ((flyingvoice_remote_phonebook_3_url | default(''))) | output }}
 {% else %}
-remote_phonebook.data.3.url = {{ ((artifact_base | default(''))) | output }}/?file=directory.xml&contacts=extensions
+remote_phonebook.data.3.url = {{ ((artifact_base | default(''))) | output }}/directory.xml?contacts=extensions
 {% endif %}
 
 remote_phonebook.data.4.name = {{ ((flyingvoice_remote_phonebook_4_name | default(''))) | output }}

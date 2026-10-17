@@ -1,7 +1,7 @@
 {# MPL-1.1 derivative: FusionPBX 20143aec4366afc2755f336d3058243479d49d44, snom/360/{$mac}.xml, blob e826e12e1243959cee601d8c3e32c005f65f8eac. #}{% set ns = namespace(keys=keys | default({}), contact_groups=contact_groups | default({})) %}<?xml version="1.0" encoding="utf-8"?>
 <settings>
 <phone-settings e="2">
-<language perm="">English</language>
+<language perm="">{{ ((snom_language | default(''))) | output }}</language>
 <update_policy perm="">{% if ((snom_update_policy is defined and snom_update_policy is not none)) %}{{ ((snom_update_policy | default(''))) | output }}{% else %}auto_update{% endif %}</update_policy>
 <setting_server perm="RW">{{ ((primary_url | default(''))) | output }}</setting_server>
 {% if ((snom_dhcp is defined and snom_dhcp is not none)) %}<dhcp perm="R">{{ ((snom_dhcp | default(''))) | output }}</dhcp>{% endif %}

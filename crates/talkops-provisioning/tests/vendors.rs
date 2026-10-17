@@ -51,6 +51,21 @@ fn every_source_profile_renders_its_complete_artifact_manifest() {
 
 #[test]
 fn artifact_resolution_requires_a_declared_file_and_rejects_path_traversal() {
+    for profile in vendors::profiles()
+        .iter()
+        .filter(|p| p.adaptation == "adapted")
+    {
+        for file in &profile.artifacts {
+            let name = vendors::delivery_filename(profile, file, "805ec0010203");
+            assert!(vendors::valid_path(&name), "{}: {name}", profile.id);
+            assert_eq!(
+                vendors::artifact(profile, &name, "805ec0010203").map(|a| &a.name),
+                Some(&file.name),
+                "{}: {name}",
+                profile.id
+            );
+        }
+    }
     let profile = vendors::profile("cisco-7940").unwrap();
     assert!(vendors::artifact(profile, "SIP805ec0010203.cnf", "805ec0010203").is_some());
     for path in [
@@ -66,4 +81,39 @@ fn artifact_resolution_requires_a_declared_file_and_rejects_path_traversal() {
             "{path}"
         );
     }
+}
+
+#[test]
+fn source_contact_operations_bound_unicode_and_preserve_multiple_numbers() {
+    let environment = vendors::environment(&Default::default(), false).unwrap();
+    assert_eq!(
+        environment
+            .render_str(
+                "{{ name | truncate(6) }}",
+                serde_json::json!({"name":"ÄÖÜßlang"})
+            )
+            .unwrap(),
+        "ÄÖÜ..."
+    );
+    assert_eq!(environment.render_str("{{ array_merge(left,right) | json }}",serde_json::json!({"left":[{"phone_number":"101"}],"right":[{"phone_number":"102"}]})).unwrap(),"[{\"phone_number\":\"101\"},{\"phone_number\":\"102\"}]");
+    assert!(
+        environment
+            .render_str(
+                "{{ array_merge(left,right) }}",
+                serde_json::json!({"left":vec![0;1024],"right":[1]})
+            )
+            .is_err()
+    );
+}
+
+#[test]
+fn device_lock_pins_are_secrets_and_do_not_copy() {
+    let profile = vendors::profile("yealink-t4x").unwrap();
+    let field = profile
+        .settings
+        .iter()
+        .find(|field| field.key == "yealink_lock_pin")
+        .unwrap();
+    assert_eq!(field.kind, "secret");
+    assert!(!field.copyable);
 }

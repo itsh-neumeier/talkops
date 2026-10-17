@@ -1972,7 +1972,7 @@
 		{% elif ((grandstream_firmware_path is defined and grandstream_firmware_path is not none)) %}
 		<item name="provisioning.firmware.serverpath">{{ ((grandstream_firmware_path | default(''))) | output }}</item>
 		{% else %}
-		<item name="provisioning.firmware.serverpath">{{ ((artifact_base | default(''))) | output }}/resources/firmware/</item>
+		<item name="provisioning.firmware.serverpath">{{ ((grandstream_firmware_path | default(''))) | output }}</item>
 		{% endif %}
 		
 		<!-- Firmware Server User Name -->

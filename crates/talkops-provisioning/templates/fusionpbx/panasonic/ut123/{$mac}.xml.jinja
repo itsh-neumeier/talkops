@@ -321,7 +321,7 @@
  <ProvisionEnable PROVISION_ENABLE="Y"></ProvisionEnable>
  <Option66Enable OPTION66_ENABLE="Y"></Option66Enable>
  <Option66Reboot OPTION66_REBOOT="Y"></Option66Reboot>
- <StandardFileURL CFG_STANDARD_FILE_PATH="https://{{ ((server_address_1 | default(''))) | output }}{{ ((project_path | default(''))) | output }}/app/provision"></StandardFileURL>
+ <StandardFileURL CFG_STANDARD_FILE_PATH="{{ ((primary_url | default(''))) | output }}"></StandardFileURL>
  <ProductFileURL CFG_PRODUCT_FILE_PATH=""></ProductFileURL>
  <MasterFileURL CFG_MASTER_FILE_PATH=""></MasterFileURL>
  <CyclicEnable CFG_CYCLIC="Y"></CyclicEnable>

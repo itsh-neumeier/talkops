@@ -50,11 +50,31 @@ for (const vendor of inventory.vendors) {
         artifacts.push({ name: file.path.startsWith(prefix)?file.path.slice(prefix.length):file.path.split('/').at(-1), template: `${file.path}.jinja`, format:vendor.vendor==='mitel'&&file.path.endsWith('MN_Generic.cfg')||file.path.toLowerCase()==='snom/c520/{$mac}.xml'?'xml_fragment':file.path==='fanvil/h5/{$mac}.cfg'?'xml_fanvil':format });
       } catch (error) { failures.push({source:file.path, error:error.message}); }
     }
+    let coalesced=0;
+    if(vendor.vendor==='yealink'&&model==='t4x'){
+      // Both source spellings resolve to the same MAC.boot filename. The
+      // model-aware variant names the supplied CFG files. The older variant
+      // refers to y000000000000.cfg, which is absent from this source profile.
+      const modelBoot=artifacts.find(a=>a.name==='{mac}.boot');
+      const genericBoot=artifacts.findIndex(a=>a.name==='{$mac}.boot');
+      if(modelBoot&&genericBoot>=0){artifacts.splice(genericBoot,1);modelBoot.name='{$mac}.boot';coalesced++;}
+    }
     let primary = artifacts.find(a => /\{\$(?:mac|address)\}/.test(a.name) && !/director|contact|phonebook|favorite|softkey/i.test(a.name) && /\.(?:cfg|xml|conf|cnf|ini)$/i.test(a.name))
       ?? artifacts.find(a => /^(?:config\.xml|template\.csv|qr_template\.txt|gxv3380)$/.test(a.name));
+    if(vendor.vendor==='yealink'&&model==='cp965'){
+      // CP965 refers to these standard Yealink directory files, but its source
+      // folder omits them. Reuse the pinned T4x files in the same library.
+      for(const name of ['directory.xml','favorite_setting.xml'])artifacts.push({name,template:`yealink/t4x/${name}.jinja`,format:'xml'});
+    }
+    if(vendor.vendor==='sangoma'){
+      // The pinned Sangoma P4401/P4402/P4403 fields use the Htek directory
+      // format, but omit the referenced file. Keep that source-format alias
+      // explicit; device validation is still not_tested.
+      artifacts.push({name:'directory.xml',template:'htek/uc903/phonebook.xml.jinja',format:'xml'});
+    }
     if(vendor.vendor==='groundwire'){
       const template=`groundwire/${model}/directory.json.jinja`;
-      await writeGenerated(new URL(template,nativeRoot),'{{ web_contacts | json }}');
+      await writeGenerated(new URL(template,nativeRoot),'{# Independently authored TalkOps AGPL-3.0-only web contacts export. #}{{ web_contacts | json }}');
       artifacts.push({name:'directory.json',template,format:'json'});
     }
     const fixed = [...allSource.matchAll(/\$(?:account|user)\.(\d+)\.(?:user_id|auth_id|password|user_password)\b/g)].map(m => Number(m[1]));
@@ -74,10 +94,10 @@ for (const vendor of inventory.vendors) {
     const settingNames=[...new Set([...allSource.matchAll(/\$([a-z][a-z0-9_]+)/g)].map(m=>m[1]))]
       .filter(name=>name.startsWith(settingPrefix+'_')||vendor.vendor==='acrobits'&&name==='code').sort();
     const settings=settingNames.map(key=>({key,label:key.replace(new RegExp('^'+settingPrefix+'_'),'').replaceAll('_',' '),
-      kind:/password|secret|private_key|token|^code$/.test(key)?'secret':new RegExp('\\{foreach\\s+\\$'+key+'\\s+as\\s+').test(allSource)?'list':'text',
-      copyable:!/(?:password|secret|private_key|token|hostname|host_name|static_ip|ip_address|mac_address|^code$)/.test(key)}));
+      kind:/password|passwd|passcode|(?:^|_)pin(?:_|$)|pincode|secret|private_key|token|^code$/.test(key)?'secret':new RegExp('\\{foreach\\s+\\$'+key+'\\s+as\\s+').test(allSource)?'list':'text',
+      copyable:!/(?:password|passwd|passcode|(?:^|_)pin(?:_|$)|pincode|secret|private_key|token|hostname|host_name|static_ip|ip_address|mac_address|^code$)/.test(key)}));
     const key_groups=[...new Set([...allSource.matchAll(/\$keys(?:\[['"]([\w-]+)['"]\]|\.([\w-]+))/g)].map(m=>m[1]??m[2]))].sort();
-    const state = allSource.trim() && primary && artifacts.length === files.length+(vendor.vendor==='groundwire'?1:0) ? 'adapted' : 'blocked';
+    const state = allSource.trim() && primary && artifacts.length === files.length+(['groundwire','sangoma'].includes(vendor.vendor)?1:vendor.vendor==='yealink'&&model==='cp965'?2:0)-coalesced ? 'adapted' : 'blocked';
     profiles.push({ id, vendor:vendor.vendor, source_model:model, revision:manifest.revision, adaptation:state, device_validation:'not_tested',
       reason: state === 'blocked' ? (!allSource.trim()?'no_source_template':primary ? 'Source conversion requires review' : 'No device configuration artifact') : null,
       accounts, account_capacity_source:family(vendor.vendor,model)==='app'?'single_account_export':fixed.length||limits.length?'source_slots':'single_account_baseline', family:family(vendor.vendor,model), primary:primary?.name??null, artifacts, settings, key_groups,indexed_lines:/\$lines(?:\.\$line|\[\$line\])/.test(allSource) });

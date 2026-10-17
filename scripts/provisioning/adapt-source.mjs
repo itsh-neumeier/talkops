@@ -49,11 +49,17 @@ export function adaptSource(vendor,path,input){
     // all come from the effective TalkOps endpoint rather than the SIP host.
     source=source.replace(/(?:https?:\/\/)?(?:\{if\s+isset\(\$http_auth_username\)\})?\{\$http_auth_username\}:\{\$http_auth_password\}@(?:\{\/if\})?\{\$(?:domain_name|row\.server_address|account\.1\.server_address)\}(?:\{\$project_path\})?\/app\/provision\/?/g,'{$artifact_base}/')
         .replace(/(?:https?:\/\/)?\{\$(?:domain_name|row\.server_address|account\.1\.server_address)\}(?:\{\$project_path\})?\/app\/provision\/?/g,'{$artifact_base}/')
-        .replace(/\{\$artifact_base\}\/index\.php\?(?:mac|address)=\{\$mac\}(?:&amp;|&)file=([\w.-]+)/g,'{$artifact_base}/$1')
-        .replace(/\{\$artifact_base\}\/\?file=([\w.-]+)(?:&amp;|&)mac=\{\$mac\}/g,'{$artifact_base}/$1')
+        .replace(/\{\$artifact_base\}\/(?:index\.php)?\?(?:(?:mac|address)=\{\$mac\}(?:&amp;|&))?file=([\w.-]+)(?:(?:&amp;|&)(?:mac|address)=\{\$mac\})?((?:&amp;|&)?)/g,(_,file,separator)=>`{$artifact_base}/${file}${separator?'?':''}`)
         .replace(/\{\$artifact_base\}\/\{\$mac\}\//g,'{$artifact_base}/')
         .replace(/\{\$artifact_base\}\/(?:index\.php)?\?(?:mac|address)=\{\$mac\}/g,'{$primary_url}')
-        .replace(/\{\$artifact_base\}\/\{literal\}\{mac\}\{\/literal\}\.xml/g,'{$primary_url}');
+        .replace(/\{\$artifact_base\}\/\{literal\}\$?\{mac\}\{\/literal\}\.xml/g,'{$primary_url}');
+    // These optional upstream URLs have no corresponding source artifact.
+    // Keep the field editable, but do not enable a guaranteed 404 by default.
+    if(vendor==='grandstream')source=source.replace(/\{\$artifact_base\}\/resources\/firmware\//g,'{$grandstream_firmware_path}');
+    if(vendor==='snom')source=source.replace(/(<language\b[^>]*>)English(<\/language>)/g,'$1{$snom_language}$2');
+    if(vendor==='snom')source=source.replace(/(<firmware_status\b[^>]*>)\{\$(?:artifact_base|primary_url)\}[^<]*(<\/firmware_status>)/g,'$1$2');
+    if(vendor==='swissvoice')source=source.replace(/^(XML-PBook[123] Addr\s*:).*$/gm,'$1');
+    if(vendor==='panasonic')source=source.replace(/https?:\/\/\{\$server_address_1\}\{\$project_path\}\/app\/provision/g,'{$primary_url}');
     if(vendor==='algo')source=source.replace(/^prov\.download\.cfgpath\s*=.*$/gm,'prov.download.cfgpath = {$provision_path}')
         .replace(/^prov\.server\.static\s*=.*$/gm,'prov.server.static = {$provision_host}')
         .replace(/^prov\.auth\.pwd\s*=.*$/gm,'prov.auth.pwd = {$http_auth_password}')

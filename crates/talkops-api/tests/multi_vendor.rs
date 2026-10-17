@@ -345,3 +345,48 @@ async fn native_function_codes_survive_copy_and_wait_for_a_new_account(db: PgPoo
     assert!(config.contains("101@1/bc"));
     assert!(config.contains(credentials["sip_password"].as_str().unwrap()));
 }
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn device_lock_pin_is_encrypted_masked_and_excluded_from_copies(db: PgPool) {
+    let router = router(db.clone());
+    let admin = setup_admin(&router).await;
+    let (status,phone)=admin.post("/api/v1/phones",json!({"mac":"805ec0010909","name":"Locked phone","model":"yealink-t4x","provisioning":{"vendor_settings":{"yealink_lock_pin":"987654321"}}})).await;
+    assert_eq!(status, StatusCode::OK, "{phone}");
+    assert_eq!(
+        phone["provisioning"]["vendor_settings"]["yealink_lock_pin"],
+        "REDACTED"
+    );
+    let id = phone["id"].as_str().unwrap();
+    let stored: Value =
+        sqlx::query_scalar("SELECT provisioning FROM phones WHERE tenant_id=$1 AND id=$2")
+            .bind(talkops_core::tenant::TenantId::DEFAULT)
+            .bind(Uuid::parse_str(id).unwrap())
+            .fetch_one(&db)
+            .await
+            .unwrap();
+    assert!(
+        stored["vendor_settings"]["yealink_lock_pin"]
+            .as_str()
+            .unwrap()
+            .starts_with("v1:")
+    );
+    assert!(!stored.to_string().contains("987654321"));
+    let (status, preview) = admin
+        .post(&format!("/api/v1/phones/{id}/clone-preview"), json!({}))
+        .await;
+    assert_eq!(status, StatusCode::OK, "{preview}");
+    assert!(
+        preview["configuration"]["provisioning"]["vendor_settings"]
+            .get("yealink_lock_pin")
+            .is_none()
+    );
+    let (_, info) = admin.get("/api/v1/provisioning").await;
+    let (status, cfg) = fetch(
+        &router,
+        "/provisioning/devices/805ec0010909/y000000000028.cfg",
+        &info,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{cfg}");
+    assert!(cfg.contains("phone_setting.phone_lock.unlock_pin = 987654321"));
+}

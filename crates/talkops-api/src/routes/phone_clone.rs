@@ -136,7 +136,9 @@ fn draft(state: &AppState, source: &Phone) -> ApiResult<ClonePreview> {
     let mut line_keys: Vec<LineKey> = serde_json::from_value(source.line_keys.clone())
         .map_err(|_| ApiError::BadRequest("source has invalid line keys".into()))?;
     line_keys.retain(|key| {
-        let keep = key.kind != KeyType::XmlBrowser && !source_specific(&key.value);
+        let keep = key.kind != KeyType::XmlBrowser
+            && !talkops_provisioning::parameters::url_contains_secret(&key.value)
+            && !source_specific(&key.value);
         if !keep {
             excluded.push(format!("line_keys.{}", key.key));
         }
@@ -153,7 +155,10 @@ fn draft(state: &AppState, source: &Phone) -> ApiResult<ClonePreview> {
                             .any(|s| f.kind.contains(s))
                 })
         });
-        let keep = key.kind != KeyType::XmlBrowser && !native_url && !source_specific(&key.value);
+        let keep = key.kind != KeyType::XmlBrowser
+            && !native_url
+            && !talkops_provisioning::parameters::url_contains_secret(&key.value)
+            && !source_specific(&key.value);
         if !keep {
             excluded.push(format!("provisioning.keys.{}.{}", key.group, key.key));
         }

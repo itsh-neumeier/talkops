@@ -1,0 +1,20 @@
+{# MPL-1.1 derivative: FusionPBX 20143aec4366afc2755f336d3058243479d49d44, cisco/7940/directory_extensions.xml, blob 49addb09fc7e7fc8ebdfaec9e9823c493930fe8a. #}{% set ns = namespace(keys=keys | default({}), contact_groups=contact_groups | default({})) %}<CiscoIPPhoneDirectory>
+	<Title>Our Phones</Title>
+	<Prompt>Please choose...</Prompt>
+{% for row in (contacts | default('')) | values %}{% if (lookup(row | default(none), ["category"]) | default('')) == "extensions" %}
+<DirectoryEntry>
+{% if (lookup(row | default(none), ["contact_name_given"]) | default('')) != "" %}
+	<Name>{{ ((lookup(row | default(none), ["contact_name_given"]) | default(''))) | output }} {{ ((lookup(row | default(none), ["contact_name_family"]) | default(''))) | output }}</Name>
+{% else %}
+	<Name>{{ ((lookup(row | default(none), ["contact_organization"]) | default(''))) | output }}</Name>
+{% endif %}
+{% if (lookup(row | default(none), ["phone_number"]) | default('')) != "" %}
+	<Telephone>{{ ((lookup(row | default(none), ["phone_number"]) | default(''))) | output }}</Telephone>
+{% else %}
+	<Telephone>{{ ((lookup(row | default(none), ["phone_extension"]) | default(''))) | output }}</Telephone>
+{% endif %}
+</DirectoryEntry>
+{% endif %}
+{% endfor %}
+</CiscoIPPhoneDirectory>
+

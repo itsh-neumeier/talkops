@@ -1,0 +1,11 @@
+{# MPL-1.1 derivative: FusionPBX 20143aec4366afc2755f336d3058243479d49d44, cisco/7960/dialplan.xml, blob 107a8d9896b6e73b48bcc6afbd08ad84ba910004. #}{% set ns = namespace(keys=keys | default({}), contact_groups=contact_groups | default({})) %}<DIALTEMPLATE>
+<TEMPLATE MATCH="011*" Timeout="5" User="Phone"></TEMPLATE> <!-- Local operator-->
+<TEMPLATE MATCH="1..." Timeout="0" User="Phone"></TEMPLATE> <!-- 4 digits intra-office -->
+<TEMPLATE MATCH=".11" Timeout="0" User="Phone"></TEMPLATE> <!-- Service numbers -->
+<TEMPLATE MATCH="1.........." Timeout="0" User="Phone"></TEMPLATE> <!-- Long Distance -->
+<TEMPLATE MATCH="*" Timeout="2"></TEMPLATE>             <!-- Anything else -->
+<TEMPLATE MATCH="972......." Timeout="0" User="Phone"></TEMPLATE> <!-- 10 digits -->
+<TEMPLATE MATCH="214......." Timeout="0" User="Phone"></TEMPLATE> <!-- 10 digits -->
+<TEMPLATE MATCH="469......." Timeout="0" User="Phone"></TEMPLATE> <!-- 10 digits -->
+<TEMPLATE MATCH="817......." Timeout="0" User="Phone"></TEMPLATE> <!-- 10 digits -->
+</DIALTEMPLATE>

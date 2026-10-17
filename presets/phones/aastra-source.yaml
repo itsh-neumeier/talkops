@@ -1,0 +1,48 @@
+{
+  "vendor": "aastra",
+  "status": "untested",
+  "models": [
+    {
+      "id": "aastra-480i",
+      "name": "480i",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "aastra-673x",
+      "name": "673x",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "aastra-675x",
+      "name": "675x",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "aastra-686x",
+      "name": "686x",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "aastra-9112i",
+      "name": "9112i",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "aastra-9133i",
+      "name": "9133i",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    }
+  ]
+}

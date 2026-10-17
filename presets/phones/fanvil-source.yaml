@@ -1,0 +1,230 @@
+{
+  "vendor": "fanvil",
+  "status": "untested",
+  "models": [
+    {
+      "id": "fanvil-h2u-v2",
+      "name": "h2u-v2",
+      "family": "desk",
+      "accounts": 4,
+      "line_keys": 0
+    },
+    {
+      "id": "fanvil-h5",
+      "name": "h5",
+      "family": "desk",
+      "accounts": 2,
+      "line_keys": 0
+    },
+    {
+      "id": "fanvil-i30",
+      "name": "i30",
+      "family": "intercom",
+      "accounts": 2,
+      "line_keys": 0
+    },
+    {
+      "id": "fanvil-v62-pro",
+      "name": "v62-pro",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "fanvil-v62",
+      "name": "v62",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "fanvil-v63",
+      "name": "v63",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "fanvil-v64",
+      "name": "v64",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "fanvil-v65",
+      "name": "v65",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "fanvil-v67",
+      "name": "v67",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "fanvil-w611w",
+      "name": "w611w",
+      "family": "wifi",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "fanvil-x1s",
+      "name": "x1s",
+      "family": "desk",
+      "accounts": 2,
+      "line_keys": 0
+    },
+    {
+      "id": "fanvil-x1sg",
+      "name": "x1sg",
+      "family": "desk",
+      "accounts": 2,
+      "line_keys": 0
+    },
+    {
+      "id": "fanvil-x1sp",
+      "name": "x1sp",
+      "family": "desk",
+      "accounts": 2,
+      "line_keys": 0
+    },
+    {
+      "id": "fanvil-x210",
+      "name": "x210",
+      "family": "desk",
+      "accounts": 20,
+      "line_keys": 0
+    },
+    {
+      "id": "fanvil-x2p",
+      "name": "x2p",
+      "family": "desk",
+      "accounts": 2,
+      "line_keys": 0
+    },
+    {
+      "id": "fanvil-x3g",
+      "name": "x3g",
+      "family": "desk",
+      "accounts": 2,
+      "line_keys": 0
+    },
+    {
+      "id": "fanvil-x3sg",
+      "name": "x3sg",
+      "family": "desk",
+      "accounts": 4,
+      "line_keys": 0
+    },
+    {
+      "id": "fanvil-x3sp",
+      "name": "x3sp",
+      "family": "desk",
+      "accounts": 2,
+      "line_keys": 0
+    },
+    {
+      "id": "fanvil-x3sw",
+      "name": "x3sw",
+      "family": "desk",
+      "accounts": 4,
+      "line_keys": 0
+    },
+    {
+      "id": "fanvil-x3u-pro",
+      "name": "x3u-pro",
+      "family": "desk",
+      "accounts": 4,
+      "line_keys": 0
+    },
+    {
+      "id": "fanvil-x3u",
+      "name": "x3u",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "fanvil-x4",
+      "name": "x4",
+      "family": "desk",
+      "accounts": 4,
+      "line_keys": 0
+    },
+    {
+      "id": "fanvil-x4g",
+      "name": "x4g",
+      "family": "desk",
+      "accounts": 4,
+      "line_keys": 0
+    },
+    {
+      "id": "fanvil-x4sg",
+      "name": "x4sg",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "fanvil-x4u",
+      "name": "x4u",
+      "family": "desk",
+      "accounts": 12,
+      "line_keys": 0
+    },
+    {
+      "id": "fanvil-x5s",
+      "name": "x5s",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "fanvil-x5u",
+      "name": "x5u",
+      "family": "desk",
+      "accounts": 16,
+      "line_keys": 0
+    },
+    {
+      "id": "fanvil-x6",
+      "name": "x6",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "fanvil-x6u",
+      "name": "x6u",
+      "family": "desk",
+      "accounts": 20,
+      "line_keys": 0
+    },
+    {
+      "id": "fanvil-x7",
+      "name": "x7",
+      "family": "desk",
+      "accounts": 20,
+      "line_keys": 0
+    },
+    {
+      "id": "fanvil-x7a",
+      "name": "x7a",
+      "family": "desk",
+      "accounts": 20,
+      "line_keys": 0
+    },
+    {
+      "id": "fanvil-x7c",
+      "name": "x7c",
+      "family": "desk",
+      "accounts": 20,
+      "line_keys": 0
+    }
+  ]
+}

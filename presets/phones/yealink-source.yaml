@@ -1,0 +1,496 @@
+{
+  "vendor": "yealink",
+  "status": "untested",
+  "models": [
+    {
+      "id": "yealink-ax83h",
+      "name": "ax83h",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-ax86r",
+      "name": "ax86r",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-cp860",
+      "name": "cp860",
+      "family": "conference",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-cp920",
+      "name": "cp920",
+      "family": "conference",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-cp925",
+      "name": "cp925",
+      "family": "conference",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-cp960",
+      "name": "cp960",
+      "family": "conference",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-cp965",
+      "name": "cp965",
+      "family": "conference",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t19p",
+      "name": "t19p",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t20p",
+      "name": "t20p",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t21p",
+      "name": "t21p",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t22p",
+      "name": "t22p",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t23g",
+      "name": "t23g",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t23p",
+      "name": "t23p",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t26p",
+      "name": "t26p",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t27g",
+      "name": "t27g",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t27p",
+      "name": "t27p",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t28p",
+      "name": "t28p",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t29g",
+      "name": "t29g",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t2x",
+      "name": "t2x",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t31g",
+      "name": "t31g",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t31w",
+      "name": "t31w",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t32g",
+      "name": "t32g",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t33g",
+      "name": "t33g",
+      "family": "desk",
+      "accounts": 4,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t34w",
+      "name": "t34w",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t38g",
+      "name": "t38g",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t40g",
+      "name": "t40g",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t40p",
+      "name": "t40p",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t41p",
+      "name": "t41p",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t41s",
+      "name": "t41s",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t42g",
+      "name": "t42g",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t42s",
+      "name": "t42s",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t42u",
+      "name": "t42u",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t43u",
+      "name": "t43u",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t44w",
+      "name": "t44w",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t46g",
+      "name": "t46g",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t46s",
+      "name": "t46s",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t46u",
+      "name": "t46u",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t48g",
+      "name": "t48g",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t48s",
+      "name": "t48s",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t48u",
+      "name": "t48u",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t49g",
+      "name": "t49g",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t4x",
+      "name": "t4x",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t52s",
+      "name": "t52s",
+      "family": "desk",
+      "accounts": 2,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t53",
+      "name": "t53",
+      "family": "desk",
+      "accounts": 10,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t53w",
+      "name": "t53w",
+      "family": "desk",
+      "accounts": 10,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t54s",
+      "name": "t54s",
+      "family": "desk",
+      "accounts": 2,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t54w",
+      "name": "t54w",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t56a",
+      "name": "t56a",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t57w",
+      "name": "t57w",
+      "family": "desk",
+      "accounts": 10,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t58a",
+      "name": "t58a",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t58v",
+      "name": "t58v",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t58w",
+      "name": "t58w",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t5x",
+      "name": "t5x",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t73u",
+      "name": "t73u",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t73w",
+      "name": "t73w",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t74u",
+      "name": "t74u",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t74w",
+      "name": "t74w",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t77u",
+      "name": "t77u",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t85w",
+      "name": "t85w",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t87w",
+      "name": "t87w",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t88v",
+      "name": "t88v",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-t88w",
+      "name": "t88w",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-vp530",
+      "name": "vp530",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-vp59",
+      "name": "vp59",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-w52p",
+      "name": "w52p",
+      "family": "dect",
+      "accounts": 5,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-w56p",
+      "name": "w56p",
+      "family": "dect",
+      "accounts": 5,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-w60b",
+      "name": "w60b",
+      "family": "dect",
+      "accounts": 8,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-w70b",
+      "name": "w70b",
+      "family": "dect",
+      "accounts": 8,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-w7xp",
+      "name": "w7xp",
+      "family": "desk",
+      "accounts": 8,
+      "line_keys": 0
+    },
+    {
+      "id": "yealink-w80",
+      "name": "w80",
+      "family": "dect",
+      "accounts": 1,
+      "line_keys": 0
+    }
+  ]
+}

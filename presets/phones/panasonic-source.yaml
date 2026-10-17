@@ -1,0 +1,69 @@
+{
+  "vendor": "panasonic",
+  "status": "untested",
+  "models": [
+    {
+      "id": "panasonic-tgp500",
+      "name": "tgp500",
+      "family": "dect",
+      "accounts": 2,
+      "line_keys": 0
+    },
+    {
+      "id": "panasonic-tgp550",
+      "name": "tgp550",
+      "family": "dect",
+      "accounts": 2,
+      "line_keys": 0
+    },
+    {
+      "id": "panasonic-ut113",
+      "name": "ut113",
+      "family": "desk",
+      "accounts": 2,
+      "line_keys": 0
+    },
+    {
+      "id": "panasonic-ut123",
+      "name": "ut123",
+      "family": "desk",
+      "accounts": 2,
+      "line_keys": 0
+    },
+    {
+      "id": "panasonic-ut133",
+      "name": "ut133",
+      "family": "desk",
+      "accounts": 2,
+      "line_keys": 0
+    },
+    {
+      "id": "panasonic-ut136",
+      "name": "ut136",
+      "family": "desk",
+      "accounts": 2,
+      "line_keys": 0
+    },
+    {
+      "id": "panasonic-ut670",
+      "name": "ut670",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "panasonic-utg200b",
+      "name": "utg200b",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "panasonic-utg300b",
+      "name": "utg300b",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    }
+  ]
+}

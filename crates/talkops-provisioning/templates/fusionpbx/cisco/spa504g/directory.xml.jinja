@@ -1,0 +1,17 @@
+{# MPL-1.1 derivative: FusionPBX 20143aec4366afc2755f336d3058243479d49d44, cisco/spa504g/directory.xml, blob a9814c0163220060ab62637f83b3f53c4990ebeb. #}{% set ns = namespace(keys=keys | default({}), contact_groups=contact_groups | default({})) %}<?xml version="1.0" encoding="utf-8"?>
+<CiscoIPPhoneDirectory>
+{% for row in (contacts | default('')) | values %}
+	<DirectoryEntry>
+	{% if (lookup(row | default(none), ["contact_name_given"]) | default('')) != "" %}
+		<Name>{{ ((lookup(row | default(none), ["contact_name_given"]) | default(''))) | output }} {{ ((lookup(row | default(none), ["contact_name_family"]) | default(''))) | output }}</Name>
+	{% else %}
+		<Name>{{ ((lookup(row | default(none), ["contact_organization"]) | default(''))) | output }}</Name>
+	{% endif %}
+	{% if (lookup(row | default(none), ["phone_number"]) | default('')) != "" %}
+		<Telephone>{{ ((lookup(row | default(none), ["phone_number"]) | default(''))) | output }}</Telephone>
+	{% else %}
+		<Telephone>{{ ((lookup(row | default(none), ["phone_extension"]) | default(''))) | output }}</Telephone>
+	{% endif %}
+	</DirectoryEntry>
+{% endfor %}
+</CiscoIPPhoneDirectory>

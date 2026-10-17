@@ -1,0 +1,16 @@
+{# MPL-1.1 derivative: FusionPBX 20143aec4366afc2755f336d3058243479d49d44, panasonic/ut133/KX-UT133.cfg, blob 6a318f1d0c2e4ef2dbcbe9c9655374a877cf504b. #}{% set ns = namespace(keys=keys | default({}), contact_groups=contact_groups | default({})) %}# Panasonic SIP Phone Standard Format File # DO NOT CHANGE THIS LINE!
+
+CFG_STANDARD_FILE_PATH="{{ ((primary_url | default(''))) | output }}"
+OPTION66_REBOOT="Y"
+SYSLOG_ADDR="{{ ((server_address_1 | default(''))) | output }}"
+SYSLOG_PORT="514"
+SYSLOG_EVENT_SIP="5"
+SYSLOG_EVENT_CFG="6"
+SYSLOG_EVENT_VOIP="6"
+SYSLOG_EVENT_TEL="6"
+SYSLOG_RTPSMLY_INTVL_1="20"
+SYSLOG_RTPSMLY_INTVL_2="20"
+# UT133/UT136 Only
+SYSLOG_RTPSMLY_INTVL_3="20"
+# UT133/UT136 Only
+SYSLOG_RTPSMLY_INTVL_4="20"

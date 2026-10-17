@@ -4,7 +4,7 @@
 use std::collections::{BTreeMap, HashSet};
 
 use axum::Json;
-use axum::extract::{DefaultBodyLimit, Multipart, Path, State};
+use axum::extract::{DefaultBodyLimit, Multipart, Path, Query, State};
 use axum::http::{HeaderMap, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use serde::{Deserialize, Serialize};
@@ -61,7 +61,10 @@ pub fn router() -> OpenApiRouter<AppState> {
         .routes(routes!(update_phone_account))
         .routes(routes!(phone_config))
         .routes(routes!(preview_config))
+        .routes(routes!(super::phone_clone::preview))
+        .routes(routes!(super::phone_clone::create))
         .routes(routes!(phone_models))
+        .routes(routes!(phone_parameters))
         .routes(routes!(get_phone_settings, update_phone_settings))
         .routes(routes!(update_firmware, delete_firmware))
         .routes(routes!(list_contacts, create_contact))
@@ -80,6 +83,8 @@ pub fn router() -> OpenApiRouter<AppState> {
 /// A phone model from the catalog (`presets/phones`).
 #[derive(Serialize, ToSchema)]
 pub struct PhoneModelInfo {
+    #[schema(value_type=Object)]
+    pub provisioning_capabilities: Value,
     pub id: String,
     pub name: String,
     pub vendor: String,
@@ -132,6 +137,18 @@ impl From<&PhoneLayout> for PhoneLayoutInfo {
 impl From<&PhoneModel> for PhoneModelInfo {
     fn from(m: &PhoneModel) -> Self {
         Self {
+            provisioning_capabilities: match talkops_provisioning::vendors::profile(&m.id) {
+                Some(p) => {
+                    json!({"native":true,"adaptation":p.adaptation,"device_validation":p.device_validation,
+                    "account_capacity_source":p.account_capacity_source,"settings":p.settings,"primary":p.primary,
+                    "files":p.artifacts.iter().map(|a|&a.name).collect::<Vec<_>>(),"resync":false,"reboot":false,
+                    "key_groups":p.key_groups,"key_functions":talkops_provisioning::vendors::functions(&p.vendor),
+                    "identity_kind":if p.family=="app"{"token"}else{"mac"}})
+                }
+                None => {
+                    json!({"native":false,"adaptation":"adapted","device_validation":"not_tested","resync":m.vendor=="yealink","reboot":m.vendor=="yealink","identity_kind":"mac"})
+                }
+            },
             id: m.id.clone(),
             name: m.name.clone(),
             vendor: m.vendor.clone(),
@@ -171,16 +188,31 @@ pub struct PhoneDetail {
     #[serde(flatten)]
     pub phone: Phone,
     pub accounts: Vec<PhoneAccountInfo>,
+    pub provisioning_files: Vec<ProvisioningFileInfo>,
+    pub provisioning_base: Option<String>,
+}
+
+#[derive(Serialize, ToSchema)]
+pub struct ProvisioningFileInfo {
+    pub artifact: String,
+    pub format: String,
+    pub name: String,
+    pub url: String,
+    pub primary: bool,
 }
 
 /// Checks the model, the key layout and the comfort settings against the
 /// catalog.
-fn validate_phone(state: &AppState, input: &PhoneInput, existing: Option<&Phone>) -> ApiResult<()> {
+pub(super) fn validate_phone(
+    state: &AppState,
+    input: &PhoneInput,
+    existing: Option<&Phone>,
+) -> ApiResult<()> {
     let model = state
         .phone_catalog
         .get(&input.model)
         .ok_or_else(|| ApiError::BadRequest(format!("unknown phone model `{}`", input.model)))?;
-    if model.vendor != "yealink" {
+    if model.vendor != "yealink" && talkops_provisioning::vendors::profile(&model.id).is_none() {
         return Err(ApiError::BadRequest(
             "unsupported provisioning vendor".into(),
         ));
@@ -194,7 +226,12 @@ fn validate_phone(state: &AppState, input: &PhoneInput, existing: Option<&Phone>
         .unwrap_or_else(|| json!({}));
     let overrides: keys::Overrides = serde_json::from_value(effective)
         .map_err(|e| ApiError::BadRequest(format!("invalid provisioning overrides: {e}")))?;
+    let effective_model = keys::effective_model(model, &overrides).map_err(ApiError::BadRequest)?;
+    let model = &effective_model;
     keys::validate(model, &overrides).map_err(ApiError::BadRequest)?;
+    if !overrides.time_zone.is_empty() && overrides.time_zone.parse::<chrono_tz::Tz>().is_err() {
+        return Err(ApiError::BadRequest("unknown device time zone".into()));
+    }
     let keys: Vec<LineKey> = serde_json::from_value(input.line_keys.clone())
         .map_err(|e| ApiError::BadRequest(format!("invalid line_keys: {e}")))?;
     let mut seen = HashSet::new();
@@ -269,8 +306,117 @@ fn validate_phone(state: &AppState, input: &PhoneInput, existing: Option<&Phone>
     Ok(())
 }
 
+fn protect_vendor_settings(
+    state: &AppState,
+    input: &mut PhoneInput,
+    existing: Option<&Phone>,
+) -> ApiResult<()> {
+    let Some(overrides) = input.provisioning.as_mut() else {
+        return Ok(());
+    };
+    if !["parameters", "vendor_settings"].iter().any(|group| {
+        overrides
+            .get(group)
+            .and_then(Value::as_object)
+            .is_some_and(|map| !map.is_empty())
+    }) {
+        return Ok(());
+    }
+    let model = state
+        .phone_catalog
+        .get(&input.model)
+        .ok_or(ApiError::NotFound)?;
+    let config: keys::Overrides = serde_json::from_value(overrides.clone())
+        .map_err(|_| ApiError::BadRequest("invalid manufacturer settings".into()))?;
+    let effective = keys::effective_model(model, &config).map_err(ApiError::BadRequest)?;
+    let model = &effective;
+    let fields = talkops_provisioning::parameters::schema(model).map_err(ApiError::BadRequest)?;
+    for group in ["parameters", "vendor_settings"] {
+        let Some(values) = overrides.get_mut(group).and_then(Value::as_object_mut) else {
+            continue;
+        };
+        for (key, value) in values {
+            let declared = if group == "parameters" {
+                fields.iter().any(|f| f.key == *key && f.kind == "secret")
+            } else {
+                talkops_provisioning::vendors::profile(&model.id).is_some_and(|p| {
+                    p.settings
+                        .iter()
+                        .any(|s| s.key == *key && s.kind == "secret")
+                })
+            };
+            let old = existing
+                .and_then(|p| p.provisioning.get(group))
+                .and_then(|v| v.get(key));
+            let old_encrypted = old
+                .and_then(Value::as_str)
+                .is_some_and(|v| v.starts_with("v1:"));
+            let plaintext = value
+                .as_str()
+                .ok_or_else(|| ApiError::BadRequest("invalid manufacturer setting".into()))?;
+            if plaintext == "REDACTED" && (declared || old_encrypted) {
+                *value = old.filter(|_| old_encrypted).cloned().ok_or_else(|| {
+                    ApiError::BadRequest("secret placeholder has no saved value".into())
+                })?;
+            } else if declared || talkops_provisioning::parameters::url_contains_secret(plaintext) {
+                if plaintext.len() > 4096 {
+                    return Err(ApiError::BadRequest(
+                        "secret setting exceeds 4096 bytes".into(),
+                    ));
+                }
+                *value = json!(state.secrets.encrypt(plaintext).map_err(
+                    |_| ApiError::Internal("cannot encrypt manufacturer setting".into())
+                )?);
+            } else if plaintext.starts_with("v1:") {
+                return Err(ApiError::BadRequest("reserved setting value prefix".into()));
+            }
+        }
+    }
+    Ok(())
+}
+
+#[derive(Default, Deserialize)]
+pub struct ParametersQuery {
+    pub account_slots: Option<u16>,
+}
+#[utoipa::path(get,path="/api/v1/phone-models/{id}/parameters",tag="phones",params(("id"=String,Path),("account_slots"=Option<u16>,Query)),responses((status=200,body=Object)))]
+pub async fn phone_parameters(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<String>,
+    Query(query): Query<ParametersQuery>,
+) -> ApiResult<Json<Value>> {
+    auth.require_perm(Permission::PhonesView)?;
+    let model = state
+        .phone_catalog
+        .get(&id)
+        .ok_or(ApiError::NotFound)?
+        .clone();
+    let model = keys::effective_model(
+        &model,
+        &keys::Overrides {
+            account_slots: query.account_slots,
+            ..Default::default()
+        },
+    )
+    .map_err(ApiError::BadRequest)?;
+    // Source parsing and rendering do not block an async executor thread.
+    let fields =
+        tokio::task::spawn_blocking(move || talkops_provisioning::parameters::schema(&model))
+            .await
+            .map_err(|_| ApiError::Internal("parameter schema task failed".into()))?
+            .map_err(ApiError::BadRequest)?;
+    Ok(Json(
+        json!({"fields":fields,"coverage":"source_templates","hardware_validation":"not_tested"}),
+    ))
+}
+
 /// Checks the ringtone and wallpaper against what the model supports.
-async fn validate_media(state: &AppState, auth: &AuthUser, input: &PhoneInput) -> ApiResult<()> {
+pub(super) async fn validate_media(
+    state: &AppState,
+    auth: &AuthUser,
+    input: &PhoneInput,
+) -> ApiResult<()> {
     let Some(model) = state.phone_catalog.get(&input.model) else {
         return Ok(());
     };
@@ -344,10 +490,19 @@ pub struct PhoneListItem {
 pub async fn create_phone(
     State(state): State<AppState>,
     auth: AuthUser,
-    Json(input): Json<PhoneInput>,
+    Json(mut input): Json<PhoneInput>,
 ) -> ApiResult<Json<Phone>> {
     auth.require_perm(Permission::PhonesManage)?;
+    if input.mac.is_empty()
+        && state
+            .phone_catalog
+            .get(&input.model)
+            .is_some_and(|m| m.family == talkops_provisioning::PhoneFamily::App)
+    {
+        input.mac = Uuid::new_v4().simple().to_string()[..12].into();
+    }
     validate_phone(&state, &input, None)?;
+    protect_vendor_settings(&state, &mut input, None)?;
     validate_media(&state, &auth, &input).await?;
     if let Some(config) = &input.provisioning {
         let config: keys::Overrides = serde_json::from_value(config.clone())
@@ -379,6 +534,7 @@ pub async fn get_phone(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(id): Path<Uuid>,
+    headers: HeaderMap,
 ) -> ApiResult<Json<PhoneDetail>> {
     auth.require_perm(Permission::PhonesView)?;
     let phone = phones::get(&state.db, auth.tenant, id).await?;
@@ -395,7 +551,47 @@ pub async fn get_phone(
             phone_display_name: a.phone_display_name,
         })
         .collect();
-    Ok(Json(PhoneDetail { phone, accounts }))
+    let mut provisioning_files = Vec::new();
+    let mut provisioning_base = None;
+    if let Some(profile) = talkops_provisioning::vendors::profile(&phone.model) {
+        let base = phone
+            .provisioning
+            .get("endpoint")
+            .and_then(Value::as_str)
+            .filter(|s| !s.is_empty())
+            .map(str::to_owned)
+            .unwrap_or(super::provisioning::configured_base(&state, auth.tenant, &headers).await?);
+        provisioning_base = Some(format!(
+            "{}/devices/{}/",
+            base.trim_end_matches('/'),
+            phone.mac
+        ));
+        provisioning_files = profile
+            .artifacts
+            .iter()
+            .map(|a| {
+                let name = talkops_provisioning::vendors::delivery_filename(profile, a, &phone.mac);
+                ProvisioningFileInfo {
+                    artifact: a.name.clone(),
+                    format: a.format.clone(),
+                    url: format!(
+                        "{}/devices/{}/{}",
+                        base.trim_end_matches('/'),
+                        phone.mac,
+                        name
+                    ),
+                    primary: Some(&a.name) == profile.primary.as_ref(),
+                    name,
+                }
+            })
+            .collect();
+    }
+    Ok(Json(PhoneDetail {
+        phone,
+        accounts,
+        provisioning_files,
+        provisioning_base,
+    }))
 }
 
 /// Updates a phone (admin). Call resync afterwards to apply it.
@@ -404,11 +600,33 @@ pub async fn update_phone(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(id): Path<Uuid>,
-    Json(input): Json<PhoneInput>,
+    Json(mut input): Json<PhoneInput>,
 ) -> ApiResult<Json<Phone>> {
     auth.require_perm(Permission::PhonesManage)?;
     let existing = phones::get(&state.db, auth.tenant, id).await?;
     validate_phone(&state, &input, Some(&existing))?;
+    let overrides: keys::Overrides = serde_json::from_value(
+        input
+            .provisioning
+            .clone()
+            .unwrap_or_else(|| existing.provisioning.clone()),
+    )
+    .map_err(|_| ApiError::BadRequest("invalid provisioning settings".into()))?;
+    let base = state
+        .phone_catalog
+        .get(&input.model)
+        .ok_or(ApiError::NotFound)?;
+    let effective = keys::effective_model(base, &overrides).map_err(ApiError::BadRequest)?;
+    if phones::accounts(&state.db, id)
+        .await?
+        .iter()
+        .any(|a| a.account_index > effective.accounts as i16)
+    {
+        return Err(ApiError::BadRequest(
+            "remove higher account assignments before reducing the account count".into(),
+        ));
+    }
+    protect_vendor_settings(&state, &mut input, Some(&existing))?;
     validate_media(&state, &auth, &input).await?;
     let config: keys::Overrides = serde_json::from_value(
         input
@@ -528,6 +746,9 @@ pub async fn resync_phone(
     let reboot = body.map(|Json(b)| b.reboot).unwrap_or_default();
     auth.require_perm(Permission::PhonesManage)?;
     let phone = phones::get(&state.db, auth.tenant, id).await?;
+    if talkops_provisioning::vendors::profile(&phone.model).is_some() {
+        return Err(ApiError::BadRequest("this profile has no remote resync adapter; use its configuration download or device menu".into()));
+    }
     let mut notified = 0;
     // One NOTIFY per phone is enough; try the accounts until one is reachable.
     for user in phones::device_usernames(&state.db, phone.id).await? {
@@ -550,26 +771,60 @@ pub async fn resync_phone(
 
 /// Shows the generated configuration file of a phone (admin). It contains
 /// SIP passwords, so every view is audited.
-#[utoipa::path(get, path = "/api/v1/phones/{id}/config", tag = "phones", params(("id" = Uuid, Path)), responses((status = 200, content_type = "text/plain", body = String)))]
+#[derive(Default, Deserialize)]
+pub struct ConfigQuery {
+    pub artifact: Option<String>,
+    #[serde(default)]
+    pub qr: bool,
+}
+#[utoipa::path(get, path = "/api/v1/phones/{id}/config", tag = "phones", params(("id" = Uuid, Path),("artifact"=Option<String>,Query),("qr"=Option<bool>,Query)), responses((status = 200, content_type = "text/plain", body = String)))]
 pub async fn phone_config(
     State(state): State<AppState>,
     auth: AuthUser,
     headers: HeaderMap,
     Path(id): Path<Uuid>,
+    Query(query): Query<ConfigQuery>,
 ) -> ApiResult<Response> {
     auth.require_perm(Permission::PhonesManage)?;
     let phone = phones::get(&state.db, auth.tenant, id).await?;
-    let body = render_phone_config(&state, auth.tenant, &phone, &headers).await?;
+    let body = if let Some(artifact) = &query.artifact {
+        super::provisioning::render_phone_artifact(&state, auth.tenant, &phone, &headers, artifact)
+            .await?
+    } else {
+        render_phone_config(&state, auth.tenant, &phone, &headers).await?
+    };
     audit::record(
         &state.db,
         &auth.actor(),
         "view_config",
         "phone",
         Some(id.to_string()),
-        json!({"mac": phone.mac}),
+        json!({"mac": phone.mac,"artifact":query.artifact,"qr":query.qr}),
     )
     .await?;
-    Ok(([(header::CONTENT_TYPE, "text/plain; charset=utf-8")], body).into_response())
+    if query.qr {
+        let body = qrcode::QrCode::new(body.trim().as_bytes())
+            .map_err(|_| ApiError::BadRequest("configuration is too large for a QR code".into()))?
+            .render::<qrcode::render::svg::Color>()
+            .min_dimensions(256, 256)
+            .build();
+        return Ok((
+            [
+                (header::CONTENT_TYPE, "image/svg+xml"),
+                (header::CACHE_CONTROL, "no-store"),
+            ],
+            body,
+        )
+            .into_response());
+    }
+    Ok((
+        [
+            (header::CONTENT_TYPE, "text/plain; charset=utf-8"),
+            (header::CACHE_CONTROL, "no-store"),
+        ],
+        body,
+    )
+        .into_response())
 }
 
 /// Checks comfort settings (an object of strings) against the catalog.

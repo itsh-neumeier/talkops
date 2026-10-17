@@ -49,10 +49,16 @@ async fn check_phone_slot(state: &AppState, auth: &AuthUser, input: &DeviceInput
         return Ok(());
     };
     let phone = phones::get(&state.db, auth.tenant, phone_id).await?;
-    let max = state
+    let model = state
         .phone_catalog
         .get(&phone.model)
-        .map_or(1, |m| m.accounts);
+        .ok_or(ApiError::NotFound)?;
+    let overrides: talkops_provisioning::keys::Overrides =
+        serde_json::from_value(phone.provisioning)
+            .map_err(|_| ApiError::BadRequest("invalid stored provisioning settings".into()))?;
+    let max = talkops_provisioning::keys::effective_model(model, &overrides)
+        .map_err(ApiError::BadRequest)?
+        .accounts;
     if slot < 1 || slot as u16 > max {
         return Err(ApiError::BadRequest(format!(
             "account slot must be between 1 and {max}"

@@ -1,0 +1,13 @@
+{
+  "vendor": "vtech",
+  "status": "untested",
+  "models": [
+    {
+      "id": "vtech-vcs754",
+      "name": "vcs754",
+      "family": "conference",
+      "accounts": 3,
+      "line_keys": 0
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{# MPL-1.1 derivative: FusionPBX 20143aec4366afc2755f336d3058243479d49d44, cisco/7940/directory.xml, blob 7b660119aafee611fef88368bd4b40dddf0b3282. #}{% set ns = namespace(keys=keys | default({}), contact_groups=contact_groups | default({})) %}<CiscoIPPhoneMenu>
+	<Title>Contacts</Title>
+	<Prompt>Please choose...</Prompt>
+	<MenuItem>
+		<Name>Our Phones</Name>
+		<URL>{{ ((artifact_base | default(''))) | output }}/directory_extensions.xml</URL>
+	</MenuItem>
+	<MenuItem>
+		<Name>Personal</Name>
+		<URL>{{ ((artifact_base | default(''))) | output }}/directory_personal.xml</URL>
+	</MenuItem>
+	<MenuItem>
+		<Name>Enterprise</Name>
+		<URL>{{ ((artifact_base | default(''))) | output }}/directory_enterprise.xml</URL>
+	</MenuItem>
+	<MenuItem>
+		<Name>Speed Dial</Name>
+		<URL>{{ ((artifact_base | default(''))) | output }}/directory_speed_dial.xml</URL>
+	</MenuItem>
+</CiscoIPPhoneMenu>

@@ -1,0 +1,27 @@
+{
+  "vendor": "sangoma",
+  "status": "untested",
+  "models": [
+    {
+      "id": "sangoma-s300",
+      "name": "s300",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "sangoma-s500",
+      "name": "s500",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "sangoma-s700",
+      "name": "s700",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    }
+  ]
+}

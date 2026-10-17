@@ -1,0 +1,20 @@
+{# MPL-1.1 derivative: FusionPBX 20143aec4366afc2755f336d3058243479d49d44, digium/d40/{$mac}-smartblf.cfg, blob 8fa085bb64996a8575d1d70e3770c6059ce799f0. #}{% set ns = namespace(keys=keys | default({}), contact_groups=contact_groups | default({})) %}<config>
+  <smart_blf>
+    <blf_items>
+      {% for row in (lookup(keys | default(none), ["line"]) | default('')) | values %}
+      <blf_item location="main" index="{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}" paging="1" contact_id="sd-{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}">
+        <behaviors>
+          <behavior phone_state="idle" press_action="primary" press_function="dial"></behavior>
+          <behavior phone_state="connected" press_action="primary" press_function="transfer"></behavior>
+        </behaviors>
+        <indicators>
+          <indicator target_status="all" led_color="green" led_state="on"></indicator>
+          <indicator target_status="ringing" led_color="red" led_state="fast"></indicator>
+          <indicator target_status="on_the_phone" led_color="red" led_state="on"></indicator>
+          <indicator target_status="hold" led_color="red" led_state="slow"></indicator>
+        </indicators>
+      </blf_item>
+      {% endfor %}
+    </blf_items>
+  </smart_blf>
+</config>

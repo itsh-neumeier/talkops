@@ -1,0 +1,112 @@
+{# MPL-1.1 derivative: FusionPBX 20143aec4366afc2755f336d3058243479d49d44, polycom/3.x/{$mac}.cfg, blob 69452d656506ceeb1f658a96fb2e181efb577cb9. #}{% set ns = namespace(keys=keys | default({}), contact_groups=contact_groups | default({})) %}<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<PHONE>
+	<REGISTRATION
+		{% for row in (lines | default('')) | values %}
+		reg.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.displayName="{{ ((lookup(row | default(none), ["display_name"]) | default(''))) | output }}"
+		reg.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.address="{{ ((lookup(row | default(none), ["user_id"]) | default(''))) | output }}@{{ ((lookup(row | default(none), ["server_address"]) | default(''))) | output }}"
+		reg.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.label="{{ ((lookup(row | default(none), ["label"]) | default(''))) | output }}"
+
+		reg.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.serverFeatureControl.cf="{{ ((polycom_feature_key_sync | default(''))) | output }}"
+		reg.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.serverFeatureControl.dnd="{{ ((polycom_feature_key_sync | default(''))) | output }}"
+
+		reg.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.type="private"
+		reg.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.auth.userId="{{ ((lookup(row | default(none), ["user_id"]) | default(''))) | output }}"
+		reg.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.auth.password="{{ ((lookup(row | default(none), ["password"]) | default(''))) | output }}"
+		{% if ((((lookup(variables | default(none), ["line_key_value_" ~ (lookup(row | default(none), ["line_number"]) | default(''))]) | default(''))) is defined and ((lookup(variables | default(none), ["line_key_value_" ~ (lookup(row | default(none), ["line_number"]) | default(''))]) | default(''))) is not none)) %}reg.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.lineKeys="{{ ((lookup(variables | default(none), ["line_key_value_" ~ (lookup(row | default(none), ["line_number"]) | default(''))]) | default(''))) | output }}"{% else %}reg.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.lineKeys="1"{% endif %}
+
+		{% if ((lookup(row | default(none), ["outbound_proxy"]) is defined and lookup(row | default(none), ["outbound_proxy"]) is not none)) %}reg.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.outboundProxy.address = "{{ ((lookup(row | default(none), ["outbound_proxy"]) | default(''))) | output }}"{% endif %}
+		{% if ((lookup(row | default(none), ["sip_port"]) is defined and lookup(row | default(none), ["sip_port"]) is not none)) %}reg.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.outboundProxy.port="{{ ((lookup(row | default(none), ["sip_port"]) | default(''))) | output }}"{% else %}reg.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.outboundProxy.port="5060"{% endif %}
+
+		{% if (lookup(row | default(none), ["sip_transport"]) | default('')) == '' %}reg.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.outboundProxy.transport="TCPOnly"{% endif %}
+		{% if (lookup(row | default(none), ["sip_transport"]) | default('')) == 'tcp' %}reg.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.outboundProxy.transport="TCPOnly"{% endif %}
+		{% if (lookup(row | default(none), ["sip_transport"]) | default('')) == 'udp' %}reg.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.outboundProxy.transport="UDPOnly"{% endif %}
+		{% if (lookup(row | default(none), ["sip_transport"]) | default('')) == 'tls' %}reg.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.outboundProxy.transport="TLS" {% endif %}
+		{% if (lookup(row | default(none), ["sip_transport"]) | default('')) == 'dns srv' %}reg.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.outboundProxy.transport="DNSnaptr"{% endif %}
+
+		reg.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.server.1.address="{{ ((lookup(row | default(none), ["server_address"]) | default(''))) | output }}"
+		{% if ((lookup(row | default(none), ["sip_port"]) is defined and lookup(row | default(none), ["sip_port"]) is not none)) %}reg.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.server.1.port="{{ ((lookup(row | default(none), ["sip_port"]) | default(''))) | output }}"{% else %}reg.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.server.1.port="5060"{% endif %}
+
+		{% if (lookup(row | default(none), ["sip_transport"]) | default('')) == '' %}reg.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.server.1.transport="TCPOnly"{% endif %}
+		{% if (lookup(row | default(none), ["sip_transport"]) | default('')) == 'tcp' %}reg.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.server.1.transport="TCPOnly"{% endif %}
+		{% if (lookup(row | default(none), ["sip_transport"]) | default('')) == 'udp' %}reg.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.server.1.transport="UDPOnly"{% endif %}
+		{% if (lookup(row | default(none), ["sip_transport"]) | default('')) == 'tls' %}reg.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.server.1.transport="TLS" {% endif %}
+		{% if (lookup(row | default(none), ["sip_transport"]) | default('')) == 'dns srv' %}reg.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.server.1.transport="DNSnaptr"{% endif %}
+
+		{% if ((lookup(row | default(none), ["register_expires"]) is defined and lookup(row | default(none), ["register_expires"]) is not none)) %}reg.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.server.1.expires="{{ ((lookup(row | default(none), ["register_expires"]) | default(''))) | output }}"{% else %}reg.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.server.1.expires="{{ ((lookup(row | default(none), ["register_expires"]) | default(''))) | output }}"{% endif %}
+
+		{% endfor %}></REGISTRATION>
+	<SNTP
+		tcpIpApp.sntp.gmtOffset="{{ ((polycom_gmt_offset | default(''))) | output }}"
+		tcpIpApp.sntp.resyncPeriod="86400"
+		tcpIpApp.sntp.address="{{ ((ntp_server_primary | default(''))) | output }}"
+		tcpIpApp.sntp.gmtOffset.overrideDHCP="0"
+		tcpIpApp.sntp.daylightSavings.enable="1"
+		tcpIpApp.sntp.daylightSavings.fixedDayEnable="0"
+		tcpIpApp.sntp.daylightSavings.start.month="{{ ((daylight_savings_start_month | default(''))) | output }}"
+		tcpIpApp.sntp.daylightSavings.start.date="{{ ((daylight_savings_start_day | default(''))) | output }}"
+		tcpIpApp.sntp.daylightSavings.start.time="{{ ((daylight_savings_start_time | default(''))) | output }}"
+		tcpIpApp.sntp.daylightSavings.start.dayOfWeek="1"
+		tcpIpApp.sntp.daylightSavings.start.dayOfWeek.lastInMonth="0"
+		tcpIpApp.sntp.daylightSavings.stop.month="{{ ((daylight_savings_stop_month | default(''))) | output }}"
+		tcpIpApp.sntp.daylightSavings.stop.date="{{ ((daylight_savings_stop_day | default(''))) | output }}"
+		tcpIpApp.sntp.daylightSavings.stop.time="{{ ((daylight_savings_stop_time | default(''))) | output }}"
+		tcpIpApp.sntp.daylightSavings.stop.dayOfWeek="1"
+		tcpIpApp.sntp.daylightSavings.stop.dayOfWeek.lastInMonth="0"></SNTP>
+	<DIALPLAN
+		{% if ((polycom_digitmap is defined and polycom_digitmap is not none)) %}dialplan.digitmap="{{ ((polycom_digitmap | default(''))) | output }}"{% else %}dialplan.digitmap=""{% endif %}></DIALPLAN>
+	<DEVICE_KEYS
+		attendant.uri=""
+		{% if ((polycom_remotecallerid_automata is defined and polycom_remotecallerid_automata is not none)) %}
+			attendant.behaviors.display.remoteCallerID.automata="{{ ((polycom_remotecallerid_automata | default(''))) | output }}"
+		{% else %}
+			attendant.behaviors.display.remoteCallerID.automata="0"
+		{% endif %}
+		{% if ((polycom_remotecallerid_normal is defined and polycom_remotecallerid_normal is not none)) %}
+			attendant.behaviors.display.remoteCallerID.normal="{{ ((polycom_remotecallerid_normal | default(''))) | output }}"
+		{% else %}
+			attendant.behaviors.display.remoteCallerID.normal="0"
+		{% endif %}
+		{% if ((polycom_spontaneouscallappearances_automata is defined and polycom_spontaneouscallappearances_automata is not none)) %}
+			attendant.behaviors.display.spontaneousCallAppearances.automata="{{ ((polycom_spontaneouscallappearances_automata | default(''))) | output }}"
+		{% else %}
+			attendant.behaviors.display.spontaneousCallAppearances.automata="0"
+		{% endif %}
+		{% if ((polycom_spontaneouscallappearances_normal is defined and polycom_spontaneouscallappearances_normal is not none)) %}
+			attendant.behaviors.display.spontaneousCallAppearances.normal="{{ ((polycom_spontaneouscallappearances_normal | default(''))) | output }}"
+		{% else %}
+			attendant.behaviors.display.spontaneousCallAppearances.normal="0"
+		{% endif %}
+		{% for row in (lookup(keys | default(none), ["line"]) | default('')) | values %}
+			{% if (lookup(row | default(none), ["device_key_type"]) | default('')) == "automata" or (lookup(row | default(none), ["device_key_type"]) | default('')) == "normal" %}
+				attendant.resourceList.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.address="{{ ((lookup(row | default(none), ["device_key_value"]) | default(''))) | output }}"
+				attendant.resourceList.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.label="{{ ((lookup(row | default(none), ["device_key_label"]) | default(''))) | output }}"
+				attendant.resourceList.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.type="{{ ((lookup(row | default(none), ["device_key_type"]) | default(''))) | output }}"
+			{% endif %}
+		{% endfor %}></DEVICE_KEYS>
+	<GENERAL
+		httpd.cfg.enabled="1"
+		httpd.cfg.port="80"
+		tcpIpApp.keepalive.tcp.idleTransmitInterval="30" 
+		tcpIpApp.keepalive.tcp.noResponseTrasmitInterval="300" 
+		voIpProt.SIP.specialEvent.checkSync.alwaysReboot="1"
+		voIpProt.SIP.requestValidation.1.request="INVITE" 
+		voIpProt.SIP.requestValidation.1.method="source"
+		voice.volume.persist.handset="1"
+		voice.volume.persist.headset="1"
+		voice.volume.persist.handsfree="1"
+		{% if (headset_mode | default('')) != '' %}
+		up.handsfreeMode="1"
+		up.headsetMode="{{ ((headset_mode | default(''))) | output }}"
+		{% endif %}
+		{% if (analog_headset_option | default('')) != '' %}up.analogHeadsetOption="{{ ((analog_headset_option | default(''))) | output }}"{% endif %}
+		{% if ((polycom_onetouchvoicemail is defined and polycom_onetouchvoicemail is not none)) %}
+			up.oneTouchVoiceMail="{{ ((polycom_onetouchvoicemail | default(''))) | output }}"
+		{% else %}
+			up.oneTouchVoiceMail="0"
+		{% endif %}></GENERAL>
+	<SOFT_KEYS
+		softkey.1.label="VMTransfer"
+		softkey.1.action="^*99$P1N4$$Trefer$"
+		softkey.1.enable="1"
+		softkey.1.use.active="1"></SOFT_KEYS>
+</PHONE>

@@ -1,5 +1,8 @@
 # Phone provisioning profiles and templates
 
+See [manufacturer settings and device copies](manufacturer-provisioning.md)
+for the additional vendor profiles and categorized fields.
+
 ## Select an address for the phones
 
 Open **Phones → Provisioning transport**. Set the phone provisioning URL and,

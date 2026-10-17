@@ -1,0 +1,300 @@
+{
+  "vendor": "flyingvoice",
+  "status": "untested",
+  "models": [
+    {
+      "id": "flyingvoice-audiokit",
+      "name": "audiokit",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "flyingvoice-fip10",
+      "name": "fip10",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "flyingvoice-fip11c",
+      "name": "fip11c",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "flyingvoice-fip12wp",
+      "name": "fip12wp",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "flyingvoice-fip13g",
+      "name": "fip13g",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "flyingvoice-fip14g",
+      "name": "fip14g",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "flyingvoice-fip15g",
+      "name": "fip15g",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "flyingvoice-fip16",
+      "name": "fip16",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "flyingvoice-fip16plus",
+      "name": "fip16plus",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "flyingvoice-i86box",
+      "name": "i86box",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "flyingvoice-imetalbox",
+      "name": "imetalbox",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "flyingvoice-p10",
+      "name": "p10",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "flyingvoice-p10g",
+      "name": "p10g",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "flyingvoice-p10lte",
+      "name": "p10lte",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "flyingvoice-p10p",
+      "name": "p10p",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "flyingvoice-p10w",
+      "name": "p10w",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "flyingvoice-p11",
+      "name": "p11",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "flyingvoice-p11g",
+      "name": "p11g",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "flyingvoice-p11lte",
+      "name": "p11lte",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "flyingvoice-p11p",
+      "name": "p11p",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "flyingvoice-p11w",
+      "name": "p11w",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "flyingvoice-p20",
+      "name": "p20",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "flyingvoice-p20g",
+      "name": "p20g",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "flyingvoice-p20p",
+      "name": "p20p",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "flyingvoice-p20w",
+      "name": "p20w",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "flyingvoice-p21",
+      "name": "p21",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "flyingvoice-p21p",
+      "name": "p21p",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "flyingvoice-p21w",
+      "name": "p21w",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "flyingvoice-p22g",
+      "name": "p22g",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "flyingvoice-p22p",
+      "name": "p22p",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "flyingvoice-p23g",
+      "name": "p23g",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "flyingvoice-p23gw",
+      "name": "p23gw",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "flyingvoice-p24gw",
+      "name": "p24gw",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "flyingvoice-p33",
+      "name": "p33",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "flyingvoice-p33g",
+      "name": "p33g",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "flyingvoice-p33p",
+      "name": "p33p",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "flyingvoice-p510",
+      "name": "p510",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "flyingvoice-p53",
+      "name": "p53",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "flyingvoice-p54",
+      "name": "p54",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "flyingvoice-p55",
+      "name": "p55",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "flyingvoice-p57",
+      "name": "p57",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "flyingvoice-p58",
+      "name": "p58",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{# MPL-1.1 derivative: FusionPBX 20143aec4366afc2755f336d3058243479d49d44, zoiper/5.x/directory.xml, blob 4ff541455f4b914a4f72eebb6366a7c46ffb22ae. #}{% set ns = namespace(keys=keys | default({}), contact_groups=contact_groups | default({})) %}<?xml version="1.0" encoding="utf-8"?>
+<Contacts>
+	{% for row in (contacts | default('')) | values %}
+	{% if (lookup(smarty | default(none), ["get","contacts"]) | default('')) == "extensions"  and  (lookup(row | default(none), ["category"]) | default('')) == "extensions" %}
+	<Contact id="{{ ((lookup(row | default(none), ["phone_number"]) | default(''))) | output }}">
+		<Name>
+			<First>{{ ((lookup(row | default(none), ["contact_name_given"]) | default(''))) | output }}</First>
+			<Middle></Middle>
+			<Last>{{ ((lookup(row | default(none), ["contact_name_family"]) | default(''))) | output }}</Last>
+			<Display>{{ ((lookup(row | default(none), ["contact_name_given"]) | default(''))) | output }} {{ ((lookup(row | default(none), ["contact_name_family"]) | default(''))) | output }}</Display>
+		</Name>
+		<Phone>
+			<Type>Work</Type>
+			<!-- Possible value one of the following: Work or Home -->
+			<Type>IPPhone</Type>
+			<!-- Possible value one the following:  Phone, Cell, Pager, IPPhone, -->
+			<!-- Fax, Pager or Custom -->
+			<Phone>{{ ((lookup(row | default(none), ["phone_number"]) | default(''))) | output }}</Phone>
+			<!-- The value is the actual phone number of the contact. -->
+			<!-- For the contact to show in zoiper5 at least one phone field should -->
+			<!-- be present -->
+			<Account>{{ ((lookup(account | default(none), ["1","auth_id"]) | default(''))) | output }}</Account>
+			<!-- The value is the ident value of the account that will be used for dialing,it is found in the config.xml file -->
+			<!-- If not provided Zoiper will use the XML contact service account (by default it’s the default account) -->
+			<Presence>{{ ((lookup(account | default(none), ["1","auth_id"]) | default(''))) | output }}</Presence>
+			<!-- The ident value of the account that will be used for presence, it is found in the config.xml file -->
+			<!-- By default it’s do not use unless it is an IPPhone type -->
+			<AccountMappingType>Service</AccountMappingType>
+			<!-- Possible value one of the following: -->
+			<!-- None = do not use  -->
+			<!-- Default = the default account used by zoiper5 -->
+			<!-- Service = the account used by XML contact service -->
+			<!-- Custom = when this is used, the ident value of the account should be provided in <Account></Account>, it is found in the config.xml -->
+			<PresenceMappingType>Service</PresenceMappingType>
+			<!-- Possible value one of the following: -->
+			<!-- None = do not use -->
+			<!-- Service = the account used by XML contact service. -->
+			<!-- Custom = when this is used, the ident valueof the account should be provided in <presence></Presence>, it is found in the config.xml -->
+		</Phone>
+		<!-- If required more than one phone for a contact a new phone tag should be added that includes at least the two types tags and phone tag -->
+	</Contact>
+	{% endif %}
+	{% endfor %}
+</Contacts>

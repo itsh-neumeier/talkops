@@ -1,0 +1,11 @@
+{# MPL-1.1 derivative: FusionPBX 20143aec4366afc2755f336d3058243479d49d44, snom/C620/directory.xml, blob 20d12c85dcd128aacea7bbd084626b46858f4e05. #}{% set ns = namespace(keys=keys | default({}), contact_groups=contact_groups | default({})) %}<?xml version="1.0" encoding="utf-8"?>
+<tbook e="2" complete="true">
+  {% for row in (contacts | default('')) | values %}
+  <item context="active" type="{% if (lookup(row | default(none), ["category"]) | default('')) == "extensions" %}colleagues{% else %}none{% endif %}" index="{{ ((loop.index0 | default(''))) | output }}">
+    <first_name>{{ ((lookup(row | default(none), ["contact_name_given"]) | default(''))) | output }}</first_name>
+    <last_name>{{ ((lookup(row | default(none), ["contact_name_family"]) | default(''))) | output }}</last_name>
+    <number>{% if (lookup(row | default(none), ["category"]) | default('')) == "extensions" %}{{ ((lookup(row | default(none), ["phone_extension"]) | default(''))) | output }}{% else %}{{ ((lookup(row | default(none), ["phone_number"]) | default(''))) | output }}{% endif %}</number>
+    <number_type>business</number_type>
+  </item>
+  {% endfor %}
+</tbook>

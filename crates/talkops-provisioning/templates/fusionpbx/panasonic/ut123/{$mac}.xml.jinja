@@ -1,0 +1,462 @@
+{# MPL-1.1 derivative: FusionPBX 20143aec4366afc2755f336d3058243479d49d44, panasonic/ut123/{$mac}.xml, blob 40556e3aa0a4a05fa3eb5d78ba545553f97299da. #}{% set ns = namespace(keys=keys | default({}), contact_groups=contact_groups | default({})) %}<?xml version="1.0" encoding="UTF-8"?>
+<PANASipPhoneConfig>
+<Dev>
+<Srv>
+<Prof>
+ <Enable PROFILE_ENABLE1="Enabled"></Enable>
+ <DTMFMethod OUTBANDDTMF_1="Y" OUTBANDDTMF_2="Y"></DTMFMethod>
+ <DigitMap DIAL_PLAN_1="1XXXXXXXXXX|X11|480XXXXXXX|602XXXXXXX|623XXXXXXX" DIAL_PLAN_2="1XXXXXXXXXX|X11|480XXXXXXX|602XXXXXXX|623XXXXXXX"></DigitMap>
+<SIP>
+ <ProxyServer SIP_PRXY_ADDR_1="{{ ((server_address_1 | default(''))) | output }}" SIP_PRXY_ADDR_2="{{ ((server_address_2 | default(''))) | output }}"></ProxyServer>
+ <ProxyServerPort SIP_PRXY_PORT_1="5060" SIP_PRXY_PORT_2="5060"></ProxyServerPort>
+ <ProxyServerTransport SIP_TRANSPORT_1="0" SIP_TRANSPORT_2="0"></ProxyServerTransport>
+ <RegistrarServer SIP_RGSTR_ADDR_1="{{ ((server_address_1 | default(''))) | output }}" SIP_RGSTR_ADDR_2="{{ ((server_address_2 | default(''))) | output }}"></RegistrarServer>
+ <RegistrarServerPort SIP_RGSTR_PORT_1="5060" SIP_RGSTR_PORT_2="5060"></RegistrarServerPort>
+ <UserAgentDomain SIP_SVCDOMAIN_1="{{ ((server_address_1 | default(''))) | output }}" SIP_SVCDOMAIN_2="{{ ((server_address_2 | default(''))) | output }}"></UserAgentDomain>
+ <UserAgentPort1 SIP_SRC_PORT_1="5060"></UserAgentPort1>
+ <UserAgentPort2 SIP_SRC_PORT_2="5070"></UserAgentPort2>
+ <OutboundProxy SIP_OUTPROXY_ADDR_1="" SIP_OUTPROXY_ADDR_2=""></OutboundProxy>
+ <OutboundProxyPort SIP_OUTPROXY_PORT_1="5060" SIP_OUTPROXY_PORT_2="5060"></OutboundProxyPort>
+ <TimerT1 SIP_TIMER_T1_1="500" SIP_TIMER_T1_2="500"></TimerT1>
+ <TimerT2 SIP_TIMER_T2_1="4" SIP_TIMER_T2_2="4"></TimerT2>
+ <TimerT4 SIP_TIMER_T4_1="0" SIP_TIMER_T4_2="0"></TimerT4>
+ <TimerB SIP_TIMER_B_1="32000" SIP_TIMER_B_2="32000"></TimerB>
+ <TimerD SIP_TIMER_D_1="5000" SIP_TIMER_D_2="5000"></TimerD>
+ <TimerF SIP_TIMER_F_1="32000" SIP_TIMER_F_2="32000"></TimerF>
+ <TimerH SIP_TIMER_H_1="32000" SIP_TIMER_H_2="32000"></TimerH>
+ <TimerJ SIP_TIMER_J_1="5000" SIP_TIMER_J_2="5000"></TimerJ>
+ <InviteExpires SIP_INVITE_EXPIRE_1="0" SIP_INVITE_EXPIRE_2="0"></InviteExpires>
+ <RegisterExpires REG_EXPIRE_TIME_1="3600" REG_EXPIRE_TIME_2="3600"></RegisterExpires>
+ <RegisterRetryInterval REG_RTX_INTVL_1="10" REG_RTX_INTVL_2="10"></RegisterRetryInterval>
+ <DSCPMark DSCP_SIP_1="0" DSCP_SIP_2="0"></DSCPMark>
+ <X_P_IPTEL_RegisterIntervalRate REG_INTERVAL_RATE_1="90" REG_INTERVAL_RATE_2="90"></X_P_IPTEL_RegisterIntervalRate>
+ <DetectReceiveToHeader SIP_RCV_DET_HEADER_1="N" SIP_RCV_DET_HEADER_2="N"></DetectReceiveToHeader>
+ <X_P_IPTEL_SIPProxyServer2 SIP_2NDPROXY_ADDR_1="" SIP_2NDPROXY_ADDR_2=""></X_P_IPTEL_SIPProxyServer2>
+ <X_P_IPTEL_SIPProxyServerPort2 SIP_2NDPROXY_PORT_1="5060" SIP_2NDPROXY_PORT_2="5060"></X_P_IPTEL_SIPProxyServerPort2>
+ <X_P_IPTEL_SIPRegistrarServer2 SIP_2NDRGSTR_ADDR_1="" SIP_2NDRGSTR_ADDR_2=""></X_P_IPTEL_SIPRegistrarServer2>
+ <X_P_IPTEL_SIPRegistrarServerPort2 SIP_2NDRGSTR_PORT_1="5060" SIP_2NDRGSTR_PORT_2="5060"></X_P_IPTEL_SIPRegistrarServerPort2>
+ <HoldSoundPath HOLD_SOUND_PATH_1="0" HOLD_SOUND_PATH_2="0"></HoldSoundPath>
+ <SIPRequestURIPort SIP_REQURI_PORT_1="Y" SIP_REQURI_PORT_2="Y"></SIPRequestURIPort>
+<EventSubscribe>
+ <Notifier SIP_PRSNC_ADDR_1="{{ ((server_address_1 | default(''))) | output }}" SIP_PRSNC_ADDR_2="{{ ((server_address_2 | default(''))) | output }}"></Notifier>
+ <NotifierPort SIP_PRSNC_PORT_1="5060" SIP_PRSNC_PORT_2="5060"></NotifierPort>
+ <ExpireTime SIP_SUBS_EXPIRE_1="3600" SIP_SUBS_EXPIRE_2="3600"></ExpireTime>
+ <X_P_IPTEL_SIPNotifier2 SIP_2NDPRSNC_ADDR_1="" SIP_2NDPRSNC_ADDR_2=""></X_P_IPTEL_SIPNotifier2>
+ <X_P_IPTEL_SIPNotifierPort2 SIP_2NDPRSNC_PORT_1="5060" SIP_2NDPRSNC_PORT_2="5060"></X_P_IPTEL_SIPNotifierPort2>
+ </EventSubscribe>
+ </SIP>
+<RTP>
+ <LocalPortMin RTP_PORT_MIN="16000"></LocalPortMin>
+ <LocalPortMax RTP_PORT_MAX="20000"></LocalPortMax>
+ <DSCPMark DSCP_RTP_1="0" DSCP_RTP_2="0"></DSCPMark>
+ <TelephoneEventPayloadType TELEVENT_PAYLOAD="101"></TelephoneEventPayloadType>
+<RTCP>
+ <Enable RTCP_ENABLE_1="N" RTCP_ENABLE_2="N"></Enable>
+ <TxRepeatInterval RTCP_INTVL_1="5" RTCP_INTVL_2="5"></TxRepeatInterval>
+ <X_P_IPTEL_SyslogInterval SYSLOG_RTPSMLY_INTVL_1="20" SYSLOG_RTPSMLY_INTVL_2="20"></X_P_IPTEL_SyslogInterval>
+ </RTCP>
+ </RTP>
+<Codec>
+ <PacketizationPeriod RTP_PTIME="20"></PacketizationPeriod>
+ </Codec>
+<Line ID="1">
+ <Enable LINE_ENABLE_1="Enabled"></Enable>
+ <DirectoryNumber PHONE_NUMBER_1="{{ ((lookup(account | default(none), ["1","user_id"]) | default(''))) | output }}"></DirectoryNumber>
+<SIP>
+ <AuthUserName SIP_AUTHID_1="{{ ((lookup(account | default(none), ["1","auth_id"]) | default(''))) | output }}"></AuthUserName>
+ <AuthPassword SIP_PASS_1="{{ ((lookup(account | default(none), ["1","password"]) | default(''))) | output }}"></AuthPassword>
+ <URI SIP_URI_1="{{ ((lookup(account | default(none), ["1","user_id"]) | default(''))) | output }}"></URI>
+ </SIP>
+<CallingFeatures>
+ <CallerIDName DISPLAY_NAME_1="{{ ((lookup(account | default(none), ["1","display_name"]) | default(''))) | output }}"></CallerIDName>
+ <CallWaitingEnable CW_ENABLE_1="Y"></CallWaitingEnable>
+ </CallingFeatures>
+<CallFeat>
+ <X_P_IPTEL_VoiceMailAccessNumber VM_NUMBER_1="{{ ((voicemail_number | default(''))) | output }}"></X_P_IPTEL_VoiceMailAccessNumber>
+ <X_P_IPTEL_DialPlanNotMatchEnable DIAL_PLAN_NOT_MATCH_ENABLE_1="N"></X_P_IPTEL_DialPlanNotMatchEnable>
+ <X_P_IPTEL_SharedCallEnable SHARED_CALL_ENABLE_1="Y"></X_P_IPTEL_SharedCallEnable>
+ <X_P_IPTEL_FwdDndSynchroEnable FWD_DND_SYNCHRO_ENABLE_1="N"></X_P_IPTEL_FwdDndSynchroEnable>
+ <X_P_IPTEL_ResourceListURI RESOURCELIST_URI_1=""></X_P_IPTEL_ResourceListURI>
+ </CallFeat>
+<Codec>
+<List ID="0">
+ <Enable CODEC_ENABLE0_1="Y"></Enable>
+ <Priority CODEC_PRIORITY0_1="1"></Priority>
+ </List>
+<List ID="1">
+ <Enable CODEC_ENABLE1_1="Y"></Enable>
+ <Priority CODEC_PRIORITY1_1="1"></Priority>
+ </List>
+<List ID="2">
+ <Enable CODEC_ENABLE2_1="Y"></Enable>
+ <Priority CODEC_PRIORITY2_1="1"></Priority>
+ </List>
+<List ID="3">
+ <Enable CODEC_ENABLE3_1="Y"></Enable>
+ <Priority CODEC_PRIORITY3_1="1"></Priority>
+ </List>
+<List ID="4">
+ <Enable CODEC_ENABLE4_1="Y"></Enable>
+ <Priority CODEC_PRIORITY4_1="1"></Priority>
+ </List>
+ </Codec>
+<X_P_IPTEL_SIP>
+ <SessionTimer SIP_SESSION_TIME_1="0"></SessionTimer>
+ <SessionMethod SIP_SESSION_METHOD_1="0"></SessionMethod>
+ <FailoverEnable SIP_FOVR_NORSP_1="Y"></FailoverEnable>
+ <FailoverMax SIP_FOVR_MAX_1="2"></FailoverMax>
+ <RefresherParameter SIP_REFRESHER_1="0"></RefresherParameter>
+ <DNSSrvEnable SIP_DNSSRV_ENA_1="Y"></DNSSrvEnable>
+ <UDPSrvPrefix SIP_UDP_SRV_PREFIX_1="_sip._udp. "></UDPSrvPrefix>
+ <TCPSrvPrefix SIP_TCP_SRV_PREFIX_1="_sip._tcp."></TCPSrvPrefix>
+ <SIP100relEnable SIP_100REL_ENABLE_1="N"></SIP100relEnable>
+ <SIP18XRetransmitInterval SIP_18X_RTX_INTVL_1="0"></SIP18XRetransmitInterval>
+ <DelRegisterOpenEnable USE_DEL_REG_OPEN_1="N"></DelRegisterOpenEnable>
+ <DelRegisterCloseEnable USE_DEL_REG_CLOSE_1="N"></DelRegisterCloseEnable>
+ <UserPhoneEnable ADD_USER_PHONE_1="N"></UserPhoneEnable>
+ <TransportUDPEnable ADD_TRANSPORT_UDP_1="N"></TransportUDPEnable>
+ <DelRegisterExpiresEnable ADD_EXPIRES_HEADER_1="Y"></DelRegisterExpiresEnable>
+ <AddRport SIP_ADD_RPORT_1="N"></AddRport>
+ <SubscribeFailerRetryInterval SUB_RTX_INTVL_1="10"></SubscribeFailerRetryInterval>
+ <PortPunchInterval PORT_PUNCH_INTVL_1="0"></PortPunchInterval>
+ <DetectSSAF SIP_DETECT_SSAF_1="N"></DetectSSAF>
+ <SubscribeIntervalRate SUB_INTERVAL_RATE_1="90"></SubscribeIntervalRate>
+ <HoldReceiveEnable SIP_HOLD_HOLDRECEIVE_1="Y"></HoldReceiveEnable>
+ <ContactHeaderOnACK SIP_CONTACT_ON_ACK_1="N"></ContactHeaderOnACK>
+ <AnonymousDisplayName SIP_ANM_DISPNAME_1="1"></AnonymousDisplayName>
+ <AnonymousUserName SIP_ANM_USERNAME_1="0"></AnonymousUserName>
+ <AnonymousHostName SIP_ANM_HOSTNAME_1="N"></AnonymousHostName>
+ <PreferredIDEnable SIP_P_PREFERRED_ID_1="N"></PreferredIDEnable>
+ <PrivacyEnable SIP_PRIVACY_1="N"></PrivacyEnable>
+ <AddDiversionHeader SIP_ADD_DIVERSION_1="1"></AddDiversionHeader>
+ </X_P_IPTEL_SIP>
+<X_P_IPTEL_SDP>
+ <RTCPSendBySDP RTCP_SEND_BY_SDP_1="0"></RTCPSendBySDP>
+ <UserID SDP_USER_ID_1="-"></UserID>
+ <RFC2543HoldEnable RFC2543_HOLD_ENABLE_1="N"></RFC2543HoldEnable>
+ <RTPCloseEnable RTP_CLOSE_ENABLE_1="Y"></RTPCloseEnable>
+ </X_P_IPTEL_SDP>
+<X_P_IPTEL_Jitter>
+ <MaximumDelay MAX_DELAY_1="20"></MaximumDelay>
+ <MinimumDelay MIN_DELAY_1="2"></MinimumDelay>
+ <InitialDelay NOM_DELAY_1="2"></InitialDelay>
+ </X_P_IPTEL_Jitter>
+ </Line>
+<Line ID="2">
+ <Enable LINE_ENABLE_2="Enabled"></Enable>
+ <DirectoryNumber PHONE_NUMBER_2="{{ ((lookup(account | default(none), ["2","user_id"]) | default(''))) | output }}"></DirectoryNumber>
+<SIP>
+ <AuthUserName SIP_AUTHID_2="{{ ((lookup(account | default(none), ["2","auth_id"]) | default(''))) | output }}"></AuthUserName>
+ <AuthPassword SIP_PASS_2="{{ ((lookup(account | default(none), ["2","password"]) | default(''))) | output }}"></AuthPassword>
+ <URI SIP_URI_2="{{ ((lookup(account | default(none), ["2","user_id"]) | default(''))) | output }}"></URI>
+ </SIP>
+<CallingFeatures>
+ <CallerIDName DISPLAY_NAME_2="{{ ((lookup(account | default(none), ["2","display_name"]) | default(''))) | output }}"></CallerIDName>
+ <CallWaitingEnable CW_ENABLE_2="Y"></CallWaitingEnable>
+ </CallingFeatures>
+<CallFeat>
+ <X_P_IPTEL_VoiceMailAccessNumber VM_NUMBER_2="{{ ((voicemail_number | default(''))) | output }}"></X_P_IPTEL_VoiceMailAccessNumber>
+ <X_P_IPTEL_DialPlanNotMatchEnable DIAL_PLAN_NOT_MATCH_ENABLE_2="N"></X_P_IPTEL_DialPlanNotMatchEnable>
+ <X_P_IPTEL_SharedCallEnable SHARED_CALL_ENABLE_2="Y"></X_P_IPTEL_SharedCallEnable>
+ <X_P_IPTEL_FwdDndSynchroEnable FWD_DND_SYNCHRO_ENABLE_2="N"></X_P_IPTEL_FwdDndSynchroEnable>
+ <X_P_IPTEL_ResourceListURI RESOURCELIST_URI_2=""></X_P_IPTEL_ResourceListURI>
+ </CallFeat>
+<Codec>
+<List ID="0">
+ <Enable CODEC_ENABLE0_2="Y"></Enable>
+ <Priority CODEC_PRIORITY0_2="1"></Priority>
+ </List>
+<List ID="1">
+ <Enable CODEC_ENABLE1_2="Y"></Enable>
+ <Priority CODEC_PRIORITY1_2="1"></Priority>
+ </List>
+<List ID="2">
+ <Enable CODEC_ENABLE2_2="Y"></Enable>
+ <Priority CODEC_PRIORITY2_2="1"></Priority>
+ </List>
+<List ID="3">
+ <Enable CODEC_ENABLE3_2="Y"></Enable>
+ <Priority CODEC_PRIORITY3_2="1"></Priority>
+ </List>
+<List ID="4">
+ <Enable CODEC_ENABLE4_2="Y"></Enable>
+ <Priority CODEC_PRIORITY4_2="1"></Priority>
+ </List>
+ </Codec>
+<X_P_IPTEL_SIP>
+ <SessionTimer SIP_SESSION_TIME_2="0"></SessionTimer>
+ <SessionMethod SIP_SESSION_METHOD_2="0"></SessionMethod>
+ <FailoverEnable SIP_FOVR_NORSP_2="Y"></FailoverEnable>
+ <FailoverMax SIP_FOVR_MAX_2="2"></FailoverMax>
+ <RefresherParameter SIP_REFRESHER_2="0"></RefresherParameter>
+ <DNSSrvEnable SIP_DNSSRV_ENA_2="Y"></DNSSrvEnable>
+ <UDPSrvPrefix SIP_UDP_SRV_PREFIX_2="_sip._udp. "></UDPSrvPrefix>
+ <TCPSrvPrefix SIP_TCP_SRV_PREFIX_2="_sip._tcp."></TCPSrvPrefix>
+ <SIP100relEnable SIP_100REL_ENABLE_2="N"></SIP100relEnable>
+ <SIP18XRetransmitInterval SIP_18X_RTX_INTVL_2="0"></SIP18XRetransmitInterval>
+ <DelRegisterOpenEnable USE_DEL_REG_OPEN_2="N"></DelRegisterOpenEnable>
+ <DelRegisterCloseEnable USE_DEL_REG_CLOSE_2="N"></DelRegisterCloseEnable>
+ <UserPhoneEnable ADD_USER_PHONE_2="N"></UserPhoneEnable>
+ <TransportUDPEnable ADD_TRANSPORT_UDP_2="N"></TransportUDPEnable>
+ <DelRegisterExpiresEnable ADD_EXPIRES_HEADER_2="Y"></DelRegisterExpiresEnable>
+ <AddRport SIP_ADD_RPORT_2="N"></AddRport>
+ <SubscribeFailerRetryInterval SUB_RTX_INTVL_2="10"></SubscribeFailerRetryInterval>
+ <PortPunchInterval PORT_PUNCH_INTVL_2="0"></PortPunchInterval>
+ <DetectSSAF SIP_DETECT_SSAF_2="N"></DetectSSAF>
+ <SubscribeIntervalRate SUB_INTERVAL_RATE_2="90"></SubscribeIntervalRate>
+ <HoldReceiveEnable SIP_HOLD_HOLDRECEIVE_2="Y"></HoldReceiveEnable>
+ <ContactHeaderOnACK SIP_CONTACT_ON_ACK_2="N"></ContactHeaderOnACK>
+ <AnonymousDisplayName SIP_ANM_DISPNAME_2="1"></AnonymousDisplayName>
+ <AnonymousUserName SIP_ANM_USERNAME_2="0"></AnonymousUserName>
+ <AnonymousHostName SIP_ANM_HOSTNAME_2="N"></AnonymousHostName>
+ <PreferredIDEnable SIP_P_PREFERRED_ID_2="N"></PreferredIDEnable>
+ <PrivacyEnable SIP_PRIVACY_2="N"></PrivacyEnable>
+ <AddDiversionHeader SIP_ADD_DIVERSION_2="1"></AddDiversionHeader>
+ </X_P_IPTEL_SIP>
+<X_P_IPTEL_SDP>
+ <RTCPSendBySDP RTCP_SEND_BY_SDP_2="0"></RTCPSendBySDP>
+ <UserID SDP_USER_ID_2="-"></UserID>
+ <RFC2543HoldEnable RFC2543_HOLD_ENABLE_2="N"></RFC2543HoldEnable>
+ <RTPCloseEnable RTP_CLOSE_ENABLE_2="Y"></RTPCloseEnable>
+ </X_P_IPTEL_SDP>
+<X_P_IPTEL_Jitter>
+ <MaximumDelay MAX_DELAY_2="20"></MaximumDelay>
+ <MinimumDelay MIN_DELAY_2="2"></MinimumDelay>
+ <InitialDelay NOM_DELAY_2="2"></InitialDelay>
+ </X_P_IPTEL_Jitter>
+ </Line>
+ </Prof>
+ </Srv>
+<ManagementServer>
+ <URL ACS_URL=""></URL>
+ <Username ACS_USER_ID=""></Username>
+ <Password ACS_PASS=""></Password>
+ <PeriodicInformEnable PERIODIC_INFORM_ENABLE="N"></PeriodicInformEnable>
+ <PeriodicInformInterval PERIODIC_INFORM_INTERVAL="86400"></PeriodicInformInterval>
+ <PeriodicInformTime PERIODIC_INFORM_TIME="0001-01-01T00:00:00Z"></PeriodicInformTime>
+ <ConnectionRequestUsername CON_REQ_USER_ID=""></ConnectionRequestUsername>
+ <ConnectionRequestPassword CON_REQ_PASS=""></ConnectionRequestPassword>
+ </ManagementServer>
+<Time>
+ <NTPServer1 NTP_ADDR="time-a.nist.gov"></NTPServer1>
+ <LocalTimeZone LOCAL_TIME_ZONE_POSIX=""></LocalTimeZone>
+ <LocalTimeZone_TIME_ZONE TIME_ZONE="{{ ((time_zone | default(''))) | output }}"></LocalTimeZone_TIME_ZONE>
+ <LocalTimeZone_DST_ENABLE DST_ENABLE="N"></LocalTimeZone_DST_ENABLE>
+ <LocalTimeZone_DST_OFFSET DST_OFFSET="60"></LocalTimeZone_DST_OFFSET>
+ <LocalTimeZone_DST_START_MONTH DST_START_MONTH="3"></LocalTimeZone_DST_START_MONTH>
+ <LocalTimeZone_DST_START_ORDINAL_DAY DST_START_ORDINAL_DAY="2"></LocalTimeZone_DST_START_ORDINAL_DAY>
+ <LocalTimeZone_DST_START_DAY_OF_WEEK DST_START_DAY_OF_WEEK="0"></LocalTimeZone_DST_START_DAY_OF_WEEK>
+ <LocalTimeZone_DST_START_TIME DST_START_TIME="120"></LocalTimeZone_DST_START_TIME>
+ <LocalTimeZone_DST_STOP_MONTH DST_STOP_MONTH="10"></LocalTimeZone_DST_STOP_MONTH>
+ <LocalTimeZone_DST_STOP_ORDINAL_DAY DST_STOP_ORDINAL_DAY="2"></LocalTimeZone_DST_STOP_ORDINAL_DAY>
+ <LocalTimeZone_DST_STOP_DAY_OF_WEEK DST_STOP_DAY_OF_WEEK="0"></LocalTimeZone_DST_STOP_DAY_OF_WEEK>
+ <LocalTimeZone_DST_STOP_TIME DST_STOP_TIME="120"></LocalTimeZone_DST_STOP_TIME>
+ <X_P_IPTEL_ErrorRetryInterval TIME_SYNC_INTVL="60"></X_P_IPTEL_ErrorRetryInterval>
+ <X_P_IPTEL_SynchronizationInterval TIME_QUERY_INTVL="43200"></X_P_IPTEL_SynchronizationInterval>
+ </Time>
+<LAN>
+ <AddressingType CONNECTION_TYPE="1"></AddressingType>
+ <IPAddress STATIC_IP_ADDRESS=""></IPAddress>
+ <SubnetMask STATIC_SUBNET=""></SubnetMask>
+ <DefaultGateway STATIC_GATEWAY=""></DefaultGateway>
+ <USER_DNS1_ADDR USER_DNS1_ADDR=""></USER_DNS1_ADDR>
+ <USER_DNS2_ADDR USER_DNS2_ADDR=""></USER_DNS2_ADDR>
+ <X_P_IPTEL_DNSManualSettingEnable DHCP_DNS_ENABLE="N"></X_P_IPTEL_DNSManualSettingEnable>
+ <X_P_IPTEL_NetworkSettingEnable NW_SETTING_ENABLE="Y"></X_P_IPTEL_NetworkSettingEnable>
+ <X_P_IPTEL_HostName HOST_NAME="{MODEL}"></X_P_IPTEL_HostName>
+ </LAN>
+<X_P_IPTEL_HTTP>
+ <Version HTTP_VER="1"></Version>
+ <CustomWebPage CUSTOM_WEB_PAGE="0"></CustomWebPage>
+ <UserAgent HTTP_USER_AGENT="Panasonic_{MODEL}/{/{fwver} ({mac})"></UserAgent>
+ <SSLVerify HTTP_SSL_VERIFY="0"></SSLVerify>
+ <CertificateFileURL CFG_ROOT_CERTIFICATE_PATH=""></CertificateFileURL>
+ </X_P_IPTEL_HTTP>
+<X_P_IPTEL_DNS>
+ <X_P_IPTEL_QueryMode DNS_QRY_PRLL="Y"></X_P_IPTEL_QueryMode>
+ <Priority DNS_PRIORITY="N"></Priority>
+ <Server1 DNS1_ADDR=""></Server1>
+ <Server2 DNS2_ADDR=""></Server2>
+ </X_P_IPTEL_DNS>
+<X_P_IPTEL_Codec>
+ <G711requirement CODEC_G711_REQ="1"></G711requirement>
+ <G729Parameter CODEC_G729_PARAM="0"></G729Parameter>
+ </X_P_IPTEL_Codec>
+<X_P_IPTEL_STUN>
+ <ServerAddress STUN_SERV_ADDR=""></ServerAddress>
+ <ServerPort STUN_SERV_PORT="3478"></ServerPort>
+ <ServerAddress2 STUN_2NDSERV_ADDR=""></ServerAddress2>
+ <ServerPort2 STUN_2NDSERV_PORT="3478"></ServerPort2>
+ </X_P_IPTEL_STUN>
+<X_P_IPTEL_Syslog>
+ <SyslogEventSIP SYSLOG_EVENT_SIP="0"></SyslogEventSIP>
+ <SyslogEventConfig SYSLOG_EVENT_CFG="0"></SyslogEventConfig>
+ <SyslogEventVoIP SYSLOG_EVENT_VOIP="0"></SyslogEventVoIP>
+ <SyslogEventTel SYSLOG_EVENT_TEL="0"></SyslogEventTel>
+ <SyslogAddress SYSLOG_ADDR=""></SyslogAddress>
+ <SyslogPort SYSLOG_PORT="514"></SyslogPort>
+ </X_P_IPTEL_Syslog>
+<X_P_IPTEL_HTTPD>
+ <AdminID ADMIN_ID="admin"></AdminID>
+ <AdminPass ADMIN_PASS="adminpass"></AdminPass>
+ <UserID USER_ID="user"></UserID>
+ <UserPass USER_PASS=""></UserPass>
+ <AutoPortOpenEnable HTTPD_PORTOPEN_AUTO="N"></AutoPortOpenEnable>
+ </X_P_IPTEL_HTTPD>
+<X_P_IPTEL_SIP>
+ <UserAgent SIP_USER_AGENT="Panasonic_{MODEL}/{fwver} ({mac})"></UserAgent>
+<ResCode>
+ <Dnd SIP_RESPONSE_CODE_DND="403"></Dnd>
+ <CallReject SIP_RESPONSE_CODE_CALL_REJECT="603"></CallReject>
+ </ResCode>
+ </X_P_IPTEL_SIP>
+<X_P_IPTEL_VLAN>
+ <Enable VLAN_ENABLE="N"></Enable>
+ <IpPhoneID VLAN_ID_IP_PHONE="2"></IpPhoneID>
+ <IpPhonePriority VLAN_PRI_IP_PHONE="7"></IpPhonePriority>
+ <PcID VLAN_ID_PC="1"></PcID>
+ <PcPriority VLAN_PRI_PC="0"></PcPriority>
+ </X_P_IPTEL_VLAN>
+<X_P_IPTEL_Provisioning>
+ <ProvisionEnable PROVISION_ENABLE="Y"></ProvisionEnable>
+ <Option66Enable OPTION66_ENABLE="Y"></Option66Enable>
+ <Option66Reboot OPTION66_REBOOT="Y"></Option66Reboot>
+ <StandardFileURL CFG_STANDARD_FILE_PATH="{{ ((primary_url | default(''))) | output }}"></StandardFileURL>
+ <ProductFileURL CFG_PRODUCT_FILE_PATH=""></ProductFileURL>
+ <MasterFileURL CFG_MASTER_FILE_PATH=""></MasterFileURL>
+ <CyclicEnable CFG_CYCLIC="Y"></CyclicEnable>
+ <CyclicInterval CFG_CYCLIC_INTVL="1440"></CyclicInterval>
+ <RetryInterval CFG_RTRY_INTVL="30"></RetryInterval>
+ <ResyncTime CFG_RESYNC_TIME=""></ResyncTime>
+ <Key2 CFG_FILE_KEY2=""></Key2>
+ <Key3 CFG_FILE_KEY3=""></Key3>
+ <AesKeyLength CFG_FILE_KEY_LENGTH="128"></AesKeyLength>
+ <ResyncEvent CFG_RESYNC_FROM_SIP="check-sync"></ResyncEvent>
+ </X_P_IPTEL_Provisioning>
+<X_P_IPTEL_Update>
+ <Enable FIRM_UPGRADE_ENABLE="Y"></Enable>
+ <Version FIRM_VERSION="01.251"></Version>
+ <AutoUpdateEnable FIRM_UPGRADE_AUTO="Y"></AutoUpdateEnable>
+ <FirmwareFileURL FIRM_FILE_PATH="http://fw-provi.e-connecting.net/firm/000/UT11x12x-01.251_HW1.fw"></FirmwareFileURL>
+ </X_P_IPTEL_Update>
+<X_P_IPTEL_CallCtrl>
+ <VMSubscribeEnable VM_SUBSCRIBE_ENABLE="N"></VMSubscribeEnable>
+ <VoiceMessageAvailable VOICE_MESSAGE_AVAILABLE="Y"></VoiceMessageAvailable>
+ <ConferenceServerURI CONFERENCE_SERVER_URI=""></ConferenceServerURI>
+ <TalkPackageEnable TALK_PACKAGE="N"></TalkPackageEnable>
+ <HoldPackageEnable HOLD_PACKAGE="N"></HoldPackageEnable>
+ <RingingOffSettingEnable RINGING_OFF_SETTING_ENABLE="Y"></RingingOffSettingEnable>
+ <AutoCallHoldEnable AUTO_CALL_HOLD="N"></AutoCallHoldEnable>
+ <RedialKeyCallLogEnable REDIALKEY_CALLLOG_ENABLE="N"></RedialKeyCallLogEnable>
+ <OnHookTransferEnable ONHOOK_TRANSFER_ENABLE="Y"></OnHookTransferEnable>
+ <InternationalCallPrefix INTERNATIONAL_ACCESS_CODE=""></InternationalCallPrefix>
+ <CountryCallingCode COUNTRY_CALLING_CODE=""></CountryCallingCode>
+ <NationalAccessCode NATIONAL_ACCESS_CODE=""></NationalAccessCode>
+<SystemOptions>
+ <DisconnectionMode DISCONNECTION_MODE="1"></DisconnectionMode>
+ </SystemOptions>
+ <ReturnDefaultVolumeEnable RETURN_VOL_SET_DEFAULT_ENABLE="N"></ReturnDefaultVolumeEnable>
+ <FlashRecallTerminateEnable FLASH_RECALL_TERMINATE="Y"></FlashRecallTerminateEnable>
+ <FlashHookContentType FLASHHOOK_CONTENT_TYPE="Signal"></FlashHookContentType>
+ <PoundKeyDelimiterEnable POUND_KEY_DELIMITER_ENABLE="Y"></PoundKeyDelimiterEnable>
+ <DefaultLine DEFAULT_LINE_SELECT="1"></DefaultLine>
+<Timers>
+ <FirstDigitTimeout FIRSTDIGIT_TIM="30"></FirstDigitTimeout>
+ <IntDigitTim INTDIGIT_TIM="5"></IntDigitTim>
+ <MacroDigitTimeout MACRODIGIT_TIM="5"></MacroDigitTimeout>
+ <HoldRecallTimer HOLD_RECALL_TIM="60"></HoldRecallTimer>
+ <DisconnectToneLenHandset TONE_LEN_DISCONNECT_HANDSET="10"></DisconnectToneLenHandset>
+ <DisconnectToneLenHandsfree TONE_LEN_DISCONNECT_HANDSFREE="3"></DisconnectToneLenHandsfree>
+ <AutoAnswerRingTimer AUTO_ANS_RING_TIM="5"></AutoAnswerRingTimer>
+ </Timers>
+ <DirectedCallPickup NUM_PLAN_PICKUP_DIRECT=""></DirectedCallPickup>
+ </X_P_IPTEL_CallCtrl>
+<X_P_IPTEL_DTMF>
+ <SignalLen DTMF_SIGNAL_LEN="180"></SignalLen>
+ <InterDigitLen DTMF_INTDIGIT_TIM="90"></InterDigitLen>
+ <OutbandVolume OUTBANDDTMF_VOL="-5"></OutbandVolume>
+ <InbandVolume INBANDDTMF_VOL="-5"></InbandVolume>
+ </X_P_IPTEL_DTMF>
+<X_P_IPTEL_Ringer>
+ <Pattern1 BELL_CORE_PATTERN1_TIMING="2000,4000"></Pattern1>
+ <Pattern2 BELL_CORE_PATTERN2_TIMING="800,400,800,4000"></Pattern2>
+ <Pattern3 BELL_CORE_PATTERN3_TIMING="400,200,400,200,800,4000"></Pattern3>
+ <Pattern4 BELL_CORE_PATTERN4_TIMING="300,200,1000,200,300,4000"></Pattern4>
+ <Pattern5 BELL_CORE_PATTERN5_TIMING="500"></Pattern5>
+ </X_P_IPTEL_Ringer>
+<X_P_IPTEL_TelSetting>
+ <DisplayNameReplace DISPLAY_NAME_REPLACE="Y"></DisplayNameReplace>
+ <NumberMatchingLowerDigit NUMBER_MATCHING_LOWER_DIGIT="7"></NumberMatchingLowerDigit>
+ <NumberMatchingUpperDigit NUMBER_MATCHING_UPPER_DIGIT="10"></NumberMatchingUpperDigit>
+<UserInterface>
+ <DatePattern DISPLAY_DATE_PATTERN="0"></DatePattern>
+ <TimePattern DISPLAY_TIME_PATTERN="0"></TimePattern>
+ <DefaultLanguage DEFAULT_LANGUAGE="en-US"></DefaultLanguage>
+ </UserInterface>
+ </X_P_IPTEL_TelSetting>
+<X_P_IPTEL_UserSettings>
+ <KeyPadTone KEY_PAD_TONE="Y"></KeyPadTone>
+ <ExtensionPin EXTENSION_PIN="0000000000"></ExtensionPin>
+ <DataLineMode DATA_LINE_MODE="N"></DataLineMode>
+ </X_P_IPTEL_UserSettings>
+<X_P_IPTEL_Tone>
+<Description1>
+ <Frequency DIAL_TONE1_FRQ="350,440"></Frequency>
+ <Gain DIAL_TONE1_GAIN="0"></Gain>
+ <Repeat DIAL_TONE1_RPT="0"></Repeat>
+ <Timing DIAL_TONE1_TIMING="60,0"></Timing>
+ </Description1>
+<Description2>
+ <Frequency DIAL_TONE2_FRQ="350,440"></Frequency>
+ <Gain DIAL_TONE2_GAIN="0"></Gain>
+ <Repeat DIAL_TONE2_RPT="0"></Repeat>
+ <Timing DIAL_TONE2_TIMING="60,0"></Timing>
+ </Description2>
+<Description3>
+ <Frequency DIAL_TONE4_FRQ="350,440"></Frequency>
+ <Gain DIAL_TONE4_GAIN="0"></Gain>
+ <Repeat DIAL_TONE4_RPT="0"></Repeat>
+ <Timing DIAL_TONE4_TIMING="560,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,0"></Timing>
+ </Description3>
+<Description4>
+ <Frequency BUSY_TONE_FRQ="480,620"></Frequency>
+ <Gain BUSY_TONE_GAIN="0"></Gain>
+ <Repeat BUSY_TONE_RPT="1"></Repeat>
+ <Timing BUSY_TONE_TIMING="60,500,440"></Timing>
+ </Description4>
+<Description5>
+ <Frequency REORDER_TONE_FRQ="480,620"></Frequency>
+ <Gain REORDER_TONE_GAIN="0"></Gain>
+ <Repeat REORDER_TONE_RPT="1"></Repeat>
+ <Timing REORDER_TONE_TIMING="60,250,190"></Timing>
+ </Description5>
+<Description6>
+ <Frequency RINGBACK_TONE_FRQ="440,480"></Frequency>
+ <Gain RINGBACK_TONE_GAIN="0"></Gain>
+ <Repeat RINGBACK_TONE_RPT="1"></Repeat>
+ <Timing RINGBACK_TONE_TIMING="60,2000,3940"></Timing>
+ </Description6>
+<Description7>
+ <Frequency HOLD_ALARM_FRQ="425"></Frequency>
+ <Gain HOLD_ALARM_GAIN="0"></Gain>
+ <Repeat HOLD_ALARM_RPT="1"></Repeat>
+ <Timing HOLD_ALARM_TIMING="120,14880"></Timing>
+ </Description7>
+<Description8>
+ <Frequency CW_TONE1_FRQ="425"></Frequency>
+ <Gain CW_TONE1_GAIN="0"></Gain>
+ <Repeat CW_TONE1_RPT="1"></Repeat>
+ <Timing CW_TONE1_TIMING="120,120,120,120,120,14400"></Timing>
+ </Description8>
+<Description9>
+ <Frequency HOLD_TONE_FRQ="425"></Frequency>
+ <Gain HOLD_TONE_GAIN="0"></Gain>
+ <Repeat HOLD_TONE_RPT="1"></Repeat>
+ <Timing HOLD_TONE_TIMING="500,190,190,190,2890"></Timing>
+ </Description9>
+ </X_P_IPTEL_Tone>
+<X_P_IPTEL_Adjustment>
+ <Gain ADJDATA_GAIN=""></Gain>
+ </X_P_IPTEL_Adjustment>
+ </Dev>
+ </PANASipPhoneConfig>

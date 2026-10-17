@@ -6,7 +6,11 @@ pub mod catalog;
 pub mod dial_now;
 pub mod keys;
 pub mod library;
+pub mod locale;
+pub mod model;
+pub mod parameters;
 pub mod phonebook;
+pub mod vendors;
 pub mod yealink;
 
 pub use catalog::{

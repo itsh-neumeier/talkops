@@ -1,0 +1,46 @@
+{# MPL-1.1 derivative: FusionPBX 20143aec4366afc2755f336d3058243479d49d44, grandstream/dp750/phonebook.xml, blob dc809767fe3776c5dbb9eba855852ed8adf5ba4c. #}{% set ns = namespace(keys=keys | default({}), contact_groups=contact_groups | default({})) %}<?xml version="1.0" encoding="utf-8"?>
+<AddressBook>
+<version>1</version>
+{% for contact in (contacts | default('')) | values %}
+{% if (lookup(contact | default(none), ["contact_name_given"]) | default('')) != "" or (lookup(contact | default(none), ["contact_name_family"]) | default('')) != "" or (lookup(contact | default(none), ["contact_organization"]) | default('')) != "" %}
+<Contact>
+{% if (lookup(contact | default(none), ["contact_name_given"]) | default('')) == ""  and  (lookup(contact | default(none), ["contact_name_family"]) | default('')) == ""  and  (lookup(contact | default(none), ["contact_organization"]) | default('')) != "" %}
+<FirstName>{{ ((lookup(contact | default(none), ["contact_organization"]) | default(''))) | output }}</FirstName>
+{% else %}
+<FirstName>{{ ((lookup(contact | default(none), ["contact_name_given"]) | default(''))) | output }}</FirstName>
+<LastName>{{ ((lookup(contact | default(none), ["contact_name_family"]) | default(''))) | output }}</LastName>
+{% endif %}
+{% if (lookup(contact | default(none), ["category"]) | default('')) == "extensions" %}
+<Phone type="Other">
+<phonenumber>{{ ((lookup(contact | default(none), ["phone_extension"]) | default(''))) | output }}</phonenumber>
+</Phone>
+{% endif %}
+{% if (lookup(contact | default(none), ["phone_label"]) | default('')) == "work" %}
+<Phone type="Work">
+<phonenumber>{{ ((lookup(contact | default(none), ["phone_number"]) | default(''))) | output }}</phonenumber>
+</Phone>
+
+{% elif (lookup(contact | default(none), ["phone_label"]) | default('')) == "main" %}
+<Phone type="Work">
+<phonenumber>{{ ((lookup(contact | default(none), ["phone_number"]) | default(''))) | output }}</phonenumber>
+</Phone>
+
+{% elif (lookup(contact | default(none), ["phone_label"]) | default('')) == "home" %}
+<Phone type="Home">
+<phonenumber>{{ ((lookup(contact | default(none), ["phone_number"]) | default(''))) | output }}</phonenumber>
+</Phone>
+
+{% elif (lookup(contact | default(none), ["phone_label"]) | default('')) == "mobile" %}
+<Phone type="Mobile">
+<phonenumber>{{ ((lookup(contact | default(none), ["phone_number"]) | default(''))) | output }}</phonenumber>
+</Phone>
+
+{% else %}
+<Phone type="Work">
+<phonenumber>{{ ((lookup(contact | default(none), ["phone_number"]) | default(''))) | output }}</phonenumber>
+</Phone>
+{% endif %}
+</Contact>
+{% endif %}
+{% endfor %}
+</AddressBook>

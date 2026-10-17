@@ -1,0 +1,151 @@
+{# MPL-1.1 derivative: FusionPBX 20143aec4366afc2755f336d3058243479d49d44, grandstream/wp826/phonebook.xml, blob deb211d00121424f66a5ff1db729b800fc11d017. #}{% set ns = namespace(keys=keys | default({}), contact_groups=contact_groups | default({})) %}<?xml version="1.0" encoding="UTF-8"?>
+
+<AddressBook>
+
+	<pbgroup>
+		<id>1</id>
+		<name>Users</name>
+		<ringtones>default ringtone</ringtones>
+	</pbgroup>
+	<pbgroup>
+		<id>2</id>
+		<name>Groups</name>
+		<ringtones>default ringtone</ringtones>
+	</pbgroup>
+	<pbgroup>
+		<id>3</id>
+		<name>Extensions</name>
+		<ringtones>system</ringtones>
+	</pbgroup>
+
+	{% set ns.start_id = 0 %}
+	{% for row in (contacts | default('')) | values %}
+		{% if (lookup(row | default(none), ["category"]) | default('')) == "users" %}
+		<Contact>
+			<id>{{ ((lookup(ns | default(none), ["start_id"]) | default(''))) | output }}{% set ns.start_id = (lookup(ns | default(none), ["start_id"]) | default(0) | int)+1 %}</id>
+			{% if (lookup(row | default(none), ["contact_name_given"]) | default('')) != "" %}
+			{% if (lookup(row | default(none), ["contact_organization"]) | default('')) != "" %}
+				<FirstName>{{ ((lookup(row | default(none), ["contact_name_given"]) | default(''))) | output }} {{ ((lookup(row | default(none), ["contact_name_family"]) | default(''))) | output }}</FirstName>
+				<FirstName>{{ ((lookup(row | default(none), ["contact_name_given"]) | default(''))) | output }} {{ ((lookup(row | default(none), ["contact_name_family"]) | default(''))) | output }}</FirstName>
+				<Company>{{ ((lookup(row | default(none), ["contact_organization"]) | default(''))) | output }}</Company>
+			{% else %}
+				<FirstName>{{ ((lookup(row | default(none), ["contact_name_given"]) | default(''))) | output }}</FirstName>
+				<LastName>{{ ((lookup(row | default(none), ["contact_name_family"]) | default(''))) | output }}</LastName>
+			{% endif %}
+			{% else %}
+				<FirstName>{{ ((lookup(row | default(none), ["effective_caller_id_name"]) | default(''))) | output }}</FirstName>
+			{% endif %}
+			<JobTitle></JobTitle>
+			<Frequent>0</Frequent>
+			{% for number in (lookup(row | default(none), ["numbers"]) | default('')) | values %}
+			{% if (lookup(number | default(none), ["phone_number"]) | default('')) != "" %}
+				{% if (lookup(number | default(none), ["phone_label"]) | default('')) == "work" %}
+				<Phone type="Work">
+					<phonenumber>{{ ((lookup(number | default(none), ["phone_number"]) | default(''))) | output }}</phonenumber>
+					<accountindex>0</accountindex>
+				</Phone>
+				{% endif %}
+				{% if (lookup(number | default(none), ["phone_label"]) | default('')) == "home" %}
+				<Phone type="Home">
+					<phonenumber>{{ ((lookup(number | default(none), ["phone_number"]) | default(''))) | output }}</phonenumber>
+					<accountindex>0</accountindex>
+				</Phone>
+				{% endif %}
+				{% if (lookup(number | default(none), ["phone_label"]) | default('')) == "mobile" %}
+				<Phone type="Cell">
+					<phonenumber>{{ ((lookup(number | default(none), ["phone_number"]) | default(''))) | output }}</phonenumber>
+					<accountindex>0</accountindex>
+				</Phone>
+				{% endif %}
+			{% endif %}
+			{% endfor %}
+			<Group>1</Group>
+			<Primary>0</Primary>
+			<Department></Department>
+			<Job></Job>
+			<Company></Company>
+		</Contact>
+		{% elif (lookup(row | default(none), ["category"]) | default('')) == "groups" %}
+		<Contact>
+			<id>{{ ((lookup(ns | default(none), ["start_id"]) | default(''))) | output }}{% set ns.start_id = (lookup(ns | default(none), ["start_id"]) | default(0) | int)+1 %}</id>
+			{% if (lookup(row | default(none), ["contact_name_given"]) | default('')) != "" %}
+			{% if (lookup(row | default(none), ["contact_organization"]) | default('')) != "" %}
+				<FirstName>{{ ((lookup(row | default(none), ["contact_name_given"]) | default(''))) | output }} {{ ((lookup(row | default(none), ["contact_name_family"]) | default(''))) | output }}</FirstName>
+				<FirstName>{{ ((lookup(row | default(none), ["contact_name_given"]) | default(''))) | output }} {{ ((lookup(row | default(none), ["contact_name_family"]) | default(''))) | output }}</FirstName>
+				<Company>{{ ((lookup(row | default(none), ["contact_organization"]) | default(''))) | output }}</Company>
+			{% else %}
+				<FirstName>{{ ((lookup(row | default(none), ["contact_name_given"]) | default(''))) | output }}</FirstName>
+				<LastName>{{ ((lookup(row | default(none), ["contact_name_family"]) | default(''))) | output }}</LastName>
+			{% endif %}
+			{% else %}
+				<FirstName>{{ ((lookup(row | default(none), ["effective_caller_id_name"]) | default(''))) | output }}</FirstName>
+			{% endif %}
+			<JobTitle></JobTitle>
+
+			<Frequent>0</Frequent>
+			{% for number in (lookup(row | default(none), ["numbers"]) | default('')) | values %}
+			{% if (lookup(number | default(none), ["phone_number"]) | default('')) != "" %}
+				{% if (lookup(number | default(none), ["phone_label"]) | default('')) == "work" %}
+				<Phone type="Work">
+					<phonenumber>{{ ((lookup(number | default(none), ["phone_number"]) | default(''))) | output }}</phonenumber>
+					<accountindex>0</accountindex>
+				</Phone>
+				{% endif %}
+				{% if (lookup(number | default(none), ["phone_label"]) | default('')) == "home" %}
+				<Phone type="Home">
+					<phonenumber>{{ ((lookup(number | default(none), ["phone_number"]) | default(''))) | output }}</phonenumber>
+					<accountindex>0</accountindex>
+				</Phone>
+				{% endif %}
+				{% if (lookup(number | default(none), ["phone_label"]) | default('')) == "mobile" %}
+				<Phone type="Cell">
+					<phonenumber>{{ ((lookup(number | default(none), ["phone_number"]) | default(''))) | output }}</phonenumber>
+					<accountindex>0</accountindex>
+				</Phone>
+				{% endif %}
+			{% endif %}
+			{% endfor %}
+			<Group>2</Group>
+			<Primary>0</Primary>
+			<Department></Department>
+			<Job></Job>
+			<Company></Company>
+		</Contact>
+		{% elif (lookup(row | default(none), ["category"]) | default('')) == "extensions" %}
+		<Contact>
+			<id>{{ ((lookup(ns | default(none), ["start_id"]) | default(''))) | output }}{% set ns.start_id = (lookup(ns | default(none), ["start_id"]) | default(0) | int)+1 %}</id>
+			{% if (lookup(row | default(none), ["contact_name_given"]) | default('')) != "" %}
+			{% if (lookup(row | default(none), ["contact_organization"]) | default('')) != "" %}
+				<FirstName>{{ ((lookup(row | default(none), ["contact_name_given"]) | default(''))) | output }} {{ ((lookup(row | default(none), ["contact_name_family"]) | default(''))) | output }}</FirstName>
+				<FirstName>{{ ((lookup(row | default(none), ["contact_name_given"]) | default(''))) | output }} {{ ((lookup(row | default(none), ["contact_name_family"]) | default(''))) | output }}</FirstName>
+				<Company>{{ ((lookup(row | default(none), ["contact_organization"]) | default(''))) | output }}</Company>
+			{% else %}
+				<FirstName>{{ ((lookup(row | default(none), ["contact_name_given"]) | default(''))) | output }}</FirstName>
+				<LastName>{{ ((lookup(row | default(none), ["contact_name_family"]) | default(''))) | output }}</LastName>
+			{% endif %}
+			{% else %}
+				<FirstName>{{ ((lookup(row | default(none), ["effective_caller_id_name"]) | default(''))) | output }}</FirstName>
+			{% endif %}
+			<JobTitle></JobTitle>
+			<Frequent>0</Frequent>
+			{% if (lookup(row | default(none), ["phone_number"]) | default('')) != "" %}
+				<Phone type="Work">
+					<phonenumber>{{ ((lookup(row | default(none), ["phone_number"]) | default(''))) | output }}</phonenumber>
+					<accountindex>0</accountindex>
+				</Phone>
+			{% else %}
+				<Phone type="Work">
+					<phonenumber>{{ ((lookup(row | default(none), ["phone_extension"]) | default(''))) | output }}</phonenumber>
+					<accountindex>0</accountindex>
+				</Phone>
+			{% endif %}
+			<Group>3</Group>
+			<Primary>0</Primary>
+			<Department></Department>
+			<Job></Job>
+			<Company></Company>
+		</Contact>
+		{% endif %}
+	{% endfor %}
+
+</AddressBook>

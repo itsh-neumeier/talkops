@@ -1,0 +1,20 @@
+{
+  "vendor": "swissvoice",
+  "status": "untested",
+  "models": [
+    {
+      "id": "swissvoice-cp2502",
+      "name": "cp2502",
+      "family": "conference",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "swissvoice-cp2505g",
+      "name": "cp2505g",
+      "family": "conference",
+      "accounts": 6,
+      "line_keys": 0
+    }
+  ]
+}

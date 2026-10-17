@@ -1,0 +1,230 @@
+{
+  "vendor": "snom",
+  "status": "untested",
+  "models": [
+    {
+      "id": "snom-300",
+      "name": "300",
+      "family": "desk",
+      "accounts": 5,
+      "line_keys": 0
+    },
+    {
+      "id": "snom-320",
+      "name": "320",
+      "family": "desk",
+      "accounts": 5,
+      "line_keys": 0
+    },
+    {
+      "id": "snom-360",
+      "name": "360",
+      "family": "desk",
+      "accounts": 5,
+      "line_keys": 0
+    },
+    {
+      "id": "snom-3xx",
+      "name": "3xx",
+      "family": "desk",
+      "accounts": 5,
+      "line_keys": 0
+    },
+    {
+      "id": "snom-720",
+      "name": "720",
+      "family": "desk",
+      "accounts": 2,
+      "line_keys": 0
+    },
+    {
+      "id": "snom-7xx",
+      "name": "7xx",
+      "family": "desk",
+      "accounts": 5,
+      "line_keys": 0
+    },
+    {
+      "id": "snom-820",
+      "name": "820",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "snom-8xx",
+      "name": "8xx",
+      "family": "desk",
+      "accounts": 5,
+      "line_keys": 0
+    },
+    {
+      "id": "snom-c520",
+      "name": "C520",
+      "family": "conference",
+      "accounts": 49,
+      "line_keys": 0
+    },
+    {
+      "id": "snom-c620",
+      "name": "C620",
+      "family": "conference",
+      "accounts": 49,
+      "line_keys": 0
+    },
+    {
+      "id": "snom-d120",
+      "name": "D120",
+      "family": "desk",
+      "accounts": 2,
+      "line_keys": 0
+    },
+    {
+      "id": "snom-d315",
+      "name": "D315",
+      "family": "desk",
+      "accounts": 4,
+      "line_keys": 0
+    },
+    {
+      "id": "snom-d345",
+      "name": "D345",
+      "family": "desk",
+      "accounts": 12,
+      "line_keys": 0
+    },
+    {
+      "id": "snom-d375",
+      "name": "D375",
+      "family": "desk",
+      "accounts": 12,
+      "line_keys": 0
+    },
+    {
+      "id": "snom-d385",
+      "name": "D385",
+      "family": "desk",
+      "accounts": 12,
+      "line_keys": 0
+    },
+    {
+      "id": "snom-d712",
+      "name": "D712",
+      "family": "desk",
+      "accounts": 4,
+      "line_keys": 0
+    },
+    {
+      "id": "snom-d715",
+      "name": "D715",
+      "family": "desk",
+      "accounts": 4,
+      "line_keys": 0
+    },
+    {
+      "id": "snom-d717",
+      "name": "D717",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "snom-d725",
+      "name": "D725",
+      "family": "desk",
+      "accounts": 12,
+      "line_keys": 0
+    },
+    {
+      "id": "snom-d735",
+      "name": "D735",
+      "family": "desk",
+      "accounts": 12,
+      "line_keys": 0
+    },
+    {
+      "id": "snom-d745",
+      "name": "D745",
+      "family": "desk",
+      "accounts": 12,
+      "line_keys": 0
+    },
+    {
+      "id": "snom-d765",
+      "name": "D765",
+      "family": "desk",
+      "accounts": 12,
+      "line_keys": 0
+    },
+    {
+      "id": "snom-d785",
+      "name": "D785",
+      "family": "desk",
+      "accounts": 12,
+      "line_keys": 0
+    },
+    {
+      "id": "snom-d812",
+      "name": "D812",
+      "family": "desk",
+      "accounts": 12,
+      "line_keys": 0
+    },
+    {
+      "id": "snom-d815",
+      "name": "D815",
+      "family": "desk",
+      "accounts": 12,
+      "line_keys": 0
+    },
+    {
+      "id": "snom-d862",
+      "name": "D862",
+      "family": "desk",
+      "accounts": 12,
+      "line_keys": 0
+    },
+    {
+      "id": "snom-d865",
+      "name": "D865",
+      "family": "desk",
+      "accounts": 12,
+      "line_keys": 0
+    },
+    {
+      "id": "snom-m100kle",
+      "name": "M100KLE",
+      "family": "desk",
+      "accounts": 7,
+      "line_keys": 0
+    },
+    {
+      "id": "snom-m500kle",
+      "name": "M500KLE",
+      "family": "desk",
+      "accounts": 10,
+      "line_keys": 0
+    },
+    {
+      "id": "snom-pa1",
+      "name": "PA1",
+      "family": "desk",
+      "accounts": 4,
+      "line_keys": 0
+    },
+    {
+      "id": "snom-pa1plus",
+      "name": "PA1plus",
+      "family": "desk",
+      "accounts": 4,
+      "line_keys": 0
+    },
+    {
+      "id": "snom-m3",
+      "name": "m3",
+      "family": "dect",
+      "accounts": 8,
+      "line_keys": 0
+    }
+  ]
+}

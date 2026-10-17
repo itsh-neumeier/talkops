@@ -1,0 +1,26 @@
+{# MPL-1.1 derivative: FusionPBX 20143aec4366afc2755f336d3058243479d49d44, grandstream/gxp2124/phonebook.xml, blob 7dca557192b0d90dd3c5a9fb44bf510b84b266f5. #}{% set ns = namespace(keys=keys | default({}), contact_groups=contact_groups | default({})) %}<?xml version="1.0" encoding="utf-8"?>
+<AddressBook>
+<version>1</version>
+{% set ns.i = 0 %}
+{% for contact in (contacts | default('')) | values %}
+{% if (lookup(contact | default(none), ["contact_name_given"]) | default('')) != ""  and  (lookup(contact | default(none), ["contact_type"]) | default('')) == "contact" %}
+<Contact>
+<FirstName>{{ ((lookup(contact | default(none), ["contact_name_given"]) | default(''))) | output }}</FirstName>
+<LastName>{{ ((lookup(contact | default(none), ["contact_name_family"]) | default(''))) | output }}</LastName>
+<Phone type="Work">
+<phonenumber>{{ ((lookup(contact | default(none), ["contact_work"]) | default(''))) | output }}</phonenumber>
+</Phone>
+{% if (lookup(contact | default(none), ["contact_home"]) | default('')) != "" %}
+<Phone type="Home">
+<phonenumber>{{ ((lookup(contact | default(none), ["contact_home"]) | default(''))) | output }}</phonenumber>
+</Phone>
+{% endif %}
+{% if (lookup(contact | default(none), ["contact_cell"]) | default('')) != "" %}
+<Phone type="Mobile">
+<phonenumber>{{ ((lookup(contact | default(none), ["contact_cell"]) | default(''))) | output }}</phonenumber>
+</Phone>
+{% endif %}
+</Contact>
+{% endif %}
+{% endfor %}
+</AddressBook>

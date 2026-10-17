@@ -1,0 +1,25 @@
+{# MPL-1.1 derivative: FusionPBX 20143aec4366afc2755f336d3058243479d49d44, escene/e3xx/{$mac}_phonebook.xml, blob 0cd3b4d4e3642941923c01877e74cba20e3974d7. #}{% set ns = namespace(keys=keys | default({}), contact_groups=contact_groups | default({})) %}<all>
+	{% for contact in (contacts | default('')) | values %}
+		{% set ns.contact_groups = put(ns.contact_groups | default({}), (lookup(contact | default(none), ["contact_category"]) | default('')), true) %}
+	{% endfor %}
+
+	<PhoneGroups>
+		{% set ns.i = 0 %}
+		{% for name, _loop_true in (lookup(ns | default(none), ["contact_groups"]) | default('')) | items %}
+		<group id="{{ ((lookup(ns | default(none), ["i"]) | default(''))) | output }}" groupid="{{ ((lookup(ns | default(none), ["i"]) | default(''))) | output }}" name="{{ ((name | default(''))) | output }}" Descriptor="" RingType=""></group>
+		{% set ns.i = (lookup(ns | default(none), ["i"]) | default(0) | int)+1 %}
+		{% endfor %}
+	</PhoneGroups>
+
+	<PhoneBooks>
+		{% set ns.i = 0 %}
+		{% for contact in (contacts | default('')) | values %}
+		<book 
+			id="{{ ((lookup(ns | default(none), ["i"]) | default(''))) | output }}" Bookid="{{ ((lookup(ns | default(none), ["i"]) | default(''))) | output }}" speedid="0" accountid="127" NewVer="1" ISUseBLF="0"
+			GroupName="{{ ((lookup(contact | default(none), ["contact_category"]) | default(''))) | output }}" GroupNameTwo="" FirstName="{{ ((lookup(contact | default(none), ["contact_name_given"]) | default(''))) | output }}" LastName="{{ ((lookup(contact | default(none), ["contact_name_family"]) | default(''))) | output }}"
+			MobileNum="{{ ((lookup(contact | default(none), ["phone_number_mobile"]) | default(''))) | output }}" OfficeNum="{{ ((lookup(contact | default(none), ["phone_number_work"]) | default(''))) | output }}" OtherNum=""
+			Username="{{ ((lookup(contact | default(none), ["contact_name_given"]) | default(''))) | output }}{{ ((lookup(contact | default(none), ["contact_name_family"]) | default(''))) | output }}"></book>
+		{% set ns.i = (lookup(ns | default(none), ["i"]) | default(0) | int)+1 %}
+		{% endfor %}
+	</PhoneBooks>
+</all>

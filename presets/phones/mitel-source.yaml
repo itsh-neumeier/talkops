@@ -1,0 +1,48 @@
+{
+  "vendor": "mitel",
+  "status": "untested",
+  "models": [
+    {
+      "id": "mitel-5320",
+      "name": "5320",
+      "family": "desk",
+      "accounts": 8,
+      "line_keys": 0
+    },
+    {
+      "id": "mitel-5320e",
+      "name": "5320e",
+      "family": "desk",
+      "accounts": 8,
+      "line_keys": 0
+    },
+    {
+      "id": "mitel-5324",
+      "name": "5324",
+      "family": "desk",
+      "accounts": 8,
+      "line_keys": 0
+    },
+    {
+      "id": "mitel-5330",
+      "name": "5330",
+      "family": "desk",
+      "accounts": 8,
+      "line_keys": 0
+    },
+    {
+      "id": "mitel-5330e",
+      "name": "5330e",
+      "family": "desk",
+      "accounts": 8,
+      "line_keys": 0
+    },
+    {
+      "id": "mitel-5340",
+      "name": "5340",
+      "family": "desk",
+      "accounts": 8,
+      "line_keys": 0
+    }
+  ]
+}

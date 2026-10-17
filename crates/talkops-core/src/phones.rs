@@ -34,10 +34,31 @@ pub struct Phone {
     #[schema(value_type = Object)]
     pub settings: serde_json::Value,
     #[schema(value_type = Object)]
+    #[serde(serialize_with = "serialize_provisioning")]
     pub provisioning: serde_json::Value,
 }
 
-#[derive(Debug, Clone, Deserialize, utoipa::ToSchema)]
+fn serialize_provisioning<S: serde::Serializer>(
+    value: &serde_json::Value,
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    let mut value = value.clone();
+    for map in ["vendor_settings", "parameters"] {
+        if let Some(settings) = value
+            .get_mut(map)
+            .and_then(serde_json::Value::as_object_mut)
+        {
+            for secret in settings.values_mut() {
+                if secret.as_str().is_some_and(|v| v.starts_with("v1:")) {
+                    *secret = serde_json::json!("REDACTED");
+                }
+            }
+        }
+    }
+    value.serialize(serializer)
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct PhoneInput {
     pub mac: String,
     pub model: String,
@@ -156,8 +177,8 @@ fn validate(input: &PhoneInput) -> CoreResult<String> {
 
 /// Checks that the ringtone, wallpaper and phone book sections exist in the
 /// tenant; returns the sections without duplicates.
-async fn check_references(
-    pool: &PgPool,
+pub async fn check_references(
+    conn: &mut sqlx::PgConnection,
     tenant: TenantId,
     input: &PhoneInput,
 ) -> CoreResult<Vec<Uuid>> {
@@ -166,10 +187,14 @@ async fn check_references(
         (input.wallpaper_id, MediaKind::Wallpaper),
     ] {
         if let Some(id) = id {
-            let media = get_media(pool, tenant, id).await.map_err(|e| match e {
-                CoreError::NotFound => CoreError::Validation(format!("unknown {}", kind.as_str())),
-                e => e,
-            })?;
+            let media = get_media(&mut *conn, tenant, id)
+                .await
+                .map_err(|e| match e {
+                    CoreError::NotFound => {
+                        CoreError::Validation(format!("unknown {}", kind.as_str()))
+                    }
+                    e => e,
+                })?;
             if media.kind != kind {
                 return Err(CoreError::Validation(format!("not a {}", kind.as_str())));
             }
@@ -191,7 +216,7 @@ async fn check_references(
     )
     .bind(tenant)
     .bind(&sections)
-    .fetch_one(pool)
+    .fetch_one(&mut *conn)
     .await?;
     if known != sections.len() as i64 {
         return Err(CoreError::Validation("unknown phone book section".into()));
@@ -228,8 +253,17 @@ pub async fn find_by_mac(pool: &PgPool, mac: &str) -> CoreResult<Option<(TenantI
 }
 
 pub async fn create(pool: &PgPool, tenant: TenantId, input: &PhoneInput) -> CoreResult<Phone> {
+    create_on(&mut *pool.acquire().await?, tenant, input).await
+}
+
+/// Create a phone on the caller's transaction connection.
+pub async fn create_on(
+    conn: &mut sqlx::PgConnection,
+    tenant: TenantId,
+    input: &PhoneInput,
+) -> CoreResult<Phone> {
     let mac = validate(input)?;
-    let sections = check_references(pool, tenant, input).await?;
+    let sections = check_references(conn, tenant, input).await?;
     let sql = format!(
         "INSERT INTO phones (tenant_id, mac, model, name, line_keys, ringtone_id, wallpaper_id,
                              phonebook_sections, settings, provisioning)
@@ -247,7 +281,7 @@ pub async fn create(pool: &PgPool, tenant: TenantId, input: &PhoneInput) -> Core
         .bind(&sections)
         .bind(&input.settings)
         .bind(&input.provisioning)
-        .fetch_one(pool)
+        .fetch_one(conn)
         .await?)
 }
 
@@ -258,7 +292,7 @@ pub async fn update(
     input: &PhoneInput,
 ) -> CoreResult<Phone> {
     let mac = validate(input)?;
-    let sections = check_references(pool, tenant, input).await?;
+    let sections = check_references(&mut *pool.acquire().await?, tenant, input).await?;
     let sql = format!(
         "UPDATE phones SET mac = $3, model = $4, name = $5, line_keys = $6, ringtone_id = $7,
              wallpaper_id = $8, phonebook_sections = $9, settings = $10,

@@ -1,0 +1,183 @@
+{# MPL-1.1 derivative: FusionPBX 20143aec4366afc2755f336d3058243479d49d44, aastra/480i/{$mac}.cfg, blob c0158a8d07d109a9b710c5ded6b9679d0d17d622. #}{% set ns = namespace(keys=keys | default({}), contact_groups=contact_groups | default({})) %}# ####################################################################
+# General settings
+# ####################################################################
+
+# === passwords and access control ===
+{% if ((admin_password is defined and admin_password is not none)) %}admin password: {{ ((admin_password | default(''))) | output }}{{ ("\n") | output }}{% endif %}   # 22222 is the default
+#user password: 123                 # default is blank
+#web interface enabled: 1           # Enable/Disable Web UI
+#options password enabled: 1        # default is 0 == not protected
+#options simple menu: 1             # default is 0 == full options menu
+
+tone set: UK                        # Australia, Europe (generic tones), France, Germany, Italy, UK, US (also used in Canada)
+
+# === display date and time ===
+#time format: 0                  # 1 for 24 hr format
+#date format: 3                  # 0 == WWW MMM DD, 1 == DD-MMM-YY, 2 == YYYY-MM-DD, see reference for others
+#time zone name: GB-London       # Check reference for list of named time zones on page A-27, or set offset below
+#time zone code: GMT             # Check reference for list of named time zones on page A-27, or set offset below
+#time zone minutes: 300         # Offset in minutes from GMT, 300 = GMT-5 = Eastern Standard Time, -120 = GMT+2 = Eastern European Time
+{% if ((aastra_time_format is defined and aastra_time_format is not none)) %}time format: {{ ((aastra_time_format | default(''))) | output }}{{ ("\n") | output }}{% endif %}
+{% if ((aastra_date_format is defined and aastra_date_format is not none)) %}date format: {{ ((aastra_date_format | default(''))) | output }}{{ ("\n") | output }}{% endif %}
+{% if ((aastra_gmt_offset is defined and aastra_gmt_offset is not none)) %}time zone minutes: {{ ((aastra_gmt_offset | default(''))) | output }}{{ ("\n") | output }}{% endif %}
+dst config: 3                   # Day Light Savings, 0 == off, 1 == 30 min summertime, 2 == 1 hr summertime, 3 (default) == automatic
+dst minutes: 60                 # amount of time to offset the clock in minutes
+dst start relative date: 1      # Specifies how to interpret the start day, month, and week parameters, 0 - absolute, 1 - relative
+dst end relative date: 1        # Specifies how to interpret the end day, month, and week parameters, 0 - absolute, 1 - relative
+dst start month: {{ ((daylight_savings_start_month | default(''))) | output }}
+{% if ((daylight_savings_start_day is defined and daylight_savings_start_day is not none)) %}dst start week: {{ (( ((daylight_savings_start_day | default(''))) / 7 ) + 1) | int }}{{ ("\n") | output }}{% endif %}
+{% if ((daylight_savings_start_weekday is defined and daylight_savings_start_weekday is not none)) %}dst start day: {{ (( ((daylight_savings_start_weekday | default(''))) + 1 ) % 7) | int }}{{ ("\n") | output }}{% endif %}
+dst start hour: {{ ((daylight_savings_start_time | default(''))) | output }}
+dst end month: {{ ((daylight_savings_stop_month | default(''))) | output }}
+{% if ((daylight_savings_stop_day is defined and daylight_savings_stop_day is not none)) %}dst end week: {{ (( ((daylight_savings_stop_day | default(''))) / 7 ) + 1) | int }}{{ ("\n") | output }}{% endif %}
+{% if ((daylight_savings_stop_weekday is defined and daylight_savings_stop_weekday is not none)) %}dst end day: {{ (( ((daylight_savings_stop_weekday | default(''))) + 1 ) % 7) | int }}{{ ("\n") | output }}{% endif %}
+dst end hour: {{ ((daylight_savings_stop_time | default(''))) | output }}
+
+# === display backlight ===
+backlight mode: 1  # 0 == off, 1 == auto to turn off after period of inactivity
+#bl on time: 600  # time in seconds before backlight turns off if in auto
+
+# ####################################################################
+# Network Settings
+# ####################################################################
+
+# === IP network settings ===
+# dhcp: 1
+# ip: 192.168.1.100
+# subnet mask: 255.255.255.0
+# default gateway: 192.168.1.1
+{% if ((dns_server_primary is defined and dns_server_primary is not none)) %}dns1: {{ ((dns_server_primary | default(''))) | output }}{{ ("\n") | output }}{% endif %}
+{% if ((dns_server_secondary is defined and dns_server_secondary is not none)) %}dns2: {{ ((dns_server_secondary | default(''))) | output }}{{ ("\n") | output }}{% endif %}
+
+# === NTP time server settings ===
+time server disabled: 0                      # 0 == enable time server    1 = disable time server
+time server1: {{ ((ntp_server_primary | default(''))) | output }}
+time server2: {{ ((ntp_server_secondary | default(''))) | output }}
+
+# === Advanced Network Settings ===
+upnp manager: 0                               # Enable/Disable Universal Plug and Play
+lldp: 0                                       # Enable/Disable Link-Layer Discovery Protocol
+
+# ####################################################################
+# Provisioning Settings
+# ####################################################################
+# phone looks for configuration files in aastra.cfg followed by <MAC>.cfg, e.g. "00085D1610DE.cfg"
+# HTTPS, TFTP and FTP also supported
+download protocol: HTTP
+
+# === HTTP Provisioning Settings ===
+http server: {{ ((domain_name | default(''))) | output }}
+#http port: 80
+http path: /provision
+
+# === FTP Provisioning Settings ===
+#ftp server: {{ ((domain_name | default(''))) | output }}
+#ftp username: {{ ((ftp_auth_username | default(''))) | output }}
+#ftp password: {{ ((ftp_auth_password | default(''))) | output }}
+
+# === TFTP Provisioning Settings ===
+#tftp server: {{ ((domain_name | default(''))) | output }}
+#tftp path: /provision/{{ ((domain_name | default(''))) | output }}
+
+# === Provisioning Sync Settings ===
+# Example below is for resyncing config (but not firmware) nightly at 2am
+auto resync mode: 1
+auto resync time: 02:00
+
+# ####################################################################
+# SIP settings
+# ####################################################################
+
+# === Global ===
+# most can be overridden per line; see below
+sip vmail: {{ ((voicemail_number | default(''))) | output }}              # Voice Mail Extenstion
+
+sip transport protocol: 1       # 0 - UDP and TCP; 1 - UDP; 2 - TCP
+sip use basic codecs: 1         # 0 - Disable; 1 - Enable
+sip customized codec: payload=0;ptime=20;silsupp=off,payload=8;ptime=20;silsup=off  #see page A-59
+sip out-of-band dtmf: 1         # 0 - Disable; 1 - Enable
+sip dtmf method: 1              # 0 - RTP; 1 - SIP INFO; 2 - BOTH
+
+# ####################################################################
+# SIP settings - per-line
+# ####################################################################
+{% for row in (lines | default('')) | values %}
+sip line{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }} screen name: {{ ((lookup(row | default(none), ["display_name"]) | default(''))) | output }}
+sip line{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }} user name: {{ ((lookup(row | default(none), ["user_id"]) | default(''))) | output }}  # used in SIP URI
+sip line{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }} password: {{ ((lookup(row | default(none), ["password"]) | default(''))) | output }}
+sip line{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }} auth name: {{ ((lookup(row | default(none), ["user_id"]) | default(''))) | output }}  # used in Authorization header field of SIP REGISTER request
+sip line{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }} registrar ip: {{ ((lookup(row | default(none), ["server_address"]) | default(''))) | output }}
+{% if ((lookup(row | default(none), ["sip_port"]) is defined and lookup(row | default(none), ["sip_port"]) is not none)) %}
+sip line{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }} registrar port: {{ ((lookup(row | default(none), ["sip_port"]) | default(''))) | output }}
+{% else %}
+sip line{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }} registrar port: {{ ((line_sip_port | default(''))) | output }}
+{% endif %}
+sip line{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }} proxy ip: {{ ((lookup(row | default(none), ["server_address"]) | default(''))) | output }}
+{% if ((lookup(row | default(none), ["sip_port"]) is defined and lookup(row | default(none), ["sip_port"]) is not none)) %}
+sip line{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }} proxy port: {{ ((lookup(row | default(none), ["sip_port"]) | default(''))) | output }}
+{% else %}
+sip line{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }} proxy port: {{ ((line_sip_port | default(''))) | output }}
+{% endif %}
+{% if ((lookup(row | default(none), ["register_expires"]) is defined and lookup(row | default(none), ["register_expires"]) is not none)) %}
+sip line{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }} registration period: {{ ((lookup(row | default(none), ["register_expires"]) | default(''))) | output }}    # requested registration period, defaults to 0
+{% else %}
+sip line{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }} registration period: {{ ((line_register_expires | default(''))) | output }}    # requested registration period, defaults to 0
+{% endif %}
+{% endfor %}
+
+# ####################################################################
+# Key assignment types blf, blfxfer, park, speeddial, dnd
+# ####################################################################
+
+{% for row in (lookup(keys | default(none), ["line"]) | default('')) | values %}
+topsoftkey{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }} type: {{ ((lookup(row | default(none), ["device_key_type"]) | default(''))) | output }}
+topsoftkey{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }} line: {{ ((lookup(row | default(none), ["device_key_line"]) | default(''))) | output }}
+topsoftkey{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }} value: {{ ((lookup(row | default(none), ["device_key_value"]) | default(''))) | output }}
+topsoftkey{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }} label: {{ ((lookup(row | default(none), ["device_key_label"]) | default(''))) | output }}
+
+{% endfor %}
+
+{% for row in (lookup(keys | default(none), ["memory"]) | default('')) | values %}
+softkey{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }} type: {{ ((lookup(row | default(none), ["device_key_type"]) | default(''))) | output }}
+softkey{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }} line: {{ ((lookup(row | default(none), ["device_key_line"]) | default(''))) | output }}
+softkey{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }} value: {{ ((lookup(row | default(none), ["device_key_value"]) | default(''))) | output }}
+softkey{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }} label: {{ ((lookup(row | default(none), ["device_key_label"]) | default(''))) | output }}
+
+{% endfor %}
+
+{% for row in (lookup(keys | default(none), ["programmable"]) | default('')) | values %}
+prgkey{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }} type: {{ ((lookup(row | default(none), ["device_key_type"]) | default(''))) | output }}
+prgkey{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }} line: {{ ((lookup(row | default(none), ["device_key_line"]) | default(''))) | output }}
+prgkey{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }} value: {{ ((lookup(row | default(none), ["device_key_value"]) | default(''))) | output }}
+
+{% endfor %}
+
+{% for row in (lookup(keys | default(none), ["expansion"]) | default('')) | values %}
+{% if (lookup(row | default(none), ["device_key_category"]) | default('')) == "expansion"  and  (lookup(row | default(none), ["device_key_id"]) | default(0) | int) <= 60 %}
+expmod1 key{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }} type: {{ ((lookup(row | default(none), ["device_key_type"]) | default(''))) | output }}
+expmod1 key{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }} line: {{ ((lookup(row | default(none), ["device_key_line"]) | default(''))) | output }}
+expmod1 key{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }} value: {{ ((lookup(row | default(none), ["device_key_value"]) | default(''))) | output }}
+expmod1 key{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }} label: {{ ((lookup(row | default(none), ["device_key_label"]) | default(''))) | output }}
+{% elif (lookup(row | default(none), ["device_key_category"]) | default('')) == "expansion"  and  (lookup(row | default(none), ["device_key_id"]) | default(0) | int) <= 120 %}
+expmod2 key{{ ((lookup(row | default(none), ["device_key_id"]) | default(0) | int)-60) | output }} type: {{ ((lookup(row | default(none), ["device_key_type"]) | default(''))) | output }}
+expmod2 key{{ ((lookup(row | default(none), ["device_key_id"]) | default(0) | int)-60) | output }} line: {{ ((lookup(row | default(none), ["device_key_line"]) | default(''))) | output }}
+expmod2 key{{ ((lookup(row | default(none), ["device_key_id"]) | default(0) | int)-60) | output }} value: {{ ((lookup(row | default(none), ["device_key_value"]) | default(''))) | output }}
+expmod2 key{{ ((lookup(row | default(none), ["device_key_id"]) | default(0) | int)-60) | output }} label: {{ ((lookup(row | default(none), ["device_key_label"]) | default(''))) | output }}
+{% elif (lookup(row | default(none), ["device_key_category"]) | default('')) == "expansion"  and  (lookup(row | default(none), ["device_key_id"]) | default(0) | int) <= 180 %}
+expmod3 key{{ ((lookup(row | default(none), ["device_key_id"]) | default(0) | int)-120) | output }} type: {{ ((lookup(row | default(none), ["device_key_type"]) | default(''))) | output }}
+expmod3 key{{ ((lookup(row | default(none), ["device_key_id"]) | default(0) | int)-120) | output }} line: {{ ((lookup(row | default(none), ["device_key_line"]) | default(''))) | output }}
+expmod3 key{{ ((lookup(row | default(none), ["device_key_id"]) | default(0) | int)-120) | output }} value: {{ ((lookup(row | default(none), ["device_key_value"]) | default(''))) | output }}
+expmod3 key{{ ((lookup(row | default(none), ["device_key_id"]) | default(0) | int)-120) | output }} label: {{ ((lookup(row | default(none), ["device_key_label"]) | default(''))) | output }}
+{% elif (lookup(row | default(none), ["device_key_category"]) | default('')) == "expansion" %}
+expmod4 key{{ ((lookup(row | default(none), ["device_key_id"]) | default(0) | int)-180) | output }} type: {{ ((lookup(row | default(none), ["device_key_type"]) | default(''))) | output }}
+expmod4 key{{ ((lookup(row | default(none), ["device_key_id"]) | default(0) | int)-180) | output }} line: {{ ((lookup(row | default(none), ["device_key_line"]) | default(''))) | output }}
+expmod4 key{{ ((lookup(row | default(none), ["device_key_id"]) | default(0) | int)-180) | output }} value: {{ ((lookup(row | default(none), ["device_key_value"]) | default(''))) | output }}
+expmod4 key{{ ((lookup(row | default(none), ["device_key_id"]) | default(0) | int)-180) | output }} label: {{ ((lookup(row | default(none), ["device_key_label"]) | default(''))) | output }}
+{% endif %}
+
+{% endfor %}
+
+# #################
+# Reference Documenation
+# #################
+# https://www.mitel.com/open-solutions-documents/480i

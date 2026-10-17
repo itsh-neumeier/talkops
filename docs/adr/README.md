@@ -43,6 +43,7 @@ nächste freie Nummer; überholte ADRs werden nicht gelöscht, sondern auf
 | [0036](0036-storage-targets.md) | Storage targets as a shared area | Accepted |
 | [0037](0037-audit-export-and-retention.md) | Audit log filters, export and retention | Accepted |
 | [0038](0038-vendor-provisioning-profiles.md) | Vendor provisioning profiles and device transport overrides | Accepted |
+| [0039](0039-source-derived-multi-vendor-provisioning.md) | Source-derived manufacturer provisioning and device copies | Accepted |
 
 
 Vorlage: [`template.md`](template.md)

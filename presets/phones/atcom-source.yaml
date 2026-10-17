@@ -1,0 +1,13 @@
+{
+  "vendor": "atcom",
+  "status": "untested",
+  "models": [
+    {
+      "id": "atcom-ag198",
+      "name": "ag198",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    }
+  ]
+}

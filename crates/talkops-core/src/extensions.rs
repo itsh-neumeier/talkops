@@ -561,8 +561,8 @@ pub fn validate_sip_username(username: &str) -> CoreResult<()> {
 /// Fails with a conflict when another device (any tenant) already uses the
 /// SIP username, without regard to case. The unique index stays the final
 /// check for concurrent requests.
-async fn ensure_username_free(
-    pool: &sqlx::PgPool,
+async fn ensure_username_free<'e>(
+    db: impl PgExecutor<'e>,
     username: &str,
     except: Option<Uuid>,
 ) -> CoreResult<()> {
@@ -572,7 +572,7 @@ async fn ensure_username_free(
     )
     .bind(username)
     .bind(except)
-    .fetch_one(pool)
+    .fetch_one(db)
     .await?;
     if taken {
         return Err(CoreError::Conflict(format!(
@@ -589,14 +589,14 @@ const GENERATED_USERNAME_LEN: usize = 6;
 /// least one letter (`28x2js`), so that it never looks like an extension
 /// number. It does not depend on the extension. Existing devices keep their
 /// names.
-async fn default_username(pool: &sqlx::PgPool) -> CoreResult<String> {
+async fn default_username(conn: &mut sqlx::PgConnection) -> CoreResult<String> {
     // The large name space makes collisions rare; retry names already in use.
     for _ in 0..16 {
         let name = crypto::random_lowercase(GENERATED_USERNAME_LEN)?;
         if !name.chars().any(|c| c.is_ascii_lowercase()) {
             continue;
         }
-        match ensure_username_free(pool, &name, None).await {
+        match ensure_username_free(&mut *conn, &name, None).await {
             Ok(()) => return Ok(name),
             Err(CoreError::Conflict(_)) => continue,
             Err(err) => return Err(err),
@@ -650,7 +650,7 @@ const DEV_COLUMNS: &str = "id, extension_id, browser_user_id, name, kind, sip_us
 /// Resolves the account slot for a device on a phone: the requested one, or
 /// the lowest free slot. Checks that the phone exists.
 async fn phone_slot(
-    pool: &sqlx::PgPool,
+    conn: &mut sqlx::PgConnection,
     tenant: TenantId,
     phone_id: Option<Uuid>,
     requested: Option<i16>,
@@ -663,7 +663,7 @@ async fn phone_slot(
         sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM phones WHERE tenant_id = $1 AND id = $2)")
             .bind(tenant)
             .bind(phone_id)
-            .fetch_one(pool)
+            .fetch_one(&mut *conn)
             .await?;
     if !exists {
         return Err(CoreError::Validation("unknown phone".into()));
@@ -680,7 +680,7 @@ async fn phone_slot(
     )
     .bind(phone_id)
     .bind(device_id)
-    .fetch_all(pool)
+    .fetch_all(conn)
     .await?;
     Ok((1..=100).find(|i| !used.contains(i)))
 }
@@ -890,15 +890,33 @@ pub async fn create_device(
     extension: &Extension,
     input: &DeviceInput,
 ) -> CoreResult<(Device, String)> {
+    create_device_on(
+        &mut *pool.acquire().await?,
+        tenant,
+        secrets,
+        extension,
+        input,
+    )
+    .await
+}
+
+/// Create a new SIP identity inside the caller's transaction.
+pub async fn create_device_on(
+    conn: &mut sqlx::PgConnection,
+    tenant: TenantId,
+    secrets: &SecretBox,
+    extension: &Extension,
+    input: &DeviceInput,
+) -> CoreResult<(Device, String)> {
     let (label, display) = input.phone_texts()?;
-    let slot = phone_slot(pool, tenant, input.phone_id, input.account_index, None).await?;
+    let slot = phone_slot(conn, tenant, input.phone_id, input.account_index, None).await?;
     let username = match input.requested_username() {
         Some(u) => {
             validate_sip_username(u)?;
-            ensure_username_free(pool, u, None).await?;
+            ensure_username_free(&mut *conn, u, None).await?;
             u.to_owned()
         }
-        None => default_username(pool).await?,
+        None => default_username(conn).await?,
     };
     let format = input.sip_password_format.unwrap_or_default();
     check_password_format(input.kind, format)?;
@@ -924,7 +942,7 @@ pub async fn create_device(
         .bind(input.codec_profile)
         .bind(format)
         .bind(input.video)
-        .fetch_one(pool)
+        .fetch_one(conn)
         .await?;
     Ok((device, password))
 }
@@ -971,7 +989,14 @@ pub async fn update_device(
             .sip_password_format
             .unwrap_or(current.sip_password_format),
     )?;
-    let slot = phone_slot(pool, tenant, input.phone_id, input.account_index, Some(id)).await?;
+    let slot = phone_slot(
+        &mut *pool.acquire().await?,
+        tenant,
+        input.phone_id,
+        input.account_index,
+        Some(id),
+    )
+    .await?;
     // The format applies to the next generated password; the current
     // password stays valid.
     let sql = format!(
@@ -1101,8 +1126,13 @@ mod tests {
             .connect_lazy("postgres://localhost/talkops")
             .unwrap();
         pool.close().await;
+        let result: CoreResult<String> = async {
+            let mut conn = pool.acquire().await?;
+            default_username(&mut conn).await
+        }
+        .await;
         assert!(matches!(
-            default_username(&pool).await,
+            result,
             Err(CoreError::Db(sqlx::Error::PoolClosed))
         ));
     }

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import DeviceLocaleFields from './DeviceLocaleFields.svelte';
 	import { onMount } from 'svelte';
 	import { api, type ProvisioningRequest } from '#lib/api.ts';
 	import { t, formatDateTime } from '#lib/i18n/index.svelte.ts';
@@ -10,16 +11,26 @@
 		saved = $state(false),
 		busy = $state(false);
 	let requests = $state<ProvisioningRequest[]>([]);
+	let locale = $state({ language: '', time_zone: '', ntp_server: '' });
 	async function refresh() {
 		requests = await api.get<ProvisioningRequest[]>('/provisioning/requests');
 	}
 	onMount(async () => {
 		try {
-			const options = await api.get<{ endpoint: string; sip_host: string }>(
-				'/provisioning/options'
-			);
+			const options = await api.get<{
+				endpoint: string;
+				sip_host: string;
+				language?: string;
+				time_zone?: string;
+				ntp_server?: string;
+			}>('/provisioning/options');
 			endpoint = options.endpoint;
 			sipHost = options.sip_host;
+			locale = {
+				language: options.language ?? '',
+				time_zone: options.time_zone ?? '',
+				ntp_server: options.ntp_server ?? ''
+			};
 			await refresh();
 		} catch (err) {
 			error = errorMessage(err);
@@ -30,7 +41,7 @@
 		error = '';
 		saved = false;
 		try {
-			await api.put('/provisioning/options', { endpoint, sip_host: sipHost });
+			await api.put('/provisioning/options', { endpoint, sip_host: sipHost, ...locale });
 			saved = true;
 		} catch (err) {
 			error = errorMessage(err);
@@ -64,6 +75,7 @@
 			>
 		</div>
 		<p class="hint">{t('prov.httpHint')}</p>
+		<DeviceLocaleFields prefix="provision-defaults" bind:values={locale} disabled={busy} />
 		<div class="flex flex-wrap items-center justify-end gap-2">
 			{#if saved}<span role="status">{t('phoneset.saved')}</span>{/if}<button
 				class="btn btn-primary"

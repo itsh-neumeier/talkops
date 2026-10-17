@@ -619,15 +619,45 @@ export interface PhoneAccount {
 }
 
 export interface PhoneDetail extends Phone {
+	provisioning_base?: string | null;
+	provisioning_files?: {
+		artifact: string;
+		format: string;
+		name: string;
+		url: string;
+		primary: boolean;
+	}[];
 	accounts: PhoneAccount[];
 }
 
 export interface PhoneModel {
+	provisioning_capabilities?: {
+		key_groups?: string[];
+		key_functions?: {
+			uuid: string;
+			type: string;
+			subtype: string;
+			value: string;
+			description: string;
+			groups?: string[];
+		}[];
+		native: boolean;
+		adaptation: string;
+		device_validation: string;
+		account_capacity_source?: string;
+		settings?: { key: string; label: string; kind: string; copyable: boolean }[];
+		primary?: string;
+		files?: string[];
+		resync: boolean;
+		reboot: boolean;
+		identity_kind: 'mac' | 'token';
+	};
 	key_capabilities?: KeyCapabilities;
 	id: string;
 	name: string;
 	vendor: string;
-	family: 'desk' | 'dect' | 'conference' | 'wifi';
+	family:
+		'desk' | 'dect' | 'conference' | 'wifi' | 'ata' | 'gateway' | 'intercom' | 'paging' | 'app';
 	accounts: number;
 	line_keys: number;
 	line_key_limit: number;
@@ -1186,6 +1216,13 @@ export interface WorkerStatus {
 }
 
 export interface PhoneProvisioning {
+	account_slots?: number | null;
+	parameters?: Record<string, string>;
+	language?: string;
+	time_zone?: string;
+	ntp_server?: string;
+	vendor_settings?: Record<string, string>;
+	defer_unassigned_keys?: boolean;
 	endpoint?: string;
 	sip_host?: string;
 	firmware_profile?: string;
@@ -1194,9 +1231,21 @@ export interface PhoneProvisioning {
 	softkeys?: Record<string, string[]>;
 }
 export interface ProvisioningKey extends LineKey {
+	native_function?: string;
 	group: string;
 	history_type: number;
 	phonebook: number;
+}
+export interface PhoneParameter {
+	key: string;
+	parameter: string;
+	description: string;
+	artifact: string;
+	category: string;
+	kind: string;
+	managed: boolean;
+	copyable: boolean;
+	default: string | null;
 }
 export interface KeyCapabilities {
 	programmable: number[];

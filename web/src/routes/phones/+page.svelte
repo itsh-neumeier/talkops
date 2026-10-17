@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PhoneCloneDialog from '#lib/components/PhoneCloneDialog.svelte';
 	import ProvisioningTransport from '#lib/components/ProvisioningTransport.svelte';
 	import EmptyRow from '#lib/components/EmptyRow.svelte';
 	import PageHeader from '#lib/components/PageHeader.svelte';
@@ -51,6 +52,8 @@
 	let info = $state<ProvisioningInfo | null>(null);
 	let error = $state('');
 	let addOpen = $state(false);
+	let cloneOpen = $state(false),
+		cloneSource = $state('');
 	let form = $state({ mac: '', model: 't54w', name: '' });
 	let fwModel = $state('t54w');
 	let fwFile = $state<FileList | null>(null);
@@ -365,20 +368,40 @@
 
 <Modal title={t('phones.new')} bind:open={addOpen}>
 	<form class="space-y-3" onsubmit={add}>
+		{#if phones.length > 0}<button
+				type="button"
+				class="btn"
+				onclick={() => {
+					addOpen = false;
+					cloneOpen = true;
+				}}>{t('phoneclone.title')}</button
+			>{/if}
 		<div>
 			<label for="p-name">{t('common.name')}</label>
 			<input id="p-name" class="input" bind:value={form.name} required placeholder="Office" />
 		</div>
 		<div>
-			<label for="p-mac">{t('phones.mac')}</label>
+			<label for="p-mac"
+				>{t(
+					models.find((m) => m.id === form.model)?.family === 'app'
+						? 'vendor.identityToken'
+						: 'phones.mac'
+				)}</label
+			>
 			<input
 				id="p-mac"
 				class="input font-mono"
 				bind:value={form.mac}
-				required
+				required={models.find((m) => m.id === form.model)?.family !== 'app'}
 				placeholder="80:5e:c0:12:34:56"
 			/>
-			<p class="hint">{t('phones.macHint')}</p>
+			<p class="hint">
+				{t(
+					models.find((m) => m.id === form.model)?.family === 'app'
+						? 'vendor.identityHint'
+						: 'phones.macHint'
+				)}
+			</p>
 		</div>
 		<div>
 			<label for="p-model">{t('phones.model')}</label>
@@ -406,3 +429,11 @@
 		</div>
 	</form>
 </Modal>
+
+<PhoneCloneDialog
+	bind:open={cloneOpen}
+	bind:sourceId={cloneSource}
+	{phones}
+	{models}
+	{extensions}
+/>

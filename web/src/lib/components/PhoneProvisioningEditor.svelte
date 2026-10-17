@@ -1,4 +1,5 @@
 <script lang="ts">
+	import DeviceLocaleFields from './DeviceLocaleFields.svelte';
 	import { onMount, tick } from 'svelte';
 	import {
 		api,
@@ -75,11 +76,13 @@
 	const availableContacts = $derived(contactsForPhone(contacts, sectionIds));
 	const picked = $derived(availableContacts.find((c) => c.id === contactId));
 	const orphans = $derived(
-		(values.keys ?? []).filter((k) =>
-			k.group === 'programmable'
-				? !caps?.programmable.includes(k.key)
-				: !groups.some((g) => g.id === k.group)
-		)
+		model.provisioning_capabilities?.native
+			? []
+			: (values.keys ?? []).filter((k) =>
+					k.group === 'programmable'
+						? !caps?.programmable.includes(k.key)
+						: !groups.some((g) => g.id === k.group)
+				)
 	);
 	onMount(async () => {
 		if (!disabled)
@@ -194,6 +197,7 @@
 </script>
 
 <section class="card space-y-4">
+	<DeviceLocaleFields prefix="device-locale" bind:values {disabled} />
 	<h2>{t('prov.deviceTitle')}</h2>
 	<p class="hint">{t('prov.deviceHint')}</p>
 	<div class="grid grid-cols-1 gap-3 @lg:grid-cols-2">

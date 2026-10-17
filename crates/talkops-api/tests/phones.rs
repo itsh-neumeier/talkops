@@ -23,7 +23,7 @@ async fn desk_model_catalog_and_extended_common_configs(db: PgPool) {
         .as_array()
         .unwrap()
         .iter()
-        .filter(|m| m["family"] == "desk")
+        .filter(|m| m["family"] == "desk" && m["layout"].is_object())
         .collect();
     assert_eq!(desk.len(), 21);
     for (i, model) in desk.iter().enumerate() {

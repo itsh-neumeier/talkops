@@ -12,7 +12,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use talkops_core::{audit, phone_provisioning as store, roles::Permission, tenant::TenantId};
 use talkops_provisioning::{keys, library};
 use utoipa::ToSchema;
@@ -22,6 +22,9 @@ use uuid::Uuid;
 #[derive(Debug, Default, Clone, Deserialize, Serialize, ToSchema)]
 #[serde(default, deny_unknown_fields)]
 pub struct Options {
+    pub language: String,
+    pub time_zone: String,
+    pub ntp_server: String,
     pub endpoint: String,
     pub sip_host: String,
 }
@@ -52,6 +55,11 @@ async fn put_options(
     Json(input): Json<Options>,
 ) -> ApiResult<Json<Options>> {
     auth.require_perm(Permission::PhonesManage)?;
+    keys::validate_locale(&input.language, &input.time_zone, &input.ntp_server)
+        .map_err(ApiError::BadRequest)?;
+    if !input.time_zone.is_empty() && input.time_zone.parse::<chrono_tz::Tz>().is_err() {
+        return Err(ApiError::BadRequest("unknown device time zone".into()));
+    }
     if !input.endpoint.is_empty() {
         keys::validate_endpoint(&input.endpoint, true).map_err(ApiError::BadRequest)?;
     }
@@ -63,7 +71,7 @@ async fn put_options(
         "update",
         "provisioning_options",
         None,
-        json!({"endpoint":input.endpoint,"sip_host":input.sip_host}),
+        json!({"endpoint":input.endpoint,"sip_host":input.sip_host,"language":input.language,"time_zone":input.time_zone,"ntp_server":input.ntp_server}),
     )
     .await?;
     Ok(Json(input))
@@ -89,23 +97,35 @@ async fn get_requests(
 #[utoipa::path(get,path="/api/v1/provisioning/library",tag="phones",responses((status=200,body=Value)))]
 async fn get_library(State(state): State<AppState>, auth: AuthUser) -> ApiResult<Json<Value>> {
     auth.require_perm(Permission::PhonesManage)?;
-    let folders: BTreeSet<_> = library::sources()
-        .iter()
-        .filter_map(|(path, _)| path.split('/').next())
-        .collect();
+    let mut profiles=talkops_provisioning::vendors::profiles().iter().filter(|p|p.template_selector.is_none()).map(|p|{
+        let model=if p.vendor=="yealink"{p.source_model.clone()}else{format!("{}/{}",p.vendor,p.source_model)};
+        let adapted=state.phone_catalog.get(&p.id).is_some() || (p.vendor=="yealink"&&state.phone_catalog.get(&p.source_model).is_some());
+        let prefix=format!("{}/{}/",p.vendor,p.source_model);
+        let mut source_paths=talkops_provisioning::vendors::sources().iter().filter_map(|(name,_)|name.strip_prefix(&prefix).map(|file|(file.to_owned(),name.to_string()))).collect::<BTreeMap<_,_>>();
+        for artifact in &p.artifacts {let path=artifact.template.trim_end_matches(".jinja");if talkops_provisioning::vendors::source(path).is_some(){source_paths.entry(artifact.name.clone()).or_insert_with(||path.into());}}
+        json!({"model":model,"vendor":p.vendor,"adapted":adapted,"adaptation":p.adaptation,"device_validation":p.device_validation,"reason":p.reason,"files":source_paths.keys().collect::<Vec<_>>(),"source_paths":source_paths})
+    }).collect::<Vec<_>>();
+    profiles.push(json!({"model":"spectralink","vendor":"spectralink","adapted":false,"adaptation":"blocked","device_validation":"not_tested","reason":"no_source_template","files":["empty.txt"],"source_paths":{"empty.txt":"spectralink/empty.txt"}}));
     Ok(Json(
-        json!({"revision":"be0d0e3220e6b3666775fa46db6f1accc60c79c6","license":"MPL-1.1","profiles":folders.into_iter().map(|model|{
-        json!({"model":model,"vendor":"yealink","adapted":state.phone_catalog.get(model).is_some(),"files":library::sources().iter().filter_map(|(p,_)|p.strip_prefix(&format!("{model}/"))).collect::<Vec<_>>()})
-    }).collect::<Vec<_>>()}),
+        json!({"revision":"20143aec4366afc2755f336d3058243479d49d44","license":"MPL-1.1","profiles":profiles}),
     ))
 }
 #[utoipa::path(get,path="/api/v1/provisioning/library/source/{path}",tag="phones",params(("path"=String,Path)),responses((status=200,body=String)))]
 async fn get_source(auth: AuthUser, Path(path): Path<String>) -> ApiResult<Response> {
     auth.require_perm(Permission::PhonesManage)?;
-    let source = library::source(&path).ok_or(ApiError::NotFound)?;
+    let source = talkops_provisioning::vendors::source(&path)
+        .or_else(|| library::source(&path).map(str::as_bytes))
+        .ok_or(ApiError::NotFound)?;
     Ok((
         [
-            (header::CONTENT_TYPE, "text/plain; charset=utf-8"),
+            (
+                header::CONTENT_TYPE,
+                if std::str::from_utf8(source).is_ok() {
+                    "text/plain; charset=utf-8"
+                } else {
+                    "application/octet-stream"
+                },
+            ),
             (header::CACHE_CONTROL, "no-store"),
         ],
         source,
@@ -113,9 +133,20 @@ async fn get_source(auth: AuthUser, Path(path): Path<String>) -> ApiResult<Respo
         .into_response())
 }
 #[utoipa::path(get,path="/api/v1/provisioning/native",tag="phones",responses((status=200,body=Value)))]
-async fn native_files(auth: AuthUser) -> ApiResult<Json<Value>> {
+async fn native_files(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Query(query): Query<BTreeMap<String, String>>,
+) -> ApiResult<Json<Value>> {
     auth.require_perm(Permission::PhonesManage)?;
-    Ok(Json(json!(library::builtin())))
+    let files = match query.get("model") {
+        Some(id) => {
+            library::builtin_for_model(state.phone_catalog.get(id).ok_or(ApiError::NotFound)?)
+                .map_err(ApiError::BadRequest)?
+        }
+        None => library::builtin(),
+    };
+    Ok(Json(json!(files)))
 }
 #[utoipa::path(get,path="/api/v1/provisioning/templates",tag="phones",responses((status=200,body=[store::Template])))]
 async fn list_templates(
@@ -141,7 +172,7 @@ async fn create_template(
         .phone_catalog
         .get(&input.model)
         .ok_or_else(|| ApiError::BadRequest("unknown model".into()))?;
-    if model.vendor != "yealink" || input.name.trim().is_empty() || input.name.len() > 100 {
+    if input.name.trim().is_empty() || input.name.len() > 100 {
         return Err(ApiError::BadRequest(
             "invalid template name or unsupported vendor".into(),
         ));
@@ -152,7 +183,7 @@ async fn create_template(
         input.name.trim(),
         &model.vendor,
         &model.id,
-        &json!(library::builtin()),
+        &json!(library::builtin_for_model(model).map_err(ApiError::BadRequest)?),
     )
     .await?;
     audit::record(
@@ -187,7 +218,12 @@ async fn save_revision(
     Json(input): Json<RevisionInput>,
 ) -> ApiResult<Json<Value>> {
     auth.require_perm(Permission::PhonesManage)?;
-    library::validate(&input.files).map_err(ApiError::BadRequest)?;
+    let template = store::template(&state.db, auth.tenant, id).await?;
+    let model = state
+        .phone_catalog
+        .get(&template.model)
+        .ok_or(ApiError::NotFound)?;
+    library::validate_manifest(&input.files, model).map_err(ApiError::BadRequest)?;
     let revision = store::add_revision(&state.db, auth.tenant, id, &json!(input.files)).await?;
     audit::record(
         &state.db,

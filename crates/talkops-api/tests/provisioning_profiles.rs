@@ -186,7 +186,7 @@ async fn template_drafts_activation_restore_and_source_access(db: PgPool) {
     let admin = setup_admin(&router).await;
     let (status, library) = admin.get("/api/v1/provisioning/library").await;
     assert_eq!(status, StatusCode::OK);
-    assert_eq!(library["profiles"].as_array().unwrap().len(), 70);
+    assert_eq!(library["profiles"].as_array().unwrap().len(), 387);
     let response = raw(
         &router,
         Request::get("/api/v1/provisioning/library/source/t41p%2Fy000000000036.cfg")

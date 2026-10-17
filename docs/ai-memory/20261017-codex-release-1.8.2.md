@@ -8,7 +8,7 @@
 - Status: In progress
 - Branch: codex/release-1.8.2
 - Base commit: 86772ec0c31990f7a29a639ffb90db6ebef217e2
-- Related commits or PR: Pending
+- Related PR: https://github.com/itsh-neumeier/talkops/pull/50
 
 ## Goal
 

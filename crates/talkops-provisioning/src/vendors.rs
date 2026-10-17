@@ -425,7 +425,7 @@ pub fn context(setup: &PhoneSetup<'_>, common: &Common<'_>) -> Value {
             "effective_caller_id_name":entry.name,"contact_category":"TalkOps","contact_uuid":format!("entry-{entry_index}"),
             "phone_number_work":if kind=="mobile"{""}else{number},"phone_number_mobile":if kind=="mobile"{number}else{""},
             "contact_type":if setup.model.id=="grandstream-gxp2100"{"user"}else{"contact"},
-            "contact_work":number,"contact_cell":"","contact_home":"","phone_number":number,
+            "contact_work":if kind=="work"{number}else{""},"contact_cell":if kind=="mobile"{number}else{""},"contact_home":if kind=="home"{number}else{""},"phone_number":number,
             "phone_extension":number,"phone_type":kind,"phone_label":kind,"phone_primary":1,
             "numbers":[{"phone_number":number,"phone_extension":number,"phone_label":kind,"phone_primary":1}],
             "category":if internal{"extensions"}else{"users"},"group_description":"TalkOps",

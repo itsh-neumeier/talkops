@@ -21,8 +21,8 @@ work and all published tags.
 PR49 and integration PR50 are merged. The entire agreed contribution is from
 Codex; no Claude Code contribution was assigned. Exact source head
  e74a06c51c5fc84dd61d0903d6396ddc09660906 is preserved and was not in the base.
-No agreed contribution is omitted or blocked. Publication is pending exact-main
-checks and artifact verification.
+No agreed contribution is omitted or blocked. Exact-main checks passed. The
+new tag is pushed; publication and artifact verification are in progress.
 
 | PR | Source branch | Exact source head | Dependency | Migration ID |
 | --- | --- | --- | --- | --- |
@@ -70,7 +70,8 @@ checks and artifact verification.
 - Passed: all 433 reference Git blob IDs and bytes at the pinned upstream head.
 - Passed: all 12 final-candidate checks, including 375 Rust tests, one existing
   ignored test, web/browser suites, Compose and version1.8.2 image smoke tests.
-- Pending: exact-main CI/E2E, publication and three two-platform manifests.
+- Passed: exact-main CI39006646325 and E2E39006646300 before tagging.
+  Main E2E passed on its first attempt. Publication and artifact checks remain pending.
 - Local provisioning test build was not started: C: has less than 4 GiB free.
   Do not remove foreign outputs. Linux CI supplied the full profile tests.
 - The first local version checker treated an unrelated dependency version
@@ -100,9 +101,10 @@ checks and artifact verification.
 
 ## Next action
 
-Wait for exact-main CI39006646325 and E2E39006646300. Recheck current main,
-scope, versions and unused tag. Push one v1.8.2 tag to the tested main commit.
-Verify Release, GitHub release and all three two-platform manifests.
+Wait for Release39007742037 and additional tag checks. Verify the GitHub
+release, three versioned two-platform manifests, all six OCI version/revision
+labels and moving 1.8/latest tags. Then archive the final record and clean
+only unchanged integrated branches.
 
 ## References
 
@@ -129,3 +131,14 @@ Verify Release, GitHub release and all three two-platform manifests.
 - Do not push the batch branch after merge. Local checkpoint commits change
   only this task record. Archive the final record under audit/release-1.8.2
   after publication, without changing main or the released code.
+
+## Tag checkpoint
+
+- Exact-main CI39006646325 and E2E39006646300 passed on the release commit.
+  Rechecked latest-main run IDs, current remote main, empty open-PR scope,
+  exact source ancestry, versions and unused tag immediately before publication.
+- Annotated v1.8.2 was pushed once at 2026-10-17T05:50:41Z. Tag object:
+  3e5834d117026e29b2099098af47024fe0c25abc. Peeled target:
+  c4765b0495adf004f0b2b0f5099cbd098f384f86. No published tag moved.
+- Publication: Release39007742037. Additional tag CI39007742064,
+  E2E39007742124 and FreeSWITCH39007742129 are in progress.

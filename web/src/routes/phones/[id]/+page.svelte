@@ -1,4 +1,7 @@
 <script lang="ts">
+	import PhoneProvisioningEditor from '#lib/components/PhoneProvisioningEditor.svelte';
+	import { configurationDiff } from '#lib/provisioning.ts';
+	import type { PhoneProvisioning } from '#lib/api.ts';
 	import PageHeader from '#lib/components/PageHeader.svelte';
 	import PhoneSettingsEditor from '#lib/components/PhoneSettingsEditor.svelte';
 	import PhoneKeyEditor from '#lib/components/PhoneKeyEditor.svelte';
@@ -48,6 +51,10 @@
 	/** Label and display name per account (device id), as edited. */
 	let texts = $state<Record<string, { phone_label: string; phone_display_name: string }>>({});
 	let keys = $state<LineKey[]>([]);
+	let provisioning = $state<PhoneProvisioning>({});
+	let previewOpen = $state(false),
+		previewText = $state(''),
+		previewDiff = $state('');
 	let error = $state('');
 	let message = $state('');
 	let config = $state('');
@@ -102,6 +109,7 @@
 				])
 			);
 			keys = phone.line_keys.map((k) => ({ ...k }));
+			provisioning = structuredClone($state.snapshot(phone.provisioning ?? {}));
 		} catch (err) {
 			error = errorMessage(err);
 		}
@@ -145,6 +153,7 @@
 				...form,
 				ringtone_id: model?.ringtone_max_kb ? form.ringtone_id || null : null,
 				wallpaper_id: model?.wallpaper ? form.wallpaper_id || null : null,
+				provisioning,
 				line_keys: keys
 			});
 			for (const a of phone?.accounts ?? []) {
@@ -225,6 +234,23 @@
 		}
 	}
 
+	async function preview() {
+		try {
+			const result = await api.post<{ before: string; after: string }>(`/phones/${id}/preview`, {
+				...form,
+				ringtone_id: form.ringtone_id || null,
+				wallpaper_id: form.wallpaper_id || null,
+				line_keys: keys,
+				provisioning,
+				accounts: texts
+			});
+			previewText = result.after;
+			previewDiff = configurationDiff(result.before, result.after);
+			previewOpen = true;
+		} catch (err) {
+			error = errorMessage(err);
+		}
+	}
 	async function showConfig() {
 		try {
 			config = await getText(`/phones/${id}/config`);
@@ -256,6 +282,7 @@
 		<span class="text-base font-normal text-slate-500 dark:text-slate-400">{model?.name}</span>
 	{/snippet}
 	{#snippet actions()}
+		<button class="btn" onclick={preview}>{t('prov.preview')}</button>
 		<button class="btn" title={t('phones.resyncHint')} onclick={() => resync(false)}
 			>{t('phones.resync')}</button
 		>
@@ -433,7 +460,11 @@
 				<h2>{t('phoneset.title')}</h2>
 				<p class="hint">{t('phoneset.phoneHint')}</p>
 				<PhoneSettingsEditor
-					catalog={comfort.catalog}
+					catalog={comfort.catalog.filter(
+						(s) =>
+							(!s.vendor || s.vendor === model.vendor) &&
+							(!s.models?.length || s.models.includes(model.id))
+					)}
 					bind:values={form.settings}
 					family={model.family}
 					inherited={comfort.values}
@@ -441,6 +472,15 @@
 			</section>
 		{/if}
 
+		{#if model}<PhoneProvisioningEditor
+				{model}
+				accounts={phone.accounts}
+				{contacts}
+				{sections}
+				sectionIds={form.phonebook_sections}
+				bind:values={provisioning}
+				disabled={!can('phones.manage') || saving}
+			/>{/if}
 		{#if model && model.line_keys > 0}
 			{#if model.layout}
 				<PhoneKeyEditor
@@ -540,3 +580,13 @@
 <Modal title={t('phones.showConfig')} bind:open={configOpen}>
 	<pre class="overflow-x-auto rounded-lg bg-slate-100 p-2 text-xs dark:bg-slate-800">{config}</pre>
 </Modal>
+
+<Modal bind:open={previewOpen} title={t('prov.preview')}
+	><p class="hint">{t('prov.previewHint')}</p>
+	<h3>{t('prov.diff')}</h3>
+	<pre class="max-h-64 overflow-auto whitespace-pre-wrap break-all text-xs">{previewDiff ||
+			t('prov.noDiff')}</pre>
+	<h3>{t('prov.result')}</h3>
+	<pre
+		class="max-h-96 overflow-auto whitespace-pre-wrap break-all text-xs">{previewText}</pre></Modal
+>

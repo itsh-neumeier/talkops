@@ -1,14 +1,14 @@
 //! Provisioned phones, firmware images, shared phonebook contacts and the
 //! provisioning credentials shown to the administrator.
 
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 
 use axum::Json;
 use axum::extract::{DefaultBodyLimit, Multipart, Path, State};
 use axum::http::{HeaderMap, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
+use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use talkops_core::audit;
 use talkops_core::contact_import::{self, ImportReport, ImportRequest};
@@ -18,6 +18,7 @@ use talkops_core::phones::{
 };
 use talkops_core::tenant::TenantId;
 use talkops_provisioning::catalog::PhoneLayout;
+use talkops_provisioning::keys;
 use talkops_provisioning::yealink::{KeyType, LineKey};
 use talkops_provisioning::{PhoneModel, PhoneSetting};
 use tokio::io::AsyncWriteExt;
@@ -30,7 +31,7 @@ use crate::AppState;
 use crate::auth::AuthUser;
 use crate::error::{ApiError, ApiResult};
 use crate::routes::provisioning::{
-    base_url, firmware_path, media_path, media_type, render_phone_config, setting_values,
+    firmware_path, media_path, media_type, render_phone_config, setting_values,
 };
 use talkops_core::roles::Permission;
 
@@ -59,6 +60,7 @@ pub fn router() -> OpenApiRouter<AppState> {
         .routes(routes!(resync_phone))
         .routes(routes!(update_phone_account))
         .routes(routes!(phone_config))
+        .routes(routes!(preview_config))
         .routes(routes!(phone_models))
         .routes(routes!(get_phone_settings, update_phone_settings))
         .routes(routes!(update_firmware, delete_firmware))
@@ -94,6 +96,8 @@ pub struct PhoneModelInfo {
     pub wallpaper: bool,
     /// Line keys can be speed dials.
     pub speed_dial_keys: bool,
+    #[schema(value_type=Object)]
+    pub key_capabilities: Value,
 }
 
 #[derive(Serialize, ToSchema)]
@@ -143,6 +147,7 @@ impl From<&PhoneModel> for PhoneModelInfo {
             ringtone_max_kb: m.ringtone_max_kb,
             wallpaper: m.wallpaper,
             speed_dial_keys: m.speed_dial_keys(),
+            key_capabilities: json!(keys::capabilities(m)),
         }
     }
 }
@@ -175,7 +180,21 @@ fn validate_phone(state: &AppState, input: &PhoneInput, existing: Option<&Phone>
         .phone_catalog
         .get(&input.model)
         .ok_or_else(|| ApiError::BadRequest(format!("unknown phone model `{}`", input.model)))?;
+    if model.vendor != "yealink" {
+        return Err(ApiError::BadRequest(
+            "unsupported provisioning vendor".into(),
+        ));
+    }
     check_setting_values(state, &input.settings)?;
+    let effective = input
+        .provisioning
+        .as_ref()
+        .or_else(|| existing.map(|p| &p.provisioning))
+        .cloned()
+        .unwrap_or_else(|| json!({}));
+    let overrides: keys::Overrides = serde_json::from_value(effective)
+        .map_err(|e| ApiError::BadRequest(format!("invalid provisioning overrides: {e}")))?;
+    keys::validate(model, &overrides).map_err(ApiError::BadRequest)?;
     let keys: Vec<LineKey> = serde_json::from_value(input.line_keys.clone())
         .map_err(|e| ApiError::BadRequest(format!("invalid line_keys: {e}")))?;
     let mut seen = HashSet::new();
@@ -186,6 +205,14 @@ fn validate_phone(state: &AppState, input: &PhoneInput, existing: Option<&Phone>
     for k in &keys {
         // Keep an unchanged legacy override reviewable after a catalog correction.
         let unchanged = previous.contains(k);
+        let caps = keys::capabilities(model);
+        if !caps.line_functions.contains(&k.kind) && !unchanged {
+            return Err(ApiError::BadRequest("unsupported line key function".into()));
+        }
+        if !matches!(k.kind, KeyType::Blf | KeyType::SpeedDial) {
+            keys::validate_key(k.kind, &k.value, &k.label, k.account, model.accounts)
+                .map_err(ApiError::BadRequest)?;
+        }
         if k.key < 1 || (k.key > model.line_keys && !unchanged) {
             return Err(ApiError::BadRequest(format!(
                 "key {} does not exist on {}",
@@ -210,7 +237,7 @@ fn validate_phone(state: &AppState, input: &PhoneInput, existing: Option<&Phone>
                 k.key
             )));
         }
-        if k.account < 1 || k.account > model.accounts {
+        if (keys::requires_account(k.kind) && k.account < 1) || k.account > model.accounts {
             return Err(ApiError::BadRequest(format!(
                 "key {}: invalid account",
                 k.key
@@ -322,6 +349,17 @@ pub async fn create_phone(
     auth.require_perm(Permission::PhonesManage)?;
     validate_phone(&state, &input, None)?;
     validate_media(&state, &auth, &input).await?;
+    if let Some(config) = &input.provisioning {
+        let config: keys::Overrides = serde_json::from_value(config.clone())
+            .map_err(|e| ApiError::BadRequest(e.to_string()))?;
+        super::provisioning_admin::template_files(
+            &state,
+            auth.tenant,
+            &input.model,
+            config.template_id.as_deref(),
+        )
+        .await?;
+    }
     let phone = phones::create(&state.db, auth.tenant, &input).await?;
     audit::record(
         &state.db,
@@ -372,6 +410,21 @@ pub async fn update_phone(
     let existing = phones::get(&state.db, auth.tenant, id).await?;
     validate_phone(&state, &input, Some(&existing))?;
     validate_media(&state, &auth, &input).await?;
+    let config: keys::Overrides = serde_json::from_value(
+        input
+            .provisioning
+            .as_ref()
+            .unwrap_or(&existing.provisioning)
+            .clone(),
+    )
+    .map_err(|error| ApiError::BadRequest(error.to_string()))?;
+    super::provisioning_admin::template_files(
+        &state,
+        auth.tenant,
+        &input.model,
+        config.template_id.as_deref(),
+    )
+    .await?;
     let phone = phones::update(&state.db, auth.tenant, id, &input).await?;
     audit::record(
         &state.db,
@@ -544,6 +597,8 @@ pub struct PhoneSettingInfo {
     pub families: Vec<String>,
     /// Configuration parameter written to the phone.
     pub param: String,
+    pub vendor: String,
+    pub models: Vec<String>,
 }
 
 impl From<&PhoneSetting> for PhoneSettingInfo {
@@ -570,6 +625,8 @@ impl From<&PhoneSetting> for PhoneSettingInfo {
                 .map(|f| name(serde_json::to_value(f)))
                 .collect(),
             param: s.param.clone(),
+            vendor: s.vendor.clone(),
+            models: s.models.clone(),
         }
     }
 }
@@ -1199,7 +1256,7 @@ async fn info(
     let s =
         phones::provisioning_secrets(&state.db, auth.tenant, &state.secrets, regenerate).await?;
     let prov = talkops_provisioning::yealink::Provisioning {
-        base_url: base_url(headers),
+        base_url: super::provisioning::configured_base(state, auth.tenant, headers).await?,
         username: s.username.clone(),
         password: s.password.clone(),
     };
@@ -1253,4 +1310,81 @@ pub async fn regenerate_provisioning(
     )
     .await?;
     Ok(Json(info))
+}
+
+#[derive(Deserialize, ToSchema)]
+struct PreviewInput {
+    #[serde(flatten)]
+    phone: PhoneInput,
+    #[serde(default)]
+    accounts: BTreeMap<Uuid, AccountTexts>,
+}
+
+#[utoipa::path(post,path="/api/v1/phones/{id}/preview",tag="phones",params(("id"=Uuid,Path)),request_body=PreviewInput,responses((status=200,body=Value)))]
+async fn preview_config(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    headers: HeaderMap,
+    Path(id): Path<Uuid>,
+    Json(preview): Json<PreviewInput>,
+) -> ApiResult<Json<Value>> {
+    auth.require_perm(Permission::PhonesManage)?;
+    let input = preview.phone;
+    let mut phone = phones::get(&state.db, auth.tenant, id).await?;
+    validate_phone(&state, &input, Some(&phone))?;
+    validate_media(&state, &auth, &input).await?;
+    let assigned = phones::accounts(&state.db, id).await?;
+    let mut labels = BTreeMap::new();
+    for (device_id, text) in preview.accounts {
+        if !assigned
+            .iter()
+            .any(|account| account.device_id == device_id)
+            || text.phone_label.trim().chars().count() > 32
+            || text.phone_display_name.trim().chars().count() > 64
+        {
+            return Err(ApiError::BadRequest("invalid preview account texts".into()));
+        }
+        labels.insert(
+            device_id.to_string(),
+            (
+                text.phone_label.trim().into(),
+                text.phone_display_name.trim().into(),
+            ),
+        );
+    }
+    let sections: std::collections::BTreeSet<_> = input.phonebook_sections.iter().collect();
+    if sections.len() > 3 {
+        return Err(ApiError::BadRequest(
+            "at most 3 phone book sections per phone".into(),
+        ));
+    }
+    for section in sections {
+        phones::get_section(&state.db, auth.tenant, *section).await?;
+    }
+    let before = super::provisioning::preview_phone(&state, auth.tenant, &phone, &headers).await?;
+    phone.mac = talkops_provisioning::normalize_mac(&input.mac)
+        .ok_or_else(|| ApiError::BadRequest("invalid MAC address".into()))?;
+    phone.name = input.name;
+    phone.model = input.model;
+    phone.line_keys = input.line_keys;
+    phone.settings = input.settings;
+    phone.ringtone_id = input.ringtone_id;
+    phone.wallpaper_id = input.wallpaper_id;
+    phone.phonebook_sections = input.phonebook_sections;
+    if let Some(provisioning) = input.provisioning {
+        phone.provisioning = provisioning;
+    }
+    let after =
+        super::provisioning::preview_phone_accounts(&state, auth.tenant, &phone, &headers, &labels)
+            .await?;
+    audit::record(
+        &state.db,
+        &auth.actor(),
+        "preview",
+        "phone",
+        Some(id.to_string()),
+        json!({}),
+    )
+    .await?;
+    Ok(Json(json!({"before":before,"after":after})))
 }

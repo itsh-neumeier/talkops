@@ -27,6 +27,7 @@ pub mod mail_templates;
 pub mod mfa;
 pub mod notifications;
 pub mod numbering;
+pub mod phone_provisioning;
 pub mod phones;
 pub mod portainer;
 pub mod presets;

@@ -6,6 +6,61 @@ All notable changes to TalkOps. The format follows
 
 ## [Unreleased]
 
+## [1.8.2] – 2026-10-17
+
+### Added
+
+- Add model-based Yealink programmable keys, supported expansion module
+  profiles and ordered call-state softkeys. Keep the existing graphical line
+  keys. Select contact numbers, local actions and XML application URLs.
+- Add the pinned FusionPBX Yealink reference library: 433 unchanged files
+  from 70 source folders. Show original source text and provenance. Keep raw
+  Smarty separate from the native templates; it is not executed.
+- Clone native templates per tenant and model. Save immutable revisions,
+  validate before activation and restore earlier revisions. Failed validation
+  keeps the active version. Limit evaluation, recursion and output size.
+- Preview unsaved phone and account-label changes with generated credentials
+  redacted before rendering.
+- Set provisioning addresses and SIP hosts per server or phone. Keep explicit
+  device URLs in configuration, assets and callbacks. Show bounded download
+  diagnostics separately from the SIP NOTIFY result.
+- Add authenticated boot and softkey files. Add vendor dispatch and setting
+  metadata for future adapters. Unsupported vendors receive no Yealink fallback.
+
+### Fixed
+
+- Keep saved provisioning overrides when an older API client omits the field.
+- Keep an explicit phone HTTP address when the web UI uses HTTPS.
+- Map T41P programmable IDs 1–10, 13, 17 and 18 without expansion modules.
+  Apply mute-key gating, directed pickup codes and explicit default resets.
+- Preserve query parameters in XML application URLs. Provisioning base URLs
+  still reject query parameters.
+
+### Upgrade notes
+
+- Back up the database before upgrading. Apply migration
+  20261105000001_provisioning_profiles before starting the new API.
+- Existing credentials, accounts and line-key assignments are retained.
+  Template activation alone does not send a resync. Activate and assign a
+  template, then let the phone download its configuration.
+- A legacy phone can use an explicit HTTP exception on a trusted LAN while
+  other phones use HTTPS. Set a reachable initial device or DHCP option 66
+  address and credentials once. A server setting cannot repair a TLS failure
+  that prevents the first download. No automatic downgrade is added.
+- Enable existing MiniJinja loader/fuel features and direct serde_json/url
+  use in provisioning. No dependency version upgrade is included.
+- The source library adds about 13 MB. Third-party notices and the MPL-1.1
+  reference license are included in the repository and server image.
+
+### Known limits
+
+- Real T41P/AX86R firmware, key, expansion module and transport checks have not
+  run here. Check them after deployment. The reported T41P HTTPS failure cause
+  remains unconfirmed; successful NOTIFY does not prove a configuration download.
+- The 70 source folders do not imply 70 active supported models. The existing
+  catalog remains the active model set. Additional vendor adapters are future work.
+- Earlier backup API, notification and Dahua follow-ups remain separate.
+
 ## [1.8.1] – 2026-10-16
 
 ### Added

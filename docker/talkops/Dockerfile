@@ -61,6 +61,9 @@ COPY --from=build /usr/local/bin/talkops /usr/local/bin/talkops
 COPY --from=rclone /usr/local/bin/rclone /usr/local/bin/rclone
 COPY --from=web /src/web/build /usr/share/talkops/web
 COPY presets/ /usr/share/talkops/presets/
+COPY THIRD_PARTY_NOTICES.md /usr/share/doc/talkops/THIRD_PARTY_NOTICES.md
+COPY crates/talkops-provisioning/reference/fusionpbx/MPL-1.1.txt /usr/share/doc/talkops/fusionpbx/MPL-1.1.txt
+COPY crates/talkops-provisioning/reference/fusionpbx/licenses.php /usr/share/doc/talkops/fusionpbx/licenses.php
 
 ENV TALKOPS_LISTEN=0.0.0.0:8080 \
     TALKOPS_WEB_DIR=/usr/share/talkops/web \

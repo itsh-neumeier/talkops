@@ -33,6 +33,8 @@ pub struct Phone {
     /// the tenant-wide value, see [`phone_defaults`].
     #[schema(value_type = Object)]
     pub settings: serde_json::Value,
+    #[schema(value_type = Object)]
+    pub provisioning: serde_json::Value,
 }
 
 #[derive(Debug, Clone, Deserialize, utoipa::ToSchema)]
@@ -52,6 +54,10 @@ pub struct PhoneInput {
     #[serde(default = "empty_object")]
     #[schema(value_type = Object)]
     pub settings: serde_json::Value,
+    /// Absent on old clients: keep the saved provisioning overrides on update.
+    #[serde(default)]
+    #[schema(value_type = Option<Object>)]
+    pub provisioning: Option<serde_json::Value>,
 }
 
 /// Phone book sections a phone can show (remote phone books 3–5; 1 and 2 are
@@ -108,7 +114,7 @@ pub async fn set_phone_defaults<'e>(
 }
 
 const PHONE_COLUMNS: &str = "id, mac, model, name, line_keys, last_seen_at, last_ip, last_firmware, \
-     ringtone_id, wallpaper_id, phonebook_sections, settings";
+     ringtone_id, wallpaper_id, phonebook_sections, settings, provisioning";
 
 fn normalize_mac(mac: &str) -> CoreResult<String> {
     let hex: String = mac
@@ -136,6 +142,15 @@ fn validate(input: &PhoneInput) -> CoreResult<String> {
         return Err(CoreError::Validation("line_keys must be an array".into()));
     }
     check_settings_shape(&input.settings)?;
+    if input
+        .provisioning
+        .as_ref()
+        .is_some_and(|v| !v.is_object() || v.to_string().len() > 65536)
+    {
+        return Err(CoreError::Validation(
+            "invalid provisioning overrides".into(),
+        ));
+    }
     normalize_mac(&input.mac)
 }
 
@@ -217,8 +232,8 @@ pub async fn create(pool: &PgPool, tenant: TenantId, input: &PhoneInput) -> Core
     let sections = check_references(pool, tenant, input).await?;
     let sql = format!(
         "INSERT INTO phones (tenant_id, mac, model, name, line_keys, ringtone_id, wallpaper_id,
-                             phonebook_sections, settings)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                             phonebook_sections, settings, provisioning)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, COALESCE($10, '{{}}'::jsonb))
          RETURNING {PHONE_COLUMNS}"
     );
     Ok(sqlx::query_as(&sql)
@@ -231,6 +246,7 @@ pub async fn create(pool: &PgPool, tenant: TenantId, input: &PhoneInput) -> Core
         .bind(input.wallpaper_id)
         .bind(&sections)
         .bind(&input.settings)
+        .bind(&input.provisioning)
         .fetch_one(pool)
         .await?)
 }
@@ -245,7 +261,8 @@ pub async fn update(
     let sections = check_references(pool, tenant, input).await?;
     let sql = format!(
         "UPDATE phones SET mac = $3, model = $4, name = $5, line_keys = $6, ringtone_id = $7,
-             wallpaper_id = $8, phonebook_sections = $9, settings = $10, updated_at = now()
+             wallpaper_id = $8, phonebook_sections = $9, settings = $10,
+             provisioning = COALESCE($11, provisioning), updated_at = now()
          WHERE tenant_id = $1 AND id = $2 RETURNING {PHONE_COLUMNS}"
     );
     Ok(sqlx::query_as(&sql)
@@ -259,6 +276,7 @@ pub async fn update(
         .bind(input.wallpaper_id)
         .bind(&sections)
         .bind(&input.settings)
+        .bind(&input.provisioning)
         .fetch_one(pool)
         .await?)
 }

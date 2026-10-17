@@ -1,5 +1,8 @@
 # Yealink-Telefone einrichten
 
+Geräte-Ausnahmen für HTTP/HTTPS, zusätzliche Tastengruppen, Vorlagen und
+Resync-Diagnose beschreibt [Provisionierungsprofile und Vorlagen](provisionierung.md).
+
 TalkOps richtet Yealink-Tischtelefone (T3x, T4x, T5x, VP59, CP9x0),
 DECT-Basen (W60B, W70B, W80B) und WLAN-Mobilteile (AX83H, AX86R) automatisch
 ein: SIP-Konten, Funktionstasten mit BLF, Telefonbücher, Zeitzone, Sprache,

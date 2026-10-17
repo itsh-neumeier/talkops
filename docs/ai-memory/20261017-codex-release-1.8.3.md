@@ -79,3 +79,16 @@ v1.8.3. Record each gate and artifact before reporting completion.
 - docs/ai-memory/20261017-codex-release-1.8.2.md
 - docs/adr/0039-source-derived-multi-vendor-provisioning.md
 - docs/release-workflow.md
+
+## Merged checkpoint
+
+- Integration PR: https://github.com/itsh-neumeier/talkops/pull/52
+- Final candidate: 79c8a8f162562563b18983eb7f720979a2955631.
+- Candidate CI39061647155 and E2E39061647151 passed. Duplicate push CI39061640712
+  and E2E39061640721 passed. All 12 checks are green; 392 Rust tests passed,
+  one pre-existing test ignored. All 14 browser suites passed.
+- PR52 merged on 2026-10-17T19:33:19Z. Source PR51 is merged through it.
+- Main: 7beb63d5b8e3917b7621588413afcec2a8893456. Its tree equals the tested candidate.
+- Exact-main CI39062967200 and E2E39062967294 are running. Tag remains pending.
+- Do not push the batch branch again. Preserve later summary changes in an
+  audit descendant after all publication evidence is available.

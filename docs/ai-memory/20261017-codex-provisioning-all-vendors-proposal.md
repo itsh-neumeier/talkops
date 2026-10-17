@@ -8,7 +8,8 @@
 - Status: In progress. Proposal prepared; user review required before implementation.
 - Branch: codex/provisioning-all-vendors-proposal
 - Base commit: c4765b0495adf004f0b2b0f5099cbd098f384f86
-- Related PR: Pending
+- Related PR: https://github.com/itsh-neumeier/talkops/pull/51 (draft)
+- Proposal commit: b2500f7
 
 ## Goal
 
@@ -18,8 +19,8 @@ review and feedback before runtime changes.
 
 ## Result
 
-Prepared a proposal and pinned upstream inventory. No runtime code, migration,
-active template or production setting changed. Publication is pending.
+Prepared and published a proposal and pinned upstream inventory in draft PR 51.
+No runtime code, migration, active template or production setting changed.
 
 ## Changes
 
@@ -70,8 +71,8 @@ active template or production setting changed. Publication is pending.
 
 ## Next action
 
-Publish the proposal as a draft PR. Ask the user to review its scope and copy
-rules. Wait for user approval before runtime changes. Then implement the approved
+Ask the user to review draft PR 51, its scope and copy rules.
+Wait for user approval before runtime changes. Then implement the approved
 design, update the summary and PR, and run the planned checks.
 
 ## References

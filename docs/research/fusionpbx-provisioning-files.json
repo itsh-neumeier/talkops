@@ -1,0 +1,5190 @@
+{
+  "revision": "20143aec4366afc2755f336d3058243479d49d44",
+  "files": [
+    {
+      "path": "2n/ipsolo/{$mac}.xml",
+      "blob": "f59008302f9c302413a2e4a8ddc9e7e8928058e5",
+      "bytes": 22059
+    },
+    {
+      "path": "2n/ipstyle/{$mac}.xml",
+      "blob": "db90b934a7d004cf40a4232d1cc7e95b9a48710e",
+      "bytes": 20960
+    },
+    {
+      "path": "aastra/480i/aastra.cfg",
+      "blob": "1a6b14816349041dac0f1f31e25ceb2384759baa",
+      "bytes": 206
+    },
+    {
+      "path": "aastra/480i/{$mac}.cfg",
+      "blob": "c0158a8d07d109a9b710c5ded6b9679d0d17d622",
+      "bytes": 8894
+    },
+    {
+      "path": "aastra/673x/aastra.cfg",
+      "blob": "4c684b5ad09808e80cd3cb752d5153a04883ce0a",
+      "bytes": 87
+    },
+    {
+      "path": "aastra/673x/{$mac}.cfg",
+      "blob": "03d77ed0b6522ea849d7c0ed45b1f3c29abb7784",
+      "bytes": 8591
+    },
+    {
+      "path": "aastra/675x/aastra.cfg",
+      "blob": "4c684b5ad09808e80cd3cb752d5153a04883ce0a",
+      "bytes": 87
+    },
+    {
+      "path": "aastra/675x/{$mac}.cfg",
+      "blob": "64c51caf9ca89e3badfba9fe5c9db535eb3df27a",
+      "bytes": 7932
+    },
+    {
+      "path": "aastra/686x/aastra.cfg",
+      "blob": "4c684b5ad09808e80cd3cb752d5153a04883ce0a",
+      "bytes": 87
+    },
+    {
+      "path": "aastra/686x/{$mac}.cfg",
+      "blob": "64c51caf9ca89e3badfba9fe5c9db535eb3df27a",
+      "bytes": 7932
+    },
+    {
+      "path": "aastra/9112i/aastra.cfg",
+      "blob": "89973455b9dac55673b9d40a971f59d5d1771084",
+      "bytes": 207
+    },
+    {
+      "path": "aastra/9112i/{$mac}.cfg",
+      "blob": "910c52447448ad920ed5a4000550a65ce706c58b",
+      "bytes": 8997
+    },
+    {
+      "path": "aastra/9133i/aastra.cfg",
+      "blob": "376c314d95fd835501f490224eac4deee30a46f4",
+      "bytes": 207
+    },
+    {
+      "path": "aastra/9133i/{$mac}.cfg",
+      "blob": "1c8732120f0f95c994bfe16319e44d9d9c4b76a0",
+      "bytes": 8997
+    },
+    {
+      "path": "acrobits/default/qr_template.txt",
+      "blob": "bf7032dd452d9756f00d1fc61463737a4296105f",
+      "bytes": 52
+    },
+    {
+      "path": "algo/8103/algom{$mac}.conf",
+      "blob": "2a9d73798bfd5b05455e8d8e7c04866ec43fce65",
+      "bytes": 16237
+    },
+    {
+      "path": "algo/8180/algom{$mac}.conf",
+      "blob": "b6dca83308abadb512d90a07c2cbe18c62a59a3e",
+      "bytes": 16053
+    },
+    {
+      "path": "algo/8186/algo{$mac}.conf",
+      "blob": "db5acf162d3b625e6f5ed65a7c0403dff5ca59a3",
+      "bytes": 15623
+    },
+    {
+      "path": "algo/8188/algo{$mac}.conf",
+      "blob": "f23e96d34beccb11516bc7f55c9d4a10ae0e3d87",
+      "bytes": 15606
+    },
+    {
+      "path": "algo/8189/algo{$mac}.conf",
+      "blob": "7ce64ee6141b842642a8332838e249ff51722e7e",
+      "bytes": 15644
+    },
+    {
+      "path": "algo/8196/algom{$mac}.conf",
+      "blob": "b6dca83308abadb512d90a07c2cbe18c62a59a3e",
+      "bytes": 16053
+    },
+    {
+      "path": "algo/8301/algom{$mac}.conf",
+      "blob": "d20e51f87952b91126df84d02a26531a4cb73682",
+      "bytes": 16206
+    },
+    {
+      "path": "atcom/ag198/{$mac}.cfg",
+      "blob": "34cc26b25b2e4dd69fd9d8777ae94bff5e5e3ec8",
+      "bytes": 7990
+    },
+    {
+      "path": "avaya/J100Supgrade.txt",
+      "blob": "bb20a270009356ab4881dbe917881c45829df5ca",
+      "bytes": 16
+    },
+    {
+      "path": "avaya/J139/directory.xml",
+      "blob": "8b3dfd825ee3264954c2dccfece06038a1bed8db",
+      "bytes": 482
+    },
+    {
+      "path": "avaya/J139/{$mac}.cfg",
+      "blob": "57888657dd47bd4572d36ced772f27728ef81587",
+      "bytes": 8765
+    },
+    {
+      "path": "avaya/J169/directory.xml",
+      "blob": "8b3dfd825ee3264954c2dccfece06038a1bed8db",
+      "bytes": 482
+    },
+    {
+      "path": "avaya/J169/{$mac}.cfg",
+      "blob": "d16774afad8a3b85a5734b46f02fc64e2ed478c4",
+      "bytes": 8952
+    },
+    {
+      "path": "avaya/J179/directory.xml",
+      "blob": "8b3dfd825ee3264954c2dccfece06038a1bed8db",
+      "bytes": 482
+    },
+    {
+      "path": "avaya/J179/{$mac}.cfg",
+      "blob": "0b8f13cc9f1bac13129bbaf1fe3e0c9a582ead7d",
+      "bytes": 8948
+    },
+    {
+      "path": "avaya/J189/directory.xml",
+      "blob": "8b3dfd825ee3264954c2dccfece06038a1bed8db",
+      "bytes": 482
+    },
+    {
+      "path": "avaya/J189/{$mac}.cfg",
+      "blob": "30c01bb74c148e7b5761211ef61ec0afacc7d9d0",
+      "bytes": 9275
+    },
+    {
+      "path": "cisco/7940/DISTINCTIVERINGLIST.XML",
+      "blob": "8841ee8303d9e1d63f5183c860720db05a347047",
+      "bytes": 894
+    },
+    {
+      "path": "cisco/7940/RINGLIST.XML",
+      "blob": "c30df63119a54229b97f3f57dd9c1307768db854",
+      "bytes": 710
+    },
+    {
+      "path": "cisco/7940/SIPDefault.cnf",
+      "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "bytes": 0
+    },
+    {
+      "path": "cisco/7940/SIP{$mac}.cnf",
+      "blob": "524ad81c26857887ed729f609fafa7731c56ce74",
+      "bytes": 5220
+    },
+    {
+      "path": "cisco/7940/dialplan.xml",
+      "blob": "107a8d9896b6e73b48bcc6afbd08ad84ba910004",
+      "bytes": 717
+    },
+    {
+      "path": "cisco/7940/directory.xml",
+      "blob": "7b660119aafee611fef88368bd4b40dddf0b3282",
+      "bytes": 683
+    },
+    {
+      "path": "cisco/7940/directory_enterprise.xml",
+      "blob": "98ad005a9eaa7cf2c307b760d060b0b5121d1238",
+      "bytes": 544
+    },
+    {
+      "path": "cisco/7940/directory_extensions.xml",
+      "blob": "49addb09fc7e7fc8ebdfaec9e9823c493930fe8a",
+      "bytes": 536
+    },
+    {
+      "path": "cisco/7940/directory_personal.xml",
+      "blob": "66aecb4b30fc9d07e23a14eefaf1ce4e220b3b78",
+      "bytes": 527
+    },
+    {
+      "path": "cisco/7940/directory_speed_dial.xml",
+      "blob": "86fe5e951b87a19bbf6ab12f8a67179241cf246b",
+      "bytes": 542
+    },
+    {
+      "path": "cisco/7940/syncinfo.xml",
+      "blob": "98d9050daefbe800c83d82cab1f2a253c922b111",
+      "bytes": 32
+    },
+    {
+      "path": "cisco/7960/DISTINCTIVERINGLIST.XML",
+      "blob": "8841ee8303d9e1d63f5183c860720db05a347047",
+      "bytes": 894
+    },
+    {
+      "path": "cisco/7960/RINGLIST.XML",
+      "blob": "c30df63119a54229b97f3f57dd9c1307768db854",
+      "bytes": 710
+    },
+    {
+      "path": "cisco/7960/SIPDefault.cnf",
+      "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "bytes": 0
+    },
+    {
+      "path": "cisco/7960/SIP{$mac}.cnf",
+      "blob": "50736fa0ff327a0132b2265cdd4ea074837013f6",
+      "bytes": 5220
+    },
+    {
+      "path": "cisco/7960/dialplan.xml",
+      "blob": "107a8d9896b6e73b48bcc6afbd08ad84ba910004",
+      "bytes": 717
+    },
+    {
+      "path": "cisco/7960/directory.xml",
+      "blob": "7b660119aafee611fef88368bd4b40dddf0b3282",
+      "bytes": 683
+    },
+    {
+      "path": "cisco/7960/directory_enterprise.xml",
+      "blob": "98ad005a9eaa7cf2c307b760d060b0b5121d1238",
+      "bytes": 544
+    },
+    {
+      "path": "cisco/7960/directory_extensions.xml",
+      "blob": "49addb09fc7e7fc8ebdfaec9e9823c493930fe8a",
+      "bytes": 536
+    },
+    {
+      "path": "cisco/7960/directory_personal.xml",
+      "blob": "66aecb4b30fc9d07e23a14eefaf1ce4e220b3b78",
+      "bytes": 527
+    },
+    {
+      "path": "cisco/7960/directory_speed_dial.xml",
+      "blob": "86fe5e951b87a19bbf6ab12f8a67179241cf246b",
+      "bytes": 542
+    },
+    {
+      "path": "cisco/7960/syncinfo.xml",
+      "blob": "98d9050daefbe800c83d82cab1f2a253c922b111",
+      "bytes": 32
+    },
+    {
+      "path": "cisco/79x1/SEP{$mac}.cnf.xml",
+      "blob": "545b8786d1e337bae6d9a8a521d4871a3c64e0d0",
+      "bytes": 5032
+    },
+    {
+      "path": "cisco/79x1/dialplan.xml",
+      "blob": "1bc89a2f2958524cc3f6c1ee0fa274b7e54c199b",
+      "bytes": 662
+    },
+    {
+      "path": "cisco/79x1/syncinfo.xml",
+      "blob": "98d9050daefbe800c83d82cab1f2a253c922b111",
+      "bytes": 32
+    },
+    {
+      "path": "cisco/8811/{$mac}.xml",
+      "blob": "c53d5ab58459a87b25ebaea3a7e0ebe3407b9510",
+      "bytes": 78324
+    },
+    {
+      "path": "cisco/8832/{$mac}.xml",
+      "blob": "c53d5ab58459a87b25ebaea3a7e0ebe3407b9510",
+      "bytes": 78324
+    },
+    {
+      "path": "cisco/8841/{$mac}.xml",
+      "blob": "c53d5ab58459a87b25ebaea3a7e0ebe3407b9510",
+      "bytes": 78324
+    },
+    {
+      "path": "cisco/8845/{$mac}.xml",
+      "blob": "c53d5ab58459a87b25ebaea3a7e0ebe3407b9510",
+      "bytes": 78324
+    },
+    {
+      "path": "cisco/8851/{$mac}.xml",
+      "blob": "f28d16498e731c43b45db28202acb0f4d751a1e1",
+      "bytes": 78324
+    },
+    {
+      "path": "cisco/8861/{$mac}.xml",
+      "blob": "a814334af9f7926e9c8b5b469cfa349e0c2c5c7f",
+      "bytes": 78324
+    },
+    {
+      "path": "cisco/8865/{$mac}.xml",
+      "blob": "a814334af9f7926e9c8b5b469cfa349e0c2c5c7f",
+      "bytes": 78324
+    },
+    {
+      "path": "cisco/9861/{$mac}.xml",
+      "blob": "730051e7b321d146e4353522de3292bfa70c5bab",
+      "bytes": 198099
+    },
+    {
+      "path": "cisco/spa112/{$mac}.xml",
+      "blob": "e4c0e119e9be29a2b36f42945ccd79e0f06b7502",
+      "bytes": 3902
+    },
+    {
+      "path": "cisco/spa122/{$mac}.xml",
+      "blob": "2972f27a08b347614375a3780b07313eae95b016",
+      "bytes": 37211
+    },
+    {
+      "path": "cisco/spa191/{$mac}.xml",
+      "blob": "65a2db667d32260d1c0ad44d37f42fa5310aef13",
+      "bytes": 48829
+    },
+    {
+      "path": "cisco/spa192/{$mac}.xml",
+      "blob": "be860089ade6bd9c3cc06cdd4b30dddc10385def",
+      "bytes": 53145
+    },
+    {
+      "path": "cisco/spa301/{$mac}.xml",
+      "blob": "076d0f1723bf34e5016af635278f21bdcb0c30e9",
+      "bytes": 38645
+    },
+    {
+      "path": "cisco/spa303/{$mac}.xml",
+      "blob": "305318666d65f2e236a769e7d33a0760e3da644c",
+      "bytes": 108379
+    },
+    {
+      "path": "cisco/spa501g/{$mac}.xml",
+      "blob": "b5bbddac3c345a07c11f8e3b91942ecb05075024",
+      "bytes": 108847
+    },
+    {
+      "path": "cisco/spa502g/{$mac}.xml",
+      "blob": "f6e98d47a442715a49790f35abcd574503a23234",
+      "bytes": 50314
+    },
+    {
+      "path": "cisco/spa504g/directory.xml",
+      "blob": "a9814c0163220060ab62637f83b3f53c4990ebeb",
+      "bytes": 464
+    },
+    {
+      "path": "cisco/spa504g/{$mac}.xml",
+      "blob": "045c7d26a722c686d952f1134806c6fd41f1308b",
+      "bytes": 51883
+    },
+    {
+      "path": "cisco/spa508g/{$mac}.xml",
+      "blob": "2189a6322e08885d2cf25b151d31ba7c89eee624",
+      "bytes": 115664
+    },
+    {
+      "path": "cisco/spa509g/{$mac}.xml",
+      "blob": "a8222b8a0cb015f955e7bc6a7a8faef46bd10940",
+      "bytes": 152964
+    },
+    {
+      "path": "cisco/spa512g/{$mac}.xml",
+      "blob": "4f9eddd38d624e33395b88367544ec3587bb389d",
+      "bytes": 51233
+    },
+    {
+      "path": "cisco/spa514g/{$mac}.xml",
+      "blob": "315f9cf90b68cface5fcd796c07bec5399eb57d1",
+      "bytes": 57503
+    },
+    {
+      "path": "cisco/spa525g/{$mac}.xml",
+      "blob": "fa3356656c27f9296cfc73e316f062c6e9117a96",
+      "bytes": 113538
+    },
+    {
+      "path": "cisco/spa525g2/{$mac}.xml",
+      "blob": "5fa5c6607c2209c270c329823764190f89f65613",
+      "bytes": 108788
+    },
+    {
+      "path": "digium/d40/{$mac}-contacts.cfg",
+      "blob": "ef18e96672d963ceb8b66c76dd8736c69ea5baa0",
+      "bytes": 1620
+    },
+    {
+      "path": "digium/d40/{$mac}-smartblf.cfg",
+      "blob": "8fa085bb64996a8575d1d70e3770c6059ce799f0",
+      "bytes": 851
+    },
+    {
+      "path": "digium/d40/{$mac}.cfg",
+      "blob": "67b782cfab2e12874cae574d4b35a4998a4d7c0e",
+      "bytes": 6471
+    },
+    {
+      "path": "digium/d50/{$mac}-contacts.cfg",
+      "blob": "ef18e96672d963ceb8b66c76dd8736c69ea5baa0",
+      "bytes": 1620
+    },
+    {
+      "path": "digium/d50/{$mac}-smartblf.cfg",
+      "blob": "c0ec59462267280135a5570b4938db043e3720e0",
+      "bytes": 853
+    },
+    {
+      "path": "digium/d50/{$mac}.cfg",
+      "blob": "a8452970c29229ecd5284efe9e3b86b58bb7aa48",
+      "bytes": 6521
+    },
+    {
+      "path": "digium/d60/{$mac}-contacts.cfg",
+      "blob": "ef18e96672d963ceb8b66c76dd8736c69ea5baa0",
+      "bytes": 1620
+    },
+    {
+      "path": "digium/d60/{$mac}-smartblf.cfg",
+      "blob": "8fa085bb64996a8575d1d70e3770c6059ce799f0",
+      "bytes": 851
+    },
+    {
+      "path": "digium/d60/{$mac}.cfg",
+      "blob": "6910bdfe9c9d21ee2d45c09eb6de000af883422e",
+      "bytes": 6629
+    },
+    {
+      "path": "digium/d62/{$mac}-contacts.cfg",
+      "blob": "ef18e96672d963ceb8b66c76dd8736c69ea5baa0",
+      "bytes": 1620
+    },
+    {
+      "path": "digium/d62/{$mac}-smartblf.cfg",
+      "blob": "8fa085bb64996a8575d1d70e3770c6059ce799f0",
+      "bytes": 851
+    },
+    {
+      "path": "digium/d62/{$mac}.cfg",
+      "blob": "e8004b9187f45457ee692630875d77a56121416b",
+      "bytes": 6745
+    },
+    {
+      "path": "digium/d65/{$mac}-contacts.cfg",
+      "blob": "ef18e96672d963ceb8b66c76dd8736c69ea5baa0",
+      "bytes": 1620
+    },
+    {
+      "path": "digium/d65/{$mac}-smartblf.cfg",
+      "blob": "8fa085bb64996a8575d1d70e3770c6059ce799f0",
+      "bytes": 851
+    },
+    {
+      "path": "digium/d65/{$mac}.cfg",
+      "blob": "e8004b9187f45457ee692630875d77a56121416b",
+      "bytes": 6745
+    },
+    {
+      "path": "digium/d70/{$mac}-contacts.cfg",
+      "blob": "ef18e96672d963ceb8b66c76dd8736c69ea5baa0",
+      "bytes": 1620
+    },
+    {
+      "path": "digium/d70/{$mac}-smartblf.cfg",
+      "blob": "c0ec59462267280135a5570b4938db043e3720e0",
+      "bytes": 853
+    },
+    {
+      "path": "digium/d70/{$mac}.cfg",
+      "blob": "a8452970c29229ecd5284efe9e3b86b58bb7aa48",
+      "bytes": 6521
+    },
+    {
+      "path": "escene/e3xx/timezones.txt",
+      "blob": "19453de31bcb51999b9b4b99cb58a2d9935ba9c5",
+      "bytes": 7519
+    },
+    {
+      "path": "escene/e3xx/{$mac}.xml",
+      "blob": "8998f3122d7482c618d063a90ec4fd7650110ac8",
+      "bytes": 7883
+    },
+    {
+      "path": "escene/e3xx/{$mac}_extern.xml",
+      "blob": "145c4c5ce1f87438dc9f605c7e5e0279248f3056",
+      "bytes": 3617
+    },
+    {
+      "path": "escene/e3xx/{$mac}_phonebook.xml",
+      "blob": "0cd3b4d4e3642941923c01877e74cba20e3974d7",
+      "bytes": 808
+    },
+    {
+      "path": "fanvil/h2u-v2/{$mac}.cfg",
+      "blob": "b68570fbac11934f24a809e5da591f691868002a",
+      "bytes": 70144
+    },
+    {
+      "path": "fanvil/h5/{$mac}.cfg",
+      "blob": "2a4d81a9c6050917dedca5795c2fd4659676758f",
+      "bytes": 36423
+    },
+    {
+      "path": "fanvil/i30/{$mac}.cfg",
+      "blob": "deb992ea2a883c7b643b5083a0889468bb9c9263",
+      "bytes": 32158
+    },
+    {
+      "path": "fanvil/v62-pro/{$mac}.cfg",
+      "blob": "102fc43f09ca42ec577df42c50042a83d2274d08",
+      "bytes": 73469
+    },
+    {
+      "path": "fanvil/v62/{$mac}.cfg",
+      "blob": "102fc43f09ca42ec577df42c50042a83d2274d08",
+      "bytes": 73469
+    },
+    {
+      "path": "fanvil/v63/{$mac}.cfg",
+      "blob": "102fc43f09ca42ec577df42c50042a83d2274d08",
+      "bytes": 73469
+    },
+    {
+      "path": "fanvil/v64/{$mac}.cfg",
+      "blob": "102fc43f09ca42ec577df42c50042a83d2274d08",
+      "bytes": 73469
+    },
+    {
+      "path": "fanvil/v65/{$mac}.cfg",
+      "blob": "102fc43f09ca42ec577df42c50042a83d2274d08",
+      "bytes": 73469
+    },
+    {
+      "path": "fanvil/v67/{$mac}.cfg",
+      "blob": "b9399bc34d5c58a82bf97a067cdc9fea222be7df",
+      "bytes": 73473
+    },
+    {
+      "path": "fanvil/w611w/directory.xml",
+      "blob": "f4fe5b3d6042efcc8b5992ae9dcf8639f9917d6b",
+      "bytes": 8433
+    },
+    {
+      "path": "fanvil/w611w/{$mac}.xml",
+      "blob": "1cc1b799885a08d9166bed5e653484724a88ee62",
+      "bytes": 60728
+    },
+    {
+      "path": "fanvil/x1s/{$mac}.cfg",
+      "blob": "486ff8187ebeb606e7fed51b9d510aa8d1f2d96e",
+      "bytes": 53854
+    },
+    {
+      "path": "fanvil/x1sg/{$mac}.cfg",
+      "blob": "486ff8187ebeb606e7fed51b9d510aa8d1f2d96e",
+      "bytes": 53854
+    },
+    {
+      "path": "fanvil/x1sp/{$mac}.cfg",
+      "blob": "486ff8187ebeb606e7fed51b9d510aa8d1f2d96e",
+      "bytes": 53854
+    },
+    {
+      "path": "fanvil/x210/{$mac}.cfg",
+      "blob": "afdb4e57d46cb4374d80ff119f96a70f50cb4ae3",
+      "bytes": 198623
+    },
+    {
+      "path": "fanvil/x2p/{$mac}.cfg",
+      "blob": "ee21cdd4fb808ec720e3bd635c438841c247caca",
+      "bytes": 33819
+    },
+    {
+      "path": "fanvil/x3g/{$mac}.cfg",
+      "blob": "40b23b9a71ff7ec402454548a2e901b1b3d93f86",
+      "bytes": 34029
+    },
+    {
+      "path": "fanvil/x3sg/{$mac}.cfg",
+      "blob": "b68570fbac11934f24a809e5da591f691868002a",
+      "bytes": 70144
+    },
+    {
+      "path": "fanvil/x3sp/{$mac}.cfg",
+      "blob": "fb22314b289cd97a4e95685d0e0d49c03967224f",
+      "bytes": 34554
+    },
+    {
+      "path": "fanvil/x3sw/{$mac}.cfg",
+      "blob": "b68570fbac11934f24a809e5da591f691868002a",
+      "bytes": 70144
+    },
+    {
+      "path": "fanvil/x3u-pro/{$mac}.cfg",
+      "blob": "b68570fbac11934f24a809e5da591f691868002a",
+      "bytes": 70144
+    },
+    {
+      "path": "fanvil/x3u/{$mac}.cfg",
+      "blob": "eadd4724654f512d959868d582bca25581ca9140",
+      "bytes": 86805
+    },
+    {
+      "path": "fanvil/x4/{$mac}.cfg",
+      "blob": "f09275417e8d841b24c981a9b2c32541b6891e84",
+      "bytes": 42520
+    },
+    {
+      "path": "fanvil/x4g/{$mac}.cfg",
+      "blob": "0cf57057e40276444f33a95272061dbbb3af80b9",
+      "bytes": 42521
+    },
+    {
+      "path": "fanvil/x4sg/{$mac}.cfg",
+      "blob": "3b4227012ce5f338637c18f0332950d3f432b1f3",
+      "bytes": 81665
+    },
+    {
+      "path": "fanvil/x4u/{$mac}.cfg",
+      "blob": "47e23877157992fd2ed781a20b9f6fed2d844ec8",
+      "bytes": 137830
+    },
+    {
+      "path": "fanvil/x5s/{$mac}.cfg",
+      "blob": "8050265ab6b26dca5ebcac4b0ce28fe1f29598a7",
+      "bytes": 85236
+    },
+    {
+      "path": "fanvil/x5u/{$mac}.cfg",
+      "blob": "2da55c41572b987439af3b5f0bab4bf062653eef",
+      "bytes": 168248
+    },
+    {
+      "path": "fanvil/x6/{$mac}.cfg",
+      "blob": "dd1999623b968829b44b7896f2efda16c61e2fac",
+      "bytes": 85289
+    },
+    {
+      "path": "fanvil/x6u/{$mac}.cfg",
+      "blob": "33a83cbe149a3542837d4d53002a66af12d24217",
+      "bytes": 199210
+    },
+    {
+      "path": "fanvil/x7/{$mac}.cfg",
+      "blob": "dce46fda2665d3a6ec8cbaa6d8ec25fcff9ab9a9",
+      "bytes": 195767
+    },
+    {
+      "path": "fanvil/x7a/{$mac}.cfg",
+      "blob": "0560d4b72b78a77e2d7163f9f62aaa83f128d48e",
+      "bytes": 188226
+    },
+    {
+      "path": "fanvil/x7c/{$mac}.cfg",
+      "blob": "6b79330ba679c03dd355973fc12e4db6335f3dc9",
+      "bytes": 204738
+    },
+    {
+      "path": "flyingvoice/audiokit/directory.xml",
+      "blob": "297b9e4108a595f1375e9ac0c4d578aaa402c19a",
+      "bytes": 2451
+    },
+    {
+      "path": "flyingvoice/audiokit/y000000000000.boot",
+      "blob": "f14987d007c6377206dfc2f3af97ea9274437250",
+      "bytes": 139
+    },
+    {
+      "path": "flyingvoice/audiokit/y000000000000.cfg",
+      "blob": "b56901c57b2af1d74d0f04bf4c815f20d8825669",
+      "bytes": 40421
+    },
+    {
+      "path": "flyingvoice/audiokit/{$mac}.cfg",
+      "blob": "7e1ff5de2ef152b7703d22e123b47f7a5493bebf",
+      "bytes": 20454
+    },
+    {
+      "path": "flyingvoice/fip10/directory.xml",
+      "blob": "297b9e4108a595f1375e9ac0c4d578aaa402c19a",
+      "bytes": 2451
+    },
+    {
+      "path": "flyingvoice/fip10/y000000000000.boot",
+      "blob": "f14987d007c6377206dfc2f3af97ea9274437250",
+      "bytes": 139
+    },
+    {
+      "path": "flyingvoice/fip10/y000000000000.cfg",
+      "blob": "38d4334fd88f094150f815e198af8f43be9e2ccf",
+      "bytes": 40418
+    },
+    {
+      "path": "flyingvoice/fip10/{$mac}.cfg",
+      "blob": "791bca2b484dfb8174d88903762336c0de9ae44f",
+      "bytes": 20507
+    },
+    {
+      "path": "flyingvoice/fip11c/directory.xml",
+      "blob": "297b9e4108a595f1375e9ac0c4d578aaa402c19a",
+      "bytes": 2451
+    },
+    {
+      "path": "flyingvoice/fip11c/y000000000000.boot",
+      "blob": "f14987d007c6377206dfc2f3af97ea9274437250",
+      "bytes": 139
+    },
+    {
+      "path": "flyingvoice/fip11c/y000000000000.cfg",
+      "blob": "91fd65cb844d489b34db28562d8a4deffff7f65e",
+      "bytes": 40419
+    },
+    {
+      "path": "flyingvoice/fip11c/{$mac}.cfg",
+      "blob": "2f512b45161b196db2e2e3b77e7f8487d3ad647b",
+      "bytes": 20530
+    },
+    {
+      "path": "flyingvoice/fip12wp/directory.xml",
+      "blob": "297b9e4108a595f1375e9ac0c4d578aaa402c19a",
+      "bytes": 2451
+    },
+    {
+      "path": "flyingvoice/fip12wp/y000000000000.boot",
+      "blob": "f14987d007c6377206dfc2f3af97ea9274437250",
+      "bytes": 139
+    },
+    {
+      "path": "flyingvoice/fip12wp/y000000000000.cfg",
+      "blob": "ded51ac66432d3144a9295790a5477e4aba0bf8a",
+      "bytes": 40420
+    },
+    {
+      "path": "flyingvoice/fip12wp/{$mac}.cfg",
+      "blob": "7f20ce14aca5eeffb196e07639428b155f16f06b",
+      "bytes": 20505
+    },
+    {
+      "path": "flyingvoice/fip13g/directory.xml",
+      "blob": "297b9e4108a595f1375e9ac0c4d578aaa402c19a",
+      "bytes": 2451
+    },
+    {
+      "path": "flyingvoice/fip13g/y000000000000.boot",
+      "blob": "f14987d007c6377206dfc2f3af97ea9274437250",
+      "bytes": 139
+    },
+    {
+      "path": "flyingvoice/fip13g/y000000000000.cfg",
+      "blob": "bb461791d9e2060482c0ff1a05135f55b0bb4119",
+      "bytes": 40419
+    },
+    {
+      "path": "flyingvoice/fip13g/{$mac}.cfg",
+      "blob": "2f512b45161b196db2e2e3b77e7f8487d3ad647b",
+      "bytes": 20530
+    },
+    {
+      "path": "flyingvoice/fip14g/directory.xml",
+      "blob": "297b9e4108a595f1375e9ac0c4d578aaa402c19a",
+      "bytes": 2451
+    },
+    {
+      "path": "flyingvoice/fip14g/y000000000000.boot",
+      "blob": "f14987d007c6377206dfc2f3af97ea9274437250",
+      "bytes": 139
+    },
+    {
+      "path": "flyingvoice/fip14g/y000000000000.cfg",
+      "blob": "fdd9fbd021ca2f8c265ac076d970a33d83c210e1",
+      "bytes": 40419
+    },
+    {
+      "path": "flyingvoice/fip14g/{$mac}.cfg",
+      "blob": "7f20ce14aca5eeffb196e07639428b155f16f06b",
+      "bytes": 20505
+    },
+    {
+      "path": "flyingvoice/fip15g/directory.xml",
+      "blob": "297b9e4108a595f1375e9ac0c4d578aaa402c19a",
+      "bytes": 2451
+    },
+    {
+      "path": "flyingvoice/fip15g/y000000000000.boot",
+      "blob": "f14987d007c6377206dfc2f3af97ea9274437250",
+      "bytes": 139
+    },
+    {
+      "path": "flyingvoice/fip15g/y000000000000.cfg",
+      "blob": "188e3a4c8f69580e30ff84cc5859b1f2e2526c20",
+      "bytes": 40417
+    },
+    {
+      "path": "flyingvoice/fip15g/{$mac}.cfg",
+      "blob": "6689709fd777d4aef7bf9870cbee1095df58cb4e",
+      "bytes": 21512
+    },
+    {
+      "path": "flyingvoice/fip16/directory.xml",
+      "blob": "297b9e4108a595f1375e9ac0c4d578aaa402c19a",
+      "bytes": 2451
+    },
+    {
+      "path": "flyingvoice/fip16/y000000000000.boot",
+      "blob": "f14987d007c6377206dfc2f3af97ea9274437250",
+      "bytes": 139
+    },
+    {
+      "path": "flyingvoice/fip16/y000000000000.cfg",
+      "blob": "aac8e93e431b7d3a6eb3582b7794d944e74d760a",
+      "bytes": 34563
+    },
+    {
+      "path": "flyingvoice/fip16/{$mac}.cfg",
+      "blob": "bca1ce933cd77b8491b0b0e0eb678ce59b91f6a9",
+      "bytes": 18004
+    },
+    {
+      "path": "flyingvoice/fip16plus/directory.xml",
+      "blob": "297b9e4108a595f1375e9ac0c4d578aaa402c19a",
+      "bytes": 2451
+    },
+    {
+      "path": "flyingvoice/fip16plus/y000000000000.boot",
+      "blob": "f14987d007c6377206dfc2f3af97ea9274437250",
+      "bytes": 139
+    },
+    {
+      "path": "flyingvoice/fip16plus/y000000000000.cfg",
+      "blob": "81ebe02539b37c416b5727c996dcce0cf5d0ad89",
+      "bytes": 34567
+    },
+    {
+      "path": "flyingvoice/fip16plus/{$mac}.cfg",
+      "blob": "bca1ce933cd77b8491b0b0e0eb678ce59b91f6a9",
+      "bytes": 18004
+    },
+    {
+      "path": "flyingvoice/i86box/directory.xml",
+      "blob": "297b9e4108a595f1375e9ac0c4d578aaa402c19a",
+      "bytes": 2451
+    },
+    {
+      "path": "flyingvoice/i86box/y000000000000.boot",
+      "blob": "f14987d007c6377206dfc2f3af97ea9274437250",
+      "bytes": 139
+    },
+    {
+      "path": "flyingvoice/i86box/y000000000000.cfg",
+      "blob": "783075ee5c71c4494c00d785098e4866c8b2b82a",
+      "bytes": 40419
+    },
+    {
+      "path": "flyingvoice/i86box/{$mac}.cfg",
+      "blob": "7e1ff5de2ef152b7703d22e123b47f7a5493bebf",
+      "bytes": 20454
+    },
+    {
+      "path": "flyingvoice/imetalbox/directory.xml",
+      "blob": "297b9e4108a595f1375e9ac0c4d578aaa402c19a",
+      "bytes": 2451
+    },
+    {
+      "path": "flyingvoice/imetalbox/y000000000000.boot",
+      "blob": "f14987d007c6377206dfc2f3af97ea9274437250",
+      "bytes": 139
+    },
+    {
+      "path": "flyingvoice/imetalbox/y000000000000.cfg",
+      "blob": "d591b80004b2494ab5aea25eabf5b27b7f1bb534",
+      "bytes": 40422
+    },
+    {
+      "path": "flyingvoice/imetalbox/{$mac}.cfg",
+      "blob": "7e1ff5de2ef152b7703d22e123b47f7a5493bebf",
+      "bytes": 20454
+    },
+    {
+      "path": "flyingvoice/p10/directory.xml",
+      "blob": "297b9e4108a595f1375e9ac0c4d578aaa402c19a",
+      "bytes": 2451
+    },
+    {
+      "path": "flyingvoice/p10/y000000000000.boot",
+      "blob": "f14987d007c6377206dfc2f3af97ea9274437250",
+      "bytes": 139
+    },
+    {
+      "path": "flyingvoice/p10/y000000000000.cfg",
+      "blob": "33221caa38b97f338b9718bbf7b6f503d1899c32",
+      "bytes": 39204
+    },
+    {
+      "path": "flyingvoice/p10/{$mac}.cfg",
+      "blob": "7e1ff5de2ef152b7703d22e123b47f7a5493bebf",
+      "bytes": 20454
+    },
+    {
+      "path": "flyingvoice/p10g/directory.xml",
+      "blob": "297b9e4108a595f1375e9ac0c4d578aaa402c19a",
+      "bytes": 2451
+    },
+    {
+      "path": "flyingvoice/p10g/y000000000000.boot",
+      "blob": "f14987d007c6377206dfc2f3af97ea9274437250",
+      "bytes": 139
+    },
+    {
+      "path": "flyingvoice/p10g/y000000000000.cfg",
+      "blob": "33221caa38b97f338b9718bbf7b6f503d1899c32",
+      "bytes": 39204
+    },
+    {
+      "path": "flyingvoice/p10g/{$mac}.cfg",
+      "blob": "7e1ff5de2ef152b7703d22e123b47f7a5493bebf",
+      "bytes": 20454
+    },
+    {
+      "path": "flyingvoice/p10lte/directory.xml",
+      "blob": "297b9e4108a595f1375e9ac0c4d578aaa402c19a",
+      "bytes": 2451
+    },
+    {
+      "path": "flyingvoice/p10lte/y000000000000.boot",
+      "blob": "f14987d007c6377206dfc2f3af97ea9274437250",
+      "bytes": 139
+    },
+    {
+      "path": "flyingvoice/p10lte/y000000000000.cfg",
+      "blob": "79367a4c90cd9ba8a72c15bf1bdb11283b040296",
+      "bytes": 39207
+    },
+    {
+      "path": "flyingvoice/p10lte/{$mac}.cfg",
+      "blob": "7e1ff5de2ef152b7703d22e123b47f7a5493bebf",
+      "bytes": 20454
+    },
+    {
+      "path": "flyingvoice/p10p/directory.xml",
+      "blob": "297b9e4108a595f1375e9ac0c4d578aaa402c19a",
+      "bytes": 2451
+    },
+    {
+      "path": "flyingvoice/p10p/y000000000000.boot",
+      "blob": "f14987d007c6377206dfc2f3af97ea9274437250",
+      "bytes": 139
+    },
+    {
+      "path": "flyingvoice/p10p/y000000000000.cfg",
+      "blob": "33221caa38b97f338b9718bbf7b6f503d1899c32",
+      "bytes": 39204
+    },
+    {
+      "path": "flyingvoice/p10p/{$mac}.cfg",
+      "blob": "7e1ff5de2ef152b7703d22e123b47f7a5493bebf",
+      "bytes": 20454
+    },
+    {
+      "path": "flyingvoice/p10w/directory.xml",
+      "blob": "297b9e4108a595f1375e9ac0c4d578aaa402c19a",
+      "bytes": 2451
+    },
+    {
+      "path": "flyingvoice/p10w/y000000000000.boot",
+      "blob": "f14987d007c6377206dfc2f3af97ea9274437250",
+      "bytes": 139
+    },
+    {
+      "path": "flyingvoice/p10w/y000000000000.cfg",
+      "blob": "56986432fdb9fad4398f04851bb97134a583a5cb",
+      "bytes": 39205
+    },
+    {
+      "path": "flyingvoice/p10w/{$mac}.cfg",
+      "blob": "7e1ff5de2ef152b7703d22e123b47f7a5493bebf",
+      "bytes": 20454
+    },
+    {
+      "path": "flyingvoice/p11/directory.xml",
+      "blob": "297b9e4108a595f1375e9ac0c4d578aaa402c19a",
+      "bytes": 2451
+    },
+    {
+      "path": "flyingvoice/p11/y000000000000.boot",
+      "blob": "f14987d007c6377206dfc2f3af97ea9274437250",
+      "bytes": 139
+    },
+    {
+      "path": "flyingvoice/p11/y000000000000.cfg",
+      "blob": "8595a70042625c7ec98ad342db1e258ae856d559",
+      "bytes": 39204
+    },
+    {
+      "path": "flyingvoice/p11/{$mac}.cfg",
+      "blob": "7e1ff5de2ef152b7703d22e123b47f7a5493bebf",
+      "bytes": 20454
+    },
+    {
+      "path": "flyingvoice/p11g/directory.xml",
+      "blob": "297b9e4108a595f1375e9ac0c4d578aaa402c19a",
+      "bytes": 2451
+    },
+    {
+      "path": "flyingvoice/p11g/y000000000000.boot",
+      "blob": "f14987d007c6377206dfc2f3af97ea9274437250",
+      "bytes": 139
+    },
+    {
+      "path": "flyingvoice/p11g/y000000000000.cfg",
+      "blob": "8595a70042625c7ec98ad342db1e258ae856d559",
+      "bytes": 39204
+    },
+    {
+      "path": "flyingvoice/p11g/{$mac}.cfg",
+      "blob": "7e1ff5de2ef152b7703d22e123b47f7a5493bebf",
+      "bytes": 20454
+    },
+    {
+      "path": "flyingvoice/p11lte/directory.xml",
+      "blob": "297b9e4108a595f1375e9ac0c4d578aaa402c19a",
+      "bytes": 2451
+    },
+    {
+      "path": "flyingvoice/p11lte/y000000000000.boot",
+      "blob": "f14987d007c6377206dfc2f3af97ea9274437250",
+      "bytes": 139
+    },
+    {
+      "path": "flyingvoice/p11lte/y000000000000.cfg",
+      "blob": "0376be8e3e4f2ab19de989cf0296f507454139f6",
+      "bytes": 39207
+    },
+    {
+      "path": "flyingvoice/p11lte/{$mac}.cfg",
+      "blob": "7e1ff5de2ef152b7703d22e123b47f7a5493bebf",
+      "bytes": 20454
+    },
+    {
+      "path": "flyingvoice/p11p/directory.xml",
+      "blob": "297b9e4108a595f1375e9ac0c4d578aaa402c19a",
+      "bytes": 2451
+    },
+    {
+      "path": "flyingvoice/p11p/y000000000000.boot",
+      "blob": "f14987d007c6377206dfc2f3af97ea9274437250",
+      "bytes": 139
+    },
+    {
+      "path": "flyingvoice/p11p/y000000000000.cfg",
+      "blob": "8595a70042625c7ec98ad342db1e258ae856d559",
+      "bytes": 39204
+    },
+    {
+      "path": "flyingvoice/p11p/{$mac}.cfg",
+      "blob": "7e1ff5de2ef152b7703d22e123b47f7a5493bebf",
+      "bytes": 20454
+    },
+    {
+      "path": "flyingvoice/p11w/directory.xml",
+      "blob": "297b9e4108a595f1375e9ac0c4d578aaa402c19a",
+      "bytes": 2451
+    },
+    {
+      "path": "flyingvoice/p11w/y000000000000.boot",
+      "blob": "f14987d007c6377206dfc2f3af97ea9274437250",
+      "bytes": 139
+    },
+    {
+      "path": "flyingvoice/p11w/y000000000000.cfg",
+      "blob": "64c3b7575bd1dc1ae315f0424bc297e78335dbb1",
+      "bytes": 39205
+    },
+    {
+      "path": "flyingvoice/p11w/{$mac}.cfg",
+      "blob": "7e1ff5de2ef152b7703d22e123b47f7a5493bebf",
+      "bytes": 20454
+    },
+    {
+      "path": "flyingvoice/p20/directory.xml",
+      "blob": "297b9e4108a595f1375e9ac0c4d578aaa402c19a",
+      "bytes": 2451
+    },
+    {
+      "path": "flyingvoice/p20/y000000000000.boot",
+      "blob": "f14987d007c6377206dfc2f3af97ea9274437250",
+      "bytes": 139
+    },
+    {
+      "path": "flyingvoice/p20/y000000000000.cfg",
+      "blob": "db264160df66cf17e5e801dab085924f02925984",
+      "bytes": 40416
+    },
+    {
+      "path": "flyingvoice/p20/{$mac}.cfg",
+      "blob": "7e1ff5de2ef152b7703d22e123b47f7a5493bebf",
+      "bytes": 20454
+    },
+    {
+      "path": "flyingvoice/p20g/directory.xml",
+      "blob": "297b9e4108a595f1375e9ac0c4d578aaa402c19a",
+      "bytes": 2451
+    },
+    {
+      "path": "flyingvoice/p20g/y000000000000.boot",
+      "blob": "f14987d007c6377206dfc2f3af97ea9274437250",
+      "bytes": 139
+    },
+    {
+      "path": "flyingvoice/p20g/y000000000000.cfg",
+      "blob": "db264160df66cf17e5e801dab085924f02925984",
+      "bytes": 40416
+    },
+    {
+      "path": "flyingvoice/p20g/{$mac}.cfg",
+      "blob": "7e1ff5de2ef152b7703d22e123b47f7a5493bebf",
+      "bytes": 20454
+    },
+    {
+      "path": "flyingvoice/p20p/directory.xml",
+      "blob": "297b9e4108a595f1375e9ac0c4d578aaa402c19a",
+      "bytes": 2451
+    },
+    {
+      "path": "flyingvoice/p20p/y000000000000.boot",
+      "blob": "f14987d007c6377206dfc2f3af97ea9274437250",
+      "bytes": 139
+    },
+    {
+      "path": "flyingvoice/p20p/y000000000000.cfg",
+      "blob": "db264160df66cf17e5e801dab085924f02925984",
+      "bytes": 40416
+    },
+    {
+      "path": "flyingvoice/p20p/{$mac}.cfg",
+      "blob": "7e1ff5de2ef152b7703d22e123b47f7a5493bebf",
+      "bytes": 20454
+    },
+    {
+      "path": "flyingvoice/p20w/directory.xml",
+      "blob": "297b9e4108a595f1375e9ac0c4d578aaa402c19a",
+      "bytes": 2451
+    },
+    {
+      "path": "flyingvoice/p20w/y000000000000.boot",
+      "blob": "f14987d007c6377206dfc2f3af97ea9274437250",
+      "bytes": 139
+    },
+    {
+      "path": "flyingvoice/p20w/y000000000000.cfg",
+      "blob": "50070ff07f3248901aec22c37838aabb0507fbb1",
+      "bytes": 40417
+    },
+    {
+      "path": "flyingvoice/p20w/{$mac}.cfg",
+      "blob": "7e1ff5de2ef152b7703d22e123b47f7a5493bebf",
+      "bytes": 20454
+    },
+    {
+      "path": "flyingvoice/p21/directory.xml",
+      "blob": "297b9e4108a595f1375e9ac0c4d578aaa402c19a",
+      "bytes": 2451
+    },
+    {
+      "path": "flyingvoice/p21/y000000000000.boot",
+      "blob": "f14987d007c6377206dfc2f3af97ea9274437250",
+      "bytes": 139
+    },
+    {
+      "path": "flyingvoice/p21/y000000000000.cfg",
+      "blob": "da7db5a5d169f887cac2c622a74c056c56c05b72",
+      "bytes": 40416
+    },
+    {
+      "path": "flyingvoice/p21/{$mac}.cfg",
+      "blob": "d2943d3c03b2358e063547b88d059e6af85029d2",
+      "bytes": 20455
+    },
+    {
+      "path": "flyingvoice/p21p/directory.xml",
+      "blob": "297b9e4108a595f1375e9ac0c4d578aaa402c19a",
+      "bytes": 2451
+    },
+    {
+      "path": "flyingvoice/p21p/y000000000000.boot",
+      "blob": "f14987d007c6377206dfc2f3af97ea9274437250",
+      "bytes": 139
+    },
+    {
+      "path": "flyingvoice/p21p/y000000000000.cfg",
+      "blob": "da7db5a5d169f887cac2c622a74c056c56c05b72",
+      "bytes": 40416
+    },
+    {
+      "path": "flyingvoice/p21p/{$mac}.cfg",
+      "blob": "d2943d3c03b2358e063547b88d059e6af85029d2",
+      "bytes": 20455
+    },
+    {
+      "path": "flyingvoice/p21w/directory.xml",
+      "blob": "297b9e4108a595f1375e9ac0c4d578aaa402c19a",
+      "bytes": 2451
+    },
+    {
+      "path": "flyingvoice/p21w/y000000000000.boot",
+      "blob": "f14987d007c6377206dfc2f3af97ea9274437250",
+      "bytes": 139
+    },
+    {
+      "path": "flyingvoice/p21w/y000000000000.cfg",
+      "blob": "d79892384d30447c35b1221de09cde167093e131",
+      "bytes": 40417
+    },
+    {
+      "path": "flyingvoice/p21w/{$mac}.cfg",
+      "blob": "d2943d3c03b2358e063547b88d059e6af85029d2",
+      "bytes": 20455
+    },
+    {
+      "path": "flyingvoice/p22g/directory.xml",
+      "blob": "297b9e4108a595f1375e9ac0c4d578aaa402c19a",
+      "bytes": 2451
+    },
+    {
+      "path": "flyingvoice/p22g/y000000000000.boot",
+      "blob": "f14987d007c6377206dfc2f3af97ea9274437250",
+      "bytes": 139
+    },
+    {
+      "path": "flyingvoice/p22g/y000000000000.cfg",
+      "blob": "9a39488587c1af66e6b05f75aad6ef65e0df0e27",
+      "bytes": 39204
+    },
+    {
+      "path": "flyingvoice/p22g/{$mac}.cfg",
+      "blob": "7e1ff5de2ef152b7703d22e123b47f7a5493bebf",
+      "bytes": 20454
+    },
+    {
+      "path": "flyingvoice/p22p/directory.xml",
+      "blob": "297b9e4108a595f1375e9ac0c4d578aaa402c19a",
+      "bytes": 2451
+    },
+    {
+      "path": "flyingvoice/p22p/y000000000000.boot",
+      "blob": "f14987d007c6377206dfc2f3af97ea9274437250",
+      "bytes": 139
+    },
+    {
+      "path": "flyingvoice/p22p/y000000000000.cfg",
+      "blob": "9a39488587c1af66e6b05f75aad6ef65e0df0e27",
+      "bytes": 39204
+    },
+    {
+      "path": "flyingvoice/p22p/{$mac}.cfg",
+      "blob": "7e1ff5de2ef152b7703d22e123b47f7a5493bebf",
+      "bytes": 20454
+    },
+    {
+      "path": "flyingvoice/p23g/directory.xml",
+      "blob": "297b9e4108a595f1375e9ac0c4d578aaa402c19a",
+      "bytes": 2451
+    },
+    {
+      "path": "flyingvoice/p23g/y000000000000.boot",
+      "blob": "f14987d007c6377206dfc2f3af97ea9274437250",
+      "bytes": 139
+    },
+    {
+      "path": "flyingvoice/p23g/y000000000000.cfg",
+      "blob": "d05b3e29e79eae7bb0e80bac527238c1a00e4669",
+      "bytes": 40417
+    },
+    {
+      "path": "flyingvoice/p23g/{$mac}.cfg",
+      "blob": "d2943d3c03b2358e063547b88d059e6af85029d2",
+      "bytes": 20455
+    },
+    {
+      "path": "flyingvoice/p23gw/directory.xml",
+      "blob": "297b9e4108a595f1375e9ac0c4d578aaa402c19a",
+      "bytes": 2451
+    },
+    {
+      "path": "flyingvoice/p23gw/y000000000000.boot",
+      "blob": "f14987d007c6377206dfc2f3af97ea9274437250",
+      "bytes": 139
+    },
+    {
+      "path": "flyingvoice/p23gw/y000000000000.cfg",
+      "blob": "228d1208b880370945b4f87b935696f0ca7c1ceb",
+      "bytes": 40418
+    },
+    {
+      "path": "flyingvoice/p23gw/{$mac}.cfg",
+      "blob": "d2943d3c03b2358e063547b88d059e6af85029d2",
+      "bytes": 20455
+    },
+    {
+      "path": "flyingvoice/p24gw/directory.xml",
+      "blob": "297b9e4108a595f1375e9ac0c4d578aaa402c19a",
+      "bytes": 2451
+    },
+    {
+      "path": "flyingvoice/p24gw/y000000000000.boot",
+      "blob": "f14987d007c6377206dfc2f3af97ea9274437250",
+      "bytes": 139
+    },
+    {
+      "path": "flyingvoice/p24gw/y000000000000.cfg",
+      "blob": "03ce3dc7f927ea167afb6c95d368fb7a8e5e2657",
+      "bytes": 40418
+    },
+    {
+      "path": "flyingvoice/p24gw/{$mac}.cfg",
+      "blob": "d2943d3c03b2358e063547b88d059e6af85029d2",
+      "bytes": 20455
+    },
+    {
+      "path": "flyingvoice/p33/directory.xml",
+      "blob": "297b9e4108a595f1375e9ac0c4d578aaa402c19a",
+      "bytes": 2451
+    },
+    {
+      "path": "flyingvoice/p33/y000000000000.boot",
+      "blob": "f14987d007c6377206dfc2f3af97ea9274437250",
+      "bytes": 139
+    },
+    {
+      "path": "flyingvoice/p33/y000000000000.cfg",
+      "blob": "c3036078e609b064735edac61aeef6d7265b0741",
+      "bytes": 39204
+    },
+    {
+      "path": "flyingvoice/p33/{$mac}.cfg",
+      "blob": "7e1ff5de2ef152b7703d22e123b47f7a5493bebf",
+      "bytes": 20454
+    },
+    {
+      "path": "flyingvoice/p33g/directory.xml",
+      "blob": "297b9e4108a595f1375e9ac0c4d578aaa402c19a",
+      "bytes": 2451
+    },
+    {
+      "path": "flyingvoice/p33g/y000000000000.boot",
+      "blob": "f14987d007c6377206dfc2f3af97ea9274437250",
+      "bytes": 139
+    },
+    {
+      "path": "flyingvoice/p33g/y000000000000.cfg",
+      "blob": "455e18160daa1315bfabecf8673a928f6fc589f5",
+      "bytes": 40416
+    },
+    {
+      "path": "flyingvoice/p33g/{$mac}.cfg",
+      "blob": "7e1ff5de2ef152b7703d22e123b47f7a5493bebf",
+      "bytes": 20454
+    },
+    {
+      "path": "flyingvoice/p33p/directory.xml",
+      "blob": "297b9e4108a595f1375e9ac0c4d578aaa402c19a",
+      "bytes": 2451
+    },
+    {
+      "path": "flyingvoice/p33p/y000000000000.boot",
+      "blob": "f14987d007c6377206dfc2f3af97ea9274437250",
+      "bytes": 139
+    },
+    {
+      "path": "flyingvoice/p33p/y000000000000.cfg",
+      "blob": "c3036078e609b064735edac61aeef6d7265b0741",
+      "bytes": 39204
+    },
+    {
+      "path": "flyingvoice/p33p/{$mac}.cfg",
+      "blob": "7e1ff5de2ef152b7703d22e123b47f7a5493bebf",
+      "bytes": 20454
+    },
+    {
+      "path": "flyingvoice/p510/directory.xml",
+      "blob": "297b9e4108a595f1375e9ac0c4d578aaa402c19a",
+      "bytes": 2451
+    },
+    {
+      "path": "flyingvoice/p510/y000000000000.boot",
+      "blob": "f14987d007c6377206dfc2f3af97ea9274437250",
+      "bytes": 139
+    },
+    {
+      "path": "flyingvoice/p510/y000000000000.cfg",
+      "blob": "344d1f67fbf31bd448a26e4233a8ff302b9f2652",
+      "bytes": 40415
+    },
+    {
+      "path": "flyingvoice/p510/{$mac}.cfg",
+      "blob": "43ee554c8d696ac08e4786ced4715ff04e855058",
+      "bytes": 21437
+    },
+    {
+      "path": "flyingvoice/p53/directory.xml",
+      "blob": "297b9e4108a595f1375e9ac0c4d578aaa402c19a",
+      "bytes": 2451
+    },
+    {
+      "path": "flyingvoice/p53/y000000000000.boot",
+      "blob": "f14987d007c6377206dfc2f3af97ea9274437250",
+      "bytes": 139
+    },
+    {
+      "path": "flyingvoice/p53/y000000000000.cfg",
+      "blob": "b8991d653b2f5e325d2f7d835dd0a997986cc817",
+      "bytes": 40414
+    },
+    {
+      "path": "flyingvoice/p53/{$mac}.cfg",
+      "blob": "43ee554c8d696ac08e4786ced4715ff04e855058",
+      "bytes": 21437
+    },
+    {
+      "path": "flyingvoice/p54/directory.xml",
+      "blob": "297b9e4108a595f1375e9ac0c4d578aaa402c19a",
+      "bytes": 2451
+    },
+    {
+      "path": "flyingvoice/p54/y000000000000.boot",
+      "blob": "f14987d007c6377206dfc2f3af97ea9274437250",
+      "bytes": 139
+    },
+    {
+      "path": "flyingvoice/p54/y000000000000.cfg",
+      "blob": "c1d18b92c0f7a5bd58c3ff096228f47975f9ff10",
+      "bytes": 40414
+    },
+    {
+      "path": "flyingvoice/p54/{$mac}.cfg",
+      "blob": "43ee554c8d696ac08e4786ced4715ff04e855058",
+      "bytes": 21437
+    },
+    {
+      "path": "flyingvoice/p55/directory.xml",
+      "blob": "297b9e4108a595f1375e9ac0c4d578aaa402c19a",
+      "bytes": 2451
+    },
+    {
+      "path": "flyingvoice/p55/y000000000000.boot",
+      "blob": "f14987d007c6377206dfc2f3af97ea9274437250",
+      "bytes": 139
+    },
+    {
+      "path": "flyingvoice/p55/y000000000000.cfg",
+      "blob": "64aa18bf7b9b5479cc576ea8a96b646d2a65be89",
+      "bytes": 40414
+    },
+    {
+      "path": "flyingvoice/p55/{$mac}.cfg",
+      "blob": "43ee554c8d696ac08e4786ced4715ff04e855058",
+      "bytes": 21437
+    },
+    {
+      "path": "flyingvoice/p57/directory.xml",
+      "blob": "297b9e4108a595f1375e9ac0c4d578aaa402c19a",
+      "bytes": 2451
+    },
+    {
+      "path": "flyingvoice/p57/y000000000000.boot",
+      "blob": "f14987d007c6377206dfc2f3af97ea9274437250",
+      "bytes": 139
+    },
+    {
+      "path": "flyingvoice/p57/y000000000000.cfg",
+      "blob": "0b9e52ebf17baff453d8bd08fc3e64bb5f6bcfc8",
+      "bytes": 40414
+    },
+    {
+      "path": "flyingvoice/p57/{$mac}.cfg",
+      "blob": "43ee554c8d696ac08e4786ced4715ff04e855058",
+      "bytes": 21437
+    },
+    {
+      "path": "flyingvoice/p58/directory.xml",
+      "blob": "297b9e4108a595f1375e9ac0c4d578aaa402c19a",
+      "bytes": 2451
+    },
+    {
+      "path": "flyingvoice/p58/y000000000000.boot",
+      "blob": "f14987d007c6377206dfc2f3af97ea9274437250",
+      "bytes": 139
+    },
+    {
+      "path": "flyingvoice/p58/y000000000000.cfg",
+      "blob": "ac0a2fd79af5f830b62460b92fffdcf6a7246fb2",
+      "bytes": 40414
+    },
+    {
+      "path": "flyingvoice/p58/{$mac}.cfg",
+      "blob": "43ee554c8d696ac08e4786ced4715ff04e855058",
+      "bytes": 21437
+    },
+    {
+      "path": "grandstream/README.md",
+      "blob": "04bff744286e1da823dcb5afd71682f27452d6a8",
+      "bytes": 1577
+    },
+    {
+      "path": "grandstream/dp715.sm/{$mac}.xml",
+      "blob": "dc92b9c8ec9eaf71e1df3d30ec8e90b9bf928362",
+      "bytes": 29493
+    },
+    {
+      "path": "grandstream/dp715/{$mac}.xml",
+      "blob": "0895567e26c4af6104620fc3a66a7b995cbb89e0",
+      "bytes": 26803
+    },
+    {
+      "path": "grandstream/dp750/phonebook.xml",
+      "blob": "dc809767fe3776c5dbb9eba855852ed8adf5ba4c",
+      "bytes": 1270
+    },
+    {
+      "path": "grandstream/dp750/{$mac}.xml",
+      "blob": "cb10479184eb6ab88421e542943c0a90e239278d",
+      "bytes": 99864
+    },
+    {
+      "path": "grandstream/gac2500/phonebook.xml",
+      "blob": "deb211d00121424f66a5ff1db729b800fc11d017",
+      "bytes": 4212
+    },
+    {
+      "path": "grandstream/gac2500/{$mac}.xml",
+      "blob": "937cbfa077137b17f4a416c693c3b9a2f7ce2878",
+      "bytes": 198088
+    },
+    {
+      "path": "grandstream/gds3705/{$mac}.xml",
+      "blob": "402be297f6965288f7e3f9a790feb1e3e662767f",
+      "bytes": 31834
+    },
+    {
+      "path": "grandstream/gds3710/{$mac}.xml",
+      "blob": "0e67b8186755392d42ffea7f2667d20be2fcf255",
+      "bytes": 36241
+    },
+    {
+      "path": "grandstream/ghp6xx/phonebook.xml",
+      "blob": "deb211d00121424f66a5ff1db729b800fc11d017",
+      "bytes": 4212
+    },
+    {
+      "path": "grandstream/ghp6xx/{$mac}.xml",
+      "blob": "b2b52f0a99f6b2d9a7cf6602ef4c30b3e13d71da",
+      "bytes": 104862
+    },
+    {
+      "path": "grandstream/grp2612/phonebook.xml",
+      "blob": "deb211d00121424f66a5ff1db729b800fc11d017",
+      "bytes": 4212
+    },
+    {
+      "path": "grandstream/grp2612/{$mac}.xml",
+      "blob": "67eaa71afa5c73af70b0c1ab02160c05349d39bf",
+      "bytes": 166951
+    },
+    {
+      "path": "grandstream/grp2612w/phonebook.xml",
+      "blob": "a99be683a35d642478d359d98db9664d96b3e256",
+      "bytes": 4363
+    },
+    {
+      "path": "grandstream/grp2612w/{$mac}.xml",
+      "blob": "76dc657b2e1c64de81467b43c5d462273842647e",
+      "bytes": 166259
+    },
+    {
+      "path": "grandstream/grp2613/phonebook.xml",
+      "blob": "deb211d00121424f66a5ff1db729b800fc11d017",
+      "bytes": 4212
+    },
+    {
+      "path": "grandstream/grp2613/{$mac}.xml",
+      "blob": "0df9709d49afe3bf4593492ae87214ca006272ec",
+      "bytes": 167350
+    },
+    {
+      "path": "grandstream/grp2614/phonebook.xml",
+      "blob": "deb211d00121424f66a5ff1db729b800fc11d017",
+      "bytes": 4212
+    },
+    {
+      "path": "grandstream/grp2614/{$mac}.xml",
+      "blob": "0df9709d49afe3bf4593492ae87214ca006272ec",
+      "bytes": 167350
+    },
+    {
+      "path": "grandstream/grp2615/phonebook.xml",
+      "blob": "deb211d00121424f66a5ff1db729b800fc11d017",
+      "bytes": 4212
+    },
+    {
+      "path": "grandstream/grp2615/{$mac}.xml",
+      "blob": "0df9709d49afe3bf4593492ae87214ca006272ec",
+      "bytes": 167350
+    },
+    {
+      "path": "grandstream/grp2616/phonebook.xml",
+      "blob": "deb211d00121424f66a5ff1db729b800fc11d017",
+      "bytes": 4212
+    },
+    {
+      "path": "grandstream/grp2616/{$mac}.xml",
+      "blob": "0df9709d49afe3bf4593492ae87214ca006272ec",
+      "bytes": 167350
+    },
+    {
+      "path": "grandstream/grp261x/phonebook.xml",
+      "blob": "deb211d00121424f66a5ff1db729b800fc11d017",
+      "bytes": 4212
+    },
+    {
+      "path": "grandstream/grp261x/{$mac}.xml",
+      "blob": "ba6d0b8a5581dfb2b646d50aed7fae7a3760cca3",
+      "bytes": 120180
+    },
+    {
+      "path": "grandstream/grp26xx/phonebook.xml",
+      "blob": "deb211d00121424f66a5ff1db729b800fc11d017",
+      "bytes": 4212
+    },
+    {
+      "path": "grandstream/grp26xx/{$mac}.xml",
+      "blob": "26fd487b2064137e6d6775edbbc046b7115268aa",
+      "bytes": 281996
+    },
+    {
+      "path": "grandstream/gsc3516/{$mac}.xml",
+      "blob": "2b10321b01aae6a2fda6373a00ee43ee13eb09c4",
+      "bytes": 32302
+    },
+    {
+      "path": "grandstream/gsc3518hs/{$mac}.xml",
+      "blob": "c2f6e128a7e76d85a206efdd8e9d8f3c82964a9a",
+      "bytes": 32858
+    },
+    {
+      "path": "grandstream/gswave/{$mac}.xml",
+      "blob": "28f8a29eb022747fa7206fb853c8fc4eb794543e",
+      "bytes": 91437
+    },
+    {
+      "path": "grandstream/gxp110x/{$mac}.xml",
+      "blob": "a0951499a9b20880bcf7953d30ce273caeba89c5",
+      "bytes": 33449
+    },
+    {
+      "path": "grandstream/gxp116x/phonebook.xml",
+      "blob": "7dca557192b0d90dd3c5a9fb44bf510b84b266f5",
+      "bytes": 670
+    },
+    {
+      "path": "grandstream/gxp116x/{$mac}.xml",
+      "blob": "2c910decf4b635e76a0ec57b10daa69c334d3a8f",
+      "bytes": 41223
+    },
+    {
+      "path": "grandstream/gxp140x/phonebook.xml",
+      "blob": "7dca557192b0d90dd3c5a9fb44bf510b84b266f5",
+      "bytes": 670
+    },
+    {
+      "path": "grandstream/gxp140x/{$mac}.xml",
+      "blob": "6577cd67ca4495907bd7c02632182b3daf0abe30",
+      "bytes": 69198
+    },
+    {
+      "path": "grandstream/gxp140xbk/phonebook.xml",
+      "blob": "7dca557192b0d90dd3c5a9fb44bf510b84b266f5",
+      "bytes": 670
+    },
+    {
+      "path": "grandstream/gxp140xbk/{$mac}.xml",
+      "blob": "b2baea0f7dd0abbf98c3f7d29f0d7961d25937ee",
+      "bytes": 67433
+    },
+    {
+      "path": "grandstream/gxp1450/phonebook.xml",
+      "blob": "7dca557192b0d90dd3c5a9fb44bf510b84b266f5",
+      "bytes": 670
+    },
+    {
+      "path": "grandstream/gxp1450/{$mac}.xml",
+      "blob": "fefeb9b6a6b8dad757693f4e2a837eb859fdb0a9",
+      "bytes": 62762
+    },
+    {
+      "path": "grandstream/gxp1450bk/phonebook.xml",
+      "blob": "7dca557192b0d90dd3c5a9fb44bf510b84b266f5",
+      "bytes": 670
+    },
+    {
+      "path": "grandstream/gxp1450bk/{$mac}.xml",
+      "blob": "b79f3e1b97d16677e41a14ab9b9a402902c14272",
+      "bytes": 56278
+    },
+    {
+      "path": "grandstream/gxp16xx/label.txt",
+      "blob": "be9976d487139d00f3e0ec73acde0c8faadac3f6",
+      "bytes": 889
+    },
+    {
+      "path": "grandstream/gxp16xx/phonebook.xml",
+      "blob": "f2fe0bcc85e73aa886fe04ceaba2f1583b510f0c",
+      "bytes": 1388
+    },
+    {
+      "path": "grandstream/gxp16xx/{$mac}.xml",
+      "blob": "f9a78d03301de756e39a0ab4d06ecdeefc591b5e",
+      "bytes": 112600
+    },
+    {
+      "path": "grandstream/gxp17xx/{$mac}.xml",
+      "blob": "c3ad8e06542cdb5c93fa5a4b349b72a41afa7630",
+      "bytes": 221758
+    },
+    {
+      "path": "grandstream/gxp20xx/phonebook.xml",
+      "blob": "7dca557192b0d90dd3c5a9fb44bf510b84b266f5",
+      "bytes": 670
+    },
+    {
+      "path": "grandstream/gxp20xx/{$mac}.xml",
+      "blob": "92c1c5b3852e4c2445dd6022e7cf50e32399911e",
+      "bytes": 80319
+    },
+    {
+      "path": "grandstream/gxp2100/phonebook.xml",
+      "blob": "c6b5d9b2cce2896bb774038c48f6fcdd745a18dc",
+      "bytes": 1097
+    },
+    {
+      "path": "grandstream/gxp2100/{$mac}.xml",
+      "blob": "733561aab4777b9835dd2aab8084bba3d662470e",
+      "bytes": 120480
+    },
+    {
+      "path": "grandstream/gxp2124/phonebook.xml",
+      "blob": "7dca557192b0d90dd3c5a9fb44bf510b84b266f5",
+      "bytes": 670
+    },
+    {
+      "path": "grandstream/gxp2124/{$mac}.xml",
+      "blob": "b10f51aa154ff0aeffc336cb9760496762f82854",
+      "bytes": 117016
+    },
+    {
+      "path": "grandstream/gxp2130/README.txt",
+      "blob": "45538b5766233f03e5b202b26a658a2065b341e0",
+      "bytes": 3441
+    },
+    {
+      "path": "grandstream/gxp2130/label.txt",
+      "blob": "be9976d487139d00f3e0ec73acde0c8faadac3f6",
+      "bytes": 889
+    },
+    {
+      "path": "grandstream/gxp2130/phonebook.xml",
+      "blob": "deb211d00121424f66a5ff1db729b800fc11d017",
+      "bytes": 4212
+    },
+    {
+      "path": "grandstream/gxp2130/{$mac}.xml",
+      "blob": "6128935f7f61db0d4e7d91f5f9dacaed7e003572",
+      "bytes": 127482
+    },
+    {
+      "path": "grandstream/gxp2135/README.txt",
+      "blob": "64bdd810f4ad705f1b3da3b24f40b662b554d0a0",
+      "bytes": 3439
+    },
+    {
+      "path": "grandstream/gxp2135/label.txt",
+      "blob": "be9976d487139d00f3e0ec73acde0c8faadac3f6",
+      "bytes": 889
+    },
+    {
+      "path": "grandstream/gxp2135/phonebook.xml",
+      "blob": "deb211d00121424f66a5ff1db729b800fc11d017",
+      "bytes": 4212
+    },
+    {
+      "path": "grandstream/gxp2135/{$mac}.xml",
+      "blob": "6e4912500b346564f59cd3339f7310cba3d0860c",
+      "bytes": 128057
+    },
+    {
+      "path": "grandstream/gxp2140/README.txt",
+      "blob": "64bdd810f4ad705f1b3da3b24f40b662b554d0a0",
+      "bytes": 3439
+    },
+    {
+      "path": "grandstream/gxp2140/label.txt",
+      "blob": "be9976d487139d00f3e0ec73acde0c8faadac3f6",
+      "bytes": 889
+    },
+    {
+      "path": "grandstream/gxp2140/phonebook.xml",
+      "blob": "deb211d00121424f66a5ff1db729b800fc11d017",
+      "bytes": 4212
+    },
+    {
+      "path": "grandstream/gxp2140/{$mac}.xml",
+      "blob": "504a9c6248d35ad57f53c1cf86b67c7a73c0bfb8",
+      "bytes": 127482
+    },
+    {
+      "path": "grandstream/gxp2160/README.txt",
+      "blob": "64bdd810f4ad705f1b3da3b24f40b662b554d0a0",
+      "bytes": 3439
+    },
+    {
+      "path": "grandstream/gxp2160/gxp2160_labels.ott",
+      "blob": "7226636f93e73ee8aeaf9d8d52317c185bac1360",
+      "bytes": 27274
+    },
+    {
+      "path": "grandstream/gxp2160/label.txt",
+      "blob": "be9976d487139d00f3e0ec73acde0c8faadac3f6",
+      "bytes": 889
+    },
+    {
+      "path": "grandstream/gxp2160/phonebook.xml",
+      "blob": "deb211d00121424f66a5ff1db729b800fc11d017",
+      "bytes": 4212
+    },
+    {
+      "path": "grandstream/gxp2160/{$mac}.xml",
+      "blob": "7357b0bd98b73465e9a6c2a5b1c768e259ae55d6",
+      "bytes": 127482
+    },
+    {
+      "path": "grandstream/gxp2170/README.txt",
+      "blob": "3cd2a5b9da40c73be23eda78d8bc78bdb539e5ed",
+      "bytes": 3449
+    },
+    {
+      "path": "grandstream/gxp2170/label.txt",
+      "blob": "be9976d487139d00f3e0ec73acde0c8faadac3f6",
+      "bytes": 889
+    },
+    {
+      "path": "grandstream/gxp2170/phonebook.xml",
+      "blob": "7fde0b9e7d802646ccfd0b441c9901c36fa005ed",
+      "bytes": 4068
+    },
+    {
+      "path": "grandstream/gxp2170/{$mac}.xml",
+      "blob": "4e7705f30870ca6e94e35ca36d2576062da2904e",
+      "bytes": 127451
+    },
+    {
+      "path": "grandstream/gxp21xx/{$mac}.xml",
+      "blob": "7e8395971fa333d67dc4da16123f612aa97fea6d",
+      "bytes": 145412
+    },
+    {
+      "path": "grandstream/gxp21xxbk/{$mac}.xml",
+      "blob": "526896fd34a2860728522481a695c0dc71cea6e9",
+      "bytes": 120271
+    },
+    {
+      "path": "grandstream/gxp2200/{$mac}.xml",
+      "blob": "65eb8ebe8cdc8c6874facad05a993ed64b60b357",
+      "bytes": 253982
+    },
+    {
+      "path": "grandstream/gxp3240/{$mac}.xml",
+      "blob": "a6e1bf8e9307ad9cfab6670bdcb9be81ff6ef756",
+      "bytes": 260251
+    },
+    {
+      "path": "grandstream/gxv300x/{$mac}.xml",
+      "blob": "bd93b8637320b0fbbafa0ddf8d447b40e9df7f2b",
+      "bytes": 39302
+    },
+    {
+      "path": "grandstream/gxv3140/{$mac}.xml",
+      "blob": "0a80c906bdbc3cf0658997d4d8e2ddce6b0d7fd4",
+      "bytes": 41663
+    },
+    {
+      "path": "grandstream/gxv3175/{$mac}.xml",
+      "blob": "6213a4f354bcd6ba5c06e20297dd6f110202d1a7",
+      "bytes": 79540
+    },
+    {
+      "path": "grandstream/gxv3175v2/{$mac}.xml",
+      "blob": "81ccf85ad7c29aabf6f20fe0834f361977624e0f",
+      "bytes": 86219
+    },
+    {
+      "path": "grandstream/gxv3240/phonebook.xml",
+      "blob": "c59b3c5b054a3d50bed9b2702dabd4cd819273a0",
+      "bytes": 5564
+    },
+    {
+      "path": "grandstream/gxv3240/{$mac}.xml",
+      "blob": "f4430cf4597aca035e9e8a2732a65db03b3cbd9c",
+      "bytes": 204928
+    },
+    {
+      "path": "grandstream/gxv3275/{$mac}.xml",
+      "blob": "88ac2c8a9cadf4ec2835d8297fc661c3abf318c4",
+      "bytes": 185363
+    },
+    {
+      "path": "grandstream/gxv3370/{$mac}.xml",
+      "blob": "ad837a7e922697879f28f89bf89d72d64c4b2574",
+      "bytes": 61967
+    },
+    {
+      "path": "grandstream/gxv3380",
+      "blob": "b8431f86f4608b036cb1ace44eab13c9d43c4c2b",
+      "bytes": 80503
+    },
+    {
+      "path": "grandstream/gxv3480/{$mac}.xml",
+      "blob": "28063c331ab3f197c8dad64ac1c218472cf45565",
+      "bytes": 62311
+    },
+    {
+      "path": "grandstream/gxv3504/{$mac}.xml",
+      "blob": "92febdb6542824d5ccf0701ca38f38bb817592ad",
+      "bytes": 31547
+    },
+    {
+      "path": "grandstream/gxw4004/{$mac}.xml",
+      "blob": "4e0771d04912f7377523fc42108fa8b6d254f29b",
+      "bytes": 4175
+    },
+    {
+      "path": "grandstream/gxw4008/{$mac}.xml",
+      "blob": "99a5b06450c6ba10b7a32ab5eb50c4bc509a19c2",
+      "bytes": 6411
+    },
+    {
+      "path": "grandstream/gxw40xx/{$mac}.xml",
+      "blob": "ef1017959559a18871283051bc6be6f0693638ca",
+      "bytes": 107121
+    },
+    {
+      "path": "grandstream/gxw410x/{$mac}.xml",
+      "blob": "8ba60b6cecc75ce4a277ac3c72b3011d3229cf05",
+      "bytes": 31247
+    },
+    {
+      "path": "grandstream/gxw42xx/{$mac}.xml",
+      "blob": "00668ce30a053403f196f467224b7b50108aa371",
+      "bytes": 102754
+    },
+    {
+      "path": "grandstream/ht502/{$mac}.xml",
+      "blob": "2acf95a17ee2ba8ad0b601a7fcdcbefc01bcf5ff",
+      "bytes": 43010
+    },
+    {
+      "path": "grandstream/ht503/{$mac}.xml",
+      "blob": "8ee19221feb32c8136b4463b7619a616f51a345a",
+      "bytes": 54297
+    },
+    {
+      "path": "grandstream/ht701/{$mac}.xml",
+      "blob": "9256b037fcef0c7a0955f48e975bdc554ed3a119",
+      "bytes": 49066
+    },
+    {
+      "path": "grandstream/ht702/{$mac}.xml",
+      "blob": "251fcd5944a84c8114221dadaacbc6c9b8b83571",
+      "bytes": 47047
+    },
+    {
+      "path": "grandstream/ht704/{$mac}.xml",
+      "blob": "4dcd51bb8be9dc6046b99ab5b7c6a2753172eb54",
+      "bytes": 50109
+    },
+    {
+      "path": "grandstream/ht801/{$mac}.xml",
+      "blob": "c4f450f83bb69aba04087212e87e82626376012c",
+      "bytes": 65896
+    },
+    {
+      "path": "grandstream/ht802/{$mac}.xml",
+      "blob": "846f1cb3d87706e466d3762e1cdcf97118aaf9c3",
+      "bytes": 83142
+    },
+    {
+      "path": "grandstream/ht813/{$mac}.xml",
+      "blob": "d89e6fb1d70fb1e32f24535798946a455d8676d5",
+      "bytes": 64380
+    },
+    {
+      "path": "grandstream/ht814/{$mac}.xml",
+      "blob": "bd8a1adb0021460953ed721ea3f3d88f2f931a8e",
+      "bytes": 68653
+    },
+    {
+      "path": "grandstream/ht818/{$mac}.xml",
+      "blob": "26c2cc2b7095ccd3a54e2ad102e4ca137cb5ea92",
+      "bytes": 73301
+    },
+    {
+      "path": "grandstream/ht8x1/{$mac}.xml",
+      "blob": "00681bcb191190b1d9a6d9ab611cf468ce7cc977",
+      "bytes": 64429
+    },
+    {
+      "path": "grandstream/htx86/{$mac}.xml",
+      "blob": "df911fad7695dca418e019cdf24123535a188fec",
+      "bytes": 24832
+    },
+    {
+      "path": "grandstream/wave/{$mac}.xml",
+      "blob": "8b137891791fe96927ad78e64b0aad7bded08bdc",
+      "bytes": 1
+    },
+    {
+      "path": "grandstream/wp810/phonebook.xml",
+      "blob": "deb211d00121424f66a5ff1db729b800fc11d017",
+      "bytes": 4212
+    },
+    {
+      "path": "grandstream/wp810/{$mac}.xml",
+      "blob": "ac4c683ad122c045b42251a365371eb0fe6a7752",
+      "bytes": 69678
+    },
+    {
+      "path": "grandstream/wp820/phonebook.xml",
+      "blob": "deb211d00121424f66a5ff1db729b800fc11d017",
+      "bytes": 4212
+    },
+    {
+      "path": "grandstream/wp820/{$mac}.xml",
+      "blob": "9851aee1a7d21cccedf285ce8d4d7b8888e9a184",
+      "bytes": 82235
+    },
+    {
+      "path": "grandstream/wp826/phonebook.xml",
+      "blob": "deb211d00121424f66a5ff1db729b800fc11d017",
+      "bytes": 4212
+    },
+    {
+      "path": "grandstream/wp826/{$mac}.xml",
+      "blob": "33ef8d47916084b3da2f73387bca1b2e2fa6f652",
+      "bytes": 6579
+    },
+    {
+      "path": "grandstream/wp8x6/phonebook.xml",
+      "blob": "8d0d0969ca6d9d3d8993e44ffb6192039ed119ed",
+      "bytes": 4361
+    },
+    {
+      "path": "grandstream/wp8x6/{$mac}.xml",
+      "blob": "16e318b27e2456fafdf49253af7b58c272706ab9",
+      "bytes": 155160
+    },
+    {
+      "path": "groundwire/default/qr_template.txt",
+      "blob": "d67668f1816dc1e02f05c9df29872cd7ef30eb06",
+      "bytes": 69
+    },
+    {
+      "path": "groundwire/default/{$mac}.xml",
+      "blob": "c79ee4bc5e8c4abffdafa4a7d251611969bdcd3d",
+      "bytes": 1315
+    },
+    {
+      "path": "htek/uc903/phonebook.xml",
+      "blob": "526b0fe0c3c6d538c6710d3a1e51d1bf80d77f72",
+      "bytes": 1982
+    },
+    {
+      "path": "htek/uc903/{$mac}.cfg",
+      "blob": "dc103a25c874d300088145be8fe08f97bbb7f05e",
+      "bytes": 146297
+    },
+    {
+      "path": "htek/uc923/phonebook.xml",
+      "blob": "526b0fe0c3c6d538c6710d3a1e51d1bf80d77f72",
+      "bytes": 1982
+    },
+    {
+      "path": "htek/uc923/{$mac}.cfg",
+      "blob": "e24489e1bcc07dcd7286dc3455a3bf3190b153ed",
+      "bytes": 146363
+    },
+    {
+      "path": "htek/uc924/phonebook.xml",
+      "blob": "526b0fe0c3c6d538c6710d3a1e51d1bf80d77f72",
+      "bytes": 1982
+    },
+    {
+      "path": "htek/uc924/{$mac}.cfg",
+      "blob": "04305855f43e3ba96be39507614510c2cf756357",
+      "bytes": 146742
+    },
+    {
+      "path": "htek/uc924u/{$mac}.cfg",
+      "blob": "bb57c8653b3c85f46fc4fea6a9403636cb3b9a09",
+      "bytes": 99286
+    },
+    {
+      "path": "htek/uc926/phonebook.xml",
+      "blob": "13d968d806285f784fbfadabae892dca54d201c8",
+      "bytes": 1983
+    },
+    {
+      "path": "htek/uc926/{$mac}.cfg",
+      "blob": "6e97b172df2651c5b75945812423d1f4f17b028a",
+      "bytes": 146732
+    },
+    {
+      "path": "htek/uc926u/{$mac}.cfg",
+      "blob": "74ac210916c84dcb2767745a984f3c5c53c12d50",
+      "bytes": 101058
+    },
+    {
+      "path": "linksys/spa2102/{$mac}.xml",
+      "blob": "105372cb5c0d987ff3079e08c7ed7a2d0d4bec89",
+      "bytes": 3307
+    },
+    {
+      "path": "linksys/spa3102/{$mac}.xml",
+      "blob": "9791658083985a629f8c94c2798f984d7413ca78",
+      "bytes": 3674
+    },
+    {
+      "path": "linksys/spa921/{$mac}.xml",
+      "blob": "ac3dbb706332e7bbfd47789a3ac8222bf37e1cb8",
+      "bytes": 1641
+    },
+    {
+      "path": "linksys/spa941/{$mac}.xml",
+      "blob": "191463fda1287bf461af597e90570696f18b2186",
+      "bytes": 55844
+    },
+    {
+      "path": "linksys/spa942/{$mac}.xml",
+      "blob": "d0874d47c30ab7b075fbee943246c70aaab9cfe4",
+      "bytes": 55840
+    },
+    {
+      "path": "linphone/default/{$address}.xml",
+      "blob": "f57d39750ae53c0a69fdf6c650d0fb39df77d2c5",
+      "bytes": 2860
+    },
+    {
+      "path": "mitel/5320/MN_Generic.cfg",
+      "blob": "2a81d3a744dfb7ca3a31c77bb2836b5bbe319558",
+      "bytes": 646
+    },
+    {
+      "path": "mitel/5320/MN_{$mac}.cfg",
+      "blob": "9e8f0d9c2f66e88d4bcf92b34b3a590bd0681e5c",
+      "bytes": 10441
+    },
+    {
+      "path": "mitel/5320e/MN_Generic.cfg",
+      "blob": "f63962b2d78f1ba17c6801d81377cbda262df546",
+      "bytes": 533
+    },
+    {
+      "path": "mitel/5320e/MN_{$mac}.cfg",
+      "blob": "2f0e2e3e0dc7a078e7282f269f71f1c96a538f7e",
+      "bytes": 11049
+    },
+    {
+      "path": "mitel/5324/MN_Generic.cfg",
+      "blob": "f63962b2d78f1ba17c6801d81377cbda262df546",
+      "bytes": 533
+    },
+    {
+      "path": "mitel/5324/MN_{$mac}.cfg",
+      "blob": "7fad2f88dda2b20b0d9afdd51121e43eecbfd879",
+      "bytes": 11048
+    },
+    {
+      "path": "mitel/5330/MN_Generic.cfg",
+      "blob": "f63962b2d78f1ba17c6801d81377cbda262df546",
+      "bytes": 533
+    },
+    {
+      "path": "mitel/5330/MN_{$mac}.cfg",
+      "blob": "7d9e0f5337b4a79ffd89745767cada2ffe004860",
+      "bytes": 10743
+    },
+    {
+      "path": "mitel/5330e/MN_Generic.cfg",
+      "blob": "282297623773aa70b9f7aa51684a08b55440c8c5",
+      "bytes": 647
+    },
+    {
+      "path": "mitel/5330e/MN_{$mac}.cfg",
+      "blob": "be397fcbd984e7fb3456ba9c3a0c9bdd4c5db61b",
+      "bytes": 10695
+    },
+    {
+      "path": "mitel/5340/MN_Generic.cfg",
+      "blob": "f63962b2d78f1ba17c6801d81377cbda262df546",
+      "bytes": 533
+    },
+    {
+      "path": "mitel/5340/MN_{$mac}.cfg",
+      "blob": "62a9bfc2612ddadcd296a726ded299bcc1bc238a",
+      "bytes": 11048
+    },
+    {
+      "path": "obihai/obi1032/{$mac}.xml",
+      "blob": "6eee1c22a4f62b3d2cb666d383205814d0320e99",
+      "bytes": 2912
+    },
+    {
+      "path": "obihai/obi1062/{$mac}.xml",
+      "blob": "6eee1c22a4f62b3d2cb666d383205814d0320e99",
+      "bytes": 2912
+    },
+    {
+      "path": "obihai/obi302/{$mac}.xml",
+      "blob": "6eee1c22a4f62b3d2cb666d383205814d0320e99",
+      "bytes": 2912
+    },
+    {
+      "path": "obihai/obi310/{$mac}.xml",
+      "blob": "6eee1c22a4f62b3d2cb666d383205814d0320e99",
+      "bytes": 2912
+    },
+    {
+      "path": "panasonic/tgp500/KX-TGP500B04.cfg",
+      "blob": "453fc14b547ca99153e0366ee0302fabfe9f1210",
+      "bytes": 597
+    },
+    {
+      "path": "panasonic/tgp500/{$mac}.cfg",
+      "blob": "890c7eb8cd9d98c9d12923f112e9a678125fa05e",
+      "bytes": 11409
+    },
+    {
+      "path": "panasonic/tgp550/KX-TGP550T04.cfg",
+      "blob": "453fc14b547ca99153e0366ee0302fabfe9f1210",
+      "bytes": 597
+    },
+    {
+      "path": "panasonic/tgp550/{$mac}.cfg",
+      "blob": "914ef7d820326c0458139744ee5eb144eec13d01",
+      "bytes": 11356
+    },
+    {
+      "path": "panasonic/ut113/KX-UT113.cfg",
+      "blob": "e58ea8baac06ed89fcd8fe7ab79df1ba66e394da",
+      "bytes": 347
+    },
+    {
+      "path": "panasonic/ut113/{$mac}.xml",
+      "blob": "e4a6122dca0f4d074be8e96af458ce13948acd4c",
+      "bytes": 17270
+    },
+    {
+      "path": "panasonic/ut123/KX-UT123.cfg",
+      "blob": "e58ea8baac06ed89fcd8fe7ab79df1ba66e394da",
+      "bytes": 347
+    },
+    {
+      "path": "panasonic/ut123/{$mac}.xml",
+      "blob": "40556e3aa0a4a05fa3eb5d78ba545553f97299da",
+      "bytes": 17269
+    },
+    {
+      "path": "panasonic/ut133/KX-UT133.cfg",
+      "blob": "6a318f1d0c2e4ef2dbcbe9c9655374a877cf504b",
+      "bytes": 460
+    },
+    {
+      "path": "panasonic/ut133/{$mac}.xml",
+      "blob": "54c3ea32752ff030152d42e156244e420bb1f8b9",
+      "bytes": 37143
+    },
+    {
+      "path": "panasonic/ut136/KX-UT136.cfg",
+      "blob": "300a807262ae68c4c2c7d4c43c6396b71a760d75",
+      "bytes": 441
+    },
+    {
+      "path": "panasonic/ut136/{$mac}.xml",
+      "blob": "6578655bfa38a4368aca5cec49a54dbdfbe63d56",
+      "bytes": 37194
+    },
+    {
+      "path": "panasonic/ut670/KX-UT670.cfg",
+      "blob": "11de2182506417c307d8abf543a46eaf42536c65",
+      "bytes": 495
+    },
+    {
+      "path": "panasonic/ut670/{$mac}.cfg",
+      "blob": "31ed3adddbae5bed89f23da70431bd8bb2325b9d",
+      "bytes": 19461
+    },
+    {
+      "path": "panasonic/utg200b/{$mac}.xml",
+      "blob": "7e44703244967db6991defd97e0868dc87f19847",
+      "bytes": 27735
+    },
+    {
+      "path": "panasonic/utg300b/{$mac}.xml",
+      "blob": "7e44703244967db6991defd97e0868dc87f19847",
+      "bytes": 27735
+    },
+    {
+      "path": "poly/edge-e550/{$mac}-directory.xml",
+      "blob": "90f3cb15ac0cd9b4a9fae56711e98294180cf417",
+      "bytes": 594
+    },
+    {
+      "path": "poly/edge-e550/{$mac}.cfg",
+      "blob": "6a2349adc89a7596168a40bec83cc9d443a32c92",
+      "bytes": 16907
+    },
+    {
+      "path": "poly/poly-vvx-450/{$mac}.xml",
+      "blob": "42dee5fa2d7c7bafaa8db4ab2beb153ff2f03e22",
+      "bytes": 218433
+    },
+    {
+      "path": "poly/poly-vvx-d230/{$mac}.xml",
+      "blob": "0954ef9afac089843c54c0c5780973ad5147b5aa",
+      "bytes": 246226
+    },
+    {
+      "path": "polycom/3.x/{$mac}.cfg",
+      "blob": "69452d656506ceeb1f658a96fb2e181efb577cb9",
+      "bytes": 5690
+    },
+    {
+      "path": "polycom/4.x/{$mac}-directory.xml",
+      "blob": "bbc5b1624b5d5307ecbec9fcea78a77450715730",
+      "bytes": 622
+    },
+    {
+      "path": "polycom/4.x/{$mac}.cfg",
+      "blob": "28eaa1689f4e27e7fc09dad2364403aa429e3bec",
+      "bytes": 11345
+    },
+    {
+      "path": "polycom/5.x/{$mac}-directory.xml",
+      "blob": "bbc5b1624b5d5307ecbec9fcea78a77450715730",
+      "bytes": 622
+    },
+    {
+      "path": "polycom/5.x/{$mac}.cfg",
+      "blob": "5a5d63ea138066963354b24664862560a5820bd7",
+      "bytes": 20428
+    },
+    {
+      "path": "polycom/6.x/{$mac}-directory.xml",
+      "blob": "bbc5b1624b5d5307ecbec9fcea78a77450715730",
+      "bytes": 622
+    },
+    {
+      "path": "polycom/6.x/{$mac}.cfg",
+      "blob": "823ba7b0447fa61a6242bd4955cae8b0ff6deb0f",
+      "bytes": 20431
+    },
+    {
+      "path": "polycom/650/custom.cfg",
+      "blob": "0d7b88989657d7c976b5e734b40ddc3c3776e10f",
+      "bytes": 655
+    },
+    {
+      "path": "polycom/650/phone1.cfg",
+      "blob": "a5450ccf5e5f339b99424be3c575eff33820ea41",
+      "bytes": 23486
+    },
+    {
+      "path": "polycom/650/sip.cfg",
+      "blob": "8df3e3dbcff905f11baffab9db1acb944b02ac29",
+      "bytes": 197609
+    },
+    {
+      "path": "polycom/650/{$mac}-registration.cfg",
+      "blob": "36135182622a7711225a8580c7a3eca5d76f69db",
+      "bytes": 2767
+    },
+    {
+      "path": "polycom/650/{$mac}.cfg",
+      "blob": "0f569fa40769cc833bf891520e9a4ea4a305b864",
+      "bytes": 1581
+    },
+    {
+      "path": "polycom/8030/phone1.cfg",
+      "blob": "7db4c51d3bf806c3d1afc21673c58e947463744e",
+      "bytes": 23485
+    },
+    {
+      "path": "polycom/8030/sip.cfg",
+      "blob": "e6a6c5735c6fa16ca965661db362715785f349f3",
+      "bytes": 197609
+    },
+    {
+      "path": "polycom/8030/{$mac}-registration.cfg",
+      "blob": "7b2f3888d9d52ea4ba0434285e104dcb090ec22f",
+      "bytes": 2779
+    },
+    {
+      "path": "polycom/8030/{$mac}.cfg",
+      "blob": "0f569fa40769cc833bf891520e9a4ea4a305b864",
+      "bytes": 1581
+    },
+    {
+      "path": "polycom/ccx500/{$mac}-directory.xml",
+      "blob": "bbc5b1624b5d5307ecbec9fcea78a77450715730",
+      "bytes": 622
+    },
+    {
+      "path": "polycom/ccx500/{$mac}.cfg",
+      "blob": "947a5ca5637ec26072bf93294786543a72ccd25b",
+      "bytes": 26715
+    },
+    {
+      "path": "polycom/duo/{$mac}-directory.xml",
+      "blob": "bbc5b1624b5d5307ecbec9fcea78a77450715730",
+      "bytes": 622
+    },
+    {
+      "path": "polycom/duo/{$mac}.cfg",
+      "blob": "e3fc7788c6a2f7049351177e1b14a97b3f5c1add",
+      "bytes": 11349
+    },
+    {
+      "path": "polycom/ip321/{$mac}-directory.xml",
+      "blob": "bbc5b1624b5d5307ecbec9fcea78a77450715730",
+      "bytes": 622
+    },
+    {
+      "path": "polycom/ip321/{$mac}.cfg",
+      "blob": "0855314378fd7391a66cb513628bc1b10966374b",
+      "bytes": 11351
+    },
+    {
+      "path": "polycom/ip331/{$mac}-directory.xml",
+      "blob": "bbc5b1624b5d5307ecbec9fcea78a77450715730",
+      "bytes": 622
+    },
+    {
+      "path": "polycom/ip331/{$mac}.cfg",
+      "blob": "e5383f13d438dde3a575448aefc38d3c5216547a",
+      "bytes": 11351
+    },
+    {
+      "path": "polycom/ip335/{$mac}-directory.xml",
+      "blob": "bbc5b1624b5d5307ecbec9fcea78a77450715730",
+      "bytes": 622
+    },
+    {
+      "path": "polycom/ip335/{$mac}.cfg",
+      "blob": "c190b5363054b99fd3182b18d4d22f98f76aae4b",
+      "bytes": 11389
+    },
+    {
+      "path": "polycom/ip450/{$mac}-directory.xml",
+      "blob": "bbc5b1624b5d5307ecbec9fcea78a77450715730",
+      "bytes": 622
+    },
+    {
+      "path": "polycom/ip450/{$mac}.cfg",
+      "blob": "084802b653433b757fcb1d38f41b9f4cee274ac6",
+      "bytes": 11351
+    },
+    {
+      "path": "polycom/ip5000/{$mac}-directory.xml",
+      "blob": "bbc5b1624b5d5307ecbec9fcea78a77450715730",
+      "bytes": 622
+    },
+    {
+      "path": "polycom/ip5000/{$mac}.cfg",
+      "blob": "1d95eb127d673b21df45c68b81050ec1ac550034",
+      "bytes": 11352
+    },
+    {
+      "path": "polycom/ip550/{$mac}-directory.xml",
+      "blob": "bbc5b1624b5d5307ecbec9fcea78a77450715730",
+      "bytes": 622
+    },
+    {
+      "path": "polycom/ip550/{$mac}.cfg",
+      "blob": "62eebdb0f2487659df815922a5bacd9058edb010",
+      "bytes": 11351
+    },
+    {
+      "path": "polycom/ip560/{$mac}-directory.xml",
+      "blob": "bbc5b1624b5d5307ecbec9fcea78a77450715730",
+      "bytes": 622
+    },
+    {
+      "path": "polycom/ip560/{$mac}.cfg",
+      "blob": "834fc7aaee74b5ad2e894a858151ccdd763cd3fe",
+      "bytes": 11351
+    },
+    {
+      "path": "polycom/ip6000/{$mac}-directory.xml",
+      "blob": "bbc5b1624b5d5307ecbec9fcea78a77450715730",
+      "bytes": 622
+    },
+    {
+      "path": "polycom/ip6000/{$mac}.cfg",
+      "blob": "a0019e9d3162d5173cd045947edfefb66e75bfe2",
+      "bytes": 11352
+    },
+    {
+      "path": "polycom/ip650/{$mac}-directory.xml",
+      "blob": "bbc5b1624b5d5307ecbec9fcea78a77450715730",
+      "bytes": 622
+    },
+    {
+      "path": "polycom/ip650/{$mac}.cfg",
+      "blob": "1fe8f48aa2f8fd697143d72e50e4ba13bc08d00f",
+      "bytes": 11351
+    },
+    {
+      "path": "polycom/ip670/{$mac}-directory.xml",
+      "blob": "bbc5b1624b5d5307ecbec9fcea78a77450715730",
+      "bytes": 622
+    },
+    {
+      "path": "polycom/ip670/{$mac}.cfg",
+      "blob": "313c2faeee36311747a924f89cfbc38786d90ed4",
+      "bytes": 11351
+    },
+    {
+      "path": "polycom/ip7000/{$mac}-directory.xml",
+      "blob": "bbc5b1624b5d5307ecbec9fcea78a77450715730",
+      "bytes": 622
+    },
+    {
+      "path": "polycom/ip7000/{$mac}.cfg",
+      "blob": "0ce6aee06fc1647451c5dfd11262114f3330a35d",
+      "bytes": 11352
+    },
+    {
+      "path": "polycom/vvx101/{$mac}-directory.xml",
+      "blob": "bbc5b1624b5d5307ecbec9fcea78a77450715730",
+      "bytes": 622
+    },
+    {
+      "path": "polycom/vvx101/{$mac}.cfg",
+      "blob": "9760d743befa12b6e695719fd6c8984daadd8548",
+      "bytes": 17270
+    },
+    {
+      "path": "polycom/vvx150/{$mac}-directory.xml",
+      "blob": "bbc5b1624b5d5307ecbec9fcea78a77450715730",
+      "bytes": 622
+    },
+    {
+      "path": "polycom/vvx150/{$mac}.cfg",
+      "blob": "dcf34e4b15bad96b03e9c0285f09f4dc82a48521",
+      "bytes": 17270
+    },
+    {
+      "path": "polycom/vvx1500/{$mac}-directory.xml",
+      "blob": "bbc5b1624b5d5307ecbec9fcea78a77450715730",
+      "bytes": 622
+    },
+    {
+      "path": "polycom/vvx1500/{$mac}.cfg",
+      "blob": "edd30a1998ac5d1cfe5dc3fadb1840b9cb80b7e7",
+      "bytes": 17181
+    },
+    {
+      "path": "polycom/vvx201/{$mac}-directory.xml",
+      "blob": "bbc5b1624b5d5307ecbec9fcea78a77450715730",
+      "bytes": 622
+    },
+    {
+      "path": "polycom/vvx201/{$mac}.cfg",
+      "blob": "13844cb39af72ef73a1ceaca8ee0d97329ed78b3",
+      "bytes": 17270
+    },
+    {
+      "path": "polycom/vvx250/{$mac}-directory.xml",
+      "blob": "bbc5b1624b5d5307ecbec9fcea78a77450715730",
+      "bytes": 622
+    },
+    {
+      "path": "polycom/vvx250/{$mac}.cfg",
+      "blob": "fdaa4040e8695fef7b8a38909606a7942c30a1f9",
+      "bytes": 20267
+    },
+    {
+      "path": "polycom/vvx300/{$mac}-directory.xml",
+      "blob": "bbc5b1624b5d5307ecbec9fcea78a77450715730",
+      "bytes": 622
+    },
+    {
+      "path": "polycom/vvx300/{$mac}.cfg",
+      "blob": "2453678f3eeeaaa2906bc711142815249b081afa",
+      "bytes": 17270
+    },
+    {
+      "path": "polycom/vvx301/{$mac}-directory.xml",
+      "blob": "bbc5b1624b5d5307ecbec9fcea78a77450715730",
+      "bytes": 622
+    },
+    {
+      "path": "polycom/vvx301/{$mac}.cfg",
+      "blob": "95af92ae84d1459f04dcd66239cb40e8c2bbabf5",
+      "bytes": 17270
+    },
+    {
+      "path": "polycom/vvx310/{$mac}-directory.xml",
+      "blob": "bbc5b1624b5d5307ecbec9fcea78a77450715730",
+      "bytes": 622
+    },
+    {
+      "path": "polycom/vvx310/{$mac}.cfg",
+      "blob": "18461742532bcfb0f74494c72665eb10294ad2da",
+      "bytes": 17270
+    },
+    {
+      "path": "polycom/vvx311/{$mac}-directory.xml",
+      "blob": "bbc5b1624b5d5307ecbec9fcea78a77450715730",
+      "bytes": 622
+    },
+    {
+      "path": "polycom/vvx311/{$mac}.cfg",
+      "blob": "aab2871d6cb5f49d54059c67b66d2e318620b7e0",
+      "bytes": 17270
+    },
+    {
+      "path": "polycom/vvx350/{$mac}-directory.xml",
+      "blob": "bbc5b1624b5d5307ecbec9fcea78a77450715730",
+      "bytes": 622
+    },
+    {
+      "path": "polycom/vvx350/{$mac}.cfg",
+      "blob": "486a4e23ea39dad3d5f579abf9245adb3144e0b5",
+      "bytes": 17270
+    },
+    {
+      "path": "polycom/vvx400/{$mac}-directory.xml",
+      "blob": "bbc5b1624b5d5307ecbec9fcea78a77450715730",
+      "bytes": 622
+    },
+    {
+      "path": "polycom/vvx400/{$mac}.cfg",
+      "blob": "c8e70dd7942aed6feb3b7229ed2809c7d7471097",
+      "bytes": 17270
+    },
+    {
+      "path": "polycom/vvx401/{$mac}-directory.xml",
+      "blob": "bbc5b1624b5d5307ecbec9fcea78a77450715730",
+      "bytes": 622
+    },
+    {
+      "path": "polycom/vvx401/{$mac}.cfg",
+      "blob": "27e91d4f3908ebdcac04fc083fae169738af3175",
+      "bytes": 17270
+    },
+    {
+      "path": "polycom/vvx410/{$mac}-directory.xml",
+      "blob": "bbc5b1624b5d5307ecbec9fcea78a77450715730",
+      "bytes": 622
+    },
+    {
+      "path": "polycom/vvx410/{$mac}.cfg",
+      "blob": "41ae8c2ace895e2890dd3f2b4e295105f82b8fe7",
+      "bytes": 17270
+    },
+    {
+      "path": "polycom/vvx411/{$mac}-directory.xml",
+      "blob": "bbc5b1624b5d5307ecbec9fcea78a77450715730",
+      "bytes": 622
+    },
+    {
+      "path": "polycom/vvx411/{$mac}.cfg",
+      "blob": "cb14d7919177a392cb393d75af58d501e647e9ab",
+      "bytes": 17270
+    },
+    {
+      "path": "polycom/vvx450/{$mac}-directory.xml",
+      "blob": "bbc5b1624b5d5307ecbec9fcea78a77450715730",
+      "bytes": 622
+    },
+    {
+      "path": "polycom/vvx450/{$mac}.cfg",
+      "blob": "10829323d11e41de99e951cbab9fa642e9629290",
+      "bytes": 20434
+    },
+    {
+      "path": "polycom/vvx500/{$mac}-directory.xml",
+      "blob": "bbc5b1624b5d5307ecbec9fcea78a77450715730",
+      "bytes": 622
+    },
+    {
+      "path": "polycom/vvx500/{$mac}.cfg",
+      "blob": "c90b7d041f1f184f89cc97d78fb64da0ce532e11",
+      "bytes": 17270
+    },
+    {
+      "path": "polycom/vvx501/{$mac}-directory.xml",
+      "blob": "bbc5b1624b5d5307ecbec9fcea78a77450715730",
+      "bytes": 622
+    },
+    {
+      "path": "polycom/vvx501/{$mac}.cfg",
+      "blob": "7ca9c07a6ab2146192f6694e8f2eaa0bd08dc342",
+      "bytes": 17270
+    },
+    {
+      "path": "polycom/vvx600/{$mac}-directory.xml",
+      "blob": "bbc5b1624b5d5307ecbec9fcea78a77450715730",
+      "bytes": 622
+    },
+    {
+      "path": "polycom/vvx600/{$mac}.cfg",
+      "blob": "aee838d78710e806f1754d377af8226667690cae",
+      "bytes": 17270
+    },
+    {
+      "path": "polycom/vvx601/{$mac}-directory.xml",
+      "blob": "bbc5b1624b5d5307ecbec9fcea78a77450715730",
+      "bytes": 622
+    },
+    {
+      "path": "polycom/vvx601/{$mac}.cfg",
+      "blob": "eea22ec14e32d9151097408fadb21146bd9338c0",
+      "bytes": 17270
+    },
+    {
+      "path": "sangoma/s300/{$mac}.xml",
+      "blob": "1455547d32b389c6a79a12fdef743945236be7a7",
+      "bytes": 145962
+    },
+    {
+      "path": "sangoma/s500/{$mac}.xml",
+      "blob": "acbaaee1c226c0a4c4faaceb93cda613e6643c64",
+      "bytes": 146046
+    },
+    {
+      "path": "sangoma/s700/{$mac}.xml",
+      "blob": "c3b185a1b625a9958f909c3509804c22c716e7b6",
+      "bytes": 146157
+    },
+    {
+      "path": "sipnetic/default/template.csv",
+      "blob": "a934ce037f7ac2e898d94d59494ae68d86b33838",
+      "bytes": 151
+    },
+    {
+      "path": "snom/300/{$mac}.xml",
+      "blob": "024d3aab21d70e88912368414fc57b91a1f2b550",
+      "bytes": 8414
+    },
+    {
+      "path": "snom/320/{$mac}.xml",
+      "blob": "d5395696addd08894b367c94043bcd28053f30b2",
+      "bytes": 7722
+    },
+    {
+      "path": "snom/360/{$mac}.xml",
+      "blob": "e826e12e1243959cee601d8c3e32c005f65f8eac",
+      "bytes": 5653
+    },
+    {
+      "path": "snom/3xx/{$mac}.xml",
+      "blob": "854f45788e81694b6f6a868869e26641820087ad",
+      "bytes": 7087
+    },
+    {
+      "path": "snom/720/{$mac}.xml",
+      "blob": "f8133617df8857ad8aa22f0d688f17db34c519b6",
+      "bytes": 115668
+    },
+    {
+      "path": "snom/7xx/{$mac}.xml",
+      "blob": "a96fdd17fbd16ea00456713ff4328ad6d6729611",
+      "bytes": 7454
+    },
+    {
+      "path": "snom/820/{$mac}.xml",
+      "blob": "93315886878b1f0e7ff74124bcf0562701d9a579",
+      "bytes": 2906
+    },
+    {
+      "path": "snom/8xx/desktop.ini",
+      "blob": "bb9f3d69c843cecc09a8ed230a4f81fa70b65082",
+      "bytes": 46
+    },
+    {
+      "path": "snom/8xx/{$mac}.xml",
+      "blob": "c867f1427a02af4522a4140da3cfb267c9bb85e9",
+      "bytes": 6740
+    },
+    {
+      "path": "snom/C520/directory.xml",
+      "blob": "20d12c85dcd128aacea7bbd084626b46858f4e05",
+      "bytes": 501
+    },
+    {
+      "path": "snom/C520/{$mac}.xml",
+      "blob": "29a65e4492518454648ca193af239b8f8cf5b36f",
+      "bytes": 12245
+    },
+    {
+      "path": "snom/C620/directory.xml",
+      "blob": "20d12c85dcd128aacea7bbd084626b46858f4e05",
+      "bytes": 501
+    },
+    {
+      "path": "snom/C620/{$mac}.xml",
+      "blob": "4364cbbd37d5c2977a34a44b5913ddd113c774bc",
+      "bytes": 9399
+    },
+    {
+      "path": "snom/D120/{$mac}.xml",
+      "blob": "8e4d8dd370b313c3185fbd136c42be0f4f6ded99",
+      "bytes": 7782
+    },
+    {
+      "path": "snom/D315/{$mac}.xml",
+      "blob": "8cf1e5084f6f127d73444cfae4544a11037a427e",
+      "bytes": 7364
+    },
+    {
+      "path": "snom/D345/{$mac}.xml",
+      "blob": "a2a8e135cc6e33447faa421e773b3dc538642c62",
+      "bytes": 7360
+    },
+    {
+      "path": "snom/D375/{$mac}.xml",
+      "blob": "59b3d5ddbcd97ae1d3029df6977967bf5430147d",
+      "bytes": 7632
+    },
+    {
+      "path": "snom/D385/{$mac}.xml",
+      "blob": "ebdcecc4dc433bbb25355d203101d7b4b7413d9e",
+      "bytes": 7633
+    },
+    {
+      "path": "snom/D712/{$mac}.xml",
+      "blob": "3e6429b6d21310657a7fd60e1e0b273c75e02200",
+      "bytes": 8104
+    },
+    {
+      "path": "snom/D715/{$mac}.xml",
+      "blob": "618780604c9b81c60a6b720be3e56cd0e5ee357a",
+      "bytes": 8145
+    },
+    {
+      "path": "snom/D717/{$mac}.xml",
+      "blob": "dc2d7bcde54286f0ee15c44799ab6a7be3ce980d",
+      "bytes": 9298
+    },
+    {
+      "path": "snom/D725/{$mac}.xml",
+      "blob": "218a52e5ec12007e0fea78ebae8db3b899dd2cd8",
+      "bytes": 8216
+    },
+    {
+      "path": "snom/D735/{$mac}.xml",
+      "blob": "ee2525745e18cb240f7d15181dc684a5b0cbb0d6",
+      "bytes": 10789
+    },
+    {
+      "path": "snom/D745/{$mac}.xml",
+      "blob": "86a37d0d3a93dc2d1d44901c4b4c10b69fc9a148",
+      "bytes": 8474
+    },
+    {
+      "path": "snom/D765/{$mac}.xml",
+      "blob": "3bb91804e5f14cb992a171edcaebc3eac20c0568",
+      "bytes": 8643
+    },
+    {
+      "path": "snom/D785/{$mac}.xml",
+      "blob": "90303b1feef6f22c5e2eefb9cde17df75e7d1605",
+      "bytes": 8946
+    },
+    {
+      "path": "snom/D812/{$mac}.xml",
+      "blob": "93c3cf2b3cda04271474030f37dc6ac71e61f9ba",
+      "bytes": 8482
+    },
+    {
+      "path": "snom/D815/{$mac}.xml",
+      "blob": "ce5e65bf986501b5ff2251f2106db32966f336d8",
+      "bytes": 8439
+    },
+    {
+      "path": "snom/D862/{$mac}.xml",
+      "blob": "541e4ee43c010ef8b08362ba214bd3c7c6c80505",
+      "bytes": 8858
+    },
+    {
+      "path": "snom/D865/{$mac}.xml",
+      "blob": "541e4ee43c010ef8b08362ba214bd3c7c6c80505",
+      "bytes": 8858
+    },
+    {
+      "path": "snom/M100KLE/{$mac}.xml",
+      "blob": "237d18b2fad4ae955c370ab81fd1249f99324945",
+      "bytes": 19515
+    },
+    {
+      "path": "snom/M500KLE/{$mac}.xml",
+      "blob": "7cd46019569af42ac11bc98ce88a52c39eedbaa5",
+      "bytes": 17098
+    },
+    {
+      "path": "snom/PA1/{$mac}.cfg",
+      "blob": "b7f36876f7a41baa1671f759669a0a7e505fb005",
+      "bytes": 56006
+    },
+    {
+      "path": "snom/PA1plus/{$mac}.cfg",
+      "blob": "69d37f519ea6d54ac7023da8aaa503f0194c1073",
+      "bytes": 65007
+    },
+    {
+      "path": "snom/m3/{$mac}.cfg",
+      "blob": "0dadeb6fa86d81af809fbe3de6fad7a038580a9d",
+      "bytes": 9671
+    },
+    {
+      "path": "spectralink/empty.txt",
+      "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "bytes": 0
+    },
+    {
+      "path": "swissvoice/cp2502/CP2502.cfg",
+      "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "bytes": 0
+    },
+    {
+      "path": "swissvoice/cp2502/{$mac}.cfg",
+      "blob": "d0e22e25241c13453f51987e08a684ec980f73d0",
+      "bytes": 42020
+    },
+    {
+      "path": "swissvoice/cp2505g/CP2505.cfg",
+      "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "bytes": 0
+    },
+    {
+      "path": "swissvoice/cp2505g/{$mac}.cfg",
+      "blob": "d0e22e25241c13453f51987e08a684ec980f73d0",
+      "bytes": 42020
+    },
+    {
+      "path": "telekonnectors/galaxy1000-plus/{$mac}.cfg",
+      "blob": "e64045287207bcdb3d76a3209bc4ce70c47bea5b",
+      "bytes": 45306
+    },
+    {
+      "path": "telekonnectors/galaxy1000/{$mac}.cfg",
+      "blob": "af687fdccedd9299b85a420585d44e1d761f6448",
+      "bytes": 34664
+    },
+    {
+      "path": "vtech/vcs754/directory.xml",
+      "blob": "d8d5a33075c16ca740d32e2b9ae2e49ca453f40f",
+      "bytes": 796
+    },
+    {
+      "path": "vtech/vcs754/{$mac}.cfg",
+      "blob": "246c29d2ebcac3da5d029919e235821d4dfe1bbd",
+      "bytes": 21470
+    },
+    {
+      "path": "yealink/ax83h/directory.xml",
+      "blob": "86c7b6f8b585b6d8da893f7ea910a89632537100",
+      "bytes": 3715
+    },
+    {
+      "path": "yealink/ax83h/favorite_setting.xml",
+      "blob": "ba7275358eabcc96c52afd0188ab7c3cc7f8d576",
+      "bytes": 546
+    },
+    {
+      "path": "yealink/ax83h/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/ax83h/y000000000000.boot",
+      "blob": "df36dd6f8135e19e8c51bea96dcc6e1d2730ba37",
+      "bytes": 220
+    },
+    {
+      "path": "yealink/ax83h/y000000000180.cfg",
+      "blob": "3b895db6eb0aefe44faeaa735a9287038cb05e68",
+      "bytes": 74621
+    },
+    {
+      "path": "yealink/ax83h/{$mac}.cfg",
+      "blob": "fda1675c7223ad9794137f0c1148274222b18809",
+      "bytes": 27743
+    },
+    {
+      "path": "yealink/ax86r/directory.xml",
+      "blob": "86c7b6f8b585b6d8da893f7ea910a89632537100",
+      "bytes": 3715
+    },
+    {
+      "path": "yealink/ax86r/favorite_setting.xml",
+      "blob": "ba7275358eabcc96c52afd0188ab7c3cc7f8d576",
+      "bytes": 546
+    },
+    {
+      "path": "yealink/ax86r/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/ax86r/y000000000000.boot",
+      "blob": "df36dd6f8135e19e8c51bea96dcc6e1d2730ba37",
+      "bytes": 220
+    },
+    {
+      "path": "yealink/ax86r/y000000000182.cfg",
+      "blob": "3b895db6eb0aefe44faeaa735a9287038cb05e68",
+      "bytes": 74621
+    },
+    {
+      "path": "yealink/ax86r/{$mac}.cfg",
+      "blob": "fda1675c7223ad9794137f0c1148274222b18809",
+      "bytes": 27743
+    },
+    {
+      "path": "yealink/cp860/directory.xml",
+      "blob": "e730841a96ffd7cc7ffdbd593ad89509094e1bf6",
+      "bytes": 3806
+    },
+    {
+      "path": "yealink/cp860/favorite_setting.xml",
+      "blob": "b4cc2caca25322892099787417a8b92479d5b260",
+      "bytes": 552
+    },
+    {
+      "path": "yealink/cp860/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/cp860/y000000000000.boot",
+      "blob": "478eaafe99740e5f9bf90ff99b0d1d73ed00e82d",
+      "bytes": 189
+    },
+    {
+      "path": "yealink/cp860/y000000000037.cfg",
+      "blob": "40313ac8128d4acd135262fb8cc3e8e7928ed7fd",
+      "bytes": 77910
+    },
+    {
+      "path": "yealink/cp860/{$mac}.cfg",
+      "blob": "a8a40385e9842e2f474f2743676d2195059a9899",
+      "bytes": 134426
+    },
+    {
+      "path": "yealink/cp920/directory.xml",
+      "blob": "e730841a96ffd7cc7ffdbd593ad89509094e1bf6",
+      "bytes": 3806
+    },
+    {
+      "path": "yealink/cp920/favorite_setting.xml",
+      "blob": "b4cc2caca25322892099787417a8b92479d5b260",
+      "bytes": 552
+    },
+    {
+      "path": "yealink/cp920/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/cp920/y000000000000.boot",
+      "blob": "580b26c95ee8f7aa6b5e58605a780f75951cba95",
+      "bytes": 189
+    },
+    {
+      "path": "yealink/cp920/y000000000078.cfg",
+      "blob": "520184e13862083f952bb56a7920b3340c1c3aec",
+      "bytes": 78330
+    },
+    {
+      "path": "yealink/cp920/{$mac}.cfg",
+      "blob": "5edad1dadcd8becd4835336eb4858b0943ef9297",
+      "bytes": 29864
+    },
+    {
+      "path": "yealink/cp925/directory.xml",
+      "blob": "e730841a96ffd7cc7ffdbd593ad89509094e1bf6",
+      "bytes": 3806
+    },
+    {
+      "path": "yealink/cp925/favorite_setting.xml",
+      "blob": "b4cc2caca25322892099787417a8b92479d5b260",
+      "bytes": 552
+    },
+    {
+      "path": "yealink/cp925/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/cp925/y000000000000.boot",
+      "blob": "b5dbd94450ad8e32c20f008c7595acb255720f08",
+      "bytes": 189
+    },
+    {
+      "path": "yealink/cp925/y000000000148.cfg",
+      "blob": "520184e13862083f952bb56a7920b3340c1c3aec",
+      "bytes": 78330
+    },
+    {
+      "path": "yealink/cp925/{$mac}.cfg",
+      "blob": "5edad1dadcd8becd4835336eb4858b0943ef9297",
+      "bytes": 29864
+    },
+    {
+      "path": "yealink/cp960/directory.xml",
+      "blob": "e730841a96ffd7cc7ffdbd593ad89509094e1bf6",
+      "bytes": 3806
+    },
+    {
+      "path": "yealink/cp960/favorite_setting.xml",
+      "blob": "b4cc2caca25322892099787417a8b92479d5b260",
+      "bytes": 552
+    },
+    {
+      "path": "yealink/cp960/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/cp960/y000000000000.boot",
+      "blob": "746d3e9943374b4667816e9742e2d547ac46d40b",
+      "bytes": 189
+    },
+    {
+      "path": "yealink/cp960/y000000000073.cfg",
+      "blob": "3bb2112ce31a7ee99e976fa18c1eb0c48a23242f",
+      "bytes": 78249
+    },
+    {
+      "path": "yealink/cp960/{$mac}.cfg",
+      "blob": "5edad1dadcd8becd4835336eb4858b0943ef9297",
+      "bytes": 29864
+    },
+    {
+      "path": "yealink/cp965/y000000000000.boot",
+      "blob": "f2b7c26e9a8b9e8478ca890ad8851653f90bbe95",
+      "bytes": 293
+    },
+    {
+      "path": "yealink/cp965/y000000000143.cfg",
+      "blob": "00a38d0e5f38610215fc690fb23d8eab620832b3",
+      "bytes": 92458
+    },
+    {
+      "path": "yealink/cp965/{$mac}.cfg",
+      "blob": "ce6a3e97f11765ebe807e2f41cbac2433622740c",
+      "bytes": 34853
+    },
+    {
+      "path": "yealink/t19p/directory.xml",
+      "blob": "e730841a96ffd7cc7ffdbd593ad89509094e1bf6",
+      "bytes": 3806
+    },
+    {
+      "path": "yealink/t19p/favorite_setting.xml",
+      "blob": "b4cc2caca25322892099787417a8b92479d5b260",
+      "bytes": 552
+    },
+    {
+      "path": "yealink/t19p/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/t19p/y000000000000.boot",
+      "blob": "67b777a6841e672af49ef7ea28723ec425f32d48",
+      "bytes": 189
+    },
+    {
+      "path": "yealink/t19p/y000000000053.cfg",
+      "blob": "43be042e2c62d7ea3d115f832ed8bd7992d534c0",
+      "bytes": 59705
+    },
+    {
+      "path": "yealink/t19p/{$mac}.cfg",
+      "blob": "a422fdd7d7eb97d75921d1f9b063b1bc2dfd7212",
+      "bytes": 81751
+    },
+    {
+      "path": "yealink/t20p/directory.xml",
+      "blob": "e730841a96ffd7cc7ffdbd593ad89509094e1bf6",
+      "bytes": 3806
+    },
+    {
+      "path": "yealink/t20p/favorite_setting.xml",
+      "blob": "b4cc2caca25322892099787417a8b92479d5b260",
+      "bytes": 552
+    },
+    {
+      "path": "yealink/t20p/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/t20p/y000000000000.boot",
+      "blob": "745dd90f928ca98d1d0df61e0c83b5aeb9cf0787",
+      "bytes": 189
+    },
+    {
+      "path": "yealink/t20p/y000000000007.cfg",
+      "blob": "2dabf0ebc96270862dd60569a985395ed388db39",
+      "bytes": 59703
+    },
+    {
+      "path": "yealink/t20p/{$mac}.cfg",
+      "blob": "69d7341695e18afdd207f4823a5679c30cda317e",
+      "bytes": 81813
+    },
+    {
+      "path": "yealink/t21p/directory.xml",
+      "blob": "e730841a96ffd7cc7ffdbd593ad89509094e1bf6",
+      "bytes": 3806
+    },
+    {
+      "path": "yealink/t21p/favorite_setting.xml",
+      "blob": "b4cc2caca25322892099787417a8b92479d5b260",
+      "bytes": 552
+    },
+    {
+      "path": "yealink/t21p/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/t21p/y000000000000.boot",
+      "blob": "8b97f117bc56e46f25c71b82fff892e10209254b",
+      "bytes": 189
+    },
+    {
+      "path": "yealink/t21p/y000000000052.cfg",
+      "blob": "0a6bbe892e4473768042b8bf040de335e66ae394",
+      "bytes": 81604
+    },
+    {
+      "path": "yealink/t21p/{$mac}.cfg",
+      "blob": "d7391e5cb2495a3201fb81c7ef2b525e2242d984",
+      "bytes": 142112
+    },
+    {
+      "path": "yealink/t22p/directory.xml",
+      "blob": "e730841a96ffd7cc7ffdbd593ad89509094e1bf6",
+      "bytes": 3806
+    },
+    {
+      "path": "yealink/t22p/favorite_setting.xml",
+      "blob": "b4cc2caca25322892099787417a8b92479d5b260",
+      "bytes": 552
+    },
+    {
+      "path": "yealink/t22p/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/t22p/y000000000000.boot",
+      "blob": "35fab47c46ec7abbdb48a570a367010253f474ba",
+      "bytes": 189
+    },
+    {
+      "path": "yealink/t22p/y000000000005.cfg",
+      "blob": "2feb6bdd8dcca578a3bdc07ce0f1a19fe05156d6",
+      "bytes": 59699
+    },
+    {
+      "path": "yealink/t22p/{$mac}.cfg",
+      "blob": "a422fdd7d7eb97d75921d1f9b063b1bc2dfd7212",
+      "bytes": 81751
+    },
+    {
+      "path": "yealink/t23g/directory.xml",
+      "blob": "e730841a96ffd7cc7ffdbd593ad89509094e1bf6",
+      "bytes": 3806
+    },
+    {
+      "path": "yealink/t23g/favorite_setting.xml",
+      "blob": "b4cc2caca25322892099787417a8b92479d5b260",
+      "bytes": 552
+    },
+    {
+      "path": "yealink/t23g/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/t23g/y000000000000.boot",
+      "blob": "9973f576aea01d6dd7ea18af88eee05fbfc07bf2",
+      "bytes": 189
+    },
+    {
+      "path": "yealink/t23g/y000000000044.cfg",
+      "blob": "c3d5ad5230a60296bc92ee99f86759e409fa8d44",
+      "bytes": 82882
+    },
+    {
+      "path": "yealink/t23g/{$mac}.cfg",
+      "blob": "cacf202f602c9caab275e6ba9fd6594051abb401",
+      "bytes": 139790
+    },
+    {
+      "path": "yealink/t23p/directory.xml",
+      "blob": "e730841a96ffd7cc7ffdbd593ad89509094e1bf6",
+      "bytes": 3806
+    },
+    {
+      "path": "yealink/t23p/favorite_setting.xml",
+      "blob": "b4cc2caca25322892099787417a8b92479d5b260",
+      "bytes": 552
+    },
+    {
+      "path": "yealink/t23p/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/t23p/y000000000000.boot",
+      "blob": "9973f576aea01d6dd7ea18af88eee05fbfc07bf2",
+      "bytes": 189
+    },
+    {
+      "path": "yealink/t23p/y000000000044.cfg",
+      "blob": "f313a8093767f32210f23cf9ff81fa379a514771",
+      "bytes": 82847
+    },
+    {
+      "path": "yealink/t23p/{$mac}.cfg",
+      "blob": "352744f5f3f3a444c9f543cc456d3cc16f348d2c",
+      "bytes": 138803
+    },
+    {
+      "path": "yealink/t26p/directory.xml",
+      "blob": "e730841a96ffd7cc7ffdbd593ad89509094e1bf6",
+      "bytes": 3806
+    },
+    {
+      "path": "yealink/t26p/favorite_setting.xml",
+      "blob": "b4cc2caca25322892099787417a8b92479d5b260",
+      "bytes": 552
+    },
+    {
+      "path": "yealink/t26p/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/t26p/y000000000000.boot",
+      "blob": "222011544d1573c312ffe675de693372f2159e28",
+      "bytes": 189
+    },
+    {
+      "path": "yealink/t26p/y000000000004.cfg",
+      "blob": "62e58ee4803fa08c2f581bfd9b34112486867b2e",
+      "bytes": 59716
+    },
+    {
+      "path": "yealink/t26p/{$mac}.cfg",
+      "blob": "165aad35c471e287604c2f58e59b23966c898767",
+      "bytes": 86365
+    },
+    {
+      "path": "yealink/t27g/directory.xml",
+      "blob": "86c7b6f8b585b6d8da893f7ea910a89632537100",
+      "bytes": 3715
+    },
+    {
+      "path": "yealink/t27g/favorite_setting.xml",
+      "blob": "ba7275358eabcc96c52afd0188ab7c3cc7f8d576",
+      "bytes": 546
+    },
+    {
+      "path": "yealink/t27g/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/t27g/y000000000000.boot",
+      "blob": "75550306a9902a2d586df087f8ca3bb5bc249393",
+      "bytes": 189
+    },
+    {
+      "path": "yealink/t27g/y000000000069.cfg",
+      "blob": "1c21f3f56cdd7718592da934c067ef591fcc8383",
+      "bytes": 82339
+    },
+    {
+      "path": "yealink/t27g/{$mac}.cfg",
+      "blob": "a079dd9765a57376d65a20f37831bade1cd09860",
+      "bytes": 139328
+    },
+    {
+      "path": "yealink/t27p/directory.xml",
+      "blob": "e730841a96ffd7cc7ffdbd593ad89509094e1bf6",
+      "bytes": 3806
+    },
+    {
+      "path": "yealink/t27p/favorite_setting.xml",
+      "blob": "b4cc2caca25322892099787417a8b92479d5b260",
+      "bytes": 552
+    },
+    {
+      "path": "yealink/t27p/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/t27p/y000000000000.boot",
+      "blob": "91a4d9b24be17af463fe21c12b2960f594222bfe",
+      "bytes": 189
+    },
+    {
+      "path": "yealink/t27p/y000000000045.cfg",
+      "blob": "d3d06421280dd478ebd104d8a4f9f56bb66663de",
+      "bytes": 82851
+    },
+    {
+      "path": "yealink/t27p/{$mac}.cfg",
+      "blob": "1b80064411deffa9bc32a39cb2f9b04c2baa7f22",
+      "bytes": 139444
+    },
+    {
+      "path": "yealink/t28p/directory.xml",
+      "blob": "e730841a96ffd7cc7ffdbd593ad89509094e1bf6",
+      "bytes": 3806
+    },
+    {
+      "path": "yealink/t28p/favorite_setting.xml",
+      "blob": "b4cc2caca25322892099787417a8b92479d5b260",
+      "bytes": 552
+    },
+    {
+      "path": "yealink/t28p/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/t28p/y000000000000.boot",
+      "blob": "809b702a330a955cdc81ca69e5510397d3afd1f4",
+      "bytes": 189
+    },
+    {
+      "path": "yealink/t28p/y000000000000.cfg",
+      "blob": "888793c87715d578356a138ea41f82a453890275",
+      "bytes": 58905
+    },
+    {
+      "path": "yealink/t28p/{$mac}.cfg",
+      "blob": "165aad35c471e287604c2f58e59b23966c898767",
+      "bytes": 86365
+    },
+    {
+      "path": "yealink/t29g/directory.xml",
+      "blob": "e730841a96ffd7cc7ffdbd593ad89509094e1bf6",
+      "bytes": 3806
+    },
+    {
+      "path": "yealink/t29g/favorite_setting.xml",
+      "blob": "b4cc2caca25322892099787417a8b92479d5b260",
+      "bytes": 552
+    },
+    {
+      "path": "yealink/t29g/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/t29g/y000000000000.boot",
+      "blob": "9170c9f255327771a4f410b5f4e185c4a476122a",
+      "bytes": 189
+    },
+    {
+      "path": "yealink/t29g/y000000000046.cfg",
+      "blob": "02913d6909fa2430553cf107b45770fa3ae9665a",
+      "bytes": 84119
+    },
+    {
+      "path": "yealink/t29g/{$mac}.cfg",
+      "blob": "93aae81073b1aaf96e32c5991ecf981c72ca0b6e",
+      "bytes": 142571
+    },
+    {
+      "path": "yealink/t2x/directory.xml",
+      "blob": "e730841a96ffd7cc7ffdbd593ad89509094e1bf6",
+      "bytes": 3806
+    },
+    {
+      "path": "yealink/t2x/favorite_setting.xml",
+      "blob": "b4cc2caca25322892099787417a8b92479d5b260",
+      "bytes": 552
+    },
+    {
+      "path": "yealink/t2x/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/t2x/y000000000000.boot",
+      "blob": "9e6f5c5a56387fdaf57e0f47fa46b95c55c2dcb9",
+      "bytes": 411
+    },
+    {
+      "path": "yealink/t2x/y000000000044.cfg",
+      "blob": "9ea9786dcab97344894bf9bf31f241f9c718d987",
+      "bytes": 82855
+    },
+    {
+      "path": "yealink/t2x/y000000000052.cfg",
+      "blob": "4e5e27841d5f747bc038b0fdb8b7b1fc8c010e36",
+      "bytes": 81577
+    },
+    {
+      "path": "yealink/t2x/y000000000053.cfg",
+      "blob": "83030197e54042c51b02becc6ecaf6ea537a9cd8",
+      "bytes": 59750
+    },
+    {
+      "path": "yealink/t2x/y000000000069.cfg",
+      "blob": "7fddfe1eefb330a656755bdd87c991140710c5b0",
+      "bytes": 81152
+    },
+    {
+      "path": "yealink/t2x/{$mac}.boot",
+      "blob": "697511f2a0a78b21343480a5f5741e6883749224",
+      "bytes": 399
+    },
+    {
+      "path": "yealink/t2x/{$mac}.cfg",
+      "blob": "4d2124aedefd7945fc0d2c606a86ed423420972a",
+      "bytes": 35608
+    },
+    {
+      "path": "yealink/t31g/directory.xml",
+      "blob": "86c7b6f8b585b6d8da893f7ea910a89632537100",
+      "bytes": 3715
+    },
+    {
+      "path": "yealink/t31g/favorite_setting.xml",
+      "blob": "ba7275358eabcc96c52afd0188ab7c3cc7f8d576",
+      "bytes": 546
+    },
+    {
+      "path": "yealink/t31g/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/t31g/y000000000000.boot",
+      "blob": "40e10b1e071570e8ed3076d5619bd65db9709024",
+      "bytes": 182
+    },
+    {
+      "path": "yealink/t31g/y000000000123.cfg",
+      "blob": "e76aa8a49382dd53d465a77a7942290b6d7fd178",
+      "bytes": 58124
+    },
+    {
+      "path": "yealink/t31g/{$mac}.cfg",
+      "blob": "c6b21e6803f691bcefa78cc671c2b764bea6f97c",
+      "bytes": 83042
+    },
+    {
+      "path": "yealink/t31w/directory.xml",
+      "blob": "86c7b6f8b585b6d8da893f7ea910a89632537100",
+      "bytes": 3715
+    },
+    {
+      "path": "yealink/t31w/favorite_setting.xml",
+      "blob": "ba7275358eabcc96c52afd0188ab7c3cc7f8d576",
+      "bytes": 546
+    },
+    {
+      "path": "yealink/t31w/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/t31w/y000000000000.boot",
+      "blob": "db3f4ab0d9071b840eae54efdf4097a4a635df2e",
+      "bytes": 182
+    },
+    {
+      "path": "yealink/t31w/y000000000172.cfg",
+      "blob": "1af876c7cd6504eb83975cb865fc316ca01dab46",
+      "bytes": 83987
+    },
+    {
+      "path": "yealink/t31w/{$mac}.cfg",
+      "blob": "958de63b63123d5065cc634080cfd75421e9e6ca",
+      "bytes": 30098
+    },
+    {
+      "path": "yealink/t32g/directory.xml",
+      "blob": "e730841a96ffd7cc7ffdbd593ad89509094e1bf6",
+      "bytes": 3806
+    },
+    {
+      "path": "yealink/t32g/favorite_setting.xml",
+      "blob": "b4cc2caca25322892099787417a8b92479d5b260",
+      "bytes": 552
+    },
+    {
+      "path": "yealink/t32g/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/t32g/y000000000000.boot",
+      "blob": "b6db9c931c589b3aa3ef2d50c221efb808a16e94",
+      "bytes": 189
+    },
+    {
+      "path": "yealink/t32g/y000000000032.cfg",
+      "blob": "5fcc1e14ec4d71ef76ec77a2bb18dcfb16a43617",
+      "bytes": 59524
+    },
+    {
+      "path": "yealink/t32g/{$mac}.cfg",
+      "blob": "ce33d6f3338b21a5db21691c89ad28cb93235e58",
+      "bytes": 84736
+    },
+    {
+      "path": "yealink/t33g/directory.xml",
+      "blob": "86c7b6f8b585b6d8da893f7ea910a89632537100",
+      "bytes": 3715
+    },
+    {
+      "path": "yealink/t33g/favorite_setting.xml",
+      "blob": "ba7275358eabcc96c52afd0188ab7c3cc7f8d576",
+      "bytes": 546
+    },
+    {
+      "path": "yealink/t33g/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/t33g/y000000000000.boot",
+      "blob": "124f68a98f15440c546384e03a8b948c3ed81611",
+      "bytes": 182
+    },
+    {
+      "path": "yealink/t33g/y000000000124.cfg",
+      "blob": "2c178cfdc9f166c3231ec5597eccd948d501aa6b",
+      "bytes": 82889
+    },
+    {
+      "path": "yealink/t33g/{$mac}.cfg",
+      "blob": "03b2d638b7baee30dc4794df01028c2d01afa6c8",
+      "bytes": 97878
+    },
+    {
+      "path": "yealink/t34w/directory.xml",
+      "blob": "86c7b6f8b585b6d8da893f7ea910a89632537100",
+      "bytes": 3715
+    },
+    {
+      "path": "yealink/t34w/favorite_setting.xml",
+      "blob": "ba7275358eabcc96c52afd0188ab7c3cc7f8d576",
+      "bytes": 546
+    },
+    {
+      "path": "yealink/t34w/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/t34w/y000000000000.boot",
+      "blob": "9b1a9ded5ac0b4db829347cdbfda05ad5f092f26",
+      "bytes": 213
+    },
+    {
+      "path": "yealink/t34w/y000000000171.cfg",
+      "blob": "cd6e010e8594377a3adb3eccb3c8bdd2a3089411",
+      "bytes": 91320
+    },
+    {
+      "path": "yealink/t34w/{$mac}.cfg",
+      "blob": "a02b2ccc7aa915734a0912142899093ce21720cc",
+      "bytes": 30402
+    },
+    {
+      "path": "yealink/t38g/directory.xml",
+      "blob": "e730841a96ffd7cc7ffdbd593ad89509094e1bf6",
+      "bytes": 3806
+    },
+    {
+      "path": "yealink/t38g/favorite_setting.xml",
+      "blob": "b4cc2caca25322892099787417a8b92479d5b260",
+      "bytes": 552
+    },
+    {
+      "path": "yealink/t38g/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/t38g/y000000000000.boot",
+      "blob": "372db6a939266423f86b1cb9ad6f12c116ebfd52",
+      "bytes": 189
+    },
+    {
+      "path": "yealink/t38g/y000000000038.cfg",
+      "blob": "1ec3530e9e20ca3c63aa998d3c8ac3e97b7baf3c",
+      "bytes": 59682
+    },
+    {
+      "path": "yealink/t38g/{$mac}.cfg",
+      "blob": "ce33d6f3338b21a5db21691c89ad28cb93235e58",
+      "bytes": 84736
+    },
+    {
+      "path": "yealink/t40g/directory.xml",
+      "blob": "86c7b6f8b585b6d8da893f7ea910a89632537100",
+      "bytes": 3715
+    },
+    {
+      "path": "yealink/t40g/favorite_setting.xml",
+      "blob": "ba7275358eabcc96c52afd0188ab7c3cc7f8d576",
+      "bytes": 546
+    },
+    {
+      "path": "yealink/t40g/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/t40g/y000000000000.boot",
+      "blob": "d0d77229fdaa64959eb8b98bdca0d70fb8fc3d38",
+      "bytes": 189
+    },
+    {
+      "path": "yealink/t40g/y000000000076.cfg",
+      "blob": "2bc91312e84a15c4ff4188bc82c0e0a0d3dbf74e",
+      "bytes": 81189
+    },
+    {
+      "path": "yealink/t40g/{$mac}.cfg",
+      "blob": "a2020af44ccfcbbabf75412c41a528768046e8f1",
+      "bytes": 140636
+    },
+    {
+      "path": "yealink/t40p/directory.xml",
+      "blob": "86c7b6f8b585b6d8da893f7ea910a89632537100",
+      "bytes": 3715
+    },
+    {
+      "path": "yealink/t40p/favorite_setting.xml",
+      "blob": "ba7275358eabcc96c52afd0188ab7c3cc7f8d576",
+      "bytes": 546
+    },
+    {
+      "path": "yealink/t40p/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/t40p/y000000000000.boot",
+      "blob": "12268d90bbbf9b0e8e5f484725bdf2c9b8fd5c24",
+      "bytes": 189
+    },
+    {
+      "path": "yealink/t40p/y000000000054.cfg",
+      "blob": "1ce14c8bf9f450bc8e280e80631f03d40c7bb389",
+      "bytes": 80383
+    },
+    {
+      "path": "yealink/t40p/{$mac}.cfg",
+      "blob": "280eaa97c40b37de782c762bd15c2687be3a39f5",
+      "bytes": 141927
+    },
+    {
+      "path": "yealink/t41p/directory.xml",
+      "blob": "e730841a96ffd7cc7ffdbd593ad89509094e1bf6",
+      "bytes": 3806
+    },
+    {
+      "path": "yealink/t41p/favorite_setting.xml",
+      "blob": "b4cc2caca25322892099787417a8b92479d5b260",
+      "bytes": 552
+    },
+    {
+      "path": "yealink/t41p/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/t41p/y000000000000.boot",
+      "blob": "fd63729038f0399024bed9ab7e947dfcd60578df",
+      "bytes": 189
+    },
+    {
+      "path": "yealink/t41p/y000000000036.cfg",
+      "blob": "f09747aff6f277c05272e1dca1e6d9947c41959f",
+      "bytes": 82855
+    },
+    {
+      "path": "yealink/t41p/{$mac}.cfg",
+      "blob": "5c04f5ac4516a2c2c2eb305244505969046980f8",
+      "bytes": 142231
+    },
+    {
+      "path": "yealink/t41s/directory.xml",
+      "blob": "86c7b6f8b585b6d8da893f7ea910a89632537100",
+      "bytes": 3715
+    },
+    {
+      "path": "yealink/t41s/favorite_setting.xml",
+      "blob": "ba7275358eabcc96c52afd0188ab7c3cc7f8d576",
+      "bytes": 546
+    },
+    {
+      "path": "yealink/t41s/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/t41s/y000000000000.boot",
+      "blob": "d81d10c478f3ab19c9d8aa3f55744b578cf4cc43",
+      "bytes": 189
+    },
+    {
+      "path": "yealink/t41s/y000000000068.cfg",
+      "blob": "4ac7d384fc176139bac436ac66edc6e32843bb4b",
+      "bytes": 73596
+    },
+    {
+      "path": "yealink/t41s/{$mac}.cfg",
+      "blob": "1ae0114fd80c037efea7144d851439bea7b943eb",
+      "bytes": 36887
+    },
+    {
+      "path": "yealink/t42g/directory.xml",
+      "blob": "e730841a96ffd7cc7ffdbd593ad89509094e1bf6",
+      "bytes": 3806
+    },
+    {
+      "path": "yealink/t42g/favorite_setting.xml",
+      "blob": "b4cc2caca25322892099787417a8b92479d5b260",
+      "bytes": 552
+    },
+    {
+      "path": "yealink/t42g/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/t42g/y000000000000.boot",
+      "blob": "822bda737bcbae6d36835288d0252a80c396625e",
+      "bytes": 189
+    },
+    {
+      "path": "yealink/t42g/y000000000029.cfg",
+      "blob": "7b1055ff53f147a9b62ceda2e4d8768748f197fb",
+      "bytes": 82067
+    },
+    {
+      "path": "yealink/t42g/{$mac}.cfg",
+      "blob": "f01a1cc355d3aefd71bd66369cc0e60d5bfebbab",
+      "bytes": 139745
+    },
+    {
+      "path": "yealink/t42s/directory.xml",
+      "blob": "86c7b6f8b585b6d8da893f7ea910a89632537100",
+      "bytes": 3715
+    },
+    {
+      "path": "yealink/t42s/favorite_setting.xml",
+      "blob": "ba7275358eabcc96c52afd0188ab7c3cc7f8d576",
+      "bytes": 546
+    },
+    {
+      "path": "yealink/t42s/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/t42s/y000000000000.boot",
+      "blob": "35d3e276be856fad43315ae15f28b63425c3750a",
+      "bytes": 189
+    },
+    {
+      "path": "yealink/t42s/y000000000067.cfg",
+      "blob": "1df3ec3f209d2f27fb5753f3974a767cdfc4ef43",
+      "bytes": 73803
+    },
+    {
+      "path": "yealink/t42s/{$mac}.cfg",
+      "blob": "82f5d7c087e16620ae65113098d2b886c6192613",
+      "bytes": 138670
+    },
+    {
+      "path": "yealink/t42u/directory.xml",
+      "blob": "e730841a96ffd7cc7ffdbd593ad89509094e1bf6",
+      "bytes": 3806
+    },
+    {
+      "path": "yealink/t42u/favorite_setting.xml",
+      "blob": "b4cc2caca25322892099787417a8b92479d5b260",
+      "bytes": 552
+    },
+    {
+      "path": "yealink/t42u/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/t42u/y000000000000.boot",
+      "blob": "3e691ebc0a576e6e1decc5fd818dc44d90f55edb",
+      "bytes": 189
+    },
+    {
+      "path": "yealink/t42u/y000000000116.cfg",
+      "blob": "9e8c113aa5e7ae0ab3492748fba1499475ccba9a",
+      "bytes": 82172
+    },
+    {
+      "path": "yealink/t42u/{$mac}.cfg",
+      "blob": "f01a1cc355d3aefd71bd66369cc0e60d5bfebbab",
+      "bytes": 139745
+    },
+    {
+      "path": "yealink/t43u/directory.xml",
+      "blob": "86c7b6f8b585b6d8da893f7ea910a89632537100",
+      "bytes": 3715
+    },
+    {
+      "path": "yealink/t43u/favorite_setting.xml",
+      "blob": "ba7275358eabcc96c52afd0188ab7c3cc7f8d576",
+      "bytes": 546
+    },
+    {
+      "path": "yealink/t43u/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/t43u/y000000000000.boot",
+      "blob": "25d2329b6315511a9a79e48c378cf5939676ba6e",
+      "bytes": 182
+    },
+    {
+      "path": "yealink/t43u/y000000000107.cfg",
+      "blob": "6f1848843e9f57a0583e4e64304d1f7a55fc87f8",
+      "bytes": 81589
+    },
+    {
+      "path": "yealink/t43u/{$mac}.cfg",
+      "blob": "e6cce68c02dce68af83229a912cbae570c1a06e6",
+      "bytes": 146231
+    },
+    {
+      "path": "yealink/t44w/directory.xml",
+      "blob": "86c7b6f8b585b6d8da893f7ea910a89632537100",
+      "bytes": 3715
+    },
+    {
+      "path": "yealink/t44w/favorite_setting.xml",
+      "blob": "ba7275358eabcc96c52afd0188ab7c3cc7f8d576",
+      "bytes": 546
+    },
+    {
+      "path": "yealink/t44w/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/t44w/y000000000000.boot",
+      "blob": "879d1ce634313cdd0033c6a407bbf165902ecf84",
+      "bytes": 213
+    },
+    {
+      "path": "yealink/t44w/y000000000174.cfg",
+      "blob": "2bd27f9feec5f60d5691a08839c1a4d31da5bf26",
+      "bytes": 90898
+    },
+    {
+      "path": "yealink/t44w/{$mac}.cfg",
+      "blob": "c8c3bcb82da4720167c22418849e1496f695257b",
+      "bytes": 30400
+    },
+    {
+      "path": "yealink/t46g/directory.xml",
+      "blob": "e730841a96ffd7cc7ffdbd593ad89509094e1bf6",
+      "bytes": 3806
+    },
+    {
+      "path": "yealink/t46g/favorite_setting.xml",
+      "blob": "b4cc2caca25322892099787417a8b92479d5b260",
+      "bytes": 552
+    },
+    {
+      "path": "yealink/t46g/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/t46g/y000000000000.boot",
+      "blob": "17e9805cb8bfd7c436225b5aab4204f9bf37df22",
+      "bytes": 189
+    },
+    {
+      "path": "yealink/t46g/y000000000028.cfg",
+      "blob": "47d6c6f8075e805a6e8c49f7679d95d4cf78a3c3",
+      "bytes": 84727
+    },
+    {
+      "path": "yealink/t46g/{$mac}.cfg",
+      "blob": "5fa0b259262e4cd81e292b0ccdfab0c641ebd7f0",
+      "bytes": 143076
+    },
+    {
+      "path": "yealink/t46s/directory.xml",
+      "blob": "86c7b6f8b585b6d8da893f7ea910a89632537100",
+      "bytes": 3715
+    },
+    {
+      "path": "yealink/t46s/favorite_setting.xml",
+      "blob": "ba7275358eabcc96c52afd0188ab7c3cc7f8d576",
+      "bytes": 546
+    },
+    {
+      "path": "yealink/t46s/y000000000000.boot",
+      "blob": "4778ecfa1dc933e320e46bf92ffc71fcdb7b4c04",
+      "bytes": 189
+    },
+    {
+      "path": "yealink/t46s/y000000000066.cfg",
+      "blob": "ba8f2db43fb16a132676ab4a47f789cddda7321d",
+      "bytes": 75710
+    },
+    {
+      "path": "yealink/t46s/{$mac}.boot",
+      "blob": "4778ecfa1dc933e320e46bf92ffc71fcdb7b4c04",
+      "bytes": 189
+    },
+    {
+      "path": "yealink/t46s/{$mac}.cfg",
+      "blob": "82417da02d27ddf2fae91987b99be552b0489435",
+      "bytes": 37613
+    },
+    {
+      "path": "yealink/t46u/directory.xml",
+      "blob": "86c7b6f8b585b6d8da893f7ea910a89632537100",
+      "bytes": 3715
+    },
+    {
+      "path": "yealink/t46u/favorite_setting.xml",
+      "blob": "ba7275358eabcc96c52afd0188ab7c3cc7f8d576",
+      "bytes": 546
+    },
+    {
+      "path": "yealink/t46u/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/t46u/y000000000000.boot",
+      "blob": "f937e7d73d5e1809c737442b26c7c2cd908dd447",
+      "bytes": 182
+    },
+    {
+      "path": "yealink/t46u/y000000000108.cfg",
+      "blob": "d7f33a63037232c81f3d16f28b9dc61b152aae22",
+      "bytes": 81589
+    },
+    {
+      "path": "yealink/t46u/{$mac}.cfg",
+      "blob": "9a653a1ee61bb7bc773c06f26baa76c9f40506f5",
+      "bytes": 144088
+    },
+    {
+      "path": "yealink/t48g/directory.xml",
+      "blob": "e730841a96ffd7cc7ffdbd593ad89509094e1bf6",
+      "bytes": 3806
+    },
+    {
+      "path": "yealink/t48g/favorite_setting.xml",
+      "blob": "b4cc2caca25322892099787417a8b92479d5b260",
+      "bytes": 552
+    },
+    {
+      "path": "yealink/t48g/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/t48g/y000000000000.boot",
+      "blob": "cf0e85717b0fb1ec71dbede95e1cd1c9c655234a",
+      "bytes": 189
+    },
+    {
+      "path": "yealink/t48g/y000000000035.cfg",
+      "blob": "eaba135827ceb15f328fdd97219de0e615b3d932",
+      "bytes": 83281
+    },
+    {
+      "path": "yealink/t48g/{$mac}.cfg",
+      "blob": "1ec142a1b082c7adbdd29efe8d276e83a681e3a7",
+      "bytes": 143074
+    },
+    {
+      "path": "yealink/t48s/directory.xml",
+      "blob": "86c7b6f8b585b6d8da893f7ea910a89632537100",
+      "bytes": 3715
+    },
+    {
+      "path": "yealink/t48s/favorite_setting.xml",
+      "blob": "ba7275358eabcc96c52afd0188ab7c3cc7f8d576",
+      "bytes": 546
+    },
+    {
+      "path": "yealink/t48s/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/t48s/y000000000000.boot",
+      "blob": "ef0ca986210efbc95e8fa2021e2d5f8af8d66269",
+      "bytes": 189
+    },
+    {
+      "path": "yealink/t48s/y000000000065.cfg",
+      "blob": "65c5629ac8baab334abde3515c275714bb552563",
+      "bytes": 75324
+    },
+    {
+      "path": "yealink/t48s/{$mac}.cfg",
+      "blob": "b0ba5f090024d42ee9cf5b06d724867a744d30fb",
+      "bytes": 140261
+    },
+    {
+      "path": "yealink/t48u/directory.xml",
+      "blob": "86c7b6f8b585b6d8da893f7ea910a89632537100",
+      "bytes": 3715
+    },
+    {
+      "path": "yealink/t48u/favorite_setting.xml",
+      "blob": "ba7275358eabcc96c52afd0188ab7c3cc7f8d576",
+      "bytes": 546
+    },
+    {
+      "path": "yealink/t48u/super_search.xml",
+      "blob": "31f9f2bf47c4122b564c5411bccd6ecab508456a",
+      "bytes": 570
+    },
+    {
+      "path": "yealink/t48u/y000000000000.boot",
+      "blob": "a041c7bba85507321d03028dcbf6bda2d95f0dd2",
+      "bytes": 182
+    },
+    {
+      "path": "yealink/t48u/y000000000109.cfg",
+      "blob": "db4c1a4ff28b4d45db65b3b1c7ea8cace8b55128",
+      "bytes": 83583
+    },
+    {
+      "path": "yealink/t48u/{$mac}.cfg",
+      "blob": "a84aa6ba202e8660ace5520e1e716f848ccb66ed",
+      "bytes": 29562
+    },
+    {
+      "path": "yealink/t49g/directory.xml",
+      "blob": "e730841a96ffd7cc7ffdbd593ad89509094e1bf6",
+      "bytes": 3806
+    },
+    {
+      "path": "yealink/t49g/favorite_setting.xml",
+      "blob": "b4cc2caca25322892099787417a8b92479d5b260",
+      "bytes": 552
+    },
+    {
+      "path": "yealink/t49g/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/t49g/y000000000000.boot",
+      "blob": "3ccac08aa567eeb054ebfc415c140f52a5cd75f8",
+      "bytes": 189
+    },
+    {
+      "path": "yealink/t49g/y000000000051.cfg",
+      "blob": "5293d6ac3f3895d2eb81a3aac2ad4e570d9ac866",
+      "bytes": 80786
+    },
+    {
+      "path": "yealink/t49g/{$mac}.cfg",
+      "blob": "f1945581a1e9782a340e0605f7aefade859ad2f8",
+      "bytes": 144291
+    },
+    {
+      "path": "yealink/t4x/directory.xml",
+      "blob": "86c7b6f8b585b6d8da893f7ea910a89632537100",
+      "bytes": 3715
+    },
+    {
+      "path": "yealink/t4x/favorite_setting.xml",
+      "blob": "ba7275358eabcc96c52afd0188ab7c3cc7f8d576",
+      "bytes": 546
+    },
+    {
+      "path": "yealink/t4x/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/t4x/y000000000000.boot",
+      "blob": "b140785ac47871b999e2689010e439885984e349",
+      "bytes": 741
+    },
+    {
+      "path": "yealink/t4x/y000000000028.cfg",
+      "blob": "6868c2a1ab1c303cef025f436d1527e1cd4690de",
+      "bytes": 82858
+    },
+    {
+      "path": "yealink/t4x/y000000000029.cfg",
+      "blob": "641b4c2a6fa5c8b620e549195fb671350fb564b2",
+      "bytes": 82050
+    },
+    {
+      "path": "yealink/t4x/y000000000035.cfg",
+      "blob": "e0664cfa0d60bccc4dd17216111b7afe2659519e",
+      "bytes": 82011
+    },
+    {
+      "path": "yealink/t4x/y000000000036.cfg",
+      "blob": "ce71e13761f234d74fc9ed73095c1dbd28e9bfee",
+      "bytes": 82860
+    },
+    {
+      "path": "yealink/t4x/y000000000054.cfg",
+      "blob": "d50e9c9d4376589445aabb33bd48bb2d36986d69",
+      "bytes": 80390
+    },
+    {
+      "path": "yealink/t4x/y000000000065.cfg",
+      "blob": "0dbd98145bfad7387cf63aab0179c00a74a7529f",
+      "bytes": 74694
+    },
+    {
+      "path": "yealink/t4x/y000000000066.cfg",
+      "blob": "b0f7ce3aeeababc8c964ed66e016af237189f91d",
+      "bytes": 74525
+    },
+    {
+      "path": "yealink/t4x/y000000000067.cfg",
+      "blob": "6e8780fdf84db4e7a76a2d8fea058b7810ec4564",
+      "bytes": 72974
+    },
+    {
+      "path": "yealink/t4x/y000000000068.cfg",
+      "blob": "75cdb3c586dfad401d48de046ee23b519b9a1247",
+      "bytes": 72978
+    },
+    {
+      "path": "yealink/t4x/y000000000076.cfg",
+      "blob": "f62820efbc37f26536b62d475b9b4d21a86614a1",
+      "bytes": 81154
+    },
+    {
+      "path": "yealink/t4x/y000000000107.cfg",
+      "blob": "a85b898cad46eaddd32d60f53136b64dee127f0a",
+      "bytes": 74718
+    },
+    {
+      "path": "yealink/t4x/y000000000108.cfg",
+      "blob": "21d535a592b1213d58566cec20cc4c97a189d259",
+      "bytes": 74526
+    },
+    {
+      "path": "yealink/t4x/y000000000109.cfg",
+      "blob": "a85b898cad46eaddd32d60f53136b64dee127f0a",
+      "bytes": 74718
+    },
+    {
+      "path": "yealink/t4x/y000000000116.cfg",
+      "blob": "6e8780fdf84db4e7a76a2d8fea058b7810ec4564",
+      "bytes": 72974
+    },
+    {
+      "path": "yealink/t4x/{$mac}.boot",
+      "blob": "355a17cb413beecff1a3b62251ec48fa0981dd7c",
+      "bytes": 182
+    },
+    {
+      "path": "yealink/t4x/{$mac}.cfg",
+      "blob": "5f73c378308444bd00e1a6b4cde0b4f141fdf720",
+      "bytes": 34581
+    },
+    {
+      "path": "yealink/t4x/{mac}.boot",
+      "blob": "b140785ac47871b999e2689010e439885984e349",
+      "bytes": 741
+    },
+    {
+      "path": "yealink/t52s/directory.xml",
+      "blob": "86c7b6f8b585b6d8da893f7ea910a89632537100",
+      "bytes": 3715
+    },
+    {
+      "path": "yealink/t52s/favorite_setting.xml",
+      "blob": "ba7275358eabcc96c52afd0188ab7c3cc7f8d576",
+      "bytes": 546
+    },
+    {
+      "path": "yealink/t52s/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/t52s/y000000000000.boot",
+      "blob": "ee753c58124c6f4bd9207eb89b65abcf8c59381a",
+      "bytes": 189
+    },
+    {
+      "path": "yealink/t52s/y000000000074.cfg",
+      "blob": "672b27555a38203a3767222c4fee20816f6c29f9",
+      "bytes": 75382
+    },
+    {
+      "path": "yealink/t52s/{$mac}.cfg",
+      "blob": "30757df8f5ac34cf1892a46dadf1a585c6ca86f0",
+      "bytes": 30427
+    },
+    {
+      "path": "yealink/t53/directory.xml",
+      "blob": "86c7b6f8b585b6d8da893f7ea910a89632537100",
+      "bytes": 3715
+    },
+    {
+      "path": "yealink/t53/favorite_setting.xml",
+      "blob": "ba7275358eabcc96c52afd0188ab7c3cc7f8d576",
+      "bytes": 546
+    },
+    {
+      "path": "yealink/t53/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/t53/y000000000000.boot",
+      "blob": "0e9e03d6b544fcfed05a55969a551afbe54e2d35",
+      "bytes": 182
+    },
+    {
+      "path": "yealink/t53/y000000000095.cfg",
+      "blob": "e0d4d1c571e9e7d30d9fc87302897163b607e6b0",
+      "bytes": 82895
+    },
+    {
+      "path": "yealink/t53/{$mac}.cfg",
+      "blob": "75cf5d16cfb06901d8ec8c906105e1f67e8767ce",
+      "bytes": 219852
+    },
+    {
+      "path": "yealink/t53w/directory.xml",
+      "blob": "86c7b6f8b585b6d8da893f7ea910a89632537100",
+      "bytes": 3715
+    },
+    {
+      "path": "yealink/t53w/favorite_setting.xml",
+      "blob": "ba7275358eabcc96c52afd0188ab7c3cc7f8d576",
+      "bytes": 546
+    },
+    {
+      "path": "yealink/t53w/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/t53w/y000000000000.boot",
+      "blob": "0e9e03d6b544fcfed05a55969a551afbe54e2d35",
+      "bytes": 182
+    },
+    {
+      "path": "yealink/t53w/y000000000095.cfg",
+      "blob": "6d0fa9b269c3d41a58cdaeb35c902d756e76ccf4",
+      "bytes": 83508
+    },
+    {
+      "path": "yealink/t53w/{$mac}.cfg",
+      "blob": "67365fd5e8b3d638768a3909622ecf0dedeef291",
+      "bytes": 220900
+    },
+    {
+      "path": "yealink/t54s/directory.xml",
+      "blob": "86c7b6f8b585b6d8da893f7ea910a89632537100",
+      "bytes": 3715
+    },
+    {
+      "path": "yealink/t54s/favorite_setting.xml",
+      "blob": "ba7275358eabcc96c52afd0188ab7c3cc7f8d576",
+      "bytes": 546
+    },
+    {
+      "path": "yealink/t54s/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/t54s/y000000000000.boot",
+      "blob": "a05b98c981008de0834c72fe722bc7b418a584bd",
+      "bytes": 189
+    },
+    {
+      "path": "yealink/t54s/y000000000070.cfg",
+      "blob": "70546d827ba27be20b838f4d7f76c1dc72ce5264",
+      "bytes": 75351
+    },
+    {
+      "path": "yealink/t54s/{$mac}.cfg",
+      "blob": "13646f21dc9390fd540872c7427cb8f26a3490a7",
+      "bytes": 31577
+    },
+    {
+      "path": "yealink/t54w/directory.xml",
+      "blob": "86c7b6f8b585b6d8da893f7ea910a89632537100",
+      "bytes": 3715
+    },
+    {
+      "path": "yealink/t54w/favorite_setting.xml",
+      "blob": "ba7275358eabcc96c52afd0188ab7c3cc7f8d576",
+      "bytes": 546
+    },
+    {
+      "path": "yealink/t54w/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/t54w/y000000000000.boot",
+      "blob": "db3f4ab0d9071b840eae54efdf4097a4a635df2e",
+      "bytes": 182
+    },
+    {
+      "path": "yealink/t54w/y000000000096.cfg",
+      "blob": "4c88c6c1dffd35ed789a14dee4f8068d09c28ee7",
+      "bytes": 83987
+    },
+    {
+      "path": "yealink/t54w/{$mac}.cfg",
+      "blob": "adb74007c691ed4b112e3dee539ea3d0f33ea143",
+      "bytes": 30045
+    },
+    {
+      "path": "yealink/t56a/directory.xml",
+      "blob": "86c7b6f8b585b6d8da893f7ea910a89632537100",
+      "bytes": 3715
+    },
+    {
+      "path": "yealink/t56a/favorite_setting.xml",
+      "blob": "ba7275358eabcc96c52afd0188ab7c3cc7f8d576",
+      "bytes": 546
+    },
+    {
+      "path": "yealink/t56a/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/t56a/y000000000000.boot",
+      "blob": "d0fb0244f61a4327938534e7681a2fa11d84f979",
+      "bytes": 189
+    },
+    {
+      "path": "yealink/t56a/y000000000056.cfg",
+      "blob": "26f43b88b9502990a4e79642d7c5582868e4177a",
+      "bytes": 73243
+    },
+    {
+      "path": "yealink/t56a/{$mac}.cfg",
+      "blob": "7674356435326e64bf1aa72ec33f28b4fffa38ae",
+      "bytes": 136301
+    },
+    {
+      "path": "yealink/t57w/directory.xml",
+      "blob": "86c7b6f8b585b6d8da893f7ea910a89632537100",
+      "bytes": 3715
+    },
+    {
+      "path": "yealink/t57w/favorite_setting.xml",
+      "blob": "ba7275358eabcc96c52afd0188ab7c3cc7f8d576",
+      "bytes": 546
+    },
+    {
+      "path": "yealink/t57w/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/t57w/y000000000000.boot",
+      "blob": "eae04d82db9a0206b5b54e306e397abb0a697ebf",
+      "bytes": 182
+    },
+    {
+      "path": "yealink/t57w/y000000000097.cfg",
+      "blob": "5079705bc191e4e4bdaebc21ddefb776632a3055",
+      "bytes": 83557
+    },
+    {
+      "path": "yealink/t57w/{$mac}.cfg",
+      "blob": "b5872cf66c53103ca05d470c3ed4c3d65c5962f7",
+      "bytes": 220098
+    },
+    {
+      "path": "yealink/t58a/directory.xml",
+      "blob": "86c7b6f8b585b6d8da893f7ea910a89632537100",
+      "bytes": 3715
+    },
+    {
+      "path": "yealink/t58a/favorite_setting.xml",
+      "blob": "ba7275358eabcc96c52afd0188ab7c3cc7f8d576",
+      "bytes": 546
+    },
+    {
+      "path": "yealink/t58a/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/t58a/y000000000000.boot",
+      "blob": "098ad811b9b329349d5f98e3f7638d90c4b44e46",
+      "bytes": 182
+    },
+    {
+      "path": "yealink/t58a/y000000000058.cfg",
+      "blob": "42b0c97b898de56d271f3699ed08e4a922a31d4e",
+      "bytes": 72536
+    },
+    {
+      "path": "yealink/t58a/{$mac}.cfg",
+      "blob": "6c5c8ad3e483f2e587b26390b1b121793a3252ac",
+      "bytes": 136045
+    },
+    {
+      "path": "yealink/t58v/directory.xml",
+      "blob": "86c7b6f8b585b6d8da893f7ea910a89632537100",
+      "bytes": 3715
+    },
+    {
+      "path": "yealink/t58v/favorite_setting.xml",
+      "blob": "ba7275358eabcc96c52afd0188ab7c3cc7f8d576",
+      "bytes": 546
+    },
+    {
+      "path": "yealink/t58v/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/t58v/y000000000000.boot",
+      "blob": "33a7acc7d32ae87f77730b5f9dc442dc93741f30",
+      "bytes": 189
+    },
+    {
+      "path": "yealink/t58v/y000000000058.cfg",
+      "blob": "bb0e9db32ae9b43b6dd1864acd6f7fa17a028d45",
+      "bytes": 73253
+    },
+    {
+      "path": "yealink/t58v/{$mac}.cfg",
+      "blob": "18754b8f3a523e55763c943b554b544bd9ac1beb",
+      "bytes": 37107
+    },
+    {
+      "path": "yealink/t58w/directory.xml",
+      "blob": "86c7b6f8b585b6d8da893f7ea910a89632537100",
+      "bytes": 3715
+    },
+    {
+      "path": "yealink/t58w/favorite_setting.xml",
+      "blob": "ba7275358eabcc96c52afd0188ab7c3cc7f8d576",
+      "bytes": 546
+    },
+    {
+      "path": "yealink/t58w/y000000000000.boot",
+      "blob": "8d795c624bb569f796ade20f28f2db3756fb31b3",
+      "bytes": 265
+    },
+    {
+      "path": "yealink/t58w/y000000000150.cfg",
+      "blob": "d036d16d1f43194cf0776c2ae21fe7907a31084e",
+      "bytes": 110164
+    },
+    {
+      "path": "yealink/t58w/{$mac}.cfg",
+      "blob": "1eca377a04c673574f0f2ae032632ad11bc926a0",
+      "bytes": 36754
+    },
+    {
+      "path": "yealink/t5x/directory.xml",
+      "blob": "e730841a96ffd7cc7ffdbd593ad89509094e1bf6",
+      "bytes": 3806
+    },
+    {
+      "path": "yealink/t5x/favorite_setting.xml",
+      "blob": "4034d7d26147e15443ce30b3c2e03bf64b4ced06",
+      "bytes": 554
+    },
+    {
+      "path": "yealink/t5x/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/t5x/y000000000000.boot",
+      "blob": "07e8bd06857bcce581f1cc00e6fadad169ff81d5",
+      "bytes": 320
+    },
+    {
+      "path": "yealink/t5x/y000000000070.cfg",
+      "blob": "c56b9756962c86793984812f9f46f6eb3f4e2a0f",
+      "bytes": 75118
+    },
+    {
+      "path": "yealink/t5x/y000000000095.cfg",
+      "blob": "2a2b820eb2a7ea375761491f4c7d24c9181a5f16",
+      "bytes": 83225
+    },
+    {
+      "path": "yealink/t5x/y000000000096.cfg",
+      "blob": "3c542ba23a2196a6f59a20f44235973a77acd695",
+      "bytes": 83227
+    },
+    {
+      "path": "yealink/t5x/y000000000097.cfg",
+      "blob": "b5b17a27c6111e207c14aa351da23fad2a4c63e1",
+      "bytes": 83153
+    },
+    {
+      "path": "yealink/t5x/{$mac}.boot",
+      "blob": "504b6346991cc62d88db15fdbf14712ca91339ca",
+      "bytes": 310
+    },
+    {
+      "path": "yealink/t5x/{$mac}.cfg",
+      "blob": "38323e93d130165cac3d04901cdf4b9d608ff317",
+      "bytes": 31160
+    },
+    {
+      "path": "yealink/t73u/directory.xml",
+      "blob": "86c7b6f8b585b6d8da893f7ea910a89632537100",
+      "bytes": 3715
+    },
+    {
+      "path": "yealink/t73u/favorite_setting.xml",
+      "blob": "ba7275358eabcc96c52afd0188ab7c3cc7f8d576",
+      "bytes": 546
+    },
+    {
+      "path": "yealink/t73u/super_search.xml",
+      "blob": "2f316822baed10e6268ab701557ba05ef2de3a59",
+      "bytes": 575
+    },
+    {
+      "path": "yealink/t73u/y000000000000.boot",
+      "blob": "1bc09058b44bec6108060c5c6027b0472468b99a",
+      "bytes": 182
+    },
+    {
+      "path": "yealink/t73u/y000000000186.cfg",
+      "blob": "24ef7f27166eec8a8a66088d14a33e5c08229dfa",
+      "bytes": 83987
+    },
+    {
+      "path": "yealink/t73u/{$mac}.cfg",
+      "blob": "958de63b63123d5065cc634080cfd75421e9e6ca",
+      "bytes": 30098
+    },
+    {
+      "path": "yealink/t73w/directory.xml",
+      "blob": "86c7b6f8b585b6d8da893f7ea910a89632537100",
+      "bytes": 3715
+    },
+    {
+      "path": "yealink/t73w/favorite_setting.xml",
+      "blob": "ba7275358eabcc96c52afd0188ab7c3cc7f8d576",
+      "bytes": 546
+    },
+    {
+      "path": "yealink/t73w/super_search.xml",
+      "blob": "2f316822baed10e6268ab701557ba05ef2de3a59",
+      "bytes": 575
+    },
+    {
+      "path": "yealink/t73w/y000000000000.boot",
+      "blob": "b32f5767801c7d01168c7842b5718dde925c0a78",
+      "bytes": 182
+    },
+    {
+      "path": "yealink/t73w/y000000000183.cfg",
+      "blob": "d99f1971ea281025bc1c42897510287447822284",
+      "bytes": 84569
+    },
+    {
+      "path": "yealink/t73w/{$mac}.cfg",
+      "blob": "958de63b63123d5065cc634080cfd75421e9e6ca",
+      "bytes": 30098
+    },
+    {
+      "path": "yealink/t74u/directory.xml",
+      "blob": "86c7b6f8b585b6d8da893f7ea910a89632537100",
+      "bytes": 3715
+    },
+    {
+      "path": "yealink/t74u/favorite_setting.xml",
+      "blob": "ba7275358eabcc96c52afd0188ab7c3cc7f8d576",
+      "bytes": 546
+    },
+    {
+      "path": "yealink/t74u/super_search.xml",
+      "blob": "2f316822baed10e6268ab701557ba05ef2de3a59",
+      "bytes": 575
+    },
+    {
+      "path": "yealink/t74u/y000000000000.boot",
+      "blob": "1a8f5d3e33b23d62b040ddf119daf34bc3d9683f",
+      "bytes": 182
+    },
+    {
+      "path": "yealink/t74u/y000000000187.cfg",
+      "blob": "242b939500403cf82738e4b9b57dbb7b9ced9fcf",
+      "bytes": 83987
+    },
+    {
+      "path": "yealink/t74u/{$mac}.cfg",
+      "blob": "958de63b63123d5065cc634080cfd75421e9e6ca",
+      "bytes": 30098
+    },
+    {
+      "path": "yealink/t74w/directory.xml",
+      "blob": "86c7b6f8b585b6d8da893f7ea910a89632537100",
+      "bytes": 3715
+    },
+    {
+      "path": "yealink/t74w/favorite_setting.xml",
+      "blob": "ba7275358eabcc96c52afd0188ab7c3cc7f8d576",
+      "bytes": 546
+    },
+    {
+      "path": "yealink/t74w/super_search.xml",
+      "blob": "2f316822baed10e6268ab701557ba05ef2de3a59",
+      "bytes": 575
+    },
+    {
+      "path": "yealink/t74w/y000000000000.boot",
+      "blob": "e23e000c33751aa9c3f07f1ea887f5c2b7f6f04e",
+      "bytes": 182
+    },
+    {
+      "path": "yealink/t74w/y000000000184.cfg",
+      "blob": "831b5afe994a06e945cc63dda34982174478c997",
+      "bytes": 84578
+    },
+    {
+      "path": "yealink/t74w/{$mac}.cfg",
+      "blob": "958de63b63123d5065cc634080cfd75421e9e6ca",
+      "bytes": 30098
+    },
+    {
+      "path": "yealink/t77u/directory.xml",
+      "blob": "86c7b6f8b585b6d8da893f7ea910a89632537100",
+      "bytes": 3715
+    },
+    {
+      "path": "yealink/t77u/favorite_setting.xml",
+      "blob": "ba7275358eabcc96c52afd0188ab7c3cc7f8d576",
+      "bytes": 546
+    },
+    {
+      "path": "yealink/t77u/super_search.xml",
+      "blob": "2f316822baed10e6268ab701557ba05ef2de3a59",
+      "bytes": 575
+    },
+    {
+      "path": "yealink/t77u/y000000000000.boot",
+      "blob": "0eddf4c456ed67e5079f002c52d8bcb2bc622dd6",
+      "bytes": 182
+    },
+    {
+      "path": "yealink/t77u/y000000000188.cfg",
+      "blob": "f5aff12fcecb2aea0b77cf4e1353e96a1e2b08e4",
+      "bytes": 83987
+    },
+    {
+      "path": "yealink/t77u/{$mac}.cfg",
+      "blob": "958de63b63123d5065cc634080cfd75421e9e6ca",
+      "bytes": 30098
+    },
+    {
+      "path": "yealink/t85w/directory.xml",
+      "blob": "86c7b6f8b585b6d8da893f7ea910a89632537100",
+      "bytes": 3715
+    },
+    {
+      "path": "yealink/t85w/favorite_setting.xml",
+      "blob": "ba7275358eabcc96c52afd0188ab7c3cc7f8d576",
+      "bytes": 546
+    },
+    {
+      "path": "yealink/t85w/super_search.xml",
+      "blob": "2f316822baed10e6268ab701557ba05ef2de3a59",
+      "bytes": 575
+    },
+    {
+      "path": "yealink/t85w/y000000000000.boot",
+      "blob": "2399cbae64988bc856ff05a9d85da5e202020999",
+      "bytes": 182
+    },
+    {
+      "path": "yealink/t85w/y000000000196.cfg",
+      "blob": "0898e70ffc700aa37e2fcd20b76c703df25157cd",
+      "bytes": 83987
+    },
+    {
+      "path": "yealink/t85w/{$mac}.cfg",
+      "blob": "958de63b63123d5065cc634080cfd75421e9e6ca",
+      "bytes": 30098
+    },
+    {
+      "path": "yealink/t87w/directory.xml",
+      "blob": "86c7b6f8b585b6d8da893f7ea910a89632537100",
+      "bytes": 3715
+    },
+    {
+      "path": "yealink/t87w/favorite_setting.xml",
+      "blob": "ba7275358eabcc96c52afd0188ab7c3cc7f8d576",
+      "bytes": 546
+    },
+    {
+      "path": "yealink/t87w/super_search.xml",
+      "blob": "2f316822baed10e6268ab701557ba05ef2de3a59",
+      "bytes": 575
+    },
+    {
+      "path": "yealink/t87w/y000000000000.boot",
+      "blob": "d91343e55ccb326f09c6a7bba26316d320fb2e40",
+      "bytes": 182
+    },
+    {
+      "path": "yealink/t87w/y000000000197.cfg",
+      "blob": "61c21cd83ed8030864b630b3c6752ffa88f40436",
+      "bytes": 83987
+    },
+    {
+      "path": "yealink/t87w/{$mac}.cfg",
+      "blob": "958de63b63123d5065cc634080cfd75421e9e6ca",
+      "bytes": 30098
+    },
+    {
+      "path": "yealink/t88v/directory.xml",
+      "blob": "86c7b6f8b585b6d8da893f7ea910a89632537100",
+      "bytes": 3715
+    },
+    {
+      "path": "yealink/t88v/favorite_setting.xml",
+      "blob": "ba7275358eabcc96c52afd0188ab7c3cc7f8d576",
+      "bytes": 546
+    },
+    {
+      "path": "yealink/t88v/super_search.xml",
+      "blob": "2f316822baed10e6268ab701557ba05ef2de3a59",
+      "bytes": 575
+    },
+    {
+      "path": "yealink/t88v/y000000000000.boot",
+      "blob": "fbe365fb2708d522bb86733bf43fb8b827c8405e",
+      "bytes": 182
+    },
+    {
+      "path": "yealink/t88v/y000000000192.cfg",
+      "blob": "c7dbf03ef207f45e200f8fee51a12f677a05e2e8",
+      "bytes": 83987
+    },
+    {
+      "path": "yealink/t88v/{$mac}.cfg",
+      "blob": "958de63b63123d5065cc634080cfd75421e9e6ca",
+      "bytes": 30098
+    },
+    {
+      "path": "yealink/t88w/directory.xml",
+      "blob": "86c7b6f8b585b6d8da893f7ea910a89632537100",
+      "bytes": 3715
+    },
+    {
+      "path": "yealink/t88w/favorite_setting.xml",
+      "blob": "ba7275358eabcc96c52afd0188ab7c3cc7f8d576",
+      "bytes": 546
+    },
+    {
+      "path": "yealink/t88w/super_search.xml",
+      "blob": "2f316822baed10e6268ab701557ba05ef2de3a59",
+      "bytes": 575
+    },
+    {
+      "path": "yealink/t88w/y000000000000.boot",
+      "blob": "fbe365fb2708d522bb86733bf43fb8b827c8405e",
+      "bytes": 182
+    },
+    {
+      "path": "yealink/t88w/y000000000192.cfg",
+      "blob": "8597d1139b99ef2ac7d97f5e983f2ad299ad436e",
+      "bytes": 83985
+    },
+    {
+      "path": "yealink/t88w/{$mac}.cfg",
+      "blob": "958de63b63123d5065cc634080cfd75421e9e6ca",
+      "bytes": 30098
+    },
+    {
+      "path": "yealink/vp530/directory.xml",
+      "blob": "e730841a96ffd7cc7ffdbd593ad89509094e1bf6",
+      "bytes": 3806
+    },
+    {
+      "path": "yealink/vp530/favorite_setting.xml",
+      "blob": "b4cc2caca25322892099787417a8b92479d5b260",
+      "bytes": 552
+    },
+    {
+      "path": "yealink/vp530/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/vp530/y000000000000.boot",
+      "blob": "ed3e2c0aeb868c1f63945489786414c06a23eeb7",
+      "bytes": 189
+    },
+    {
+      "path": "yealink/vp530/y000000000023.cfg",
+      "blob": "11dfc08376ae309bf9a28ef89919c6aaa931c8c1",
+      "bytes": 46422
+    },
+    {
+      "path": "yealink/vp530/{$mac}.cfg",
+      "blob": "7547146366f1d1ee133a70fd7a291f8ebe3bd221",
+      "bytes": 141113
+    },
+    {
+      "path": "yealink/vp59/directory.xml",
+      "blob": "86c7b6f8b585b6d8da893f7ea910a89632537100",
+      "bytes": 3715
+    },
+    {
+      "path": "yealink/vp59/favorite_setting.xml",
+      "blob": "ba7275358eabcc96c52afd0188ab7c3cc7f8d576",
+      "bytes": 546
+    },
+    {
+      "path": "yealink/vp59/super_search.xml",
+      "blob": "1e24cbacd4ecc1a6f0bfdafceb0ea742c08740b7",
+      "bytes": 569
+    },
+    {
+      "path": "yealink/vp59/y000000000000.boot",
+      "blob": "178973c04a80f05f284f2802236274f35f3e420f",
+      "bytes": 182
+    },
+    {
+      "path": "yealink/vp59/y000000000091.cfg",
+      "blob": "69dca448d489f4e22ad5e29fb18054e3070b5a95",
+      "bytes": 79462
+    },
+    {
+      "path": "yealink/vp59/{$mac}.cfg",
+      "blob": "0f957c207fb2515c0e7fdabc8528db2f6ea998c2",
+      "bytes": 27669
+    },
+    {
+      "path": "yealink/w52p/directory.xml",
+      "blob": "e730841a96ffd7cc7ffdbd593ad89509094e1bf6",
+      "bytes": 3806
+    },
+    {
+      "path": "yealink/w52p/favorite_setting.xml",
+      "blob": "b4cc2caca25322892099787417a8b92479d5b260",
+      "bytes": 552
+    },
+    {
+      "path": "yealink/w52p/y000000000000.boot",
+      "blob": "9063fdca3752c41674bb965809f807a077c15714",
+      "bytes": 189
+    },
+    {
+      "path": "yealink/w52p/y000000000025.cfg",
+      "blob": "852a883a5d886c7c03d73da06c3aafb6c1614bbf",
+      "bytes": 23416
+    },
+    {
+      "path": "yealink/w52p/{$mac}.cfg",
+      "blob": "06bd0042d898165e7a9a7e9948ab9590f211773a",
+      "bytes": 57017
+    },
+    {
+      "path": "yealink/w56p/directory.xml",
+      "blob": "86c7b6f8b585b6d8da893f7ea910a89632537100",
+      "bytes": 3715
+    },
+    {
+      "path": "yealink/w56p/favorite_setting.xml",
+      "blob": "ba7275358eabcc96c52afd0188ab7c3cc7f8d576",
+      "bytes": 546
+    },
+    {
+      "path": "yealink/w56p/y000000000000.boot",
+      "blob": "9063fdca3752c41674bb965809f807a077c15714",
+      "bytes": 189
+    },
+    {
+      "path": "yealink/w56p/y000000000025.cfg",
+      "blob": "a6ecdb7b47b1a74fcb6282f761887cbe83c65f93",
+      "bytes": 23417
+    },
+    {
+      "path": "yealink/w56p/{$mac}.cfg",
+      "blob": "de16d60d05870cec09952254917ba528886a03c6",
+      "bytes": 53731
+    },
+    {
+      "path": "yealink/w60b/directory.xml",
+      "blob": "86c7b6f8b585b6d8da893f7ea910a89632537100",
+      "bytes": 3715
+    },
+    {
+      "path": "yealink/w60b/favorite_setting.xml",
+      "blob": "ba7275358eabcc96c52afd0188ab7c3cc7f8d576",
+      "bytes": 546
+    },
+    {
+      "path": "yealink/w60b/y000000000000.boot",
+      "blob": "0b0187f2490c79e08ca25f69bac11c102e6b7308",
+      "bytes": 189
+    },
+    {
+      "path": "yealink/w60b/y000000000077.cfg",
+      "blob": "eab989149e401d085909db42e147cbdb1f0ec936",
+      "bytes": 28875
+    },
+    {
+      "path": "yealink/w60b/{$mac}.cfg",
+      "blob": "b3196a510cd556032c52042753d21a11d9c7ffe0",
+      "bytes": 85256
+    },
+    {
+      "path": "yealink/w70b/directory.xml",
+      "blob": "86c7b6f8b585b6d8da893f7ea910a89632537100",
+      "bytes": 3715
+    },
+    {
+      "path": "yealink/w70b/favorite_setting.xml",
+      "blob": "ba7275358eabcc96c52afd0188ab7c3cc7f8d576",
+      "bytes": 546
+    },
+    {
+      "path": "yealink/w70b/y000000000000.boot",
+      "blob": "a0d8ff513ee5eca101b458030406553709dec737",
+      "bytes": 182
+    },
+    {
+      "path": "yealink/w70b/y000000000146.cfg",
+      "blob": "a81da900f7802e5cc8d646a3da0d28bf030a62ff",
+      "bytes": 26834
+    },
+    {
+      "path": "yealink/w70b/{$mac}.cfg",
+      "blob": "fcc5fac3ecd8e209b993565450e1d3f73196b800",
+      "bytes": 86043
+    },
+    {
+      "path": "yealink/w7xp/directory.xml",
+      "blob": "86c7b6f8b585b6d8da893f7ea910a89632537100",
+      "bytes": 3715
+    },
+    {
+      "path": "yealink/w7xp/favorite_setting.xml",
+      "blob": "ba7275358eabcc96c52afd0188ab7c3cc7f8d576",
+      "bytes": 546
+    },
+    {
+      "path": "yealink/w7xp/y000000000000.boot",
+      "blob": "a0d8ff513ee5eca101b458030406553709dec737",
+      "bytes": 182
+    },
+    {
+      "path": "yealink/w7xp/y000000000146.cfg",
+      "blob": "8f514fd932812d9ca8b69c9144aa259ca1a66c95",
+      "bytes": 26349
+    },
+    {
+      "path": "yealink/w7xp/{$mac}.cfg",
+      "blob": "683ff3f77b5f0b272b45cf0cba6f0a40ce7fe45f",
+      "bytes": 85184
+    },
+    {
+      "path": "yealink/w80/directory.xml",
+      "blob": "86c7b6f8b585b6d8da893f7ea910a89632537100",
+      "bytes": 3715
+    },
+    {
+      "path": "yealink/w80/favorite_setting.xml",
+      "blob": "ba7275358eabcc96c52afd0188ab7c3cc7f8d576",
+      "bytes": 546
+    },
+    {
+      "path": "yealink/w80/y000000000000.boot",
+      "blob": "9c21b8e4b2a1efa325fea52638f2dbe3513cc4be",
+      "bytes": 239
+    },
+    {
+      "path": "yealink/w80/y000000000175.cfg",
+      "blob": "8f9610644a6416d6fbe64241fda62ed6ec0a4a03",
+      "bytes": 40708
+    },
+    {
+      "path": "yealink/w80/{$mac}.cfg",
+      "blob": "e4d53413303830e483a22d271981b64a29284e99",
+      "bytes": 16761
+    },
+    {
+      "path": "yeastar/ta200/cfg{$mac}.xml",
+      "blob": "049f337a675da69eac8617ea8fb95b341b455921",
+      "bytes": 6682
+    },
+    {
+      "path": "yeastar/ta400/cfg{$mac}.xml",
+      "blob": "d7f530c595efd999a1ec2f5a8a297aee93d2311e",
+      "bytes": 6682
+    },
+    {
+      "path": "yeastar/ta800/cfg{$mac}.xml",
+      "blob": "33bf2a70f1a8cb3dd52a6c20a8071df763c36fdd",
+      "bytes": 6682
+    },
+    {
+      "path": "zoiper/5.x/config.xml",
+      "blob": "1e19ebff309fc626458a9b379dafc393f9d97cdf",
+      "bytes": 23675
+    },
+    {
+      "path": "zoiper/5.x/directory.xml",
+      "blob": "4ff541455f4b914a4f72eebb6366a7c46ffb22ae",
+      "bytes": 2265
+    }
+  ]
+}

@@ -1,1 +1,3 @@
 crates/talkops-provisioning/reference/** -text -whitespace linguist-vendored=true
+crates/talkops-provisioning/templates/fusionpbx/** -text -whitespace linguist-generated=true
+crates/talkops-provisioning/templates/yealink/** text eol=lf

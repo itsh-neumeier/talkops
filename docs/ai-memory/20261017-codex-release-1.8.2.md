@@ -5,11 +5,11 @@
 - Task ID: 20261017-codex-release-1.8.2
 - Date: 2026-10-17, Europe/Berlin
 - Tool: Codex
-- Status: In progress
+- Status: Completed
 - Integration branch: codex/release-1.8.2 (merged and remote deleted)
 - Base commit: 86772ec0c31990f7a29a639ffb90db6ebef217e2
 - Related PR: https://github.com/itsh-neumeier/talkops/pull/50
-- Final record: audit/release-1.8.2 (not yet pushed)
+- Final record: immutable annotated tag audit/release-1.8.2
 
 ## Goal
 
@@ -22,7 +22,8 @@ work and all published tags.
 TalkOps 1.8.2 is published and registry verification passed. Source PR49 and
 integration PR50 are merged. No agreed contribution is omitted or blocked.
 The feature is from Codex; no Claude Code contribution was assigned. No later
-open PR was present at publication verification. Additional tag E2E is running.
+open PR was present at final inventory. All additional tag workflows passed.
+No 1.8.2 publication work remains.
 
 | PR | Exact source head | Dependency | Migration ID | Status |
 | --- | --- | --- | --- | --- |
@@ -59,7 +60,8 @@ open PR was present at publication verification. Additional tag E2E is running.
   future work; unsupported vendors receive no Yealink fallback.
 - Source Cargo changes enable existing MiniJinja loader/fuel and direct
   serde_json/url use. No package version changes. Release lock metadata is
-  version-only against the integrated source baseline stored in Git history.
+  version-only against integrated source baseline
+  74b6c331dec86e3ed225bd889f3471cb9be4b1d2.
 - Closed, unmerged PR36 is outside scope. Keep claude/vigilant-tesla-ef0027
   at 37f8a18aa2971c1a570821d150dcf0941fae12eb; reserve ADR0033.
 - Preserve primary checkout 397fc83 and its three untracked Dahua summaries.
@@ -74,8 +76,7 @@ open PR was present at publication verification. Additional tag E2E is running.
   2,094 matching EN/DE keys/placeholders without duplicates; 13 browser suites
   retained once; 37 unique ADR files and 38 resolving index links; exact source
   ancestry; release version fields only in both locks.
-- Passed source head: PR CI39005493440 and E2E39005493573 are candidate checks;
-  exact source PR49 evidence is CI38973944625/E2E38973943991 and push
+- Passed exact source head: PR49 CI38973944625/E2E38973943991 and push
   CI38973939305/E2E38973939288. All 12 exact source checks passed at inventory.
 - Passed candidate: PR CI39005493440/E2E39005493573 and push
   CI39005490181/E2E39005490056. All 12 final-head checks passed before merge.
@@ -91,7 +92,8 @@ open PR was present at publication verification. Additional tag E2E is running.
   include contact/mobile targets, 70 source folders and save/resync ordering
   at 320/768/1280 px with both themes.
 - Passed Release39007742037, tag CI39007742064 and FreeSWITCH39007742129.
-  Additional tag E2E39007742124 is still running.
+  Additional tag E2E39007742124 passed at 2026-10-17T06:01:48Z on attempt1.
+  All four tag workflows passed on the exact release commit.
 - Not run locally: full Linux workspace/DB/LDAP and Docker/SIPp stack. No local
   Linux Docker daemon is available. The local provisioning build was not started
   because C: has less than 4 GiB free. No foreign outputs were removed. Linux
@@ -169,8 +171,10 @@ this record and must use audit/release-1.8.2 without changing release code.
 
 ## Next action
 
-Wait for additional tag E2E39007742124. Publish the final audit reference and
-complete PR50. No further feature work is part of this release.
+None for 1.8.2. Release, verification and branch cleanup are complete.
+Keep the immutable final audit linked from merged PR50. Preserve closed PR36
+and foreign local work. The documented hardware acceptance remains a separate
+deployment follow-up; future contributions need a new release assignment.
 
 ## References
 
@@ -178,3 +182,18 @@ complete PR50. No further feature work is part of this release.
 - docs/release-workflow.md; docs/release-manager-prompt.md; ADR0038.
 - 20261016-codex-provisioning-multivendor-plan.md.
 - 20261016-codex-release-1.8.1.md (completed previous release).
+
+## Final workflow evidence
+
+- [Candidate CI](https://github.com/itsh-neumeier/talkops/actions/runs/39005493440)
+  and [E2E](https://github.com/itsh-neumeier/talkops/actions/runs/39005493573).
+- [Exact-main CI](https://github.com/itsh-neumeier/talkops/actions/runs/39006646325)
+  and [E2E](https://github.com/itsh-neumeier/talkops/actions/runs/39006646300).
+- [Release](https://github.com/itsh-neumeier/talkops/actions/runs/39007742037),
+  [tag CI](https://github.com/itsh-neumeier/talkops/actions/runs/39007742064),
+  [tag E2E](https://github.com/itsh-neumeier/talkops/actions/runs/39007742124),
+  [FreeSWITCH](https://github.com/itsh-neumeier/talkops/actions/runs/39007742129).
+- All final runs passed on their expected immutable heads. Main and published
+  tag still target c4765b0495adf004f0b2b0f5099cbd098f384f86.
+- The final audit descendant changes only this record. It is not a new release
+  candidate and does not change main or the published release tag.

@@ -6,6 +6,35 @@ All notable changes to TalkOps. The format follows
 
 ## [Unreleased]
 
+## [1.8.3] – 2026-10-17
+
+### Added
+
+- Add multi-vendor provisioning from the complete pinned FusionPBX library.
+  Preserve 1,037 original source files. Adapt 385 usable source profiles and
+  the explicit GXP1630 variant. Keep existing Yealink model identifiers.
+- Add categorized manufacturer settings, native key functions, language,
+  time-zone and NTP controls. Protect saved secrets and managed identity fields.
+- Add authenticated native file delivery, configuration downloads and QR exports.
+- Add same-model phone copies with independent identities and SIP credentials.
+  Exclude secrets and runtime values. Reject stale previews and create accounts
+  in the same transaction. Defer copied keys until an account is assigned.
+
+### Fixed
+
+- Correct source credential bindings, account selectors, auxiliary file links
+  and contact number types in generated configurations. Preserve original files.
+
+### Upgrade notes
+
+- No new migration is added. Migration 20261105000001 from 1.8.2 is required.
+- Existing Yealink assignments and credentials remain valid. Provisioning
+  changes need a configuration download. Native profiles have no remote
+  resync or reboot command without a manufacturer adapter.
+- Device and firmware validation is pending. Spectralink and Grandstream Wave
+  remain blocked because their source templates are empty. Firmware files are
+  not bundled. Some old Cisco phones require a separate TFTP service.
+
 ## [1.8.2] – 2026-10-17
 
 ### Added

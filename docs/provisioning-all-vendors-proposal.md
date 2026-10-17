@@ -1,6 +1,6 @@
 # All-vendor provisioning and phone configuration copy
 
-Status: Proposed. User review and feedback are required before implementation.
+Status: Approved and implemented on 2026-10-17. PR 51 records checks and readiness.
 Date: 2026-10-17, Europe/Berlin.
 
 ## Goal and review boundary
@@ -9,10 +9,9 @@ Support all usable vendor templates in the FusionPBX provisioning tree.
 Let an administrator add an identical phone with settings from an existing phone.
 Keep each phone's identity and SIP credentials separate.
 
-This change contains the proposal and source inventory only. No runtime code,
-database migration, active template or production setting changes in this PR.
-The earlier Yealink approval applies to PR 49. It does not approve this extension.
-After user approval, implement the work below on the feature branch. Keep the
+The user reviewed this proposal and approved implementation with
+"nein passt so mach das" on 2026-10-17. Implement the work below on the feature
+branch. Keep the
 PR as a draft until implementation and the required checks are complete.
 The release chat owns integration, release versions, tags and publication.
 
@@ -85,7 +84,8 @@ Template directories are immediate child directories, not verified model counts.
 | zoiper | 2 | 1 |
 
 Spectralink contains only `empty.txt`. It has no usable configuration template
-in this revision. Record this gap explicitly; do not offer a working profile.
+in this revision. The user accepted the missing-template status on 2026-10-17.
+Record this gap explicitly; do not offer a working profile.
 Acrobits, Groundwire, Linphone, Sipnetic and Zoiper need app setup or export
 flows. Gateways, ATAs, DECT bases, paging devices and intercoms also need
 different controls from desk phones. Provisioning an intercom does not add
@@ -268,9 +268,9 @@ Suggested future release notes, only after implementation:
 
 ## Requested feedback
 
-Review the full vendor scope, the implementation order and the copy rules.
-The recommended default is an identical-model snapshot with new identities and
-explicit extension selection. User approval of this proposal is the next step.
+The user approved the full vendor scope, implementation order and copy rules.
+Use an identical-model snapshot with new identities and explicit extension
+selection. Implementation and validation are the next steps.
 
 ## References
 

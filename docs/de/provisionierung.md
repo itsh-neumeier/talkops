@@ -1,5 +1,9 @@
 # Provisionierungsprofile und Vorlagen
 
+Die zusätzlichen Herstellerprofile und Kategorien sind unter
+[Herstellereinstellungen und Gerätekopien](hersteller-provisionierung.md)
+beschrieben.
+
 ## Adressen festlegen
 
 Unter **Telefone → Übertragung der Provisionierung** lässt sich eine feste

@@ -1024,6 +1024,7 @@ async fn phones_accounts_firmware_contacts(pool: PgPool) {
         &pool,
         T,
         &PhoneInput {
+            provisioning: None,
             mac: "80:5E:C0:AA:BB:CC".into(),
             model: "t54w".into(),
             name: "Desk".into(),
@@ -1042,6 +1043,7 @@ async fn phones_accounts_firmware_contacts(pool: PgPool) {
             &pool,
             T,
             &PhoneInput {
+                provisioning: None,
                 mac: "805ec0aabbcc".into(),
                 model: "t54w".into(),
                 name: "Dup".into(),
@@ -1060,6 +1062,7 @@ async fn phones_accounts_firmware_contacts(pool: PgPool) {
             &pool,
             T,
             &PhoneInput {
+                provisioning: None,
                 mac: "xyz".into(),
                 model: "t54w".into(),
                 name: "Bad".into(),
@@ -1292,6 +1295,7 @@ async fn phones_accounts_firmware_contacts(pool: PgPool) {
 #[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
 async fn phone_media_and_phonebook_sections(pool: PgPool) {
     let input = |sections: Vec<Uuid>, ringtone: Option<Uuid>, wallpaper: Option<Uuid>| PhoneInput {
+        provisioning: None,
         mac: "805ec0000001".into(),
         model: "t54w".into(),
         name: "Küche".into(),

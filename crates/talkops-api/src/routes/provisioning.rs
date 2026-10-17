@@ -6,7 +6,9 @@
 //! or the phone's auto-provisioning settings). Action URLs cannot carry basic
 //! auth on all firmware versions, so `events` also accepts `key=<password>`.
 
-use std::collections::HashMap;
+use super::provisioning_admin;
+use std::collections::{BTreeMap, HashMap};
+use talkops_provisioning::{adapter, keys};
 
 use axum::body::Body;
 use axum::extract::{Path, Query, Request, State};
@@ -71,7 +73,7 @@ async fn provisioning(state: &AppState, headers: &HeaderMap) -> ApiResult<(Provi
         phones::provisioning_secrets(&state.db, TenantId::DEFAULT, &state.secrets, false).await?;
     Ok((
         Provisioning {
-            base_url: base_url(headers),
+            base_url: configured_base(state, TenantId::DEFAULT, headers).await?,
             username: secrets.username,
             password: secrets.password,
         },
@@ -127,13 +129,91 @@ pub async fn render_phone_config(
     phone: &Phone,
     headers: &HeaderMap,
 ) -> ApiResult<String> {
+    render_phone_config_inner(state, tenant, phone, headers, false, None, None).await
+}
+pub async fn preview_with_files(
+    state: &AppState,
+    tenant: TenantId,
+    phone: &Phone,
+    files: &BTreeMap<String, String>,
+) -> ApiResult<String> {
+    render_phone_config_inner(
+        state,
+        tenant,
+        phone,
+        &HeaderMap::new(),
+        true,
+        Some(files),
+        None,
+    )
+    .await
+}
+pub async fn preview_phone(
+    state: &AppState,
+    tenant: TenantId,
+    phone: &Phone,
+    headers: &HeaderMap,
+) -> ApiResult<String> {
+    render_phone_config_inner(state, tenant, phone, headers, true, None, None).await
+}
+pub async fn preview_phone_accounts(
+    state: &AppState,
+    tenant: TenantId,
+    phone: &Phone,
+    headers: &HeaderMap,
+    labels: &BTreeMap<String, (String, String)>,
+) -> ApiResult<String> {
+    render_phone_config_inner(state, tenant, phone, headers, true, None, Some(labels)).await
+}
+async fn render_phone_config_inner(
+    state: &AppState,
+    tenant: TenantId,
+    phone: &Phone,
+    headers: &HeaderMap,
+    redacted: bool,
+    files_override: Option<&BTreeMap<String, String>>,
+    labels: Option<&BTreeMap<String, (String, String)>>,
+) -> ApiResult<String> {
     let model = state
         .phone_catalog
         .get(&phone.model)
         .ok_or_else(|| ApiError::BadRequest(format!("unknown phone model {}", phone.model)))?;
-    let (prov, _) = provisioning(state, headers).await?;
+    let overrides: keys::Overrides = serde_json::from_value(phone.provisioning.clone())
+        .map_err(|_| ApiError::Internal("invalid phone provisioning overrides".into()))?;
+    keys::validate(model, &overrides).map_err(ApiError::BadRequest)?;
+    let options = provisioning_admin::options(state, tenant).await?;
+    let templates = match files_override {
+        Some(files) => files.clone(),
+        None => {
+            provisioning_admin::template_files(
+                state,
+                tenant,
+                &phone.model,
+                overrides.template_id.as_deref(),
+            )
+            .await?
+        }
+    };
+    let (mut prov, mut admin_password) = provisioning(state, headers).await?;
+    prov.base_url = if !overrides.endpoint.is_empty() {
+        overrides.endpoint.trim_end_matches('/').into()
+    } else if !options.endpoint.is_empty() {
+        options.endpoint.trim_end_matches('/').into()
+    } else {
+        base_url(headers)
+    };
+    if redacted {
+        prov.password = "REDACTED".into();
+        admin_password = "REDACTED".into();
+    }
     let mut accounts = Vec::new();
-    for a in phones::accounts(&state.db, phone.id).await? {
+    for mut a in phones::accounts(&state.db, phone.id).await? {
+        if let Some((label, display)) =
+            labels.and_then(|labels| labels.get(&a.device_id.to_string()))
+        {
+            a.phone_label = label.clone();
+            a.phone_display_name = display.clone();
+        }
         let password = state
             .secrets
             .decrypt(&a.sip_password_enc)
@@ -148,7 +228,11 @@ pub async fn render_phone_config(
                 AccountCodecs::Profiles
             },
             username: a.sip_username,
-            password,
+            password: if redacted {
+                "REDACTED".into()
+            } else {
+                password
+            },
         });
     }
     let keys: Vec<LineKey> = serde_json::from_value(phone.line_keys.clone()).unwrap_or_default();
@@ -188,12 +272,20 @@ pub async fn render_phone_config(
         local_dialing: !plan.area_code.is_empty(),
     });
     let setup = PhoneSetup {
+        provisioning: overrides.clone(),
+        asset_base: auth_base.clone(),
         name: phone.name.clone(),
         mac: phone.mac.clone(),
         model,
         accounts,
         keys,
-        sip_host: sip_host(headers),
+        sip_host: if !overrides.sip_host.is_empty() {
+            overrides.sip_host.clone()
+        } else if !options.sip_host.is_empty() {
+            options.sip_host.clone()
+        } else {
+            sip_host(headers)
+        },
         sip_port: state.profile.internal_port,
         firmware_url,
         voicemail_code: VOICEMAIL_CODE.to_owned(),
@@ -207,7 +299,24 @@ pub async fn render_phone_config(
             &setting_values(&phone.settings),
         ),
     };
-    yealink::render_phone(&setup).map_err(|e| ApiError::Internal(e.to_string()))
+    let device = adapter::render(&setup, &templates).map_err(ApiError::BadRequest)?;
+    let settings = settings::get(&state.db, tenant).await?;
+    let common = yealink::render_common_with(
+        &prov,
+        &admin_password,
+        &Locale::new(&settings.timezone, &settings.default_language),
+        &settings.default_language,
+        &templates,
+    )
+    .map_err(|e| ApiError::BadRequest(e.to_string()))?;
+    if device.len() + common.len() > 524288 {
+        return Err(ApiError::BadRequest(
+            "configuration output is too large".into(),
+        ));
+    }
+    // The per-device file repeats common settings with the device endpoint. A common
+    // fetch cannot identify every phone, and must not overwrite an HTTP exception.
+    Ok(format!("{common}\n{device}"))
 }
 
 /// Comfort setting values from the database (non-strings are ignored).
@@ -222,8 +331,87 @@ pub fn setting_values(value: &serde_json::Value) -> SettingValues {
         .unwrap_or_default()
 }
 
-/// `GET /provisioning/{*path}`
+pub async fn configured_base(
+    state: &AppState,
+    tenant: TenantId,
+    headers: &HeaderMap,
+) -> ApiResult<String> {
+    let options = provisioning_admin::options(state, tenant).await?;
+    Ok(if options.endpoint.is_empty() {
+        base_url(headers)
+    } else {
+        options.endpoint.trim_end_matches('/').into()
+    })
+}
+
+/// Record only bounded configuration filenames; never headers, URL userinfo or queries.
 pub async fn serve(
+    State(state): State<AppState>,
+    Path(path): Path<String>,
+    Query(query): Query<HashMap<String, String>>,
+    req: Request,
+) -> Response {
+    let scheme = if is_https(req.headers()) {
+        "https"
+    } else {
+        "http"
+    };
+    let mac = path
+        .strip_suffix(".cfg")
+        .or_else(|| path.strip_suffix(".boot"))
+        .and_then(normalize_mac)
+        .or_else(|| {
+            path.strip_prefix("softkeys/")
+                .and_then(|rest| rest.split('/').next())
+                .and_then(normalize_mac)
+        });
+    let softkey = path
+        .strip_prefix("softkeys/")
+        .and_then(|p| p.split_once('/'))
+        .is_some_and(|(_, file)| {
+            matches!(
+                file,
+                "call_in.xml"
+                    | "call_failed.xml"
+                    | "connecting.xml"
+                    | "dialing.xml"
+                    | "ring_back.xml"
+                    | "talking.xml"
+            )
+        });
+    let record = path.len() <= 100
+        && (is_common_cfg(&path)
+            || (mac.is_some() && (softkey || !path.contains('/')))
+            || path == "y000000000000.boot");
+    let response = serve_inner(State(state.clone()), Path(path.clone()), Query(query), req).await;
+    if record {
+        let tenant = match mac.as_deref() {
+            Some(mac) => phones::find_by_mac(&state.db, mac)
+                .await
+                .ok()
+                .flatten()
+                .map(|p| p.0)
+                .unwrap_or(TenantId::DEFAULT),
+            None => TenantId::DEFAULT,
+        };
+        if let Err(error) = talkops_core::phone_provisioning::record_request(
+            &state.db,
+            tenant,
+            mac.as_deref(),
+            &path,
+            scheme,
+            response.status().as_u16(),
+        )
+        .await
+        {
+            tracing::warn!(%error,"cannot record provisioning result");
+        }
+    }
+    response
+}
+
+/// `GET /provisioning/{*path}`
+async fn serve_inner(
     State(state): State<AppState>,
     Path(path): Path<String>,
     Query(query): Query<HashMap<String, String>>,
@@ -271,6 +459,8 @@ pub async fn serve(
         .and_then(|v| v.to_str().ok())
         .unwrap_or_default();
     let result = match path.as_str() {
+        p if p.ends_with(".boot") => boot_file(&state, p, user_agent).await,
+        p if p.starts_with("softkeys/") => softkey_file(&state, p).await,
         p if is_common_cfg(p) => common_cfg(&state, &prov, &admin_password).await,
         "phonebook/internal.xml" => internal_phonebook(&state, query.get("search")).await,
         "phonebook/contacts.xml" => contacts_phonebook(&state, None, query.get("search")).await,
@@ -298,6 +488,77 @@ pub async fn serve(
         ApiError::NotFound => not_found(),
         other => other.into_response(),
     })
+}
+
+async fn boot_file(state: &AppState, path: &str, user_agent: &str) -> ApiResult<Response> {
+    let (model, mac) = if path == "y000000000000.boot" {
+        let model = state
+            .phone_catalog
+            .from_user_agent(user_agent)
+            .ok_or(ApiError::NotFound)?;
+        let mac = user_agent
+            .split_whitespace()
+            .last()
+            .and_then(normalize_mac)
+            .ok_or(ApiError::NotFound)?;
+        let (_, phone) = phones::find_by_mac(&state.db, &mac)
+            .await?
+            .ok_or(ApiError::NotFound)?;
+        if phone.model != model.id {
+            return Err(ApiError::NotFound);
+        }
+        (model, mac)
+    } else {
+        let mac = path
+            .strip_suffix(".boot")
+            .and_then(normalize_mac)
+            .ok_or(ApiError::NotFound)?;
+        let (_, phone) = phones::find_by_mac(&state.db, &mac)
+            .await?
+            .ok_or(ApiError::NotFound)?;
+        let model = state
+            .phone_catalog
+            .get(&phone.model)
+            .ok_or(ApiError::NotFound)?;
+        (model, mac)
+    };
+    if model.vendor != "yealink" {
+        return Err(ApiError::NotFound);
+    }
+    let common = talkops_provisioning::library::sources()
+        .iter()
+        .filter_map(|(name, _)| name.strip_prefix(&format!("{}/", model.id)))
+        .find(|name| name.starts_with('y') && name.ends_with(".cfg"))
+        .ok_or(ApiError::NotFound)?;
+    Ok(text(
+        "text/plain; charset=utf-8",
+        format!(
+            "#!version:1.0.0.1\ninclude:config \"{common}\"\ninclude:config \"{mac}.cfg\"\noverwrite_mode = 0\n"
+        ),
+    ))
+}
+async fn softkey_file(state: &AppState, path: &str) -> ApiResult<Response> {
+    let rest = path.strip_prefix("softkeys/").ok_or(ApiError::NotFound)?;
+    let (mac, filename) = rest.split_once('/').ok_or(ApiError::NotFound)?;
+    let mac = normalize_mac(mac).ok_or(ApiError::NotFound)?;
+    let (_, phone) = phones::find_by_mac(&state.db, &mac)
+        .await?
+        .ok_or(ApiError::NotFound)?;
+    let model = state
+        .phone_catalog
+        .get(&phone.model)
+        .ok_or(ApiError::NotFound)?;
+    let overrides: keys::Overrides =
+        serde_json::from_value(phone.provisioning).map_err(|_| ApiError::NotFound)?;
+    keys::validate(model, &overrides).map_err(ApiError::BadRequest)?;
+    let name = filename.strip_suffix(".xml").ok_or(ApiError::NotFound)?;
+    let caps = keys::capabilities(model);
+    let allowed = caps.softkey_states.get(name).ok_or(ApiError::NotFound)?;
+    let actions = overrides.softkeys.get(name).ok_or(ApiError::NotFound)?;
+    Ok(text(
+        "text/xml; charset=utf-8",
+        keys::softkey_xml(name, actions, allowed),
+    ))
 }
 
 /// `y<12-digit hardware id>.cfg`, e.g. `y000000000028.cfg` (T46) or
@@ -355,7 +616,7 @@ async fn internal_phonebook(state: &AppState, search: Option<&String>) -> ApiRes
     let entries = phonebook::search(entries, search.map(String::as_str));
     Ok(text(
         "text/xml; charset=utf-8",
-        phonebook::render("TalkOps", &entries),
+        adapter::phonebook("yealink", "TalkOps", &entries).map_err(ApiError::BadRequest)?,
     ))
 }
 
@@ -407,7 +668,7 @@ async fn contacts_phonebook(
     let entries = phonebook::search(entries, search.map(String::as_str));
     Ok(text(
         "text/xml; charset=utf-8",
-        phonebook::render(&title, &entries),
+        adapter::phonebook("yealink", &title, &entries).map_err(ApiError::BadRequest)?,
     ))
 }
 

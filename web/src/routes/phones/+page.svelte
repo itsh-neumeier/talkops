@@ -1,4 +1,5 @@
 <script lang="ts">
+	import ProvisioningTransport from '#lib/components/ProvisioningTransport.svelte';
 	import EmptyRow from '#lib/components/EmptyRow.svelte';
 	import PageHeader from '#lib/components/PageHeader.svelte';
 	import SkeletonRows from '#lib/components/SkeletonRows.svelte';
@@ -257,6 +258,8 @@
 	</div>
 
 	{#if can('phones.manage')}
+		<a class="btn" href="/phones/templates">{t('prov.libraryTitle')}</a>
+		<ProvisioningTransport />
 		<section class="card space-y-3">
 			<h2>{t('phones.provisioning')}</h2>
 			<p class="text-sm text-slate-600 dark:text-slate-300">{t('phones.provisioningHint')}</p>

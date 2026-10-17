@@ -1,0 +1,210 @@
+{# MPL-1.1 derivative: FusionPBX 20143aec4366afc2755f336d3058243479d49d44, fanvil/w611w/directory.xml, blob f4fe5b3d6042efcc8b5992ae9dcf8639f9917d6b. #}{% set ns = namespace(keys=keys | default({}), contact_groups=contact_groups | default({})) %}<?xml version="1.0" encoding="UTF-8"?> 
+<FanvilIPPhoneDirectory>
+{% if (lookup(smarty | default(none), ["get","contacts"]) | default('')) == "users" %}
+<Title>Users Directory</Title>
+{% elif (lookup(smarty | default(none), ["get","contacts"]) | default('')) == "groups" %}
+<Title>Groups Directory</Title>
+{% elif (lookup(smarty | default(none), ["get","contacts"]) | default('')) == "extensions" %}
+<Title>Extensions Directory</Title>
+{% else %}
+<Title>Complete Directory</Title>
+{% endif %}
+
+{% for row in (contacts | default('')) | values %}
+{% if (lookup(smarty | default(none), ["get","contacts"]) | default('')) == "users"  and  (lookup(row | default(none), ["category"]) | default('')) == "users" %}
+<DirectoryEntry>
+    {% if (lookup(row | default(none), ["contact_organization"]) | default(''))  and  (lookup(row | default(none), ["contact_name_given"]) | default(''))  and  (lookup(row | default(none), ["contact_name_family"]) | default('')) %}
+        <Name>{{ ((lookup(row | default(none), ["contact_organization"]) | default(''))) | output }}, {{ ((lookup(row | default(none), ["contact_name_given"]) | default(''))) | output }} {{ ((lookup(row | default(none), ["contact_name_family"]) | default(''))) | output }}</Name>
+    {% elif (lookup(row | default(none), ["contact_organization"]) | default(''))  and  (lookup(row | default(none), ["contact_name_given"]) | default('')) == ""  and  (lookup(row | default(none), ["contact_name_family"]) | default('')) == "" %}
+        <Name>{{ ((lookup(row | default(none), ["contact_organization"]) | default(''))) | output }}</Name>
+    {% elif (lookup(row | default(none), ["contact_name_given"]) | default(''))  and  (lookup(row | default(none), ["contact_name_family"]) | default(''))  and  (lookup(row | default(none), ["contact_organization"]) | default('')) == "" %}
+        <Name>{{ ((lookup(row | default(none), ["contact_name_given"]) | default(''))) | output }} {{ ((lookup(row | default(none), ["contact_name_family"]) | default(''))) | output }}</Name>
+    {% elif (lookup(row | default(none), ["contact_name_given"]) | default(''))  and  (lookup(row | default(none), ["contact_name_family"]) | default('')) %}
+        <Name>{{ ((lookup(row | default(none), ["contact_name_given"]) | default(''))) | output }} {{ ((lookup(row | default(none), ["contact_name_family"]) | default(''))) | output }}</Name>
+    {% elif (lookup(row | default(none), ["contact_name_given"]) | default('')) %}
+        <Name>{{ ((lookup(row | default(none), ["contact_name_given"]) | default(''))) | output }}</Name>
+    {% elif (lookup(row | default(none), ["contact_name_family"]) | default('')) %}
+        <Name>{{ ((lookup(row | default(none), ["contact_name_family"]) | default(''))) | output }}</Name>
+    {% else %}
+        <Name>{{ ((lookup(row | default(none), ["effective_caller_id_name"]) | default(''))) | output }}</Name>
+    {% endif %}
+
+    {% for number in (lookup(row | default(none), ["numbers"]) | default('')) | values %}
+        {% if (lookup(number | default(none), ["phone_label"]) | default('')) == "work"  and  (lookup(number | default(none), ["phone_number"]) | default('')) != "" %}
+            <Telephone>{{ ((lookup(number | default(none), ["phone_number"]) | default(''))) | output }}</Telephone>
+        {% elif  not ((lookup(ns | default(none), ["telephone_set"]) is defined and lookup(ns | default(none), ["telephone_set"]) is not none))  and  (lookup(number | default(none), ["phone_number"]) | default('')) != "" %}
+            <Telephone>{{ ((lookup(number | default(none), ["phone_number"]) | default(''))) | output }}</Telephone>
+            {% set ns.telephone_set = true %}
+        {% endif %}
+        
+        {% if (lookup(number | default(none), ["phone_label"]) | default('')) == "mobile"  and  (lookup(number | default(none), ["phone_number"]) | default('')) != "" %}
+            <Mobile>{{ ((lookup(number | default(none), ["phone_number"]) | default(''))) | output }}</Mobile>
+        {% elif  not ((lookup(ns | default(none), ["mobile_set"]) is defined and lookup(ns | default(none), ["mobile_set"]) is not none))  and  (lookup(number | default(none), ["phone_number"]) | default('')) != ""  and   not ((lookup(ns | default(none), ["telephone_set"]) is defined and lookup(ns | default(none), ["telephone_set"]) is not none)) %}
+            <Mobile>{{ ((lookup(number | default(none), ["phone_number"]) | default(''))) | output }}</Mobile>
+            {% set ns.mobile_set = true %}
+        {% endif %}
+        
+        {% if (lookup(number | default(none), ["phone_label"]) | default('')) == "home"  and  (lookup(number | default(none), ["phone_number"]) | default('')) != "" %}
+            <Other>{{ ((lookup(number | default(none), ["phone_number"]) | default(''))) | output }}</Other>
+        {% elif  not ((lookup(ns | default(none), ["other_set"]) is defined and lookup(ns | default(none), ["other_set"]) is not none))  and  (lookup(number | default(none), ["phone_number"]) | default('')) != ""  and   not ((lookup(ns | default(none), ["telephone_set"]) is defined and lookup(ns | default(none), ["telephone_set"]) is not none))  and   not ((lookup(ns | default(none), ["mobile_set"]) is defined and lookup(ns | default(none), ["mobile_set"]) is not none)) %}
+            <Other>{{ ((lookup(number | default(none), ["phone_number"]) | default(''))) | output }}</Other>
+            {% set ns.other_set = true %}
+        {% endif %}
+    {% endfor %}
+    
+    <Ring>0</Ring>
+    <Group>Users</Group>
+    <picture></picture>
+    
+    
+    {% set ns.telephone_set = null %}
+    {% set ns.mobile_set = null %}
+    {% set ns.other_set = null %}
+</DirectoryEntry>
+
+{% elif (lookup(smarty | default(none), ["get","contacts"]) | default('')) == "groups"  and  (lookup(row | default(none), ["category"]) | default('')) == "groups" %}
+<DirectoryEntry>
+    {% if (lookup(row | default(none), ["contact_organization"]) | default(''))  and  (lookup(row | default(none), ["contact_name_given"]) | default(''))  and  (lookup(row | default(none), ["contact_name_family"]) | default('')) %}
+        <Name>{{ ((lookup(row | default(none), ["contact_organization"]) | default(''))) | output }}, {{ ((lookup(row | default(none), ["contact_name_given"]) | default(''))) | output }} {{ ((lookup(row | default(none), ["contact_name_family"]) | default(''))) | output }}</Name>
+    {% elif (lookup(row | default(none), ["contact_organization"]) | default(''))  and  (lookup(row | default(none), ["contact_name_given"]) | default('')) == ""  and  (lookup(row | default(none), ["contact_name_family"]) | default('')) == "" %}
+        <Name>{{ ((lookup(row | default(none), ["contact_organization"]) | default(''))) | output }}</Name>
+    {% elif (lookup(row | default(none), ["contact_name_given"]) | default(''))  and  (lookup(row | default(none), ["contact_name_family"]) | default(''))  and  (lookup(row | default(none), ["contact_organization"]) | default('')) == "" %}
+        <Name>{{ ((lookup(row | default(none), ["contact_name_given"]) | default(''))) | output }} {{ ((lookup(row | default(none), ["contact_name_family"]) | default(''))) | output }}</Name>
+    {% elif (lookup(row | default(none), ["contact_name_given"]) | default(''))  and  (lookup(row | default(none), ["contact_name_family"]) | default('')) %}
+        <Name>{{ ((lookup(row | default(none), ["contact_name_given"]) | default(''))) | output }} {{ ((lookup(row | default(none), ["contact_name_family"]) | default(''))) | output }}</Name>
+    {% elif (lookup(row | default(none), ["contact_name_given"]) | default('')) %}
+        <Name>{{ ((lookup(row | default(none), ["contact_name_given"]) | default(''))) | output }}</Name>
+    {% elif (lookup(row | default(none), ["contact_name_family"]) | default('')) %}
+        <Name>{{ ((lookup(row | default(none), ["contact_name_family"]) | default(''))) | output }}</Name>
+    {% else %}
+        <Name>{{ ((lookup(row | default(none), ["effective_caller_id_name"]) | default(''))) | output }}</Name>
+    {% endif %}
+
+    {% for number in (lookup(row | default(none), ["numbers"]) | default('')) | values %}
+        {% if (lookup(number | default(none), ["phone_label"]) | default('')) == "work"  and  (lookup(number | default(none), ["phone_number"]) | default('')) != "" %}
+            <Telephone>{{ ((lookup(number | default(none), ["phone_number"]) | default(''))) | output }}</Telephone>
+        {% elif  not ((lookup(ns | default(none), ["telephone_set"]) is defined and lookup(ns | default(none), ["telephone_set"]) is not none))  and  (lookup(number | default(none), ["phone_number"]) | default('')) != "" %}
+            <Telephone>{{ ((lookup(number | default(none), ["phone_number"]) | default(''))) | output }}</Telephone>
+            {% set ns.telephone_set = true %}
+        {% endif %}
+        
+        {% if (lookup(number | default(none), ["phone_label"]) | default('')) == "mobile"  and  (lookup(number | default(none), ["phone_number"]) | default('')) != "" %}
+            <Mobile>{{ ((lookup(number | default(none), ["phone_number"]) | default(''))) | output }}</Mobile>
+        {% elif  not ((lookup(ns | default(none), ["mobile_set"]) is defined and lookup(ns | default(none), ["mobile_set"]) is not none))  and  (lookup(number | default(none), ["phone_number"]) | default('')) != ""  and   not ((lookup(ns | default(none), ["telephone_set"]) is defined and lookup(ns | default(none), ["telephone_set"]) is not none)) %}
+            <Mobile>{{ ((lookup(number | default(none), ["phone_number"]) | default(''))) | output }}</Mobile>
+            {% set ns.mobile_set = true %}
+        {% endif %}
+        
+        {% if (lookup(number | default(none), ["phone_label"]) | default('')) == "home"  and  (lookup(number | default(none), ["phone_number"]) | default('')) != "" %}
+            <Other>{{ ((lookup(number | default(none), ["phone_number"]) | default(''))) | output }}</Other>
+        {% elif  not ((lookup(ns | default(none), ["other_set"]) is defined and lookup(ns | default(none), ["other_set"]) is not none))  and  (lookup(number | default(none), ["phone_number"]) | default('')) != ""  and   not ((lookup(ns | default(none), ["telephone_set"]) is defined and lookup(ns | default(none), ["telephone_set"]) is not none))  and   not ((lookup(ns | default(none), ["mobile_set"]) is defined and lookup(ns | default(none), ["mobile_set"]) is not none)) %}
+            <Other>{{ ((lookup(number | default(none), ["phone_number"]) | default(''))) | output }}</Other>
+            {% set ns.other_set = true %}
+        {% endif %}
+    {% endfor %}
+    
+    <Ring>0</Ring>
+    <Group>Groups</Group>
+    <picture></picture>
+    
+    
+    {% set ns.telephone_set = null %}
+    {% set ns.mobile_set = null %}
+    {% set ns.other_set = null %}
+</DirectoryEntry>
+
+{% elif (lookup(smarty | default(none), ["get","contacts"]) | default('')) == "extensions"  and  (lookup(row | default(none), ["category"]) | default('')) == "extensions" %}
+<DirectoryEntry>
+    {% if (lookup(row | default(none), ["contact_name_given"]) | default('')) %}
+        <Name>{{ ((lookup(row | default(none), ["contact_name_given"]) | default(''))) | output }} {{ ((lookup(row | default(none), ["contact_name_family"]) | default(''))) | output }}</Name>
+    {% else %}
+        <Name>{{ ((lookup(row | default(none), ["effective_caller_id_name"]) | default(''))) | output }}</Name>
+    {% endif %}
+    
+    {% if (lookup(row | default(none), ["phone_number"]) | default('')) %}
+        <Telephone>{{ ((lookup(row | default(none), ["phone_number"]) | default(''))) | output }}</Telephone>
+    {% else %}
+        <Telephone>{{ ((lookup(row | default(none), ["phone_extension"]) | default(''))) | output }}</Telephone>
+    {% endif %}
+    <Mobile></Mobile>
+    <Other></Other>
+    <Ring>0</Ring>
+    <Group>Extensions</Group>
+    <picture></picture>
+</DirectoryEntry>
+
+{% elif (lookup(smarty | default(none), ["get","contacts"]) | default('')) == "all" or  not (lookup(smarty | default(none), ["get","contacts"]) | default('')) %}
+<DirectoryEntry>
+    {% if (lookup(row | default(none), ["contact_organization"]) | default(''))  and  (lookup(row | default(none), ["contact_name_given"]) | default(''))  and  (lookup(row | default(none), ["contact_name_family"]) | default('')) %}
+        <Name>{{ ((lookup(row | default(none), ["contact_organization"]) | default(''))) | output }}, {{ ((lookup(row | default(none), ["contact_name_given"]) | default(''))) | output }} {{ ((lookup(row | default(none), ["contact_name_family"]) | default(''))) | output }}</Name>
+    {% elif (lookup(row | default(none), ["contact_organization"]) | default(''))  and  (lookup(row | default(none), ["contact_name_given"]) | default('')) == ""  and  (lookup(row | default(none), ["contact_name_family"]) | default('')) == "" %}
+        <Name>{{ ((lookup(row | default(none), ["contact_organization"]) | default(''))) | output }}</Name>
+    {% elif (lookup(row | default(none), ["contact_name_given"]) | default(''))  and  (lookup(row | default(none), ["contact_name_family"]) | default(''))  and  (lookup(row | default(none), ["contact_organization"]) | default('')) == "" %}
+        <Name>{{ ((lookup(row | default(none), ["contact_name_given"]) | default(''))) | output }} {{ ((lookup(row | default(none), ["contact_name_family"]) | default(''))) | output }}</Name>
+    {% elif (lookup(row | default(none), ["contact_name_given"]) | default(''))  and  (lookup(row | default(none), ["contact_name_family"]) | default('')) %}
+        <Name>{{ ((lookup(row | default(none), ["contact_name_given"]) | default(''))) | output }} {{ ((lookup(row | default(none), ["contact_name_family"]) | default(''))) | output }}</Name>
+    {% elif (lookup(row | default(none), ["contact_name_given"]) | default('')) %}
+        <Name>{{ ((lookup(row | default(none), ["contact_name_given"]) | default(''))) | output }}</Name>
+    {% elif (lookup(row | default(none), ["contact_name_family"]) | default('')) %}
+        <Name>{{ ((lookup(row | default(none), ["contact_name_family"]) | default(''))) | output }}</Name>
+    {% else %}
+        <Name>{{ ((lookup(row | default(none), ["effective_caller_id_name"]) | default(''))) | output }}</Name>
+    {% endif %}
+
+    {% if (lookup(row | default(none), ["category"]) | default('')) == "extensions" %}
+        {% if (lookup(row | default(none), ["phone_number"]) | default('')) %}
+            <Telephone>{{ ((lookup(row | default(none), ["phone_number"]) | default(''))) | output }}</Telephone>
+        {% else %}
+            <Telephone>{{ ((lookup(row | default(none), ["phone_extension"]) | default(''))) | output }}</Telephone>
+        {% endif %}
+        <Mobile></Mobile>
+        <Other></Other>
+    {% elif ((lookup(row | default(none), ["numbers"]) is defined and lookup(row | default(none), ["numbers"]) is not none)) %}
+        {% for number in (lookup(row | default(none), ["numbers"]) | default('')) | values %}
+            {% if (lookup(number | default(none), ["phone_label"]) | default('')) == "work"  and  (lookup(number | default(none), ["phone_number"]) | default('')) != "" %}
+                <Telephone>{{ ((lookup(number | default(none), ["phone_number"]) | default(''))) | output }}</Telephone>
+            {% elif  not ((lookup(ns | default(none), ["telephone_set"]) is defined and lookup(ns | default(none), ["telephone_set"]) is not none))  and  (lookup(number | default(none), ["phone_number"]) | default('')) != "" %}
+                <Telephone>{{ ((lookup(number | default(none), ["phone_number"]) | default(''))) | output }}</Telephone>
+                {% set ns.telephone_set = true %}
+            {% endif %}
+            
+            {% if (lookup(number | default(none), ["phone_label"]) | default('')) == "mobile"  and  (lookup(number | default(none), ["phone_number"]) | default('')) != "" %}
+                <Mobile>{{ ((lookup(number | default(none), ["phone_number"]) | default(''))) | output }}</Mobile>
+            {% elif  not ((lookup(ns | default(none), ["mobile_set"]) is defined and lookup(ns | default(none), ["mobile_set"]) is not none))  and  (lookup(number | default(none), ["phone_number"]) | default('')) != ""  and   not ((lookup(ns | default(none), ["telephone_set"]) is defined and lookup(ns | default(none), ["telephone_set"]) is not none)) %}
+                <Mobile>{{ ((lookup(number | default(none), ["phone_number"]) | default(''))) | output }}</Mobile>
+                {% set ns.mobile_set = true %}
+            {% endif %}
+            
+            {% if (lookup(number | default(none), ["phone_label"]) | default('')) == "home"  and  (lookup(number | default(none), ["phone_number"]) | default('')) != "" %}
+                <Other>{{ ((lookup(number | default(none), ["phone_number"]) | default(''))) | output }}</Other>
+            {% elif  not ((lookup(ns | default(none), ["other_set"]) is defined and lookup(ns | default(none), ["other_set"]) is not none))  and  (lookup(number | default(none), ["phone_number"]) | default('')) != ""  and   not ((lookup(ns | default(none), ["telephone_set"]) is defined and lookup(ns | default(none), ["telephone_set"]) is not none))  and   not ((lookup(ns | default(none), ["mobile_set"]) is defined and lookup(ns | default(none), ["mobile_set"]) is not none)) %}
+                <Other>{{ ((lookup(number | default(none), ["phone_number"]) | default(''))) | output }}</Other>
+                {% set ns.other_set = true %}
+            {% endif %}
+        {% endfor %}
+    {% else %}
+        <Telephone>{{ ((lookup(row | default(none), ["phone_extension"]) | default(''))) | output }}</Telephone>
+        <Mobile></Mobile>
+        <Other></Other>
+    {% endif %}
+    
+    <Ring>0</Ring>
+    {% if (lookup(row | default(none), ["category"]) | default('')) == "users" %}
+        <Group>Users</Group>
+    {% elif (lookup(row | default(none), ["category"]) | default('')) == "groups" %}
+        <Group>Groups</Group>
+    {% elif (lookup(row | default(none), ["category"]) | default('')) == "extensions" %}
+        <Group>Extensions</Group>
+    {% else %}
+        <Group></Group>
+    {% endif %}
+    <picture></picture>
+    
+    
+    {% set ns.telephone_set = null %}
+    {% set ns.mobile_set = null %}
+    {% set ns.other_set = null %}
+</DirectoryEntry>
+{% endif %}
+{% endfor %}
+</FanvilIPPhoneDirectory>

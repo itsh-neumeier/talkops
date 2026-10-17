@@ -13,7 +13,15 @@
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import { can } from '#lib/session.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
-	type SourceProfile = { model: string; vendor: string; adapted: boolean; files: string[] };
+	type SourceProfile = {
+		model: string;
+		vendor: string;
+		adapted: boolean;
+		files: string[];
+		source_paths?: Record<string, string>;
+		reason?: string | null;
+	};
+	let sourceRevision = $state('');
 	let sources = $state<SourceProfile[]>([]),
 		models = $state<PhoneModel[]>([]),
 		templates = $state<ProvisioningTemplate[]>([]),
@@ -37,7 +45,7 @@
 	async function readSource() {
 		try {
 			sourceText = await getText(
-				`/provisioning/library/source/${encodeURIComponent(`${sourceModel}/${sourceFile}`)}`
+				`/provisioning/library/source/${encodeURIComponent(profile?.source_paths?.[sourceFile] ?? `${sourceModel}/${sourceFile}`)}`
 			);
 		} catch (err) {
 			error = errorMessage(err);
@@ -50,8 +58,11 @@
 	onMount(async () => {
 		if (!can('phones.manage')) return;
 		try {
-			const library = await api.get<{ profiles: SourceProfile[] }>('/provisioning/library');
+			const library = await api.get<{ profiles: SourceProfile[]; revision?: string }>(
+				'/provisioning/library'
+			);
 			sources = library.profiles;
+			sourceRevision = library.revision?.slice(0, 7) ?? '';
 			models = await api.get<PhoneModel[]>('/phone-models');
 			templates = await api.get<ProvisioningTemplate[]>('/provisioning/templates');
 			await selectSource();
@@ -162,8 +173,11 @@
 					>
 				</div>
 				<p class="hint">
-					{t(profile?.adapted ? 'prov.nativeAvailable' : 'prov.referenceOnly')} · MPL-1.1 · be0d0e3
+					{t(profile?.adapted ? 'prov.nativeAvailable' : 'prov.referenceOnly')} · MPL-1.1 · {sourceRevision}
 				</p>
+				{#if profile?.reason === 'no_source_template'}<p class="hint">
+						{t('vendor.sourceGap')}
+					</p>{/if}
 				<label for="source-code"
 					>{t('prov.source')}<textarea
 						id="source-code"

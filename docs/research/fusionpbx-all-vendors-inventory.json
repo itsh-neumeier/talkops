@@ -1,0 +1,956 @@
+{
+  "repository": "https://github.com/fusionpbx/fusionpbx",
+  "revision": "20143aec4366afc2755f336d3058243479d49d44",
+  "inspected_on": "2026-10-17",
+  "path": "resources/templates/provision",
+  "tree_truncated": false,
+  "vendor_count": 31,
+  "file_count": 1037,
+  "note": "Directory and file presence does not establish a working model or firmware capability.",
+  "vendors": [
+    {
+      "vendor": "2n",
+      "file_count": 2,
+      "template_directories": [
+        "ipsolo",
+        "ipstyle"
+      ],
+      "root_files": [],
+      "filename_patterns": [
+        "{$mac}.xml"
+      ],
+      "example_paths": [
+        "resources/templates/provision/2n/ipsolo/{$mac}.xml",
+        "resources/templates/provision/2n/ipstyle/{$mac}.xml"
+      ]
+    },
+    {
+      "vendor": "aastra",
+      "file_count": 12,
+      "template_directories": [
+        "480i",
+        "673x",
+        "675x",
+        "686x",
+        "9112i",
+        "9133i"
+      ],
+      "root_files": [],
+      "filename_patterns": [
+        "{$mac}.cfg",
+        "aastra.cfg"
+      ],
+      "example_paths": [
+        "resources/templates/provision/aastra/480i/aastra.cfg",
+        "resources/templates/provision/aastra/480i/{$mac}.cfg"
+      ]
+    },
+    {
+      "vendor": "acrobits",
+      "file_count": 1,
+      "template_directories": [
+        "default"
+      ],
+      "root_files": [],
+      "filename_patterns": [
+        "qr_template.txt"
+      ],
+      "example_paths": [
+        "resources/templates/provision/acrobits/default/qr_template.txt"
+      ]
+    },
+    {
+      "vendor": "algo",
+      "file_count": 7,
+      "template_directories": [
+        "8103",
+        "8180",
+        "8186",
+        "8188",
+        "8189",
+        "8196",
+        "8301"
+      ],
+      "root_files": [],
+      "filename_patterns": [
+        "algo{$mac}.conf",
+        "algom{$mac}.conf"
+      ],
+      "example_paths": [
+        "resources/templates/provision/algo/8103/algom{$mac}.conf",
+        "resources/templates/provision/algo/8180/algom{$mac}.conf"
+      ]
+    },
+    {
+      "vendor": "atcom",
+      "file_count": 1,
+      "template_directories": [
+        "ag198"
+      ],
+      "root_files": [],
+      "filename_patterns": [
+        "{$mac}.cfg"
+      ],
+      "example_paths": [
+        "resources/templates/provision/atcom/ag198/{$mac}.cfg"
+      ]
+    },
+    {
+      "vendor": "avaya",
+      "file_count": 9,
+      "template_directories": [
+        "J139",
+        "J169",
+        "J179",
+        "J189"
+      ],
+      "root_files": [
+        "J100Supgrade.txt"
+      ],
+      "filename_patterns": [
+        "{$mac}.cfg",
+        "directory.xml",
+        "J100Supgrade.txt"
+      ],
+      "example_paths": [
+        "resources/templates/provision/avaya/J100Supgrade.txt",
+        "resources/templates/provision/avaya/J139/directory.xml"
+      ]
+    },
+    {
+      "vendor": "cisco",
+      "file_count": 49,
+      "template_directories": [
+        "7940",
+        "7960",
+        "79x1",
+        "8811",
+        "8832",
+        "8841",
+        "8845",
+        "8851",
+        "8861",
+        "8865",
+        "9861",
+        "spa112",
+        "spa122",
+        "spa191",
+        "spa192",
+        "spa301",
+        "spa303",
+        "spa501g",
+        "spa502g",
+        "spa504g",
+        "spa508g",
+        "spa509g",
+        "spa512g",
+        "spa514g",
+        "spa525g",
+        "spa525g2"
+      ],
+      "root_files": [],
+      "filename_patterns": [
+        "{$mac}.xml",
+        "dialplan.xml",
+        "directory_enterprise.xml",
+        "directory_extensions.xml",
+        "directory_personal.xml",
+        "directory_speed_dial.xml",
+        "directory.xml",
+        "DISTINCTIVERINGLIST.XML",
+        "RINGLIST.XML",
+        "SEP{$mac}.cnf.xml",
+        "SIP{$mac}.cnf",
+        "SIPDefault.cnf",
+        "syncinfo.xml"
+      ],
+      "example_paths": [
+        "resources/templates/provision/cisco/7940/DISTINCTIVERINGLIST.XML",
+        "resources/templates/provision/cisco/7940/RINGLIST.XML"
+      ]
+    },
+    {
+      "vendor": "digium",
+      "file_count": 18,
+      "template_directories": [
+        "d40",
+        "d50",
+        "d60",
+        "d62",
+        "d65",
+        "d70"
+      ],
+      "root_files": [],
+      "filename_patterns": [
+        "{$mac}-contacts.cfg",
+        "{$mac}-smartblf.cfg",
+        "{$mac}.cfg"
+      ],
+      "example_paths": [
+        "resources/templates/provision/digium/d40/{$mac}-contacts.cfg",
+        "resources/templates/provision/digium/d40/{$mac}-smartblf.cfg"
+      ]
+    },
+    {
+      "vendor": "escene",
+      "file_count": 4,
+      "template_directories": [
+        "e3xx"
+      ],
+      "root_files": [],
+      "filename_patterns": [
+        "{$mac}_extern.xml",
+        "{$mac}_phonebook.xml",
+        "{$mac}.xml",
+        "timezones.txt"
+      ],
+      "example_paths": [
+        "resources/templates/provision/escene/e3xx/timezones.txt",
+        "resources/templates/provision/escene/e3xx/{$mac}.xml"
+      ]
+    },
+    {
+      "vendor": "fanvil",
+      "file_count": 33,
+      "template_directories": [
+        "h2u-v2",
+        "h5",
+        "i30",
+        "v62-pro",
+        "v62",
+        "v63",
+        "v64",
+        "v65",
+        "v67",
+        "w611w",
+        "x1s",
+        "x1sg",
+        "x1sp",
+        "x210",
+        "x2p",
+        "x3g",
+        "x3sg",
+        "x3sp",
+        "x3sw",
+        "x3u-pro",
+        "x3u",
+        "x4",
+        "x4g",
+        "x4sg",
+        "x4u",
+        "x5s",
+        "x5u",
+        "x6",
+        "x6u",
+        "x7",
+        "x7a",
+        "x7c"
+      ],
+      "root_files": [],
+      "filename_patterns": [
+        "{$mac}.cfg",
+        "{$mac}.xml",
+        "directory.xml"
+      ],
+      "example_paths": [
+        "resources/templates/provision/fanvil/h2u-v2/{$mac}.cfg",
+        "resources/templates/provision/fanvil/h5/{$mac}.cfg"
+      ]
+    },
+    {
+      "vendor": "flyingvoice",
+      "file_count": 168,
+      "template_directories": [
+        "audiokit",
+        "fip10",
+        "fip11c",
+        "fip12wp",
+        "fip13g",
+        "fip14g",
+        "fip15g",
+        "fip16",
+        "fip16plus",
+        "i86box",
+        "imetalbox",
+        "p10",
+        "p10g",
+        "p10lte",
+        "p10p",
+        "p10w",
+        "p11",
+        "p11g",
+        "p11lte",
+        "p11p",
+        "p11w",
+        "p20",
+        "p20g",
+        "p20p",
+        "p20w",
+        "p21",
+        "p21p",
+        "p21w",
+        "p22g",
+        "p22p",
+        "p23g",
+        "p23gw",
+        "p24gw",
+        "p33",
+        "p33g",
+        "p33p",
+        "p510",
+        "p53",
+        "p54",
+        "p55",
+        "p57",
+        "p58"
+      ],
+      "root_files": [],
+      "filename_patterns": [
+        "{$mac}.cfg",
+        "directory.xml",
+        "y000000000000.boot",
+        "y000000000000.cfg"
+      ],
+      "example_paths": [
+        "resources/templates/provision/flyingvoice/audiokit/directory.xml",
+        "resources/templates/provision/flyingvoice/audiokit/y000000000000.boot"
+      ]
+    },
+    {
+      "vendor": "grandstream",
+      "file_count": 113,
+      "template_directories": [
+        "dp715.sm",
+        "dp715",
+        "dp750",
+        "gac2500",
+        "gds3705",
+        "gds3710",
+        "ghp6xx",
+        "grp2612",
+        "grp2612w",
+        "grp2613",
+        "grp2614",
+        "grp2615",
+        "grp2616",
+        "grp261x",
+        "grp26xx",
+        "gsc3516",
+        "gsc3518hs",
+        "gswave",
+        "gxp110x",
+        "gxp116x",
+        "gxp140x",
+        "gxp140xbk",
+        "gxp1450",
+        "gxp1450bk",
+        "gxp16xx",
+        "gxp17xx",
+        "gxp20xx",
+        "gxp2100",
+        "gxp2124",
+        "gxp2130",
+        "gxp2135",
+        "gxp2140",
+        "gxp2160",
+        "gxp2170",
+        "gxp21xx",
+        "gxp21xxbk",
+        "gxp2200",
+        "gxp3240",
+        "gxv300x",
+        "gxv3140",
+        "gxv3175",
+        "gxv3175v2",
+        "gxv3240",
+        "gxv3275",
+        "gxv3370",
+        "gxv3480",
+        "gxv3504",
+        "gxw4004",
+        "gxw4008",
+        "gxw40xx",
+        "gxw410x",
+        "gxw42xx",
+        "ht502",
+        "ht503",
+        "ht701",
+        "ht702",
+        "ht704",
+        "ht801",
+        "ht802",
+        "ht813",
+        "ht814",
+        "ht818",
+        "ht8x1",
+        "htx86",
+        "wave",
+        "wp810",
+        "wp820",
+        "wp826",
+        "wp8x6"
+      ],
+      "root_files": [
+        "README.md",
+        "gxv3380"
+      ],
+      "filename_patterns": [
+        "{$mac}.xml",
+        "gxp2160_labels.ott",
+        "gxv3380",
+        "label.txt",
+        "phonebook.xml",
+        "README.md",
+        "README.txt"
+      ],
+      "example_paths": [
+        "resources/templates/provision/grandstream/README.md",
+        "resources/templates/provision/grandstream/dp715.sm/{$mac}.xml"
+      ]
+    },
+    {
+      "vendor": "groundwire",
+      "file_count": 2,
+      "template_directories": [
+        "default"
+      ],
+      "root_files": [],
+      "filename_patterns": [
+        "{$mac}.xml",
+        "qr_template.txt"
+      ],
+      "example_paths": [
+        "resources/templates/provision/groundwire/default/qr_template.txt",
+        "resources/templates/provision/groundwire/default/{$mac}.xml"
+      ]
+    },
+    {
+      "vendor": "htek",
+      "file_count": 10,
+      "template_directories": [
+        "uc903",
+        "uc923",
+        "uc924",
+        "uc924u",
+        "uc926",
+        "uc926u"
+      ],
+      "root_files": [],
+      "filename_patterns": [
+        "{$mac}.cfg",
+        "phonebook.xml"
+      ],
+      "example_paths": [
+        "resources/templates/provision/htek/uc903/phonebook.xml",
+        "resources/templates/provision/htek/uc903/{$mac}.cfg"
+      ]
+    },
+    {
+      "vendor": "linksys",
+      "file_count": 5,
+      "template_directories": [
+        "spa2102",
+        "spa3102",
+        "spa921",
+        "spa941",
+        "spa942"
+      ],
+      "root_files": [],
+      "filename_patterns": [
+        "{$mac}.xml"
+      ],
+      "example_paths": [
+        "resources/templates/provision/linksys/spa2102/{$mac}.xml",
+        "resources/templates/provision/linksys/spa3102/{$mac}.xml"
+      ]
+    },
+    {
+      "vendor": "linphone",
+      "file_count": 1,
+      "template_directories": [
+        "default"
+      ],
+      "root_files": [],
+      "filename_patterns": [
+        "{$address}.xml"
+      ],
+      "example_paths": [
+        "resources/templates/provision/linphone/default/{$address}.xml"
+      ]
+    },
+    {
+      "vendor": "mitel",
+      "file_count": 12,
+      "template_directories": [
+        "5320",
+        "5320e",
+        "5324",
+        "5330",
+        "5330e",
+        "5340"
+      ],
+      "root_files": [],
+      "filename_patterns": [
+        "MN_{$mac}.cfg",
+        "MN_Generic.cfg"
+      ],
+      "example_paths": [
+        "resources/templates/provision/mitel/5320/MN_Generic.cfg",
+        "resources/templates/provision/mitel/5320/MN_{$mac}.cfg"
+      ]
+    },
+    {
+      "vendor": "obihai",
+      "file_count": 4,
+      "template_directories": [
+        "obi1032",
+        "obi1062",
+        "obi302",
+        "obi310"
+      ],
+      "root_files": [],
+      "filename_patterns": [
+        "{$mac}.xml"
+      ],
+      "example_paths": [
+        "resources/templates/provision/obihai/obi1032/{$mac}.xml",
+        "resources/templates/provision/obihai/obi1062/{$mac}.xml"
+      ]
+    },
+    {
+      "vendor": "panasonic",
+      "file_count": 16,
+      "template_directories": [
+        "tgp500",
+        "tgp550",
+        "ut113",
+        "ut123",
+        "ut133",
+        "ut136",
+        "ut670",
+        "utg200b",
+        "utg300b"
+      ],
+      "root_files": [],
+      "filename_patterns": [
+        "{$mac}.cfg",
+        "{$mac}.xml",
+        "KX-TGP500B04.cfg",
+        "KX-TGP550T04.cfg",
+        "KX-UT113.cfg",
+        "KX-UT123.cfg",
+        "KX-UT133.cfg",
+        "KX-UT136.cfg",
+        "KX-UT670.cfg"
+      ],
+      "example_paths": [
+        "resources/templates/provision/panasonic/tgp500/KX-TGP500B04.cfg",
+        "resources/templates/provision/panasonic/tgp500/{$mac}.cfg"
+      ]
+    },
+    {
+      "vendor": "poly",
+      "file_count": 4,
+      "template_directories": [
+        "edge-e550",
+        "poly-vvx-450",
+        "poly-vvx-d230"
+      ],
+      "root_files": [],
+      "filename_patterns": [
+        "{$mac}-directory.xml",
+        "{$mac}.cfg",
+        "{$mac}.xml"
+      ],
+      "example_paths": [
+        "resources/templates/provision/poly/edge-e550/{$mac}-directory.xml",
+        "resources/templates/provision/poly/edge-e550/{$mac}.cfg"
+      ]
+    },
+    {
+      "vendor": "polycom",
+      "file_count": 80,
+      "template_directories": [
+        "3.x",
+        "4.x",
+        "5.x",
+        "6.x",
+        "650",
+        "8030",
+        "ccx500",
+        "duo",
+        "ip321",
+        "ip331",
+        "ip335",
+        "ip450",
+        "ip5000",
+        "ip550",
+        "ip560",
+        "ip6000",
+        "ip650",
+        "ip670",
+        "ip7000",
+        "vvx101",
+        "vvx150",
+        "vvx1500",
+        "vvx201",
+        "vvx250",
+        "vvx300",
+        "vvx301",
+        "vvx310",
+        "vvx311",
+        "vvx350",
+        "vvx400",
+        "vvx401",
+        "vvx410",
+        "vvx411",
+        "vvx450",
+        "vvx500",
+        "vvx501",
+        "vvx600",
+        "vvx601"
+      ],
+      "root_files": [],
+      "filename_patterns": [
+        "{$mac}-directory.xml",
+        "{$mac}-registration.cfg",
+        "{$mac}.cfg",
+        "custom.cfg",
+        "phone1.cfg",
+        "sip.cfg"
+      ],
+      "example_paths": [
+        "resources/templates/provision/polycom/3.x/{$mac}.cfg",
+        "resources/templates/provision/polycom/4.x/{$mac}-directory.xml"
+      ]
+    },
+    {
+      "vendor": "sangoma",
+      "file_count": 3,
+      "template_directories": [
+        "s300",
+        "s500",
+        "s700"
+      ],
+      "root_files": [],
+      "filename_patterns": [
+        "{$mac}.xml"
+      ],
+      "example_paths": [
+        "resources/templates/provision/sangoma/s300/{$mac}.xml",
+        "resources/templates/provision/sangoma/s500/{$mac}.xml"
+      ]
+    },
+    {
+      "vendor": "sipnetic",
+      "file_count": 1,
+      "template_directories": [
+        "default"
+      ],
+      "root_files": [],
+      "filename_patterns": [
+        "template.csv"
+      ],
+      "example_paths": [
+        "resources/templates/provision/sipnetic/default/template.csv"
+      ]
+    },
+    {
+      "vendor": "snom",
+      "file_count": 35,
+      "template_directories": [
+        "300",
+        "320",
+        "360",
+        "3xx",
+        "720",
+        "7xx",
+        "820",
+        "8xx",
+        "C520",
+        "C620",
+        "D120",
+        "D315",
+        "D345",
+        "D375",
+        "D385",
+        "D712",
+        "D715",
+        "D717",
+        "D725",
+        "D735",
+        "D745",
+        "D765",
+        "D785",
+        "D812",
+        "D815",
+        "D862",
+        "D865",
+        "M100KLE",
+        "M500KLE",
+        "PA1",
+        "PA1plus",
+        "m3"
+      ],
+      "root_files": [],
+      "filename_patterns": [
+        "{$mac}.cfg",
+        "{$mac}.xml",
+        "desktop.ini",
+        "directory.xml"
+      ],
+      "example_paths": [
+        "resources/templates/provision/snom/300/{$mac}.xml",
+        "resources/templates/provision/snom/320/{$mac}.xml"
+      ]
+    },
+    {
+      "vendor": "spectralink",
+      "file_count": 1,
+      "template_directories": [],
+      "root_files": [
+        "empty.txt"
+      ],
+      "filename_patterns": [
+        "empty.txt"
+      ],
+      "example_paths": [
+        "resources/templates/provision/spectralink/empty.txt"
+      ]
+    },
+    {
+      "vendor": "swissvoice",
+      "file_count": 4,
+      "template_directories": [
+        "cp2502",
+        "cp2505g"
+      ],
+      "root_files": [],
+      "filename_patterns": [
+        "{$mac}.cfg",
+        "CP2502.cfg",
+        "CP2505.cfg"
+      ],
+      "example_paths": [
+        "resources/templates/provision/swissvoice/cp2502/CP2502.cfg",
+        "resources/templates/provision/swissvoice/cp2502/{$mac}.cfg"
+      ]
+    },
+    {
+      "vendor": "telekonnectors",
+      "file_count": 2,
+      "template_directories": [
+        "galaxy1000-plus",
+        "galaxy1000"
+      ],
+      "root_files": [],
+      "filename_patterns": [
+        "{$mac}.cfg"
+      ],
+      "example_paths": [
+        "resources/templates/provision/telekonnectors/galaxy1000-plus/{$mac}.cfg",
+        "resources/templates/provision/telekonnectors/galaxy1000/{$mac}.cfg"
+      ]
+    },
+    {
+      "vendor": "vtech",
+      "file_count": 2,
+      "template_directories": [
+        "vcs754"
+      ],
+      "root_files": [],
+      "filename_patterns": [
+        "{$mac}.cfg",
+        "directory.xml"
+      ],
+      "example_paths": [
+        "resources/templates/provision/vtech/vcs754/directory.xml",
+        "resources/templates/provision/vtech/vcs754/{$mac}.cfg"
+      ]
+    },
+    {
+      "vendor": "yealink",
+      "file_count": 433,
+      "template_directories": [
+        "ax83h",
+        "ax86r",
+        "cp860",
+        "cp920",
+        "cp925",
+        "cp960",
+        "cp965",
+        "t19p",
+        "t20p",
+        "t21p",
+        "t22p",
+        "t23g",
+        "t23p",
+        "t26p",
+        "t27g",
+        "t27p",
+        "t28p",
+        "t29g",
+        "t2x",
+        "t31g",
+        "t31w",
+        "t32g",
+        "t33g",
+        "t34w",
+        "t38g",
+        "t40g",
+        "t40p",
+        "t41p",
+        "t41s",
+        "t42g",
+        "t42s",
+        "t42u",
+        "t43u",
+        "t44w",
+        "t46g",
+        "t46s",
+        "t46u",
+        "t48g",
+        "t48s",
+        "t48u",
+        "t49g",
+        "t4x",
+        "t52s",
+        "t53",
+        "t53w",
+        "t54s",
+        "t54w",
+        "t56a",
+        "t57w",
+        "t58a",
+        "t58v",
+        "t58w",
+        "t5x",
+        "t73u",
+        "t73w",
+        "t74u",
+        "t74w",
+        "t77u",
+        "t85w",
+        "t87w",
+        "t88v",
+        "t88w",
+        "vp530",
+        "vp59",
+        "w52p",
+        "w56p",
+        "w60b",
+        "w70b",
+        "w7xp",
+        "w80"
+      ],
+      "root_files": [],
+      "filename_patterns": [
+        "{$mac}.boot",
+        "{$mac}.cfg",
+        "{mac}.boot",
+        "directory.xml",
+        "favorite_setting.xml",
+        "super_search.xml",
+        "y000000000000.boot",
+        "y000000000000.cfg",
+        "y000000000004.cfg",
+        "y000000000005.cfg",
+        "y000000000007.cfg",
+        "y000000000023.cfg",
+        "y000000000025.cfg",
+        "y000000000028.cfg",
+        "y000000000029.cfg",
+        "y000000000032.cfg",
+        "y000000000035.cfg",
+        "y000000000036.cfg",
+        "y000000000037.cfg",
+        "y000000000038.cfg",
+        "y000000000044.cfg",
+        "y000000000045.cfg",
+        "y000000000046.cfg",
+        "y000000000051.cfg",
+        "y000000000052.cfg",
+        "y000000000053.cfg",
+        "y000000000054.cfg",
+        "y000000000056.cfg",
+        "y000000000058.cfg",
+        "y000000000065.cfg",
+        "y000000000066.cfg",
+        "y000000000067.cfg",
+        "y000000000068.cfg",
+        "y000000000069.cfg",
+        "y000000000070.cfg",
+        "y000000000073.cfg",
+        "y000000000074.cfg",
+        "y000000000076.cfg",
+        "y000000000077.cfg",
+        "y000000000078.cfg",
+        "y000000000091.cfg",
+        "y000000000095.cfg",
+        "y000000000096.cfg",
+        "y000000000097.cfg",
+        "y000000000107.cfg",
+        "y000000000108.cfg",
+        "y000000000109.cfg",
+        "y000000000116.cfg",
+        "y000000000123.cfg",
+        "y000000000124.cfg",
+        "y000000000143.cfg",
+        "y000000000146.cfg",
+        "y000000000148.cfg",
+        "y000000000150.cfg",
+        "y000000000171.cfg",
+        "y000000000172.cfg",
+        "y000000000174.cfg",
+        "y000000000175.cfg",
+        "y000000000180.cfg",
+        "y000000000182.cfg",
+        "y000000000183.cfg",
+        "y000000000184.cfg",
+        "y000000000186.cfg",
+        "y000000000187.cfg",
+        "y000000000188.cfg",
+        "y000000000192.cfg",
+        "y000000000196.cfg",
+        "y000000000197.cfg"
+      ],
+      "example_paths": [
+        "resources/templates/provision/yealink/ax83h/directory.xml",
+        "resources/templates/provision/yealink/ax83h/favorite_setting.xml"
+      ]
+    },
+    {
+      "vendor": "yeastar",
+      "file_count": 3,
+      "template_directories": [
+        "ta200",
+        "ta400",
+        "ta800"
+      ],
+      "root_files": [],
+      "filename_patterns": [
+        "cfg{$mac}.xml"
+      ],
+      "example_paths": [
+        "resources/templates/provision/yeastar/ta200/cfg{$mac}.xml",
+        "resources/templates/provision/yeastar/ta400/cfg{$mac}.xml"
+      ]
+    },
+    {
+      "vendor": "zoiper",
+      "file_count": 2,
+      "template_directories": [
+        "5.x"
+      ],
+      "root_files": [],
+      "filename_patterns": [
+        "config.xml",
+        "directory.xml"
+      ],
+      "example_paths": [
+        "resources/templates/provision/zoiper/5.x/config.xml",
+        "resources/templates/provision/zoiper/5.x/directory.xml"
+      ]
+    }
+  ]
+}

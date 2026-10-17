@@ -1,0 +1,5 @@
+{# MPL-1.1 derivative: FusionPBX 20143aec4366afc2755f336d3058243479d49d44, aastra/480i/aastra.cfg, blob 1a6b14816349041dac0f1f31e25ceb2384759baa. #}{% set ns = namespace(keys=keys | default({}), contact_groups=contact_groups | default({})) %}# #################
+# Reference Documenation
+# #################
+# https://www.mitel.com/open-solutions-documents/480i
+# note: This file must contain something or the phone will not then grab the {{ ((mac | default(''))) | output }}.cfg

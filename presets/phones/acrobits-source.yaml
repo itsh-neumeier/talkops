@@ -1,0 +1,13 @@
+{
+  "vendor": "acrobits",
+  "status": "untested",
+  "models": [
+    {
+      "id": "acrobits-default",
+      "name": "default",
+      "family": "app",
+      "accounts": 1,
+      "line_keys": 0
+    }
+  ]
+}

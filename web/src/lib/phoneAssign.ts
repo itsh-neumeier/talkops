@@ -4,6 +4,9 @@ import { api, type DeviceCredentials, type DeviceKind } from '#lib/api.ts';
 export function deviceKind(family: string | undefined): DeviceKind {
 	if (family === 'dect') return 'dect';
 	if (family === 'wifi') return 'wifi';
+	if (family === 'app') return 'softphone';
+	if (family === 'intercom') return 'door';
+	if (['ata', 'gateway', 'paging'].includes(family ?? '')) return 'other';
 	return 'desk';
 }
 

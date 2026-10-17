@@ -1,0 +1,47 @@
+{# MPL-1.1 derivative: FusionPBX 20143aec4366afc2755f336d3058243479d49d44, digium/d60/{$mac}-contacts.cfg, blob ef18e96672d963ceb8b66c76dd8736c69ea5baa0. #}{% set ns = namespace(keys=keys | default({}), contact_groups=contact_groups | default({})) %}<phonebooks>
+  <contacts group_name="Default" id="0">
+    {% for row in (contacts | default('')) | values %}
+      <contact
+        id="{{ ((loop.index0 | default(''))) | output }}"
+        prefix=""
+        first_name="{{ ((lookup(row | default(none), ["contact_name_given"]) | default(''))) | output }}"
+        second_name=""
+        last_name="{{ ((lookup(row | default(none), ["contact_name_family"]) | default(''))) | output }}"
+        suffix=""
+        contact_type="sip"
+        organization="{{ ((lookup(row | default(none), ["contact_organization"]) | default(''))) | output }}"
+        job_title=""
+        location=""
+        notes=""
+        account_id="{% if (lookup(row | default(none), ["phone_number"]) | default('')) != "" %}{{ ((lookup(row | default(none), ["phone_number"]) | default(''))) | output }}{% else %}{{ ((lookup(row | default(none), ["phone_extension"]) | default(''))) | output }}{% endif %}"
+      >
+        <actions>
+          {% if (lookup(row | default(none), ["phone_number"]) | default('')) != "" %}
+          <action id="primary" dial="{{ ((lookup(row | default(none), ["phone_extension"]) | default(''))) | output }}" label="Extension" name="Dial"></action>
+          <action id="send_to_vm" dial="*99{{ ((lookup(row | default(none), ["phone_extension"]) | default(''))) | output }}" label="Voicemail" name="Dial Voicemail"></action>
+          {% else %}
+          <action id="primary" dial="{{ ((lookup(row | default(none), ["phone_number"]) | default(''))) | output }}" label="Extension" name="Dial"></action>
+          {% endif %}
+        </actions>
+      </contact>
+    {% endfor %}
+    {% for row in (lookup(keys | default(none), ["line"]) | default('')) | values %}
+      <contact
+        id="sd-{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}"
+        prefix=""
+        first_name=""
+        second_name=""
+        last_name="{{ ((lookup(row | default(none), ["device_key_label"]) | default(''))) | output }}"
+        contact_type="sip"
+        account_id="{{ ((lookup(row | default(none), ["device_key_value"]) | default(''))) | output }}"
+        {% if (lookup(row | default(none), ["device_key_type"]) | default('')) == "blf" %}
+        subscribe_to="sip:{{ ((lookup(row | default(none), ["device_key_value"]) | default(''))) | output }}@{% for l in (lines | default('')) | values %}{{ ((lookup(row | default(none), ["server_address"]) | default(''))) | output }}{% break %}{% endfor %}"
+        {% endif %}
+      >
+        <actions>
+          <action id="primary" dial="{{ ((lookup(row | default(none), ["device_key_value"]) | default(''))) | output }}" dial_prefix="" label="Extension" name="Dial"></action>
+        </actions>
+      </contact>
+    {% endfor %}
+  </contacts>
+</phonebooks>

@@ -1,0 +1,13 @@
+{
+  "vendor": "linphone",
+  "status": "untested",
+  "models": [
+    {
+      "id": "linphone-default",
+      "name": "default",
+      "family": "app",
+      "accounts": 1,
+      "line_keys": 0
+    }
+  ]
+}

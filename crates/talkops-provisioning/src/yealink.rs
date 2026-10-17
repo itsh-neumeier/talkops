@@ -6,8 +6,12 @@ use std::sync::OnceLock;
 use minijinja::{Environment, context};
 use serde::{Deserialize, Serialize};
 
-use crate::catalog::{PhoneFamily, PhoneModel};
+use crate::catalog::PhoneFamily;
 use crate::cfg_value;
+use crate::model::url_part;
+pub use crate::model::{
+    Account, AccountCodecs, MediaFile, PhoneSetup, Provisioning, RemotePhonebook,
+};
 
 pub const COMMON: &str = include_str!("../templates/yealink/common.cfg");
 pub const MAC: &str = include_str!("../templates/yealink/mac.cfg");
@@ -51,42 +55,6 @@ fn render_bounded(
     Ok(String::from_utf8(writer.0).expect("MiniJinja emits UTF-8"))
 }
 
-/// Where phones fetch configuration and report events.
-#[derive(Debug, Clone, Serialize)]
-pub struct Provisioning {
-    /// Provisioning base URL without credentials, e.g. `http://pbx:8080/provisioning`.
-    pub base_url: String,
-    pub username: String,
-    pub password: String,
-}
-
-impl Provisioning {
-    /// Base URL with embedded credentials, for URLs the phone fetches outside
-    /// the auto-provisioning mechanism (phonebook, firmware).
-    pub fn authenticated_base(&self) -> String {
-        match self.base_url.split_once("://") {
-            Some((scheme, rest)) => format!(
-                "{scheme}://{}:{}@{rest}",
-                url_part(&self.username),
-                url_part(&self.password)
-            ),
-            None => self.base_url.clone(),
-        }
-    }
-}
-
-/// Percent-encodes characters that are not allowed in URL userinfo.
-fn url_part(s: &str) -> String {
-    s.bytes()
-        .map(|b| match b {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~' => {
-                (b as char).to_string()
-            }
-            _ => format!("%{b:02X}"),
-        })
-        .collect()
-}
-
 #[derive(Debug, Clone, Serialize)]
 pub struct Locale {
     pub time_zone: String,
@@ -97,20 +65,23 @@ pub struct Locale {
 
 impl Locale {
     /// Yealink time zone settings for an IANA zone; language `de` or `en`.
-    /// Unknown zones fall back to Central European Time.
+    /// Unknown zones use UTC. The API rejects unknown device zones.
     pub fn new(iana_zone: &str, language: &str) -> Self {
-        let (tz, name) = match iana_zone {
-            "Europe/Vienna" => ("+1", "Austria(Vienna)"),
-            "Europe/London" => ("0", "UK(London)"),
-            "Europe/Paris" => ("+1", "France(Paris)"),
-            "Europe/Rome" => ("+1", "Italy(Rome)"),
-            "Europe/Madrid" => ("+1", "Spain(Madrid)"),
-            "Europe/Amsterdam" => ("+1", "Netherlands(Amsterdam)"),
+        let name = match iana_zone {
+            "Europe/Vienna" => "Austria(Vienna)",
+            "Europe/London" => "UK(London)",
+            "Europe/Paris" => "France(Paris)",
+            "Europe/Rome" => "Italy(Rome)",
+            "Europe/Madrid" => "Spain(Madrid)",
+            "Europe/Amsterdam" => "Netherlands(Amsterdam)",
             // Switzerland is not in Yealink's list; Berlin has identical rules.
-            _ => ("+1", "Germany(Berlin)"),
+            "Europe/Berlin" | "Europe/Zurich" => "Germany(Berlin)",
+            "Asia/Kolkata" => "India(Calcutta)",
+            "Asia/Kathmandu" => "Nepal(Katmandu)",
+            _ => "",
         };
         Self {
-            time_zone: tz.into(),
+            time_zone: crate::locale::hours(iana_zone),
             time_zone_name: name.into(),
             language: if language == "de" {
                 "German"
@@ -172,29 +143,6 @@ pub fn render_common_with(
             phonebook => context! { internal_name, contacts_name },
         },
     )
-}
-
-/// A SIP account placed on the phone (account N / DECT handset N).
-#[derive(Debug, Clone, Serialize)]
-pub struct Account {
-    pub index: u16,
-    pub label: String,
-    pub display_name: String,
-    pub username: String,
-    pub password: String,
-    pub codecs: AccountCodecs,
-}
-
-/// Audio codecs of a provisioned account.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum AccountCodecs {
-    /// Leave the codec settings of the phone unchanged.
-    #[default]
-    PhoneDefault,
-    /// The codecs of the TalkOps codec profiles (ADR 0023), see
-    /// [`PROFILE_CODECS`]. TalkOps selects the codec of each call.
-    Profiles,
 }
 
 /// `account.X.codec.<payload>` settings for [`AccountCodecs::Profiles`] as
@@ -309,51 +257,8 @@ fn first_account() -> u16 {
     1
 }
 
-/// A file the phone downloads (custom ringtone or wallpaper).
-#[derive(Debug, Clone, Serialize)]
-pub struct MediaFile {
-    /// Download URL including provisioning credentials.
-    pub url: String,
-    /// File name the phone stores and selects it by.
-    pub filename: String,
-}
-
-/// An additional remote phone book (a phone book section).
-#[derive(Debug, Clone, Serialize)]
-pub struct RemotePhonebook {
-    pub name: String,
-    pub url: String,
-}
-
 /// Remote phone book slots for sections; 1 and 2 are set in the common file.
 pub const SECTION_SLOTS: std::ops::RangeInclusive<u16> = 3..=5;
-
-#[derive(Debug, Clone)]
-pub struct PhoneSetup<'a> {
-    pub name: String,
-    pub mac: String,
-    pub model: &'a PhoneModel,
-    pub accounts: Vec<Account>,
-    pub keys: Vec<LineKey>,
-    /// SIP server host and port the phone registers to.
-    pub sip_host: String,
-    pub sip_port: u16,
-    pub firmware_url: Option<String>,
-    pub voicemail_code: String,
-    /// Custom ringtone (only used on models with `ringtone_max_kb > 0`).
-    pub ringtone: Option<MediaFile>,
-    /// Custom wallpaper (only used on models with `wallpaper`).
-    pub wallpaper: Option<MediaFile>,
-    /// Phone book sections shown on this phone (slots 3–5).
-    pub phonebooks: Vec<RemotePhonebook>,
-    /// Dial-now rules (see [`crate::dial_now`]).
-    pub dial_now: Vec<String>,
-    /// Comfort settings as (parameter, value), see
-    /// [`crate::PhoneCatalog::effective_settings`].
-    pub settings: Vec<(String, String)>,
-    pub provisioning: crate::keys::Overrides,
-    pub asset_base: String,
-}
 
 #[derive(Serialize)]
 struct RenderedKey {
@@ -543,6 +448,7 @@ fn extra_parameters(setup: &PhoneSetup<'_>) -> Vec<(String, String)> {
                 _ => KeyType::None,
             };
             effective.push(crate::keys::Key {
+                native_function: None,
                 group: "programmable".into(),
                 key: *slot,
                 kind,
@@ -562,6 +468,7 @@ fn extra_parameters(setup: &PhoneSetup<'_>) -> Vec<(String, String)> {
                 .any(|key| key.group == group && key.key == slot)
             {
                 effective.push(crate::keys::Key {
+                    native_function: None,
                     group,
                     key: slot,
                     kind: KeyType::None,
@@ -798,7 +705,10 @@ mod tests {
     #[test]
     fn every_desk_model_renders_its_last_key_and_reset() {
         let c = catalog();
-        for model in c.all().filter(|m| m.family == PhoneFamily::Desk) {
+        for model in c
+            .all()
+            .filter(|m| m.family == PhoneFamily::Desk && m.layout.is_some())
+        {
             let mut setup = PhoneSetup {
                 provisioning: Default::default(),
                 asset_base: String::new(),

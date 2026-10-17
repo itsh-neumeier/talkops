@@ -1,0 +1,5 @@
+{# MPL-1.1 derivative: FusionPBX 20143aec4366afc2755f336d3058243479d49d44, aastra/9133i/aastra.cfg, blob 376c314d95fd835501f490224eac4deee30a46f4. #}{% set ns = namespace(keys=keys | default({}), contact_groups=contact_groups | default({})) %}# #################
+# Reference Documenation
+# #################
+# https://www.mitel.com/open-solutions-documents/9133i
+# note: This file must contain something or the phone will not then grab the {{ ((mac | default(''))) | output }}.cfg

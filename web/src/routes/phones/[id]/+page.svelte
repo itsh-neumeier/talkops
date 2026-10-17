@@ -1,4 +1,7 @@
 <script lang="ts">
+	import PhoneVendorSettings from '#lib/components/PhoneVendorSettings.svelte';
+	import PhoneNativeKeys from '#lib/components/PhoneNativeKeys.svelte';
+	import PhoneCloneDialog from '#lib/components/PhoneCloneDialog.svelte';
 	import PhoneProvisioningEditor from '#lib/components/PhoneProvisioningEditor.svelte';
 	import { configurationDiff } from '#lib/provisioning.ts';
 	import type { PhoneProvisioning } from '#lib/api.ts';
@@ -9,7 +12,6 @@
 	import { assignExtension } from '#lib/phoneAssign.ts';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { onMount } from 'svelte';
 	import {
 		api,
 		getText,
@@ -31,6 +33,8 @@
 
 	const id = $derived(page.params.id);
 	let phone = $state<PhoneDetail | null>(null);
+	let cloneOpen = $state(false),
+		cloneSource = $state('');
 	let models = $state<PhoneModel[]>([]);
 	let extensions = $state<Extension[]>([]);
 	let media = $state<PhoneMedia[]>([]);
@@ -59,8 +63,30 @@
 	let message = $state('');
 	let config = $state('');
 	let configOpen = $state(false);
+	let qrImage = $state('');
 
-	const model = $derived(models.find((m) => m.id === form.model));
+	const baseModel = $derived(models.find((m) => m.id === form.model));
+	const model = $derived(
+		baseModel
+			? { ...baseModel, accounts: provisioning.account_slots ?? baseModel.accounts }
+			: undefined
+	);
+	function changeModel(next: string) {
+		if (next === form.model) return;
+		form.model = next;
+		keys = [];
+		provisioning = {
+			...provisioning,
+			account_slots: undefined,
+			parameters: {},
+			vendor_settings: {},
+			keys: [],
+			softkeys: {},
+			firmware_profile: '',
+			template_id: null
+		};
+		message = t('vendor.modelChanged');
+	}
 	const comfortShown = $derived(
 		!!model && !!comfort?.catalog.some((s) => s.families.includes(model.family))
 	);
@@ -82,17 +108,23 @@
 	/** Ringtones larger than the model accepts are not offered. */
 	const fits = (m: PhoneMedia) => !model || m.size_bytes <= model.ringtone_max_kb * 1024;
 
+	let loadSequence = 0;
 	async function load() {
+		const sequence = ++loadSequence;
+		const requestedId = id;
 		try {
-			[phone, models, extensions, media, sections, contacts] = await Promise.all([
-				api.get<PhoneDetail>(`/phones/${id}`),
+			const result = await Promise.all([
+				api.get<PhoneDetail>(`/phones/${requestedId}`),
 				api.get<PhoneModel[]>('/phone-models'),
 				api.get<Extension[]>('/extensions'),
 				api.get<PhoneMedia[]>('/phone-media').catch(() => []),
 				api.get<PhonebookSection[]>('/phonebook-sections'),
 				api.get<Contact[]>('/contacts')
 			]);
-			comfort = await api.get<PhoneSettingsView>('/phone-settings').catch(() => null);
+			const settings = await api.get<PhoneSettingsView>('/phone-settings').catch(() => null);
+			if (sequence !== loadSequence || requestedId !== id) return;
+			[phone, models, extensions, media, sections, contacts] = result;
+			comfort = settings;
 			form = {
 				name: phone.name,
 				mac: phone.mac,
@@ -111,10 +143,15 @@
 			keys = phone.line_keys.map((k) => ({ ...k }));
 			provisioning = structuredClone($state.snapshot(phone.provisioning ?? {}));
 		} catch (err) {
-			error = errorMessage(err);
+			if (sequence === loadSequence) error = errorMessage(err);
 		}
 	}
-	onMount(load);
+	$effect(() => {
+		if (id) {
+			phone = null;
+			void load();
+		}
+	});
 
 	/** Key layout row for every key of the model; unconfigured keys show the default. */
 	const rows = $derived(
@@ -251,9 +288,13 @@
 			error = errorMessage(err);
 		}
 	}
-	async function showConfig() {
+	async function showConfig(artifact?: string, qr = false) {
 		try {
-			config = await getText(`/phones/${id}/config`);
+			const query = new URLSearchParams();
+			if (artifact) query.set('artifact', artifact);
+			if (qr) query.set('qr', 'true');
+			config = await getText(`/phones/${id}/config?${query}`);
+			qrImage = qr ? `data:image/svg+xml,${encodeURIComponent(config)}` : '';
 			configOpen = true;
 		} catch (err) {
 			error = errorMessage(err);
@@ -282,17 +323,76 @@
 		<span class="text-base font-normal text-slate-500 dark:text-slate-400">{model?.name}</span>
 	{/snippet}
 	{#snippet actions()}
-		<button class="btn" onclick={preview}>{t('prov.preview')}</button>
-		<button class="btn" title={t('phones.resyncHint')} onclick={() => resync(false)}
-			>{t('phones.resync')}</button
+		<button
+			class="btn"
+			onclick={() => {
+				cloneSource = id ?? '';
+				cloneOpen = true;
+			}}>{t('phoneclone.title')}</button
 		>
-		<button class="btn" onclick={() => resync(true)}>{t('phones.reboot')}</button>
-		<button class="btn" onclick={showConfig}>{t('phones.showConfig')}</button>
+		<button class="btn" onclick={preview}>{t('prov.preview')}</button>
+		{#if model?.provisioning_capabilities?.resync !== false}<button
+				class="btn"
+				title={t('phones.resyncHint')}
+				onclick={() => resync(false)}>{t('phones.resync')}</button
+			>
+			<button class="btn" onclick={() => resync(true)}>{t('phones.reboot')}</button>{/if}
+		<button class="btn" onclick={() => showConfig()}>{t('phones.showConfig')}</button>
 		<button class="btn btn-danger" onclick={remove}>{t('common.delete')}</button>
 	{/snippet}
 	<ErrorBox {error} />
 	{#if message}<p class="text-sm text-emerald-700 dark:text-emerald-400">{message}</p>{/if}
 	{#if phone}
+		{#if phone.provisioning_files?.length}
+			<section class="card space-y-3">
+				<h2>{t('vendor.files')}</h2>
+				<p class="hint">{t('vendor.filesHint')}</p>
+				{#if phone.provisioning_base}<p>
+						{t('vendor.baseAddress')}<code class="block break-all text-xs"
+							>{phone.provisioning_base}</code
+						>
+					</p>{/if}
+				<p class="hint">{t('vendor.notTested')} · {t('vendor.manualResync')}</p>
+				{#each phone.provisioning_files as file (file.artifact)}
+					<div class="min-w-0 rounded-lg border border-line p-3">
+						<strong>{file.name}{file.primary ? ' ★' : ''}</strong>
+						<code class="block break-all text-xs">{file.url}</code>
+						{#if can('phones.manage')}<div class="mt-2 flex flex-wrap gap-2">
+								<button type="button" class="btn" onclick={() => showConfig(file.artifact)}
+									>{t('phones.showConfig')}</button
+								>
+								{#if file.name.includes('qr_template') || file.format === 'csv'}<button
+										type="button"
+										class="btn"
+										onclick={() => showConfig(file.artifact, true)}>{t('vendor.showQr')}</button
+									>{/if}
+							</div>{/if}
+					</div>
+				{/each}
+			</section>
+		{/if}
+		{#if model?.provisioning_capabilities?.native && baseModel}
+			<section class="card space-y-3">
+				<h2>{t('vendor.accountSlots')}</h2>
+				<p class="hint">{t('vendor.accountSlotsHint')}</p>
+				<label for="phone-account-count"
+					>{t('vendor.accountSlots')}<input
+						id="phone-account-count"
+						class="input max-w-40"
+						type="number"
+						min="1"
+						max={baseModel.provisioning_capabilities?.account_capacity_source ===
+						'single_account_baseline'
+							? 100
+							: baseModel.accounts}
+						disabled={!can('phones.manage')}
+						value={model.accounts}
+						oninput={(e) =>
+							(provisioning = { ...provisioning, account_slots: Number(e.currentTarget.value) })}
+					/></label
+				>
+			</section>
+		{/if}
 		<section class="card space-y-3">
 			<div class="grid grid-cols-1 gap-3 @xl:grid-cols-3">
 				<div>
@@ -305,8 +405,13 @@
 				</div>
 				<div>
 					<label for="ph-model">{t('phones.model')}</label>
-					<select id="ph-model" class="input" bind:value={form.model}>
-						{#each models as m (m.id)}<option value={m.id}>{m.name}</option>{/each}
+					<select
+						id="ph-model"
+						class="input"
+						value={form.model}
+						onchange={(e) => changeModel(e.currentTarget.value)}
+					>
+						{#each models as m (m.id)}<option value={m.id}>{m.vendor} {m.name}</option>{/each}
 					</select>
 					{#if model?.layout}<div class="mt-2 flex items-center gap-2">
 							<PhoneGraphic {model} small /><span class="hint">{model.name}</span>
@@ -472,7 +577,15 @@
 			</section>
 		{/if}
 
-		{#if model}<PhoneProvisioningEditor
+		{#if model}<PhoneNativeKeys
+				{model}
+				bind:values={provisioning}
+				disabled={!can('phones.manage')}
+			/><PhoneVendorSettings
+				{model}
+				bind:values={provisioning}
+				disabled={!can('phones.manage')}
+			/><PhoneProvisioningEditor
 				{model}
 				accounts={phone.accounts}
 				{contacts}
@@ -569,8 +682,12 @@
 			<div class="flex flex-wrap justify-end gap-2">
 				<button class="btn" disabled={saving} onclick={() => save(false)}>{t('common.save')}</button
 				>
-				<button class="btn btn-primary" disabled={saving} onclick={() => save(true)}
-					>{saving ? t('common.loading') : t('phonekeys.saveResync')}</button
+				{#if model?.provisioning_capabilities?.resync !== false}<button
+						class="btn btn-primary"
+						disabled={saving}
+						onclick={() => save(true)}
+						>{saving ? t('common.loading') : t('phonekeys.saveResync')}</button
+					>{/if}
 				>
 			</div>
 		{/if}
@@ -578,8 +695,17 @@
 </div>
 
 <Modal title={t('phones.showConfig')} bind:open={configOpen}>
-	<pre class="overflow-x-auto rounded-lg bg-slate-100 p-2 text-xs dark:bg-slate-800">{config}</pre>
+	{#if qrImage}<img src={qrImage} alt={t('vendor.showQr')} class="mx-auto h-64 w-64" />{:else}<pre
+			class="overflow-x-auto rounded-lg bg-slate-100 p-2 text-xs dark:bg-slate-800">{config}</pre>{/if}
 </Modal>
+
+<PhoneCloneDialog
+	bind:open={cloneOpen}
+	bind:sourceId={cloneSource}
+	phones={phone ? [phone] : []}
+	{models}
+	{extensions}
+/>
 
 <Modal bind:open={previewOpen} title={t('prov.preview')}
 	><p class="hint">{t('prov.previewHint')}</p>

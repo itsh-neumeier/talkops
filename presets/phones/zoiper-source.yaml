@@ -1,0 +1,13 @@
+{
+  "vendor": "zoiper",
+  "status": "untested",
+  "models": [
+    {
+      "id": "zoiper-5-x",
+      "name": "5.x",
+      "family": "app",
+      "accounts": 1,
+      "line_keys": 0
+    }
+  ]
+}

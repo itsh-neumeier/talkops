@@ -1,0 +1,48 @@
+{
+  "vendor": "htek",
+  "status": "untested",
+  "models": [
+    {
+      "id": "htek-uc903",
+      "name": "uc903",
+      "family": "desk",
+      "accounts": 3,
+      "line_keys": 0
+    },
+    {
+      "id": "htek-uc923",
+      "name": "uc923",
+      "family": "desk",
+      "accounts": 3,
+      "line_keys": 0
+    },
+    {
+      "id": "htek-uc924",
+      "name": "uc924",
+      "family": "desk",
+      "accounts": 3,
+      "line_keys": 0
+    },
+    {
+      "id": "htek-uc924u",
+      "name": "uc924u",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "htek-uc926",
+      "name": "uc926",
+      "family": "desk",
+      "accounts": 3,
+      "line_keys": 0
+    },
+    {
+      "id": "htek-uc926u",
+      "name": "uc926u",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    }
+  ]
+}

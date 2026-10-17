@@ -81,6 +81,10 @@ jobs:
       - run: npm test
       - name: Verify pinned provisioning reference sources
         run: node ../tests/provisioning/reference.mjs
+      - name: Check native provisioning derivatives
+        run: node ../scripts/provisioning/build-native-library.mjs --check
+      - name: Check manufacturer key functions
+        run: node ../scripts/provisioning/build-function-catalog.mjs --check
       - run: npm run build
       - name: Setup recovery browser test
         run: |
@@ -111,6 +115,7 @@ jobs:
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/phonebook.mjs
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/phone-keys.mjs
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/provisioning.mjs
+          PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/manufacturer-provisioning.mjs
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/transcriptions.mjs
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/motion.mjs
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/call-presentation.mjs

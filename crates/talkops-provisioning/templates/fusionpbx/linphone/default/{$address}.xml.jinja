@@ -1,0 +1,56 @@
+{# MPL-1.1 derivative: FusionPBX 20143aec4366afc2755f336d3058243479d49d44, linphone/default/{$address}.xml, blob f57d39750ae53c0a69fdf6c650d0fb39df77d2c5. #}{% set ns = namespace(keys=keys | default({}), contact_groups=contact_groups | default({})) %}<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://www.linphone.org/xsds/lpconfig.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.linphone.org/xsds/lpconfig.xsd lpconfig.xsd">
+	<section name="sip">
+		<entry name="default_proxy" overwrite="true">0</entry>
+	</section>
+	<section name="net">
+		<entry name="friendlist_subscription_enabled" overwrite="true">0</entry>
+	</section>
+	<section name="misc">
+		<entry name="transient_provisioning" overwrite="true">0</entry>
+	</section>
+	<section name="nat_policy_default_values">
+		<entry name="stun_server" overwrite="true">stun.linphone.org</entry>
+		<entry name="protocols" overwrite="true"></entry>
+	</section>
+	<section name="video">
+		<entry name="displaytype">MSQOGL</entry>
+		<entry name="capture">1</entry>
+		<entry name="display">1</entry>
+		<entry name="show_local">0</entry>
+		<entry name="main_display_mode">Hybrid</entry>
+		<entry name="other_display_mode">Hybrid</entry>
+	</section>
+	<section name="ui">
+		<entry name="rc_version">5</entry>
+		<entry name="read_and_agree_terms_and_privacy">1</entry>
+	</section>
+{% for row in (lines | default('')) | values %}
+	<section name="nat_policy_{{ ((lookup(row | default(none), ["line_number"]) | default(0) | int) - 1) | output }}">
+		<entry name="ref" overwrite="true">xrcNnzyREll46fF{{ ((lookup(row | default(none), ["line_number"]) | default(0) | int) - 1) | output }}</entry>
+		<entry name="stun_server" overwrite="true">stun.linphone.org</entry>
+		<entry name="protocols" overwrite="true"></entry>
+	</section>
+	<section name="auth_info_{{ ((lookup(row | default(none), ["line_number"]) | default(0) | int) - 1) | output }}" overwrite="true">
+		<entry name="username" overwrite="true">{{ ((lookup(row | default(none), ["user_id"]) | default(''))) | output }}</entry>
+		<entry name="userid" overwrite="true">{{ ((lookup(row | default(none), ["auth_id"]) | default(''))) | output }}</entry>
+		<entry name="ha1" overwrite="true">{{ ((lookup(row | default(none), ["user_id"]) | default('')) ~ ":" ~ (lookup(row | default(none), ["server_address"]) | default('')) ~ ":" ~ (lookup(row | default(none), ["password"]) | default(''))) | md5 | output }}</entry>
+		<entry name="realm" overwrite="true">{{ ((lookup(row | default(none), ["server_address"]) | default(''))) | output }}</entry>
+		<entry name="domain" overwrite="true">{{ ((lookup(row | default(none), ["server_address"]) | default(''))) | output }}</entry>
+		<entry name="algorithm" overwrite="true">MD5</entry>
+		<entry name="available_algorithms" overwrite="true">MD5</entry>
+	</section>
+	<section name="proxy_{{ ((lookup(row | default(none), ["line_number"]) | default(0) | int) - 1) | output }}" overwrite="true">
+		<entry name="reg_proxy" overwrite="true">sip:{{ ((lookup(row | default(none), ["server_address"]) | default(''))) | output }}:{{ ((lookup(row | default(none), ["sip_port"]) | default(''))) | output }};transport={{ ((lookup(row | default(none), ["sip_transport"]) | default(''))) | output }}</entry>
+		<entry name="reg_identity" overwrite="true">"{{ ((lookup(row | default(none), ["display_name"]) | default(''))) | output }}" &lt;sip:{{ ((lookup(row | default(none), ["user_id"]) | default(''))) | output }}@{{ ((lookup(row | default(none), ["server_address"]) | default(''))) | output }}&gt;</entry>
+		<entry name="realm" overwrite="true">{{ ((lookup(row | default(none), ["server_address"]) | default(''))) | output }}</entry>
+		<entry name="reg_expires" overwrite="true">{{ ((lookup(row | default(none), ["register_expires"]) | default(''))) | output }}</entry>
+		<entry name="reg_sendregister" overwrite="true">1</entry>
+		<entry name="publish" overwrite="true">1</entry>
+		<entry name="avpf" overwrite="true">0</entry>
+		<entry name="avpf_rr_interval" overwrite="true">0</entry>
+		<entry name="nat_policy_ref" overwrite="true">xrcNnzyREll46fF{{ ((lookup(row | default(none), ["line_number"]) | default(0) | int) - 1) | output }}</entry>
+		<entry name="available_algorithms" overwrite="true">MD5</entry>
+	</section>
+{% endfor %}
+</config>

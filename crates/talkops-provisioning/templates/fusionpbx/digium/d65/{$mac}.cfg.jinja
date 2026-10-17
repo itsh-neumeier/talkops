@@ -1,0 +1,110 @@
+{# MPL-1.1 derivative: FusionPBX 20143aec4366afc2755f336d3058243479d49d44, digium/d65/{$mac}.cfg, blob e8004b9187f45457ee692630875d77a56121416b. #}{% set ns = namespace(keys=keys | default({}), contact_groups=contact_groups | default({})) %}<?xml version="1.0" ?>
+<config>
+    <setting id="login_password" value="{{ ((admin_password | default(''))) | output }}"></setting>
+    <setting id="send_mac_with_useragent" value="1"></setting>
+    <setting id="use_secure_labels" value="0"></setting>
+    <setting id="time_zone" value="{% if ((digium_time_zone is defined and digium_time_zone is not none)) %}{{ ((digium_time_zone | default(''))) | output }}{% else %}America/Los_Angeles{% endif %}"></setting>
+    <setting id="time_source" value="ntp"></setting>
+    <setting id="ntp_server" value="{% if ((digium_ntp_server is defined and digium_ntp_server is not none)) %}{{ ((digium_ntp_server | default(''))) | output }}{% else %}ca.pool.ntp.org{% endif %}"></setting>
+    <setting id="ntp_resync" value="86400"></setting>
+    <setting id="ntp_prefer_option42" value="1"></setting> <!-- Not D80 -->
+    <setting id="accept_local_calls" value="any"></setting>
+    <setting id="transport_udp_enabled" value="1"></setting>
+    <setting id="transport_udp_port" value="5060"></setting>
+    <setting id="transport_tcp_enabled" value="1"></setting>
+    <setting id="transport_tcp_port" value="5060"></setting>
+    <setting id="transport_tls_allowed" value="1"></setting> <!-- D6X Phones Only -->
+    <setting id="transport_tls_port" value="5061"></setting> <!-- D6X Phones Only -->
+    <setting id="udp_ka_interval" value="0"></setting>
+    <setting id="logo_file" value="{{ ((digium_logo_value | default(''))) | output }}" path="{{ ((digium_logo_path | default(''))) | output }}" url="{{ ((digium_logo_url | default(''))) | output }}"></setting>
+    <setting id="wallpaper_file" value="factory" path="/factory_wallpaper.png"></setting> <!-- D6X Phones Only -->
+    <setting id="display_mc_notification" value="1"></setting>
+    <setting id="display_pickup_notification" value="1"></setting>
+    <setting id="hide_completed_elsewhere" value="1"></setting>
+    <setting id="small_clock" value="0"></setting> <!-- D6X Phones Only -->
+    <setting id="idle_company_text" value="{% if ((digium_idle_company_text is defined and digium_idle_company_text is not none)) %}{{ ((digium_idle_company_text | default(''))) | output }}{% else %}FusionPBX{% endif %}"></setting>
+    <setting id="brightness" value="5"></setting>
+    <setting id="enable_check_sync" value="1"></setting>
+    <setting id="dim_backlight" value="1"></setting>
+    <setting id="backlight_timeout" value="30"></setting>
+    <setting id="backlight_dim_level" value="2"></setting>
+    <setting id="blf_page_return_timeout" value="0"></setting>
+    <setting id="locale" value="{% if ((digium_locale is defined and digium_locale is not none)) %}{{ ((digium_locale | default(''))) | output }}{% else %}en_US{% endif %}"></setting>
+    <setting id="ringer_volume" value="5"></setting>
+    <setting id="lock_ringing_volume" value="0"></setting> <!-- Not D80 -->
+    <setting id="speaker_volume" value="5"></setting>
+    <setting id="handset_volume" value="5"></setting>
+    <setting id="headset_volume" value="5"></setting>
+    <setting id="reset_call_volume" value="0"></setting>
+    <setting id="ehs" value="{% if ((digium_ehs is defined and digium_ehs is not none)) %}{{ ((digium_ehs | default(''))) | output }}{% else %}auto{% endif %}"></setting>
+    <setting id="call_control_checkx" value="0"></setting>
+    <setting id="contacts_max_subscriptions" value="40"></setting>
+    <setting id="name_format" value="first_last"></setting>
+    <setting id="blf_contact_group" value="Default"></setting>
+    <setting id="expansion_enable" value="0" type="EXP100"></setting> <!-- Only D65 -->
+    <setting id="network_enable_dhcp" value="1"></setting>
+    <setting id="allow_insecure_ssl" value="1"></setting>
+    <setting id="network_ipv6_enabled" value="0"></setting>
+    <setting id="network_ipv6_preferred" value="0"></setting>
+    <setting id="network_vlan_discovery_mode" value="LLDP"></setting>
+    <setting id="lan_port_mode" value="auto"></setting>
+    <setting id="pc_port_mode" value="auto"></setting>
+    <setting id="log_level" value="debug"></setting> <!-- Not D80 -->
+    <setting id="enable_logging" value="0"></setting> <!-- Not D80 -->
+    <setting id="log_server" value=""></setting> <!-- Not D80 -->
+    <setting id="log_port" value=""></setting> <!-- Not D80 -->
+    <setting id="web_ui_enabled" value="1"></setting> <!-- Not D80 -->
+    <setting id="sip_qos" value="3"></setting>
+    <setting id="rtp_qos" value="6"></setting>
+    <setting id="pc_qos" value=""></setting>
+    <setting id="sip_dscp" value="24"></setting>
+    <setting id="rtp_dscp" value="46"></setting>
+    <setting id="in_switchvox_environment" value="0"></setting>
+    <setting id="allow_app_dev" value="0"></setting>
+    <setting id="8021x_passthrough" value="0"></setting>
+    <setting id="8021x_eapol_on_disconnect" value="0"></setting>
+    <setting id="8021x_method" value=""></setting>
+    <setting id="8021x_identity" value=""></setting>
+    <setting id="8021x_anonymous_identity" value=""></setting>
+    <setting id="8021x_password" value=""></setting>
+    <setting id="8021x_client_cert" value=""></setting>
+    <setting id="8021x_client_key" value=""></setting>
+    <setting id="8021x_debug" value=""></setting>
+    <setting id="network_default_enable_openvpn" value="0"></setting>
+    <!-- setting id="openvpn_inline_config" url="https://user:password@server.example.com/vpn/client.ovpn" value="1" md5="abc123" /-->
+
+    <accounts>
+        {% for row in (lines | default('')) | values %}
+        <account
+        server_uuid="{{ ((lookup(row | default(none), ["line_number"]) | default(0) | int)-1) | output }}" index="{{ ((lookup(row | default(none), ["line_number"]) | default(0) | int)-1) | output }}" status="{% if (lookup(row | default(none), ["enabled"]) | default('')) %}1{% else %}0{% endif %}" register="1"
+        account_id="{{ ((lookup(row | default(none), ["user_id"]) | default(''))) | output }}" username="{{ ((lookup(row | default(none), ["user_id"]) | default(''))) | output }}" authname="{{ ((lookup(row | default(none), ["auth_id"]) | default(''))) | output }}" password="{{ ((lookup(row | default(none), ["password"]) | default(''))) | output }}" passcode="{{ ((lookup(row | default(none), ["password"]) | default(''))) | output }}"
+        line_label="{{ ((lookup(row | default(none), ["display_name"]) | default(''))) | output }}" caller_id="{{ ((lookup(row | default(none), ["display_name"]) | default(''))) | output }}" dial_plan="[0-8]xxxxx|911|9411|9611|9011xxx.T3|91xxxxxxxxxx|9[2-9]xxxxxx|*xx.T3|[0-8]xx.T3"
+        visual_voicemail="0" voicemail="sip:{{ ((voicemail_number | default(''))) | output }}@{{ ((domain_name | default(''))) | output }}" needMwiSubscription="1"
+        outbound_proxy="{{ ((lookup(row | default(none), ["outbound_proxy"]) | default(''))) | output }}" outbound_port="{{ ((lookup(row | default(none), ["sip_port"]) | default(''))) | output }}"
+        plar_number="" ring_type="normal" subscription_extension="{{ ((lookup(row | default(none), ["user_id"]) | default(''))) | output }}" conflict="replace">
+            <host_primary server="{{ ((lookup(row | default(none), ["server_address"]) | default(''))) | output }}" port="{{ ((lookup(row | default(none), ["sip_port"]) | default(''))) | output }}" transport="{{ ((lookup(row | default(none), ["sip_transport"]) | default(''))) | output }}" media_encryption="" reregister="300" retry="25"></host_primary>
+            <!--<host_alternate server="10.1.2.3" port="5060" transport="udp" media_encryption="" reregister="300" retry="25"></host_alternate>-->
+            <permission id="use_voicemail" value="1"></permission>
+            <permission id="send_to_voicemail" value="1"></permission>
+            <permission id="ignore_calls" value="1"></permission>
+        </account>{% if (loop.index0 | default(0) | int) == 5 %}{% break %}{% endif %}
+        {% endfor %}
+    </accounts>
+
+    <contacts url="{{ ((artifact_base | default(''))) | output }}/{{ ((mac | default(''))) | output }}-contacts.cfg" id="internal"></contacts>
+
+    <smart_blf>
+        <blf_items url="{{ ((artifact_base | default(''))) | output }}/{{ ((mac | default(''))) | output }}-smartblf.cfg"></blf_items>
+    </smart_blf>
+
+    <firmwares>
+        <firmware model="D40" version="2_9_26" url="{{ ((digium_firmware_url | default(''))) | output }}/2_9_26_D40_firmware.eff"></firmware>
+        <firmware model="D50" version="2_9_26" url="{{ ((digium_firmware_url | default(''))) | output }}/2_9_26_D50_firmware.eff"></firmware>
+        <firmware model="D60" version="2_9_27" url="{{ ((digium_firmware_url | default(''))) | output }}/2_9_27_D60_firmware.eff"></firmware>
+        <firmware model="D62" version="2_9_27" url="{{ ((digium_firmware_url | default(''))) | output }}/2_9_27_D62_firmware.eff"></firmware>
+        <firmware model="D65" version="2_9_27" url="{{ ((digium_firmware_url | default(''))) | output }}/2_9_27_D65_firmware.eff"></firmware>
+        <firmware model="D70" version="2_9_26" url="{{ ((digium_firmware_url | default(''))) | output }}/2_9_26_D70_firmware.eff"></firmware>
+        <!--<firmware model="D80" version="2_8_0" url="{{ ((digium_firmware_url | default(''))) | output }}/2_8_0_D80_firmware.eff"></firmware>
+        <firmware model="EXP100" version="2.0.5.1" url="{{ ((digium_firmware_url | default(''))) | output }}/EXP100-2051.rom"></firmware>-->
+    </firmwares>
+</config>

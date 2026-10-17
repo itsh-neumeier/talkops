@@ -1,0 +1,34 @@
+{
+  "vendor": "avaya",
+  "status": "untested",
+  "models": [
+    {
+      "id": "avaya-j139",
+      "name": "J139",
+      "family": "desk",
+      "accounts": 3,
+      "line_keys": 0
+    },
+    {
+      "id": "avaya-j169",
+      "name": "J169",
+      "family": "desk",
+      "accounts": 3,
+      "line_keys": 0
+    },
+    {
+      "id": "avaya-j179",
+      "name": "J179",
+      "family": "desk",
+      "accounts": 3,
+      "line_keys": 0
+    },
+    {
+      "id": "avaya-j189",
+      "name": "J189",
+      "family": "desk",
+      "accounts": 3,
+      "line_keys": 0
+    }
+  ]
+}

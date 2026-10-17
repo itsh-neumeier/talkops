@@ -1,0 +1,188 @@
+{
+  "vendor": "cisco",
+  "status": "untested",
+  "models": [
+    {
+      "id": "cisco-7940",
+      "name": "7940",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "cisco-7960",
+      "name": "7960",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "cisco-79x1",
+      "name": "79x1",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "cisco-8811",
+      "name": "8811",
+      "family": "desk",
+      "accounts": 10,
+      "line_keys": 0
+    },
+    {
+      "id": "cisco-8832",
+      "name": "8832",
+      "family": "desk",
+      "accounts": 10,
+      "line_keys": 0
+    },
+    {
+      "id": "cisco-8841",
+      "name": "8841",
+      "family": "desk",
+      "accounts": 10,
+      "line_keys": 0
+    },
+    {
+      "id": "cisco-8845",
+      "name": "8845",
+      "family": "desk",
+      "accounts": 10,
+      "line_keys": 0
+    },
+    {
+      "id": "cisco-8851",
+      "name": "8851",
+      "family": "desk",
+      "accounts": 10,
+      "line_keys": 0
+    },
+    {
+      "id": "cisco-8861",
+      "name": "8861",
+      "family": "desk",
+      "accounts": 10,
+      "line_keys": 0
+    },
+    {
+      "id": "cisco-8865",
+      "name": "8865",
+      "family": "desk",
+      "accounts": 10,
+      "line_keys": 0
+    },
+    {
+      "id": "cisco-9861",
+      "name": "9861",
+      "family": "desk",
+      "accounts": 2,
+      "line_keys": 0
+    },
+    {
+      "id": "cisco-spa112",
+      "name": "spa112",
+      "family": "desk",
+      "accounts": 2,
+      "line_keys": 0
+    },
+    {
+      "id": "cisco-spa122",
+      "name": "spa122",
+      "family": "desk",
+      "accounts": 2,
+      "line_keys": 0
+    },
+    {
+      "id": "cisco-spa191",
+      "name": "spa191",
+      "family": "desk",
+      "accounts": 2,
+      "line_keys": 0
+    },
+    {
+      "id": "cisco-spa192",
+      "name": "spa192",
+      "family": "desk",
+      "accounts": 2,
+      "line_keys": 0
+    },
+    {
+      "id": "cisco-spa301",
+      "name": "spa301",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "cisco-spa303",
+      "name": "spa303",
+      "family": "desk",
+      "accounts": 3,
+      "line_keys": 0
+    },
+    {
+      "id": "cisco-spa501g",
+      "name": "spa501g",
+      "family": "desk",
+      "accounts": 8,
+      "line_keys": 0
+    },
+    {
+      "id": "cisco-spa502g",
+      "name": "spa502g",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "cisco-spa504g",
+      "name": "spa504g",
+      "family": "desk",
+      "accounts": 4,
+      "line_keys": 0
+    },
+    {
+      "id": "cisco-spa508g",
+      "name": "spa508g",
+      "family": "desk",
+      "accounts": 8,
+      "line_keys": 0
+    },
+    {
+      "id": "cisco-spa509g",
+      "name": "spa509g",
+      "family": "desk",
+      "accounts": 12,
+      "line_keys": 0
+    },
+    {
+      "id": "cisco-spa512g",
+      "name": "spa512g",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "cisco-spa514g",
+      "name": "spa514g",
+      "family": "desk",
+      "accounts": 4,
+      "line_keys": 0
+    },
+    {
+      "id": "cisco-spa525g",
+      "name": "spa525g",
+      "family": "desk",
+      "accounts": 12,
+      "line_keys": 0
+    },
+    {
+      "id": "cisco-spa525g2",
+      "name": "spa525g2",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    }
+  ]
+}

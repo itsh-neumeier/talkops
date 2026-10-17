@@ -1,5 +1,5 @@
 //! Dispatch only to implemented vendor adapters. Unknown vendors cannot emit Yealink files.
-use crate::yealink::{self, PhoneSetup};
+use crate::{model::PhoneSetup, yealink};
 use std::collections::BTreeMap;
 
 pub fn render(

@@ -41,6 +41,7 @@ fn t41p_navigation_ids_codes_and_reset_are_explicit() {
     assert_eq!(caps.expansion_modules, 0);
     let mut setup = setup(model);
     setup.provisioning.keys = vec![Key {
+        native_function: None,
         group: "programmable".into(),
         key: 18,
         kind: KeyType::SpeedDial,
@@ -61,6 +62,7 @@ fn t41p_navigation_ids_codes_and_reset_are_explicit() {
     assert!(!reset.contains("**101"));
     assert!(reset.contains("features.keep_mute.enable = 1\n"));
     setup.provisioning.keys = vec![Key {
+        native_function: None,
         group: "programmable".into(),
         key: 13,
         kind: KeyType::Pickup,
@@ -99,11 +101,105 @@ fn t41p_navigation_ids_codes_and_reset_are_explicit() {
     );
 }
 #[test]
+fn native_key_functions_use_vendor_codes_and_reject_a_foreign_function() {
+    let catalog = catalog();
+    let model = catalog.get("fanvil-x4").unwrap();
+    let mut setup = setup(model);
+    setup.provisioning.keys = vec![Key {
+        native_function: None,
+        group: "line".into(),
+        key: 1,
+        kind: KeyType::Blf,
+        value: "101".into(),
+        label: "Office".into(),
+        account: 1,
+        history_type: 0,
+        phonebook: 0,
+    }];
+    let provisioning = yealink::Provisioning {
+        base_url: "https://pbx.invalid/provisioning".into(),
+        username: "provision".into(),
+        password: "redacted".into(),
+    };
+    let common = talkops_provisioning::vendors::Common {
+        provisioning: &provisioning,
+        admin_password: "redacted",
+        timezone: "Europe/Berlin",
+        language: "de",
+        ntp_server: "time.invalid",
+        contacts: &[],
+    };
+    let files = library::builtin_for_model(model).unwrap();
+    keys::validate(model, &setup.provisioning).unwrap();
+    let body = talkops_provisioning::vendors::render(&setup, &common, None, &files)
+        .unwrap()
+        .0;
+    assert!(
+        body.contains("101@1/bc"),
+        "Fanvil BLF must use the source function code"
+    );
+    assert!(body.contains("<Time_Zone>4</Time_Zone>"));
+    setup.provisioning.keys[0].kind = KeyType::None;
+    setup.provisioning.keys[0].native_function = Some(
+        talkops_provisioning::vendors::functions("snom")[0]
+            .uuid
+            .clone(),
+    );
+    assert!(keys::validate(model, &setup.provisioning).is_err());
+    setup.provisioning.keys[0].native_function = Some(
+        talkops_provisioning::vendors::functions("fanvil")
+            .iter()
+            .find(|f| f.kind == "blf_bxfer")
+            .unwrap()
+            .uuid
+            .clone(),
+    );
+    keys::validate(model, &setup.provisioning).unwrap();
+    let body = talkops_provisioning::vendors::render(&setup, &common, None, &files)
+        .unwrap()
+        .0;
+    assert!(body.contains("101@1/bb"));
+    let x7c = catalog.get("fanvil-x7c").unwrap();
+    setup.model = x7c;
+    setup.provisioning.keys[0].native_function = None;
+    setup.provisioning.keys[0].kind = KeyType::Line;
+    let x7c_files = library::builtin_for_model(x7c).unwrap();
+    let body = talkops_provisioning::vendors::render(&setup, &common, None, &x7c_files)
+        .unwrap()
+        .0;
+    assert!(
+        body.contains("<Value>SIP1</Value>"),
+        "one-based account one must remain SIP1"
+    );
+    setup.provisioning.keys[0].kind = KeyType::Blf;
+    let body = talkops_provisioning::vendors::render(&setup, &common, None, &x7c_files)
+        .unwrap()
+        .0;
+    assert!(
+        body.contains("101@1/bc"),
+        "key placement must not replace the selected function"
+    );
+    let escene = catalog.get("escene-e3xx").unwrap();
+    setup.provisioning.keys[0].native_function = Some(
+        talkops_provisioning::vendors::functions("escene")
+            .iter()
+            .find(|f| f.groups == ["programmable"])
+            .unwrap()
+            .uuid
+            .clone(),
+    );
+    setup.provisioning.keys[0].group = "memory".into();
+    assert!(keys::validate(escene, &setup.provisioning).is_err());
+    setup.provisioning.keys[0].group = "programmable".into();
+    keys::validate(escene, &setup.provisioning).unwrap();
+}
+#[test]
 fn rejects_unsupported_slots_injection_and_vendor_fallback() {
     let catalog = catalog();
     let model = catalog.get("t41p").unwrap();
     let mut overrides = Overrides::default();
     let mut key = Key {
+        native_function: None,
         group: "programmable".into(),
         key: 11,
         kind: KeyType::Menu,
@@ -139,6 +235,7 @@ fn rejects_unsupported_slots_injection_and_vendor_fallback() {
     );
     let mut browser = setup(model);
     browser.provisioning.keys = vec![Key {
+        native_function: None,
         group: "programmable".into(),
         key: 18,
         kind: KeyType::XmlBrowser,
@@ -167,6 +264,7 @@ fn rejects_unsupported_slots_injection_and_vendor_fallback() {
         }),
     ) {
         full.keys.extend(slots.into_iter().map(|key| Key {
+            native_function: None,
             group: group.clone(),
             key,
             kind: KeyType::None,
@@ -183,7 +281,8 @@ fn rejects_unsupported_slots_injection_and_vendor_fallback() {
 #[test]
 fn native_templates_validate_for_every_active_model_and_reject_bad_drafts() {
     for model in catalog().all() {
-        library::validate_for_model(&library::builtin(), model).unwrap();
+        library::validate_for_model(&library::builtin_for_model(model).unwrap(), model)
+            .unwrap_or_else(|error| panic!("{}: {error}", model.id));
     }
     let model = catalog();
     let model = model.get("t41p").unwrap();

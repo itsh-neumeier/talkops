@@ -1,0 +1,7 @@
+{# MPL-1.1 derivative: FusionPBX 20143aec4366afc2755f336d3058243479d49d44, yealink/t58a/y000000000000.boot, blob 098ad811b9b329349d5f98e3f7638d90c4b44e46. #}{% set ns = namespace(keys=keys | default({}), contact_groups=contact_groups | default({})) %}#!version:1.0.0.1
+## The header above must appear as-is in the first line
+
+include:config "y000000000058.cfg"
+include:config "{{ ((mac | default(''))) | output }}.cfg"
+
+overwrite_mode = {{ ((yealink_overwrite_mode | default(''))) | output }}

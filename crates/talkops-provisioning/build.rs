@@ -42,4 +42,48 @@ fn main() {
         source,
     )
     .unwrap();
+    let crate_root = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap());
+    for (directory, output, constant, bytes) in [
+        (
+            "reference/fusionpbx",
+            "all_reference.rs",
+            "ALL_REFERENCE",
+            true,
+        ),
+        (
+            "templates/fusionpbx",
+            "native_files.rs",
+            "NATIVE_FILES",
+            false,
+        ),
+    ] {
+        let root = crate_root.join(directory);
+        println!("cargo:rerun-if-changed={}", root.display());
+        let mut files = Vec::new();
+        collect(&root, &root, &mut files);
+        let mut source = format!(
+            "static {constant}: &[(&str,{})] = &[\n",
+            if bytes { "&[u8]" } else { "&str" }
+        );
+        for (name, path) in files {
+            if directory == "reference/fusionpbx" && !name.contains('/') {
+                continue;
+            }
+            source.push_str(&format!(
+                "({name:?}, {}!({:?})),\n",
+                if bytes {
+                    "include_bytes"
+                } else {
+                    "include_str"
+                },
+                path.to_str().unwrap()
+            ));
+        }
+        source.push_str("];\n");
+        fs::write(
+            PathBuf::from(env::var_os("OUT_DIR").unwrap()).join(output),
+            source,
+        )
+        .unwrap();
+    }
 }

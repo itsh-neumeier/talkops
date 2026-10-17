@@ -1,0 +1,20 @@
+{
+  "vendor": "2n",
+  "status": "untested",
+  "models": [
+    {
+      "id": "2n-ipsolo",
+      "name": "ipsolo",
+      "family": "intercom",
+      "accounts": 4,
+      "line_keys": 0
+    },
+    {
+      "id": "2n-ipstyle",
+      "name": "ipstyle",
+      "family": "intercom",
+      "accounts": 4,
+      "line_keys": 0
+    }
+  ]
+}

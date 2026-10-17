@@ -1,0 +1,16 @@
+{# MPL-1.1 derivative: FusionPBX 20143aec4366afc2755f336d3058243479d49d44, mitel/5324/MN_Generic.cfg, blob f63962b2d78f1ba17c6801d81377cbda262df546. #}{% set ns = namespace(keys=keys | default({}), contact_groups=contact_groups | default({})) %}<Parameter Model="5320e">
+	<tftp_config>2</tftp_config>
+	<http_download>{{ ((artifact_base | default(''))) | output }}/</http_download>
+</Parameter>
+<Parameter Model="5324">
+	<tftp_config>2</tftp_config>
+	<http_download>{{ ((artifact_base | default(''))) | output }}/</http_download>
+</Parameter>
+<Parameter Model="5330">
+	<tftp_config>2</tftp_config>
+	<http_download>{{ ((artifact_base | default(''))) | output }}/</http_download>
+</Parameter>
+<Parameter Model="5340">
+	<tftp_config>2</tftp_config>
+	<http_download>{{ ((artifact_base | default(''))) | output }}/</http_download>
+</Parameter>

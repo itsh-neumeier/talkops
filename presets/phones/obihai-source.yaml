@@ -1,0 +1,34 @@
+{
+  "vendor": "obihai",
+  "status": "untested",
+  "models": [
+    {
+      "id": "obihai-obi1032",
+      "name": "obi1032",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "obihai-obi1062",
+      "name": "obi1062",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "obihai-obi302",
+      "name": "obi302",
+      "family": "ata",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "obihai-obi310",
+      "name": "obi310",
+      "family": "ata",
+      "accounts": 1,
+      "line_keys": 0
+    }
+  ]
+}

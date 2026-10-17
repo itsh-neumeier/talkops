@@ -1,0 +1,215 @@
+{# MPL-1.1 derivative: FusionPBX 20143aec4366afc2755f336d3058243479d49d44, avaya/J189/{$mac}.cfg, blob 30c01bb74c148e7b5761211ef61ec0afacc7d9d0. #}{% set ns = namespace(keys=keys | default({}), contact_groups=contact_groups | default({})) %}## Phone firmware
+## Firmware must be on 4.1.4.0.5 and higher to work properly.
+## Older firmwares do not accept a full URL in the APPNAME field so it will use HTTPSRVR and HTTPDIR to look for the firmware file.
+## You will need to move the firmware files to /app/provision the first time to get them to update.
+SET APPNAME "{% if ((avaya_j189_firmware_url is defined and avaya_j189_firmware_url is not none)) %}{{ ((avaya_j189_firmware_url | default(''))) | output }}{% else %}FW_S_J189_R4_1_4_0_5.bin{% endif %}"
+## JEM24 Expansion Module firmware
+SET "{% if ((avaya_jem24_firmware_url is defined and avaya_jem24_firmware_url is not none)) %}{{ ((avaya_jem24_firmware_url | default(''))) | output }}{% else %}JEM24_APPNAME FW_JEM24_R1_0_1_0_26.bin{% endif %}"
+
+## Enable Out-Of-Dialog REFER messages to provision or reboot the device
+SET ENABLE_OOD_RESET_NOTIFY 1
+## Do not require TLS to accept Out-Of-Dialog REFER messages
+SET ENABLE_OOD_MSG_TLS_ONLY 0
+
+# Set the default SUBSCRIBE expiry time
+# This needs to be set to a value equal to or lower than the 'nonce-ttl' that is in your SIP Profile
+# The defaule for 'nonce-ttl' is 60
+SET OUTBOUND_SUBSCRIPTION_REQUEST_DURATION {% if ((avaya_blf_subscription_expiry is defined and avaya_blf_subscription_expiry is not none)) %}{{ ((avaya_blf_subscription_expiry | default(''))) | output }}{% else %}60{% endif %}
+
+## Trust public certs rather than the phone downloading a trusted cert from the server
+SET ENABLE_PUBLIC_CA_CERTS 1
+
+## Set Admin Access
+## 27238 is the Avaya default
+## Valid values are 8 to 31 alphanumeric characters.
+SET ENABLE_WEBSERVER 1
+SET FORCE_WEB_ADMIN_PASSWORD "{% if ((admin_password is defined and admin_password is not none)) %}{{ ((admin_password | default(''))) | output }}{% else %}27238{% endif %}"
+
+SET SHA2CAPABLE 1
+SET ENABLE_PRESENCE 0
+
+## Codec Settings
+SET ENABLE_G729 0
+SET ENABLE_G722 0
+SET ENABLE_G726 0
+SET ENABLE_OPUS 0
+SET CODEC_PRIORITY G711U
+
+## Call forwarding allowed
+## 1 = permits unconditional call forwarding
+## 2 = permits call forwarding on busy
+## 4 = permits call forwarding on no answer
+## add the numbers above to get your desired combination
+## 7 means 1+2+4 
+SET CALLFWDSTAT 7
+
+## Sets the BLF incoming call mode
+##     0 - None (no alerting for BLF incoming call).
+##     1 - Audible (only audible alerting for BLF incoming call).
+##     2 - Visual (only visual alerting for BLF incoming call).
+##     3(default) - Both (both audible and visual alerting for BLF incoming call)
+##     4 - Force None (forced only audible alerting for BLF incoming call).
+##     5 - Force Audible (forced only audible alerting for BLF incoming call).
+##     6 - Force Visual (forced only visual alerting for BLF incoming call).
+##     7 - Force Both (forced both audible and visual alerting for BLF incoming call).
+SET BLF_INCOMING_CALL_INDICATION_MODE 0
+
+## Specifies whether Prioritize own incoming calls over BLF calls feature is enabled or not. Valid values are:
+##     0 - Feature is disabled. The phone displays all calls in the order they are received.
+##     1 - Feature is enabled. The phone displays user’s own incoming calls and own parked calls before BLF calls and BLF parked calls.
+SET PRIORITIZE_OWN_INCOMING_CALL 1
+
+## Allows the call decline button to be visible
+SET CALL_DECLINE_POLICY 1
+
+## Allow the phone to be locked
+SET ENABLE_PHONE_LOCK 1
+
+## DISABLE Avaya Spaces
+SET SPACES_ACCESS_MODE 0
+
+SET CALL_PICKUP_BARGEIN_FAC *33
+
+SET ENCRYPT_VERSION_IN_USE 1
+SET MAX__DISPLAYED_SESSION_APPEARANCES 3
+SET ENHDIALSTAT 0
+
+## Specifies the screen mode used on the phone
+## 0 = Non-forced Half Screen mode
+## 1 = Non-forced Full Screen mode
+## 2 = Forced Half Screen mode is used
+## 3 = Forced Full Screen mode
+SET PHONE_SCREEN_MODE 2
+
+## Specifies the scrolling mode used on the phone
+## 0 = Line scrolling mode
+## 1 = Page scrolling mode
+SET SCROLLING_MODE 1
+
+SET OVERRIDE_USER_SELECTION ""
+
+SET USER_LOGGED_IN 1
+
+SET LANGUAGE_FILE_IN_USE Mlf_English.xml
+SET LANGUAGES_RESOURCE_LIST English=res://Mlf_English.xml,Canadian French=lang/Mlf_J189_CanadianFrench.xml,Latin American Spanish=lang/Mlf_J189_LatinAmericanSpanish.xml,Brazilian Portuguese=lang/Mlf_J189_BrazilianPortuguese.xml,Italian=lang/Mlf_J189_Italian.xml
+SET SYSTEM_LANGUAGE Mlf_J189_English.xml
+SET LANGUAGE_IN_USE English
+SET LANGUAGES Mlf_J189_CanadianFrench.xml,Mlf_J189_LatinAmericanSpanish.xml,Mlf_J189_BrazilianPortuguese.xml,Mlf_J189_Italian.xml
+
+## DIALING_MODE_DEFAULT
+## 0 - Automatic
+## 1 - Manual
+SET DIALING_MODE_DEFAULT 0
+## Dialplan
+## |: This character is used to separate each different number pattern.
+## X: This character is a wildcard for any single digit match.
+## [ ]- Square brackets can be used to contain possible specific single digit matches. For example:
+##     [1237] matches 1, 2, 3 or 7. A - character can be used to match a range of digits.
+##     [1-4] matches any digit from 1 to 4.
+SET DIALPLAN "{% if ((avaya_dialplan is defined and avaya_dialplan is not none)) %}{{ ((avaya_dialplan | default(''))) | output }}{% else %}XXX|XXXX,*XX,1XXXXXXXXXX,XXXXXXXXXX{% endif %}"
+## INTER_DIGIT_TIMEOUT - Set the number of seconds from the last digit dialed after which the phone assumes dialing is complete and send the digits dialed to the system
+SET INTER_DIGIT_TIMEOUT 2
+
+## 	GMTOFFSET
+SET GMTOFFSET "{% if ((avaya_time_zone is defined and avaya_time_zone is not none)) %}{{ ((avaya_time_zone | default(''))) | output }}{% else %}-5:00{% endif %}"
+## Time format
+##  0 - 12hr, 1 - 24h, 2 - 12hr forced, 3 - 24h forced
+SET ADMINTIMEFORMAT 0
+## DST start date. Default: 2SunMar2L
+SET DSTSTART "{% if ((avaya_dst_start is defined and avaya_dst_start is not none)) %}{{ ((avaya_dst_start | default(''))) | output }}{% else %}2SunMar2L{% endif %}"
+## DST stop date. Default: 1SunNov2L
+SET DSTSTOP "{% if ((avaya_dst_stop is defined and avaya_dst_stop is not none)) %}{{ ((avaya_dst_stop | default(''))) | output }}{% else %}1SunNov2L{% endif %}"
+
+SET ENABLE_SHOW_EMERG_SK 0
+SET ENABLE_SHOW_EMERG_SK_UNREG 0
+SET DISCOVER_AVAYA_ENVIRONMENT 0
+SET TCP_KEEP_ALIVE_TIME 30
+SET DTMF_PAYLOAD_TYPE 101
+SET RTP_PORT_LOW 40750
+SET RTP_PORT_RANGE 10000
+
+## User Key customization
+## 0 - Blocked, 1 - Limited (User customization is allowed for Applications and Contacts), 2 - Full
+SET CUSTOMIZATION_MODE {% if ((avaya_key_customization is defined and avaya_key_customization is not none)) %}{{ ((avaya_key_customization | default(''))) | output }}{% else %}0{% endif %}
+
+## Specifies whether the Auto Answer feature is available to users.
+SET ENABLE_AUTO_ANSWER_SUPPORT 1
+
+## Voicemail access code
+SET PSTN_VM_NUM *97
+
+## BACKGROUND_IMAGE - The selected image
+## BACKGROUND_IMAGE_AVAILABLE - The list of available images
+## JPG is the only supported format
+## Wallpaper dimensions (Primary display): 800 x 480 pixels
+## Wallpaper dimensions (Primary display): 240 x 320 pixels
+## The Avaya JEM24 will display the default wallpaper if you use a custom image.
+{% if ((avaya_j189_wallpaper_url is defined and avaya_j189_wallpaper_url is not none)) %}
+SET BACKGROUND_IMAGE "{{ ((avaya_j189_wallpaper_url | default(''))) | output }}"
+SET BACKGROUND_IMAGE_AVAILABLE "{{ ((avaya_j189_wallpaper_url | default(''))) | output }}"
+SET BACKGROUND_IMAGE_DISPLAY "{{ ((avaya_j189_wallpaper_filename | default(''))) | output }}"
+{% endif %}
+{% if ((avaya_j189_secondary_wallpaper_url is defined and avaya_j189_secondary_wallpaper_url is not none)) %}
+SET BACKGROUND_IMAGE_SECONDARY "{{ ((avaya_j189_secondary_wallpaper_url | default(''))) | output }}"
+SET BACKGROUND_IMAGE_AVAILABLE_SECONDARY "{{ ((avaya_j189_secondary_wallpaper_url | default(''))) | output }}"
+SET BACKGROUND_IMAGE_DISPLAY_SECONDARY "{{ ((avaya_j189_secondary_wallpaper_filename | default(''))) | output }}"
+{% endif %}
+
+## Disable Avaya Mode
+SET ENABLE_IPOFFICE 0
+SET ENABLE_AVAYA_ENVIRONMENT 0
+SET ENABLE_3PCC_ENVIRONMENT 1
+SET 3PCC_SERVER_MODE 0
+
+SET DES_BLOCK 1
+SET DES_SUPPORT 0
+SET DES_STAT 0
+SET BLF_LIST_URI_CURRENT BLFfakegroup
+SET DOWNLOADABLE_DIRECTORY {% if ((avaya_directory_url is defined and avaya_directory_url is not none)) %}{{ ((avaya_directory_url | default(''))) | output }}{% else %}{{ ((artifact_base | default(''))) | output }}/directory.xml{% endif %}
+
+SET ENABLE_RCV_CONFERENCE 0
+
+{% for row in (lines | default('')) | values %}
+SET FORCE_SIP_EXTENSION {{ ((lookup(row | default(none), ["user_id"]) | default(''))) | output }}
+SET FORCE_SIP_USERNAME {{ ((lookup(row | default(none), ["user_id"]) | default(''))) | output }}
+SET FORCE_SIP_PASSWORD {{ ((lookup(row | default(none), ["password"]) | default(''))) | output }}
+
+SET SIP_USER_ACCOUNT {{ ((lookup(row | default(none), ["user_id"]) | default(''))) | output }}@{{ ((lookup(row | default(none), ["server_address"]) | default(''))) | output }}
+SET SIP_USER_ID {{ ((lookup(row | default(none), ["user_id"]) | default(''))) | output }}
+
+SET SNTPSRVR "{% if ((avaya_ntp_server is defined and avaya_ntp_server is not none)) %}{{ ((avaya_ntp_server | default(''))) | output }}{% else %}ca.pool.ntp.org{% endif %}"
+
+SET SIP_CONTROLLER_LIST {{ ((lookup(row | default(none), ["server_address"]) | default(''))) | output }}:{{ ((lookup(row | default(none), ["sip_port"]) | default(''))) | output }};transport={{ ((lookup(row | default(none), ["sip_transport"]) | default(''))) | output }}
+SET SIPPROXYSRVR_IN_USE {{ ((lookup(row | default(none), ["server_address"]) | default(''))) | output }}
+SET SIP_PROXY_SELECTION_POLICY 1
+SET SIPDOMAIN {{ ((lookup(row | default(none), ["server_address"]) | default(''))) | output }}
+SET MWISRVR {{ ((lookup(row | default(none), ["server_address"]) | default(''))) | output }}
+SET RTCPMON {{ ((lookup(row | default(none), ["server_address"]) | default(''))) | output }}
+SET SIMULTANEOUS_REGISTRATIONS 1
+
+{% if (loop.index0 | default(0) | int) == 2 %}{% break %}{% endif %}
+{% endfor %}
+
+## Button config
+## Type can be feature,application,line,autodial
+## Name is the name of the button type. All options can be found here: https://documentation.avaya.com/bundle/InstallandAdminJ100seriesIPPhonein3PCCsetup_r4.0.11/page/PHONEKEY_parameter_values__3PCC_.html
+## attr1 is usually the specific data for the button. For example extension number
+{% for row in (lookup(keys | default(none), ["line"]) | default('')) | values %}
+
+{% if ((lookup(row | default(none), ["device_key_type"]) | default('')) in ["callfwd","callfwdna","callfwdbusy","dnd","autoanswer"]) %}
+SET PHONEKEY "Key={{ ((lookup(row | default(none), ["device_key_id"]) | default(0) | int)+3) | output }};Type=feature;Name={{ ((lookup(row | default(none), ["device_key_type"]) | default(''))) | output }};Label={{ ((lookup(row | default(none), ["device_key_label"]) | default(''))) | output }};Forced"
+
+{% elif ((lookup(row | default(none), ["device_key_type"]) | default('')) in ["blf"]) %}
+SET PHONEKEY "Key={{ ((lookup(row | default(none), ["device_key_id"]) | default(0) | int)+3) | output }};Type=feature;Name={{ ((lookup(row | default(none), ["device_key_type"]) | default(''))) | output }};Label={{ ((lookup(row | default(none), ["device_key_label"]) | default(''))) | output }};attr1={{ ((lookup(row | default(none), ["device_key_value"]) | default(''))) | output }};attr2={{ ((lookup(row | default(none), ["device_key_value"]) | default(''))) | output }};Forced"
+
+{% elif ((lookup(row | default(none), ["device_key_type"]) | default('')) in ["lock","logout","screensaver"]) %}
+SET PHONEKEY "Key={{ ((lookup(row | default(none), ["device_key_id"]) | default(0) | int)+3) | output }};Type=application;Name={{ ((lookup(row | default(none), ["device_key_type"]) | default(''))) | output }};Label={{ ((lookup(row | default(none), ["device_key_label"]) | default(''))) | output }};Forced"
+
+{% elif ((lookup(row | default(none), ["device_key_type"]) | default('')) in ["primary"]) %}
+SET PHONEKEY "Key={{ ((lookup(row | default(none), ["device_key_id"]) | default(0) | int)+3) | output }};Type=line;Name={{ ((lookup(row | default(none), ["device_key_type"]) | default(''))) | output }};attr1={{ ((lookup(row | default(none), ["device_key_line"]) | default(''))) | output }};Forced"
+
+{% elif ((lookup(row | default(none), ["device_key_type"]) | default('')) in ["autodial"]) %}
+SET PHONEKEY "Key={{ ((lookup(row | default(none), ["device_key_id"]) | default(0) | int)+3) | output }};Type=autodial;Name={{ ((lookup(row | default(none), ["device_key_type"]) | default(''))) | output }};attr1={{ ((lookup(row | default(none), ["device_key_value"]) | default(''))) | output }};Label={{ ((lookup(row | default(none), ["device_key_label"]) | default(''))) | output }};Forced"
+
+{% endif %}
+{% endfor %}

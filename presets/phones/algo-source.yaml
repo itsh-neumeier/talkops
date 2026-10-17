@@ -1,0 +1,55 @@
+{
+  "vendor": "algo",
+  "status": "untested",
+  "models": [
+    {
+      "id": "algo-8103",
+      "name": "8103",
+      "family": "paging",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "algo-8180",
+      "name": "8180",
+      "family": "paging",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "algo-8186",
+      "name": "8186",
+      "family": "paging",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "algo-8188",
+      "name": "8188",
+      "family": "paging",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "algo-8189",
+      "name": "8189",
+      "family": "paging",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "algo-8196",
+      "name": "8196",
+      "family": "paging",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "algo-8301",
+      "name": "8301",
+      "family": "paging",
+      "accounts": 1,
+      "line_keys": 0
+    }
+  ]
+}

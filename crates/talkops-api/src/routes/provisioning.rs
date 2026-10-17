@@ -129,7 +129,26 @@ pub async fn render_phone_config(
     phone: &Phone,
     headers: &HeaderMap,
 ) -> ApiResult<String> {
-    render_phone_config_inner(state, tenant, phone, headers, false, None, None).await
+    render_phone_config_inner(state, tenant, phone, headers, RenderOptions::default()).await
+}
+pub async fn render_phone_artifact(
+    state: &AppState,
+    tenant: TenantId,
+    phone: &Phone,
+    headers: &HeaderMap,
+    artifact: &str,
+) -> ApiResult<String> {
+    render_phone_config_inner(
+        state,
+        tenant,
+        phone,
+        headers,
+        RenderOptions {
+            artifact: Some(artifact),
+            ..Default::default()
+        },
+    )
+    .await
 }
 pub async fn preview_with_files(
     state: &AppState,
@@ -142,9 +161,11 @@ pub async fn preview_with_files(
         tenant,
         phone,
         &HeaderMap::new(),
-        true,
-        Some(files),
-        None,
+        RenderOptions {
+            redacted: true,
+            files_override: Some(files),
+            ..Default::default()
+        },
     )
     .await
 }
@@ -154,7 +175,17 @@ pub async fn preview_phone(
     phone: &Phone,
     headers: &HeaderMap,
 ) -> ApiResult<String> {
-    render_phone_config_inner(state, tenant, phone, headers, true, None, None).await
+    render_phone_config_inner(
+        state,
+        tenant,
+        phone,
+        headers,
+        RenderOptions {
+            redacted: true,
+            ..Default::default()
+        },
+    )
+    .await
 }
 pub async fn preview_phone_accounts(
     state: &AppState,
@@ -163,24 +194,77 @@ pub async fn preview_phone_accounts(
     headers: &HeaderMap,
     labels: &BTreeMap<String, (String, String)>,
 ) -> ApiResult<String> {
-    render_phone_config_inner(state, tenant, phone, headers, true, None, Some(labels)).await
+    render_phone_config_inner(
+        state,
+        tenant,
+        phone,
+        headers,
+        RenderOptions {
+            redacted: true,
+            labels: Some(labels),
+            ..Default::default()
+        },
+    )
+    .await
+}
+#[derive(Default)]
+struct RenderOptions<'a> {
+    redacted: bool,
+    files_override: Option<&'a BTreeMap<String, String>>,
+    labels: Option<&'a BTreeMap<String, (String, String)>>,
+    artifact: Option<&'a str>,
 }
 async fn render_phone_config_inner(
     state: &AppState,
     tenant: TenantId,
     phone: &Phone,
     headers: &HeaderMap,
-    redacted: bool,
-    files_override: Option<&BTreeMap<String, String>>,
-    labels: Option<&BTreeMap<String, (String, String)>>,
+    options: RenderOptions<'_>,
 ) -> ApiResult<String> {
+    let RenderOptions {
+        redacted,
+        files_override,
+        labels,
+        artifact,
+    } = options;
     let model = state
         .phone_catalog
         .get(&phone.model)
         .ok_or_else(|| ApiError::BadRequest(format!("unknown phone model {}", phone.model)))?;
-    let overrides: keys::Overrides = serde_json::from_value(phone.provisioning.clone())
+    let mut overrides: keys::Overrides = serde_json::from_value(phone.provisioning.clone())
         .map_err(|_| ApiError::Internal("invalid phone provisioning overrides".into()))?;
+    let effective_model = keys::effective_model(model, &overrides).map_err(ApiError::BadRequest)?;
+    let model = &effective_model;
     keys::validate(model, &overrides).map_err(ApiError::BadRequest)?;
+    let fields = talkops_provisioning::parameters::schema(model).map_err(ApiError::BadRequest)?;
+    for (group, values) in [
+        ("parameters", &mut overrides.parameters),
+        ("vendor_settings", &mut overrides.vendor_settings),
+    ] {
+        for (key, value) in values {
+            let declared = if group == "parameters" {
+                fields.iter().any(|f| f.key == *key && f.kind == "secret")
+            } else {
+                talkops_provisioning::vendors::profile(&model.id).is_some_and(|p| {
+                    p.settings
+                        .iter()
+                        .any(|s| s.key == *key && s.kind == "secret")
+                })
+            };
+            let encrypted = value.starts_with("v1:");
+            if redacted
+                && (encrypted
+                    || declared
+                    || talkops_provisioning::parameters::url_contains_secret(value))
+            {
+                *value = "REDACTED".into();
+            } else if encrypted {
+                *value = state.secrets.decrypt(value).map_err(|_| {
+                    ApiError::Internal("invalid encrypted manufacturer setting".into())
+                })?;
+            }
+        }
+    }
     let options = provisioning_admin::options(state, tenant).await?;
     let templates = match files_override {
         Some(files) => files.clone(),
@@ -271,7 +355,7 @@ async fn render_phone_config_inner(
         internal: &internal,
         local_dialing: !plan.area_code.is_empty(),
     });
-    let setup = PhoneSetup {
+    let mut setup = PhoneSetup {
         provisioning: overrides.clone(),
         asset_base: auth_base.clone(),
         name: phone.name.clone(),
@@ -299,16 +383,116 @@ async fn render_phone_config_inner(
             &setting_values(&phone.settings),
         ),
     };
-    let device = adapter::render(&setup, &templates).map_err(ApiError::BadRequest)?;
+    if setup.provisioning.defer_unassigned_keys {
+        for key in &mut setup.keys {
+            if keys::requires_account(key.kind)
+                && !setup.accounts.iter().any(|a| a.index == key.account)
+            {
+                key.kind = talkops_provisioning::yealink::KeyType::None;
+                key.value.clear();
+                key.label.clear();
+            }
+        }
+        for key in &mut setup.provisioning.keys {
+            if (key.native_function.is_some() || keys::requires_account(key.kind))
+                && !setup.accounts.iter().any(|a| a.index == key.account)
+            {
+                key.native_function = None;
+                key.kind = talkops_provisioning::yealink::KeyType::None;
+                key.value.clear();
+                key.label.clear();
+            }
+        }
+    }
     let settings = settings::get(&state.db, tenant).await?;
-    let common = yealink::render_common_with(
-        &prov,
-        &admin_password,
-        &Locale::new(&settings.timezone, &settings.default_language),
-        &settings.default_language,
-        &templates,
-    )
-    .map_err(|e| ApiError::BadRequest(e.to_string()))?;
+    let language = if !overrides.language.is_empty() {
+        &overrides.language
+    } else if !options.language.is_empty() {
+        &options.language
+    } else {
+        &settings.default_language
+    };
+    let time_zone = if !overrides.time_zone.is_empty() {
+        &overrides.time_zone
+    } else if !options.time_zone.is_empty() {
+        &options.time_zone
+    } else {
+        &settings.timezone
+    };
+    let ntp_server = if !overrides.ntp_server.is_empty() {
+        overrides.ntp_server.as_str()
+    } else if !options.ntp_server.is_empty() {
+        &options.ntp_server
+    } else {
+        "pool.ntp.org"
+    };
+    if talkops_provisioning::vendors::profile(&model.id).is_some() {
+        let mut entries = extensions::list(&state.db, tenant)
+            .await?
+            .into_iter()
+            .filter(|e| e.enabled)
+            .map(|e| Entry {
+                name: e.display_name,
+                numbers: vec![("Extension".into(), format!("**{}", e.number))],
+            })
+            .collect::<Vec<_>>();
+        for contact in phones::list_contacts(&state.db, tenant).await? {
+            if contact
+                .section_id
+                .is_some_and(|id| !phone.phonebook_sections.contains(&id))
+            {
+                continue;
+            }
+            let numbers = [
+                ("Work", &contact.phone_work),
+                ("Mobile", &contact.phone_mobile),
+                ("Other", &contact.phone_other),
+            ]
+            .into_iter()
+            .filter(|(_, n)| !n.is_empty())
+            .map(|(kind, n)| (kind.to_owned(), n.clone()))
+            .collect();
+            entries.push(Entry {
+                name: contact.display_name(),
+                numbers,
+            });
+        }
+        let common = talkops_provisioning::vendors::Common {
+            provisioning: &prov,
+            admin_password: &admin_password,
+            timezone: time_zone,
+            language,
+            ntp_server,
+            contacts: &entries,
+        };
+        let profile =
+            talkops_provisioning::vendors::profile(&model.id).ok_or(ApiError::NotFound)?;
+        let artifact = artifact
+            .or(profile.primary.as_deref())
+            .ok_or(ApiError::NotFound)?;
+        let format = &profile
+            .artifacts
+            .iter()
+            .find(|a| a.name == artifact)
+            .ok_or(ApiError::NotFound)?
+            .format;
+        let body =
+            talkops_provisioning::vendors::render(&setup, &common, Some(artifact), &templates)
+                .map_err(ApiError::BadRequest)?
+                .0;
+        return talkops_provisioning::parameters::apply(
+            &body,
+            artifact,
+            format.starts_with("xml"),
+            &overrides.parameters,
+        )
+        .map_err(ApiError::BadRequest);
+    }
+    let device = adapter::render(&setup, &templates).map_err(ApiError::BadRequest)?;
+    let mut locale = Locale::new(time_zone, language);
+    locale.ntp_server = ntp_server.to_owned();
+    let common = yealink::render_common_with(&prov, &admin_password, &locale, language, &templates)
+        .map_err(|e| ApiError::BadRequest(e.to_string()))?;
     if device.len() + common.len() > 524288 {
         return Err(ApiError::BadRequest(
             "configuration output is too large".into(),
@@ -316,7 +500,9 @@ async fn render_phone_config_inner(
     }
     // The per-device file repeats common settings with the device endpoint. A common
     // fetch cannot identify every phone, and must not overwrite an HTTP exception.
-    Ok(format!("{common}\n{device}"))
+    let body = format!("{common}\n{device}");
+    talkops_provisioning::parameters::apply_yealink(&body, model, &overrides.parameters)
+        .map_err(ApiError::BadRequest)
 }
 
 /// Comfort setting values from the database (non-strings are ignored).
@@ -361,6 +547,11 @@ pub async fn serve(
         .or_else(|| path.strip_suffix(".boot"))
         .and_then(normalize_mac)
         .or_else(|| {
+            path.strip_prefix("devices/")
+                .and_then(|rest| rest.split('/').next())
+                .and_then(normalize_mac)
+        })
+        .or_else(|| {
             path.strip_prefix("softkeys/")
                 .and_then(|rest| rest.split('/').next())
                 .and_then(normalize_mac)
@@ -382,7 +573,10 @@ pub async fn serve(
     let record = path.len() <= 100
         && (is_common_cfg(&path)
             || (mac.is_some() && (softkey || !path.contains('/')))
-            || path == "y000000000000.boot");
+            || path == "y000000000000.boot"
+            || path.starts_with("devices/")
+                && mac.is_some()
+                && talkops_provisioning::vendors::valid_path(&path));
     let response = serve_inner(State(state.clone()), Path(path.clone()), Query(query), req).await;
     if record {
         let tenant = match mac.as_deref() {
@@ -459,6 +653,7 @@ async fn serve_inner(
         .and_then(|v| v.to_str().ok())
         .unwrap_or_default();
     let result = match path.as_str() {
+        p if p.starts_with("devices/") => native_artifact(&state, p, headers, ip.as_deref()).await,
         p if p.ends_with(".boot") => boot_file(&state, p, user_agent).await,
         p if p.starts_with("softkeys/") => softkey_file(&state, p).await,
         p if is_common_cfg(p) => common_cfg(&state, &prov, &admin_password).await,
@@ -488,6 +683,42 @@ async fn serve_inner(
         ApiError::NotFound => not_found(),
         other => other.into_response(),
     })
+}
+
+async fn native_artifact(
+    state: &AppState,
+    path: &str,
+    headers: &HeaderMap,
+    ip: Option<&str>,
+) -> ApiResult<Response> {
+    let (identity, requested) = path
+        .strip_prefix("devices/")
+        .and_then(|p| p.split_once('/'))
+        .ok_or(ApiError::NotFound)?;
+    let mac = normalize_mac(identity).ok_or(ApiError::NotFound)?;
+    let (tenant, phone) = phones::find_by_mac(&state.db, &mac)
+        .await?
+        .ok_or(ApiError::NotFound)?;
+    if tenant != TenantId::DEFAULT {
+        return Err(ApiError::NotFound);
+    }
+    let profile = talkops_provisioning::vendors::profile(&phone.model).ok_or(ApiError::NotFound)?;
+    let artifact = talkops_provisioning::vendors::artifact(profile, requested, &mac)
+        .ok_or(ApiError::NotFound)?;
+    let body = render_phone_artifact(state, tenant, &phone, headers, &artifact.name).await?;
+    phones::record_seen(&state.db, phone.id, ip, None).await?;
+    Ok(text(
+        if artifact.format.starts_with("xml") {
+            "application/xml; charset=utf-8"
+        } else if artifact.format == "csv" {
+            "text/csv; charset=utf-8"
+        } else if artifact.format == "json" {
+            "application/json; charset=utf-8"
+        } else {
+            "text/plain; charset=utf-8"
+        },
+        body,
+    ))
 }
 
 async fn boot_file(state: &AppState, path: &str, user_agent: &str) -> ApiResult<Response> {
@@ -576,8 +807,22 @@ fn is_common_cfg(path: &str) -> bool {
 
 async fn common_cfg(state: &AppState, prov: &Provisioning, admin: &str) -> ApiResult<Response> {
     let s = settings::get(&state.db, TenantId::DEFAULT).await?;
-    let locale = Locale::new(&s.timezone, &s.default_language);
-    let body = yealink::render_common(prov, admin, &locale, &s.default_language)
+    let options = provisioning_admin::options(state, TenantId::DEFAULT).await?;
+    let language = if options.language.is_empty() {
+        &s.default_language
+    } else {
+        &options.language
+    };
+    let time_zone = if options.time_zone.is_empty() {
+        &s.timezone
+    } else {
+        &options.time_zone
+    };
+    let mut locale = Locale::new(time_zone, language);
+    if !options.ntp_server.is_empty() {
+        locale.ntp_server = options.ntp_server;
+    }
+    let body = yealink::render_common(prov, admin, &locale, language)
         .map_err(|e| ApiError::Internal(e.to_string()))?;
     Ok(text("text/plain; charset=utf-8", body))
 }
@@ -593,6 +838,10 @@ async fn phone_cfg(
         tracing::info!(mac, "provisioning request from unknown phone");
         return Err(ApiError::NotFound);
     };
+    if tenant != TenantId::DEFAULT || talkops_provisioning::vendors::profile(&phone.model).is_some()
+    {
+        return Err(ApiError::NotFound);
+    }
     let firmware = firmware_from_user_agent(user_agent);
     phones::record_seen(&state.db, phone.id, ip, firmware.as_deref()).await?;
     let body = render_phone_config(state, tenant, &phone, headers).await?;

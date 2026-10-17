@@ -1,0 +1,73 @@
+{# MPL-1.1 derivative: FusionPBX 20143aec4366afc2755f336d3058243479d49d44, cisco/spa112/{$mac}.xml, blob e4c0e119e9be29a2b36f42945ccd79e0f06b7502. #}{% set ns = namespace(keys=keys | default({}), contact_groups=contact_groups | default({})) %}<?xml version="1.0" encoding="UTF-8"?>
+<flat-profile>
+<Enable_Web_Admin_Access>Yes</Enable_Web_Admin_Access>
+<Provision_Enable>Yes</Provision_Enable>
+<Resync_On_Reset>Yes</Resync_On_Reset>
+<Resync_Random_Delay>2</Resync_Random_Delay>
+<Resync_Periodic>0</Resync_Periodic>
+<Resync_At_Random_Delay>0</Resync_At_Random_Delay>
+<Resync_Error_Retry_Delay>300</Resync_Error_Retry_Delay>
+<Forced_Resync_Delay>30</Forced_Resync_Delay>
+<Resync_From_SIP>Yes</Resync_From_SIP>
+<Resync_After_Upgrade_Attempt>Yes</Resync_After_Upgrade_Attempt>
+<Resync_At__HHmm_>{{ ((spa_resync_time | default(''))) | output }}</Resync_At__HHmm_>
+{% if ((spa_provision_url is defined and spa_provision_url is not none)) %}
+<Profile_Rule>[--uid {{ ((http_auth_username | default(''))) | output }} --pwd {{ ((http_auth_password | default(''))) | output }}]http://{{ ((spa_provision_url | default(''))) | output }}</Profile_Rule>
+{% else %}
+<Profile_Rule>[--uid {{ ((http_auth_username | default(''))) | output }} --pwd {{ ((http_auth_password | default(''))) | output }}]{{ ((artifact_base | default(''))) | output }}/?mac=$MA</Profile_Rule>
+{% endif %}
+<Upgrade_Enable>{{ ((spa_upgrade_enable | default(''))) | output }}</Upgrade_Enable>
+<Upgrade_Rule>[--uid {{ ((http_auth_username | default(''))) | output }} --pwd {{ ((http_auth_password | default(''))) | output }}]http://{{ ((domain_name | default(''))) | output }}/app/cisco/resources/firmware/spa112-1.4.1.bin</Upgrade_Rule>
+<RTP_Packet_Size>0.020</RTP_Packet_Size>
+<Line_Enable_1_>Yes</Line_Enable_1_>
+<Mailbox_ID_1_>{{ ((voicemail_number | default(''))) | output }}</Mailbox_ID_1_>
+<Proxy_1_>{{ ((server_address_1 | default(''))) | output }}</Proxy_1_>
+<Outbound_Proxy_1_>{{ ((lookup(account | default(none), ["1","outbound_proxy_primary"]) | default(''))) | output }}</Outbound_Proxy_1_>
+<Use_Outbound_Proxy_1_>{% if ((lookup(account | default(none), ["1","outbound_proxy_primary"]) is defined and lookup(account | default(none), ["1","outbound_proxy_primary"]) is not none)) %}Yes{% else %}No{% endif %}</Use_Outbound_Proxy_1_>
+<SIP_Transport_1_ group="Ext_1/SIP_Settings">{{ (((lookup(account | default(none), ["1","sip_transport"]) | default('')) | upper)) | output }}</SIP_Transport_1_>
+<SIP_Port_1_ group="Ext_1/SIP_Settings">{{ ((lookup(account | default(none), ["1","sip_port"]) | default(''))) | output }}</SIP_Port_1_>
+<Register_Expires_1_ group="Ext_1/Proxy_and_Registration">{{ ((lookup(account | default(none), ["1","register_expires"]) | default(''))) | output }}</Register_Expires_1_>
+<Register_1_>Yes</Register_1_>
+<Display_Name_1_>{{ ((lookup(account | default(none), ["1","display_name"]) | default(''))) | output }}</Display_Name_1_>
+<User_ID_1_>{{ ((lookup(account | default(none), ["1","user_id"]) | default(''))) | output }}</User_ID_1_>
+<Password_1_>{{ ((lookup(account | default(none), ["1","password"]) | default(''))) | output }}</Password_1_>
+<Use_Auth_ID_1_>No</Use_Auth_ID_1_>
+<Auth_ID_1_></Auth_ID_1_>
+<Call_Waiting_Serv_1_>{{ ((spa_call_waiting | default(''))) | output }}</Call_Waiting_Serv_1_>  
+<Dial_Plan_1_>{{ ((spa_dial_plan | default(''))) | output }}</Dial_Plan_1_>
+<Line_Enable_2_>Yes</Line_Enable_2_>
+<Mailbox_ID_2_>{{ ((voicemail_number | default(''))) | output }}</Mailbox_ID_2_>
+<Proxy_2_>{{ ((lookup(account | default(none), ["2","server_address"]) | default(''))) | output }}</Proxy_2_>
+<Outbound_Proxy_2_>{{ ((lookup(account | default(none), ["2","outbound_proxy_primary"]) | default(''))) | output }}</Outbound_Proxy_2_>
+<Use_Outbound_Proxy_2_>{% if ((lookup(account | default(none), ["2","outbound_proxy_primary"]) is defined and lookup(account | default(none), ["2","outbound_proxy_primary"]) is not none)) %}Yes{% else %}No{% endif %}</Use_Outbound_Proxy_2_>
+<Register_2_>Yes</Register_2_>
+<SIP_Transport_2_ group="Ext_1/SIP_Settings">{{ (((lookup(account | default(none), ["2","sip_transport"]) | default('')) | upper)) | output }}</SIP_Transport_2_>
+<SIP_Port_2_ group="Ext_1/SIP_Settings">{{ ((lookup(account | default(none), ["2","sip_port"]) | default(''))) | output }}</SIP_Port_2_>
+<Register_Expires_2_ group="Ext_2/Proxy_and_Registration">{{ ((lookup(account | default(none), ["2","register_expires"]) | default(''))) | output }}</Register_Expires_2_>
+<Display_Name_2_>{{ ((lookup(account | default(none), ["2","display_name"]) | default(''))) | output }}</Display_Name_2_>
+<User_ID_2_>{{ ((lookup(account | default(none), ["2","user_id"]) | default(''))) | output }}</User_ID_2_>
+<Password_2_>{{ ((lookup(account | default(none), ["2","password"]) | default(''))) | output }}</Password_2_>
+<Use_Auth_ID_2_>No</Use_Auth_ID_2_>
+<Auth_ID_2_></Auth_ID_2_>
+<Call_Waiting_Serv_2_>{{ ((spa_call_waiting | default(''))) | output }}</Call_Waiting_Serv_2_>  
+<Dial_Plan_2_>{{ ((spa_dial_plan | default(''))) | output }}</Dial_Plan_2_>
+<Handle_VIA_rport>{{ ((spa_handle_via_rport | default(''))) | output }}</Handle_VIA_rport>
+<Insert_VIA_received>No</Insert_VIA_received>
+<Insert_VIA_rport>{{ ((spa_insert_via_rport | default(''))) | output }}</Insert_VIA_rport>
+<router-configuration>
+<Reset_Button_Enable>1</Reset_Button_Enable>
+<Web_Utility_Access_HTTP>1</Web_Utility_Access_HTTP>
+<Web_Utility_Access_HTTPS>0</Web_Utility_Access_HTTPS>
+<Time_Setup>
+<Time_Zone>{{ ((spa_time_zone | default(''))) | output }}</Time_Zone>
+<Time_Server>{{ ((ntp_server_primary | default(''))) | output }}</Time_Server>
+<Time_Server_Mode>manual</Time_Server_Mode>
+<Resync_Timer>60</Resync_Timer>
+<Auto_Recovery_System_Time>1</Auto_Recovery_System_Time>
+<Time_Mode>1</Time_Mode>
+</Time_Setup>
+{% if ((admin_name is defined and admin_name is not none)) %}<Web_Login_Admin_Name>{{ ((admin_name | default(''))) | output }}</Web_Login_Admin_Name>{% endif %}
+{% if ((admin_password is defined and admin_password is not none)) %}<Web_Login_Admin_Password>{{ ((admin_password | default(''))) | output }}</Web_Login_Admin_Password>{% endif %}
+</router-configuration>
+
+</flat-profile>

@@ -1,6 +1,81 @@
 import type en from './en';
 
 const de: Record<keyof typeof en, string> = {
+	'vendor.removeKey': 'Tastenüberschreibung entfernen',
+	'vendor.baseAddress': 'Adresse des Provisionierungsverzeichnisses',
+	'vendor.listHint': 'JSON-Liste mit Textwerten eingeben, zum Beispiel ["112", "110"].',
+	'vendor.accountSlots': 'Konfigurierte SIP-Kontoplätze',
+	'vendor.accountSlotsHint':
+		'Trage die für Modell und Firmware dokumentierte Kontenzahl ein. Die Vorlage kann eine niedrigere Grenze vorgeben. Entferne höhere Kontozuordnungen, bevor du die Zahl verringerst.',
+	'vendor.modelChanged':
+		'Der Entwurf verwendet jetzt ein anderes Modell. Herstellerparameter, Tasten und Vorlagenauswahl wurden zurückgesetzt. Prüfe die Konfiguration vor dem Speichern.',
+	'vendor.keySlotsHint':
+		'Verwende die Platznummern aus dem Modellhandbuch und die Herstellerfunktionen. Falls verfügbar, setzt eine Deaktivierungsfunktion die Taste am Telefon zurück. Entfernen übernimmt das Vorlagenverhalten. Die Tastenanzahl hängt von Modell und Firmware ab.',
+	'vendor.keyGroup': 'Tastengruppe',
+	'vendor.keySlot': 'Platznummer',
+	'vendor.addKey': 'Tastenbelegung hinzufügen',
+	'vendor.showQr': 'QR-Code anzeigen',
+	'vendor.sourceGap':
+		'Die Quelle enthält keine nutzbare Konfiguration für dieses Profil. Es kann noch nicht provisioniert werden.',
+	'vendor.identityToken': 'App-Geräte-ID',
+	'vendor.identityHint': 'Leer lassen, um eine neue eindeutige ID für diese App zu erzeugen.',
+	'vendor.showMore': 'Weitere Felder anzeigen ({count} verbleibend)',
+	'vendor.coverage':
+		'Felder der gewählten Herstellervorlage, nach Funktion gegliedert. Modell- und Firmwaregrenzen gelten. Die Prüfung an Geräten steht aus.',
+	'vendor.search': 'Einstellung, Parameter oder Quelldatei suchen',
+	'vendor.configuredOnly': 'Nur Geräteüberschreibungen',
+	'vendor.reset': 'Vorlagenvorgabe verwenden',
+	'vendor.managed':
+		'Über TalkOps-Konten, Geräteidentität oder Provisionierungseinstellungen verwaltet.',
+	'vendor.noFields': 'Dieses Profil hat keine erfassten Einstellungsfelder.',
+	'vendor.category.locale': 'Sprache, Datum und Uhrzeit',
+	'vendor.category.network': 'Netzwerk',
+	'vendor.category.sip': 'SIP und Konten',
+	'vendor.category.calls': 'Anruffunktionen',
+	'vendor.category.audio': 'Audio und Töne',
+	'vendor.category.display': 'Display',
+	'vendor.category.keys': 'Tasten und Belegung',
+	'vendor.category.directory': 'Telefonbücher und Kontakte',
+	'vendor.category.provisioning': 'Provisionierung und Firmware',
+	'vendor.category.maintenance': 'Wartung',
+	'vendor.category.security': 'Sicherheit und Zugang',
+	'vendor.category.other': 'Weitere Herstellereinstellungen',
+	'prov.localeTitle': 'Sprache und Uhrzeit',
+	'prov.localeHint':
+		'Leere Werte verwenden die Servervorgaben. Jedes Telefon kann die Werte einzeln überschreiben.',
+	'prov.language': 'Telefonsprache',
+	'prov.timeZone': 'Zeitzone (IANA)',
+	'prov.ntpServer': 'NTP-Server',
+	'prov.inheritLocale': 'Servervorgabe verwenden',
+	'prov.german': 'Deutsch',
+	'prov.english': 'English',
+	'vendor.settings': 'Modelleinstellungen',
+	'vendor.settingsHint':
+		'Die Einstellungen hängen vom gewählten Quellprofil und der Firmware ab. Leere Werte verwenden die Vorlagenvorgaben.',
+	'vendor.advanced': 'Weitere Modelleinstellungen',
+	'vendor.secretSaved': 'Geheimnis gespeichert (unverändert lassen zum Beibehalten)',
+	'vendor.default': 'Vorlagenvorgabe',
+	'vendor.notCopied':
+		'Gerätespezifische oder geheime Einstellung; wird beim Klonen ausgeschlossen.',
+	'vendor.notTested': 'Prüfung am Gerät steht aus',
+	'vendor.files': 'Konfigurationsdateien',
+	'vendor.filesHint':
+		'Je nach Modellhandbuch die Verzeichnisadresse oder die Hauptdatei am Telefon eintragen. Benutzername und Passwort für die Provisionierung sind erforderlich. Weitere Dateien werden nach Bedarf des Modells abgerufen.',
+	'vendor.manualResync':
+		'Dieses Profil verwendet geplante Downloads oder das Gerätemenü. Ein entfernter Resync ist nicht verfügbar.',
+	'phoneclone.title': 'Einstellungen von einem Telefon übernehmen',
+	'phoneclone.source': 'Quelltelefon',
+	'phoneclone.select': 'Telefon auswählen',
+	'phoneclone.hint':
+		'Übernimmt Einstellungen für dasselbe Modell. Spätere Änderungen am Quelltelefon werden nicht übertragen. Es wird kein Resync ausgelöst.',
+	'phoneclone.copied': 'Zu kopierende Einstellungen',
+	'phoneclone.excluded': 'Von der Kopie ausgeschlossene Felder',
+	'phoneclone.http':
+		'Das Quelltelefon verwendet eine HTTP-Ausnahme für die Provisionierung. Diese Adresse gilt auch für das neue Telefon.',
+	'phoneclone.assignments': 'Neue Kontozuordnungen',
+	'phoneclone.accountHint':
+		'Nebenstellen für neue SIP-Konten auswählen. Zugangsdaten werden separat erzeugt. Tasten ohne zugeordnetes Konto bleiben inaktiv.',
+	'phoneclone.create': 'Telefon mit diesen Einstellungen anlegen',
 	'setup.choose':
 		'Neue Instanz einrichten oder eine bestehende Instanz aus einem Backup wiederherstellen.',
 	'setup.new': 'Neue Instanz einrichten',

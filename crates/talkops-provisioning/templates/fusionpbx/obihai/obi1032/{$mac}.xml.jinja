@@ -1,0 +1,83 @@
+{# MPL-1.1 derivative: FusionPBX 20143aec4366afc2755f336d3058243479d49d44, obihai/obi1032/{$mac}.xml, blob 6eee1c22a4f62b3d2cb666d383205814d0320e99. #}{% set ns = namespace(keys=keys | default({}), contact_groups=contact_groups | default({})) %}<?xml version="1.0" encoding="UTF-8"?>
+<!-- OBi Configuration File -->
+<ParameterList>
+  {% for row in (lines | default('')) | values %} 
+  <Object>                         
+    <Name>VoiceService.1.VoiceProfile.1.Line.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.SIP.</Name>
+    <ParameterValueStruct>
+      <Name>AuthUserName</Name>
+      <Value>{{ ((lookup(row | default(none), ["user_id"]) | default(''))) | output }}</Value>
+    </ParameterValueStruct>
+    <ParameterValueStruct>
+      <Name>AuthPassword</Name>
+      <Value>{{ ((lookup(row | default(none), ["password"]) | default(''))) | output }}</Value>
+    </ParameterValueStruct>
+  </Object>
+  <Object>
+    <Name>VoiceService.1.VoiceProfile.1.Line.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.</Name>
+    <ParameterValueStruct>
+      <Name>Enable</Name>
+      <Value X_UseDefault="Yes"></Value>
+    </ParameterValueStruct>
+    <ParameterValueStruct>
+      <Name>X_DisplayLabel</Name>
+      <Value>{{ ((lookup(row | default(none), ["display_name"]) | default(''))) | output }}</Value>
+    </ParameterValueStruct>
+    <ParameterValueStruct>
+      <Name>X_DisplayNumber</Name>
+      <Value>{{ ((lookup(row | default(none), ["user_id"]) | default(''))) | output }}</Value>
+    </ParameterValueStruct>
+  </Object>
+  <Object>
+    <Name>VoiceService.1.VoiceProfile.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.</Name>
+    <ParameterValueStruct>
+      <Name>DigitMap</Name>
+      <Value>(*xx|*xxx|*xxxx|*xxxxx|*xxxxxx|*xxxxxxx|**xx|**xxx|**xxxx|**xxxxx|**xxxxxx|**xxxxxxx|1xxxxxxxxxx|&lt;1&gt;[2-9]xxxxxxxxx|011xx.|xx.|(Mipd)|[^*#]@@.)</Value>
+    </ParameterValueStruct>
+  </Object>
+  <Object>
+    <Name>VoiceService.1.VoiceProfile.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.SIP.</Name>
+    <ParameterValueStruct>
+      <Name>ProxyServer</Name>
+      <Value>{{ ((lookup(row | default(none), ["server_address"]) | default(''))) | output }}</Value>
+    </ParameterValueStruct>
+    <ParameterValueStruct>
+      <Name>ProxyServerPort</Name>
+      {% if ((lookup(row | default(none), ["sip_port"]) is defined and lookup(row | default(none), ["sip_port"]) is not none)) %}<Value>{{ ((lookup(row | default(none), ["sip_port"]) | default(''))) | output }}</Value>{% else %}<Value>5060</Value>{% endif %}
+    </ParameterValueStruct>
+    <ParameterValueStruct>
+      <Name>ProxyServerTransport</Name>
+      {% if (lookup(row | default(none), ["sip_transport"]) | default('')) == '' %}<Value>TCP</Value>{% endif %}
+      {% if (lookup(row | default(none), ["sip_transport"]) | default('')) == 'tcp' %}<Value>TCP</Value>{% endif %}
+      {% if (lookup(row | default(none), ["sip_transport"]) | default('')) == 'udp' %}<Value>UDP</Value>{% endif %}
+      {% if (lookup(row | default(none), ["sip_transport"]) | default('')) == 'tls' %}<Value>TLS</Value>{% endif %}
+      {% if (lookup(row | default(none), ["sip_transport"]) | default('')) == 'dns srv' %}<Value>SRV</Value>{% endif %}
+    </ParameterValueStruct>
+    <ParameterValueStruct>
+      <Name>RegisterExpires</Name>
+      <Value>{{ ((lookup(row | default(none), ["register_expires"]) | default(''))) | output }}</Value>
+    </ParameterValueStruct>
+  </Object>
+  {% endfor %}
+  {% for row in (lookup(keys | default(none), ["line"]) | default('')) | values %}
+    <Object>
+    <Name>VoiceService.1.Phone.LineKey.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.</Name>
+    <ParameterValueStruct>
+      <Name>Function</Name>
+      <Value>{{ ((lookup(row | default(none), ["device_key_type"]) | default(''))) | output }}</Value>
+    </ParameterValueStruct>
+    <ParameterValueStruct>
+      <Name>Service</Name>
+      <Value>SP{{ ((lookup(row | default(none), ["device_key_line"]) | default(''))) | output }}</Value>
+    </ParameterValueStruct>
+    <ParameterValueStruct>
+      <Name>Number</Name>
+      <Value>{{ ((lookup(row | default(none), ["device_key_value"]) | default(''))) | output }}</Value>
+    </ParameterValueStruct>
+    <ParameterValueStruct>
+      <Name>Name</Name>
+      <Value>{{ ((lookup(row | default(none), ["device_key_label"]) | default(''))) | output }}</Value>
+    </ParameterValueStruct>
+  </Object>
+  {% endfor %}
+</ParameterList>

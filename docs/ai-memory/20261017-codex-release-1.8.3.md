@@ -92,3 +92,13 @@ v1.8.3. Record each gate and artifact before reporting completion.
 - Exact-main CI39062967200 and E2E39062967294 are running. Tag remains pending.
 - Do not push the batch branch again. Preserve later summary changes in an
   audit descendant after all publication evidence is available.
+
+## Publication started
+
+Main CI39062967200 and E2E39062967294 passed on the exact release commit.
+A fresh scope check found no open PR. Main remained unchanged. Guarded tag
+publication verified the merged PR, candidate tree, ancestry and versions.
+Tag v1.8.3 was pushed once at 7beb63d5b8e3917b7621588413afcec2a8893456.
+Annotated tag object: 910ebc6af4e38cb8471a5f73ec888f755b738e31.
+The existing Release workflow owns image and GitHub release publication.
+Publication and registry verification are not yet complete.

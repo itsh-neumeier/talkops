@@ -1,0 +1,39 @@
+{# MPL-1.1 derivative: FusionPBX 20143aec4366afc2755f336d3058243479d49d44, groundwire/default/{$mac}.xml, blob c79ee4bc5e8c4abffdafa4a7d251611969bdcd3d. #}{% set ns = namespace(keys=keys | default({}), contact_groups=contact_groups | default({})) %}{% for row in (lines | default('')) | values %}
+<account>
+    <title>{{ ((lookup(row | default(none), ["user_id"]) | default(''))) | output }}@{{ ((lookup(row | default(none), ["server_address"]) | default(''))) | output }}</title>
+        <cloud_username>{{ ((lookup(row | default(none), ["user_id"]) | default(''))) | output }}@{{ ((lookup(row | default(none), ["server_address"]) | default(''))) | output }}</cloud_username>
+        <cloud_password>{{ ((lookup(row | default(none), ["password"]) | default(''))) | output }}</cloud_password>
+        <authUsername>{{ ((lookup(row | default(none), ["user_id"]) | default(''))) | output }}</authUsername>
+        <username>{{ ((lookup(row | default(none), ["user_id"]) | default(''))) | output }}</username>
+        <password>{{ ((lookup(row | default(none), ["password"]) | default(''))) | output }}</password>
+        <host>{{ ((lookup(row | default(none), ["server_address"]) | default(''))) | output }}</host>
+        <proxy>{{ ((lookup(row | default(none), ["server_address"]) | default(''))) | output }}:{{ ((lookup(row | default(none), ["sip_port"]) | default(''))) | output }}</proxy>
+        <transport>{{ ((lookup(row | default(none), ["sip_transport"]) | default(''))) | output }}</transport>
+        <extProvInterval>0</extProvInterval>
+        <voiceMailNumber>{{ ((voicemail_number | default(''))) | output }}</voiceMailNumber>
+        <subscribeForVoicemail>1</subscribeForVoicemail>
+        <wsContactsUrl>{{ ((artifact_base | default(''))) | output }}/directory.json</wsContactsUrl>
+
+      <rewriting>
+    <rule>
+      <conditions>
+        <condition type="equals" param="933"></condition>
+      </conditions>
+      <actions>
+        <action type="overrideDialAction" param="gsmCall"></action>
+      </actions>
+    </rule>
+
+    <rule>
+      <conditions>
+        <condition type="equals" param="911"></condition>
+      </conditions>
+      <actions>
+        <action type="overrideDialAction" param="gsmCall"></action>
+      </actions>
+    </rule>
+  </rewriting>
+</account>
+
+{% if (loop.index0 | default(0) | int) == 1 %}{% break %}{% endif %}
+{% endfor %}

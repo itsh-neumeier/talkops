@@ -33,3 +33,11 @@ in this repository and through authenticated native-template copies.
 The independently maintained files under `templates/yealink` and the application
 code use the TalkOps project license. The source library records template
 content; it does not certify a phone model or firmware.
+
+The directory `reference/fusionpbx-apps` also contains the original
+`app/devices/app_config.php` and `app/provision/resources/classes/provision.php`
+blobs from the same revision. Their hashes are in
+`docs/research/fusionpbx-function-sources.json`. These files retain their source
+license notices. The literal function records in `profiles/functions.json` are
+derived data under the same MPL-1.1 terms. TalkOps parses those records at build
+time and does not execute either PHP file.

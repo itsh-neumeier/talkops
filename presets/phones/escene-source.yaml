@@ -1,0 +1,13 @@
+{
+  "vendor": "escene",
+  "status": "untested",
+  "models": [
+    {
+      "id": "escene-e3xx",
+      "name": "e3xx",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    }
+  ]
+}

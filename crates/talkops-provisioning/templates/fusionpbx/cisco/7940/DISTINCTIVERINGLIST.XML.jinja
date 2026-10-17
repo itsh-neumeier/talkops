@@ -1,0 +1,30 @@
+{# MPL-1.1 derivative: FusionPBX 20143aec4366afc2755f336d3058243479d49d44, cisco/7940/DISTINCTIVERINGLIST.XML, blob 8841ee8303d9e1d63f5183c860720db05a347047. #}{% set ns = namespace(keys=keys | default({}), contact_groups=contact_groups | default({})) %}<tones>
+  <tone c1="31164" i1="-1772" c2="30743" i2="-1985" c3="31164" i3="-1772" c4="30743" i4="-1985" d="34" t="ringing">
+    <part m="on" t="400"></part>
+    <part m="off" t="200"></part>
+    <part m="on" t="400"></part>
+    <part m="off" t="2000"></part>
+    <repeat c="65535"></repeat>
+  </tone>
+  <tone c1="31164" i1="-1772" c2="31164" i2="-1772" d="17" t="reorder">
+    <part m="on" t="400"></part>
+    <part m="off" t="350"></part>
+    <part m="on" t="225"></part>
+    <part m="off" t="525"></part>
+    <repeat c="65535"></repeat>
+  </tone>
+  <tone c1="31164" i1="-1772" d="1" t="busy">
+    <part m="on" t="375"></part>
+    <part m="off" t="375"></part>
+    <repeat c="65535"></repeat>
+  </tone>
+  <tone c1="31538" i1="-1556" c2="30831" i2="-1942" d="2" t="odial">
+    <part m="on" t="65535"></part>
+    <repeat c="65535"></repeat>
+  </tone>
+  <tone c1="31538" i1="-1556" c2="30831" i2="-1942" d="2" t="idial">
+    <part m="on" t="65535"></part>
+    <repeat c="65535"></repeat>
+  </tone>
+</tones>
+

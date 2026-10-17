@@ -1,0 +1,272 @@
+{
+  "vendor": "polycom",
+  "status": "untested",
+  "models": [
+    {
+      "id": "polycom-3-x",
+      "name": "3.x",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "polycom-4-x",
+      "name": "4.x",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "polycom-5-x",
+      "name": "5.x",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "polycom-6-x",
+      "name": "6.x",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "polycom-650",
+      "name": "650",
+      "family": "desk",
+      "accounts": 3,
+      "line_keys": 0
+    },
+    {
+      "id": "polycom-8030",
+      "name": "8030",
+      "family": "wifi",
+      "accounts": 3,
+      "line_keys": 0
+    },
+    {
+      "id": "polycom-ccx500",
+      "name": "ccx500",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "polycom-duo",
+      "name": "duo",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "polycom-ip321",
+      "name": "ip321",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "polycom-ip331",
+      "name": "ip331",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "polycom-ip335",
+      "name": "ip335",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "polycom-ip450",
+      "name": "ip450",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "polycom-ip5000",
+      "name": "ip5000",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "polycom-ip550",
+      "name": "ip550",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "polycom-ip560",
+      "name": "ip560",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "polycom-ip6000",
+      "name": "ip6000",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "polycom-ip650",
+      "name": "ip650",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "polycom-ip670",
+      "name": "ip670",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "polycom-ip7000",
+      "name": "ip7000",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "polycom-vvx101",
+      "name": "vvx101",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "polycom-vvx150",
+      "name": "vvx150",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "polycom-vvx1500",
+      "name": "vvx1500",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "polycom-vvx201",
+      "name": "vvx201",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "polycom-vvx250",
+      "name": "vvx250",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "polycom-vvx300",
+      "name": "vvx300",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "polycom-vvx301",
+      "name": "vvx301",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "polycom-vvx310",
+      "name": "vvx310",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "polycom-vvx311",
+      "name": "vvx311",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "polycom-vvx350",
+      "name": "vvx350",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "polycom-vvx400",
+      "name": "vvx400",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "polycom-vvx401",
+      "name": "vvx401",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "polycom-vvx410",
+      "name": "vvx410",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "polycom-vvx411",
+      "name": "vvx411",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "polycom-vvx450",
+      "name": "vvx450",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "polycom-vvx500",
+      "name": "vvx500",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "polycom-vvx501",
+      "name": "vvx501",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "polycom-vvx600",
+      "name": "vvx600",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "polycom-vvx601",
+      "name": "vvx601",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    }
+  ]
+}

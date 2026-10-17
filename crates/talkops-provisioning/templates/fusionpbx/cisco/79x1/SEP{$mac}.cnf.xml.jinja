@@ -1,0 +1,153 @@
+{# MPL-1.1 derivative: FusionPBX 20143aec4366afc2755f336d3058243479d49d44, cisco/79x1/SEP{$mac}.cnf.xml, blob 545b8786d1e337bae6d9a8a521d4871a3c64e0d0. #}{% set ns = namespace(keys=keys | default({}), contact_groups=contact_groups | default({})) %}<device>
+	<!--Documentation http://usecallmanager.nz/sepmac-cnf-xml.html-->
+	<!--Works with 7941,7961,7942,7962 phones-->
+	<deviceProtocol>SIP</deviceProtocol>
+	<sshUserId>{{ ((admin_name | default(''))) | output }}</sshUserId>
+	<sshPassword>{{ ((admin_password | default(''))) | output }}</sshPassword>
+	<devicePool>
+		<dateTimeSetting>
+			<dateTemplate>D/M/YY</dateTemplate>
+			<timeZone>Eastern Standard/Daylight Time</timeZone>
+			<ntps> 
+				<ntp> 
+					<name>{{ ((ntp_server_primary | default(''))) | output }}</name> 
+					<ntpMode>Unicast</ntpMode> 
+				</ntp> 
+			</ntps> 
+		</dateTimeSetting>
+		<callManagerGroup>
+			<members>
+				<member priority="0">
+					<callManager>
+						<ports>
+							<sipPort>5060</sipPort>
+							<securedSipPort>5061</securedSipPort>
+						</ports>
+						<processNodeName>{{ ((domain_name | default(''))) | output }}</processNodeName>
+					</callManager>
+				</member>
+			</members>
+		</callManagerGroup>
+	</devicePool>
+	<sipProfile>
+		<sipProxies>
+			<backupProxy></backupProxy> 
+			<backupProxyPort></backupProxyPort> 
+			<emergencyProxy></emergencyProxy> 
+			<emergencyProxyPort></emergencyProxyPort> 
+			<outboundProxy></outboundProxy> 
+			<outboundProxyPort></outboundProxyPort> 
+			<registerWithProxy>true</registerWithProxy> 
+		</sipProxies>
+		<sipCallFeatures>
+			<cnfJoinEnabled>true</cnfJoinEnabled>
+			<localCfwdEnable>true</localCfwdEnable>
+			<callForwardURI>service-uri-cfwdall</callForwardURI>
+			<callPickupURI>service-uri-pickup</callPickupURI>
+			<callPickupGroupURI>service-uri-gpickup</callPickupGroupURI>
+			<callHoldRingback>2</callHoldRingback>
+			<semiAttendedTransfer>true</semiAttendedTransfer>
+			<anonymousCallBlock>2</anonymousCallBlock>
+			<callerIdBlocking>2</callerIdBlocking>
+			<dndControl>2</dndControl>
+			<remoteCcEnable>true</remoteCcEnable>
+		</sipCallFeatures>
+		<sipStack> 
+			<sipInviteRetx>6</sipInviteRetx> 
+			<sipRetx>10</sipRetx> 
+			<timerInviteExpires>180</timerInviteExpires> 
+			<timerRegisterExpires>{{ ((register_expires_1 | default(''))) | output }}</timerRegisterExpires> 
+			<timerRegisterDelta>5</timerRegisterDelta> 
+			<timerKeepAliveExpires>120</timerKeepAliveExpires> 
+			<timerSubscribeExpires>120</timerSubscribeExpires> 
+			<timerSubscribeDelta>5</timerSubscribeDelta> 
+			<timerT1>500</timerT1> 
+			<timerT2>4000</timerT2> 
+			<maxRedirects>70</maxRedirects> 
+			<remotePartyID>true</remotePartyID> 
+			<userInfo>None</userInfo> 
+		</sipStack>
+		<natEnabled>false</natEnabled> 
+		<natAddress></natAddress> 
+		<enableVad>false</enableVad>
+		<preferredCodec>G722</preferredCodec>
+		<autoAnswerTimer>0</autoAnswerTimer>
+		<autoAnswerAltBehavior>false</autoAnswerAltBehavior>
+		<autoAnswerOverride>true</autoAnswerOverride>
+		<phoneLabel>{{ ((device_label | default(''))) | output }}</phoneLabel>
+		<sipLines>
+{% for row in (lines | default('')) | values %}
+			<line button="{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}">
+				<featureID>9</featureID>
+				<featureLabel>{{ ((lookup(row | default(none), ["user_id"]) | default(''))) | output }} {{ ((lookup(row | default(none), ["display_name"]) | default(''))) | output }}</featureLabel>
+				<proxy>{{ ((lookup(row | default(none), ["server_address"]) | default(''))) | output }}</proxy>
+{% if ((lookup(row | default(none), ["sip_port"]) is defined and lookup(row | default(none), ["sip_port"]) is not none)) %}
+				<port>{{ ((lookup(row | default(none), ["sip_port"]) | default(''))) | output }}</port>
+{% else %}
+				<port>5060</port>
+{% endif %}
+				<name>{{ ((lookup(row | default(none), ["user_id"]) | default(''))) | output }}</name>
+				<displayName>{{ ((lookup(row | default(none), ["display_name"]) | default(''))) | output }}</displayName>
+				<authName>{{ ((lookup(row | default(none), ["auth_id"]) | default(''))) | output }}</authName>
+				<authPassword>{{ ((lookup(row | default(none), ["password"]) | default(''))) | output }}</authPassword>
+{% if ((lookup(row | default(none), ["shared_line"]) is defined and lookup(row | default(none), ["shared_line"]) is not none)) %}
+				<sharedLine>{{ ((lookup(row | default(none), ["shared_line"]) | default(''))) | output }}</sharedLine>
+{% else %}
+				<sharedLine>false</sharedLine>
+{% endif %}
+				<autoAnswer>
+					<autoAnswerEnabled>2</autoAnswerEnabled> 
+					<autoAnswerMode>Auto Answer with Speakerphone</autoAnswerMode>
+				</autoAnswer>
+				<callWaiting>3</callWaiting>
+				<messageWaitingLampPolicy>3</messageWaitingLampPolicy>
+				<messagesNumber>{{ ((voicemail_number | default(''))) | output }}</messagesNumber>
+				<ringSettingIdle>4</ringSettingIdle>
+				<ringSettingActive>5</ringSettingActive>
+				<forwardCallInfoDisplay>
+					<callerName>true</callerName>
+					<callerNumber>true</callerNumber>
+					<redirectedNumber>true</redirectedNumber>
+					<dialedNumber>true</dialedNumber>
+				</forwardCallInfoDisplay>
+			</line>
+{% endfor %}
+
+{% for row in (lookup(keys | default(none), ["line"]) | default('')) | values %}
+			<line button="{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}">
+				<featureID>21</featureID>
+				<featureLabel>{{ ((lookup(row | default(none), ["device_key_label"]) | default(''))) | output }}</featureLabel>
+				<speedDialNumber>{{ ((lookup(row | default(none), ["device_key_value"]) | default(''))) | output }}</speedDialNumber>
+				<featureOptionMask>1</featureOptionMask>
+			</line>
+{% endfor %}
+
+		</sipLines>
+		<dialTemplate>dialplan.xml</dialTemplate>
+		<dscpForAudio>184</dscpForAudio>
+	</sipProfile>
+	<loadInformation>SIP41.8-5-4S</loadInformation>
+
+	<vendorConfig> 
+		<g722CodecSupport>2</g722CodecSupport>
+		<disableSpeaker>false</disableSpeaker> 
+		<disableSpeakerAndHeadset>false</disableSpeakerAndHeadset> 
+		<pcPort>0</pcPort> 
+		<settingsAccess>1</settingsAccess> 
+		<garp>0</garp> 
+		<voiceVlanAccess>1</voiceVlanAccess> 
+		<videoCapability>0</videoCapability> 
+		<autoSelectLineEnable>0</autoSelectLineEnable> 
+		<webAccess>0</webAccess> 
+		<daysDisplayNotActive>1,7</daysDisplayNotActive> 
+		<displayOnTime></displayOnTime> 
+		<displayOnDuration></displayOnDuration> 
+		<displayIdleTimeout></displayIdleTimeout> 
+		<spanToPCPort>1</spanToPCPort> 
+		<sshAccess>0</sshAccess>
+		<sshPort>22</sshPort>
+	</vendorConfig> 
+
+	<advertiseG722Codec>1</advertiseG722Codec>			
+
+</device>

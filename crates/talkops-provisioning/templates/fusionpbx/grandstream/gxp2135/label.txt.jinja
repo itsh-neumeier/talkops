@@ -1,0 +1,31 @@
+{# MPL-1.1 derivative: FusionPBX 20143aec4366afc2755f336d3058243479d49d44, grandstream/gxp2135/label.txt, blob be9976d487139d00f3e0ec73acde0c8faadac3f6. #}{% set ns = namespace(keys=keys | default({}), contact_groups=contact_groups | default({})) %}{% set ns.rows = 8 %}
+{% set ns.cols = 1 %}
+{% if (template | default('')) == "grandstream/gxp16xx" %}{% set ns.rows = 8 %}{% set ns.cols = 1 %}{% endif %}
+{% if (template | default('')) == "grandstream/gxp1628" %}{% set ns.rows = 8 %}{% set ns.cols = 1 %}{% endif %}
+{% if (template | default('')) == "grandstream/gxp1630" %}{% set ns.rows = 8 %}{% set ns.cols = 1 %}{% endif %}
+{% if (template | default('')) == "grandstream/gxp2160" %}{% set ns.rows = 12 %}{% set ns.cols = 2 %}{% endif %}
+{% if (template | default('')) == "grandstream/gxp2130" %}{% set ns.rows = 4 %}{% set ns.cols = 2 %}{% endif %}
+{% if (lookup(ns | default(none), ["cols"]) | default(0) | int) == 2 %}
+{% for row in range(1, ((lookup(ns | default(none), ["rows"]) | default(''))) + 1) %}
+{% set ns.mem = (row | default(0) | int)+(lookup(ns | default(none), ["rows"]) | default(0) | int) %}
+{% if ((lookup(keys | default(none), ["memory",(lookup(ns | default(none), ["mem"]) | default('')),"device_key_category"]) is defined and lookup(keys | default(none), ["memory",(lookup(ns | default(none), ["mem"]) | default('')),"device_key_category"]) is not none))  and  ((lookup(keys | default(none), ["memory",(lookup(ns | default(none), ["mem"]) | default('')),"device_key_type"]) is defined and lookup(keys | default(none), ["memory",(lookup(ns | default(none), ["mem"]) | default('')),"device_key_type"]) is not none)) %}
+	{{ ((lookup(keys | default(none), ["memory",(lookup(ns | default(none), ["mem"]) | default('')),"device_key_label"]) | default(''))) | output }}
+{% else %}
+
+{% endif %}
+{% set ns.mem = (row | default('')) %}
+{% if ((lookup(keys | default(none), ["memory",(lookup(ns | default(none), ["mem"]) | default('')),"device_key_category"]) is defined and lookup(keys | default(none), ["memory",(lookup(ns | default(none), ["mem"]) | default('')),"device_key_category"]) is not none))  and  ((lookup(keys | default(none), ["memory",(lookup(ns | default(none), ["mem"]) | default('')),"device_key_type"]) is defined and lookup(keys | default(none), ["memory",(lookup(ns | default(none), ["mem"]) | default('')),"device_key_type"]) is not none)) %}
+{{ ((lookup(keys | default(none), ["memory",(lookup(ns | default(none), ["mem"]) | default('')),"device_key_label"]) | default(''))) | output }}
+{% else %}
+
+{% endif %}
+{% endfor %}
+{% else %}
+{% for mem in range(1, ((lookup(ns | default(none), ["rows"]) | default(''))) + 1) %}
+{% if ((lookup(keys | default(none), ["memory",(mem | default('')),"device_key_category"]) is defined and lookup(keys | default(none), ["memory",(mem | default('')),"device_key_category"]) is not none))  and  ((lookup(keys | default(none), ["memory",(mem | default('')),"device_key_type"]) is defined and lookup(keys | default(none), ["memory",(mem | default('')),"device_key_type"]) is not none)) %}
+{{ ((lookup(keys | default(none), ["memory",(mem | default('')),"device_key_label"]) | default(''))) | output }}
+{% else %}
+
+{% endif %}
+{% endfor %}
+{% endif %}

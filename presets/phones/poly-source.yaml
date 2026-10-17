@@ -1,0 +1,27 @@
+{
+  "vendor": "poly",
+  "status": "untested",
+  "models": [
+    {
+      "id": "poly-edge-e550",
+      "name": "edge-e550",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "poly-poly-vvx-450",
+      "name": "poly-vvx-450",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "poly-poly-vvx-d230",
+      "name": "poly-vvx-d230",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    }
+  ]
+}

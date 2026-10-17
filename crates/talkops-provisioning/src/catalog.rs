@@ -13,6 +13,11 @@ pub enum PhoneFamily {
     Conference,
     /// Wi-Fi handsets (Yealink AX series): no base station.
     Wifi,
+    Ata,
+    Gateway,
+    Intercom,
+    Paging,
+    App,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -414,7 +419,9 @@ mod tests {
             ("t87w", 16, 84),
         ];
         assert_eq!(
-            c.all().filter(|m| m.family == PhoneFamily::Desk).count(),
+            c.all()
+                .filter(|m| m.family == PhoneFamily::Desk && m.layout.is_some())
+                .count(),
             expected.len()
         );
         for (id, accounts, keys) in expected {

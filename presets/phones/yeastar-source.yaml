@@ -1,0 +1,27 @@
+{
+  "vendor": "yeastar",
+  "status": "untested",
+  "models": [
+    {
+      "id": "yeastar-ta200",
+      "name": "ta200",
+      "family": "ata",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "yeastar-ta400",
+      "name": "ta400",
+      "family": "ata",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "yeastar-ta800",
+      "name": "ta800",
+      "family": "ata",
+      "accounts": 1,
+      "line_keys": 0
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+{# MPL-1.1 derivative: FusionPBX 20143aec4366afc2755f336d3058243479d49d44, flyingvoice/p20p/y000000000000.boot, blob f14987d007c6377206dfc2f3af97ea9274437250. #}{% set ns = namespace(keys=keys | default({}), contact_groups=contact_groups | default({})) %}#!version:1.0.0.1
+## The header above must appear as-is in the first line
+
+include:config "y000000000000.cfg"
+include:config "{{ ((mac | default(''))) | output }}.cfg"
+

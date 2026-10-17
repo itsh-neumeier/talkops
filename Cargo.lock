@@ -3616,7 +3616,11 @@ dependencies = [
 name = "talkops-provisioning"
 version = "1.8.2"
 dependencies = [
+ "chrono",
+ "chrono-tz",
+ "md-5",
  "minijinja",
+ "roxmltree",
  "serde",
  "serde_json",
  "serde_yaml_ng",

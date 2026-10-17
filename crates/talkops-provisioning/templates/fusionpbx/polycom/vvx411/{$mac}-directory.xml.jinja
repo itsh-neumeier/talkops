@@ -1,0 +1,28 @@
+{# MPL-1.1 derivative: FusionPBX 20143aec4366afc2755f336d3058243479d49d44, polycom/vvx411/{$mac}-directory.xml, blob bbc5b1624b5d5307ecbec9fcea78a77450715730. #}{% set ns = namespace(keys=keys | default({}), contact_groups=contact_groups | default({})) %}<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<directory>
+	<item_list>
+		{% set ns.x = 1 %}
+		{% for row in (contacts | default('')) | values %}
+		<item>
+			{% if (lookup(row | default(none), ["contact_name_given"]) | default('')) != "" %}
+			<ln>{{ ((lookup(row | default(none), ["contact_name_family"]) | default(''))) | output }}</ln>
+			<fn>{{ ((lookup(row | default(none), ["contact_name_given"]) | default(''))) | output }}</fn>
+			{% else %}
+			<ln>{{ ((lookup(row | default(none), ["contact_organization"]) | default(''))) | output }}</ln>
+			{% endif %}
+			{% if (lookup(row | default(none), ["phone_number"]) | default('')) != "" %}
+			<ct>{{ ((lookup(row | default(none), ["phone_number"]) | default(''))) | output }}</ct>
+			{% else %}
+			<ct>{{ ((lookup(row | default(none), ["phone_extension"]) | default(''))) | output }}</ct>
+			{% endif %}
+			<rt>7</rt>
+			<dc></dc>
+			<ad>0</ad>
+			<ar>0</ar>
+			<bw>0</bw>
+			<bb>0</bb>
+		</item>
+		{% set ns.x = (lookup(ns | default(none), ["x"]) | default(0) | int)+1 %}
+		{% endfor %}
+	</item_list>
+</directory>

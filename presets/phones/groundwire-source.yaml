@@ -1,0 +1,13 @@
+{
+  "vendor": "groundwire",
+  "status": "untested",
+  "models": [
+    {
+      "id": "groundwire-default",
+      "name": "default",
+      "family": "app",
+      "accounts": 1,
+      "line_keys": 0
+    }
+  ]
+}

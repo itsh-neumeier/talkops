@@ -15,6 +15,27 @@ pub fn builtin() -> BTreeMap<String, String> {
         ("mac.cfg".into(), crate::yealink::MAC.into()),
     ])
 }
+pub fn builtin_for_model(model: &crate::PhoneModel) -> Result<BTreeMap<String, String>, String> {
+    if crate::vendors::profile(&model.id).is_some() {
+        crate::vendors::builtin(model)
+    } else if model.vendor == "yealink" {
+        Ok(builtin())
+    } else {
+        Err("unsupported template model".into())
+    }
+}
+pub fn validate_manifest(
+    files: &BTreeMap<String, String>,
+    model: &crate::PhoneModel,
+) -> Result<(), String> {
+    if crate::vendors::profile(&model.id).is_some() {
+        crate::vendors::validate_manifest(model, files)?;
+        crate::vendors::environment(files, false)?;
+        Ok(())
+    } else {
+        validate(files)
+    }
+}
 pub fn template_env(
     files: &BTreeMap<String, String>,
 ) -> Result<Environment<'static>, minijinja::Error> {
@@ -49,6 +70,9 @@ pub fn validate_for_model(
     files: &BTreeMap<String, String>,
     model: &crate::PhoneModel,
 ) -> Result<(), String> {
+    if crate::vendors::profile(&model.id).is_some() {
+        return crate::vendors::validate_for_model(files, model);
+    }
     validate(files)?;
     let environment = template_env(files).map_err(|e| e.to_string())?;
     let variables = [

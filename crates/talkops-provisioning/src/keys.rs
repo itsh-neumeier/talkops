@@ -6,6 +6,13 @@ use std::collections::{BTreeMap, BTreeSet};
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Overrides {
+    pub account_slots: Option<u16>,
+    pub language: String,
+    pub time_zone: String,
+    pub ntp_server: String,
+    pub defer_unassigned_keys: bool,
+    pub vendor_settings: BTreeMap<String, String>,
+    pub parameters: BTreeMap<String, String>,
     pub endpoint: String,
     pub sip_host: String,
     pub firmware_profile: String,
@@ -17,6 +24,8 @@ pub struct Overrides {
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Key {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub native_function: Option<String>,
     pub group: String,
     pub key: u16,
     #[serde(rename = "type")]
@@ -133,6 +142,41 @@ pub fn validate_key(
     Ok(())
 }
 pub fn validate(model: &PhoneModel, overrides: &Overrides) -> Result<(), String> {
+    let effective = effective_model(model, overrides)?;
+    let model = &effective;
+    crate::parameters::validate(model, &overrides.parameters)?;
+    validate_locale(
+        &overrides.language,
+        &overrides.time_zone,
+        &overrides.ntp_server,
+    )?;
+    if let Some(profile) = crate::vendors::profile(&model.id) {
+        for (key, value) in &overrides.vendor_settings {
+            if !profile.settings.iter().any(|s| s.key == *key)
+                || value.len() > if value.starts_with("v1:") { 8192 } else { 4096 }
+                || value.chars().any(char::is_control)
+            {
+                return Err("invalid vendor setting".into());
+            }
+            if profile
+                .settings
+                .iter()
+                .any(|s| s.key == *key && s.kind == "list")
+            {
+                let items: Vec<String> = serde_json::from_str(value)
+                    .map_err(|_| "list setting must be a JSON array of strings")?;
+                if items.len() > 64
+                    || items
+                        .iter()
+                        .any(|s| s.len() > 512 || s.chars().any(char::is_control))
+                {
+                    return Err("invalid list setting".into());
+                }
+            }
+        }
+    } else if !overrides.vendor_settings.is_empty() {
+        return Err("vendor settings are unavailable for this profile".into());
+    }
     if !overrides.endpoint.is_empty() {
         validate_endpoint(&overrides.endpoint, true)?;
     }
@@ -148,7 +192,15 @@ pub fn validate(model: &PhoneModel, overrides: &Overrides) -> Result<(), String>
     }
     let mut seen = BTreeSet::new();
     for key in &overrides.keys {
-        let allowed = if key.group == "programmable" {
+        let native = crate::vendors::profile(&model.id);
+        let allowed = if let Some(profile) = native {
+            profile
+                .key_groups
+                .contains(&key.group.replace("expansion_", "expansion-"))
+                && key.key > 0
+                && key.key <= 512
+                && crate::vendors::key_function(&profile.vendor, key).is_some()
+        } else if key.group == "programmable" {
             caps.programmable.contains(&key.key) && caps.programmable_functions.contains(&key.kind)
         } else if let Some(module) = key
             .group
@@ -163,7 +215,10 @@ pub fn validate(model: &PhoneModel, overrides: &Overrides) -> Result<(), String>
         } else {
             false
         };
-        if !allowed || !seen.insert((&key.group, key.key)) {
+        if !allowed
+            || native.is_none() && key.native_function.is_some()
+            || !seen.insert((&key.group, key.key))
+        {
             return Err("unsupported or duplicate key assignment".into());
         }
         if key.history_type != 0 || key.phonebook > 4 {
@@ -176,6 +231,9 @@ pub fn validate(model: &PhoneModel, overrides: &Overrides) -> Result<(), String>
             key.account,
             model.accounts,
         )?;
+        if crate::parameters::url_contains_secret(&key.value) {
+            return Err("key URLs must not contain credentials".into());
+        }
     }
     for (state, actions) in &overrides.softkeys {
         let allowed = caps
@@ -189,6 +247,44 @@ pub fn validate(model: &PhoneModel, overrides: &Overrides) -> Result<(), String>
         if unique.len() != actions.iter().filter(|a| a.as_str() != "Empty").count() {
             return Err("duplicate softkey action".into());
         }
+    }
+    Ok(())
+}
+/// Source templates without an account bound do not establish a hardware limit.
+/// The administrator can supply the count documented for the selected device.
+pub fn effective_model(model: &PhoneModel, overrides: &Overrides) -> Result<PhoneModel, String> {
+    let mut model = model.clone();
+    if let Some(slots) = overrides.account_slots {
+        let profile = crate::vendors::profile(&model.id)
+            .ok_or("account count override is unavailable for this model")?;
+        if slots == 0
+            || slots > 100
+            || profile.account_capacity_source != "single_account_baseline"
+                && slots > profile.accounts
+        {
+            return Err("invalid account slot count for this source profile".into());
+        }
+        model.accounts = slots;
+    }
+    Ok(model)
+}
+pub fn validate_locale(language: &str, time_zone: &str, ntp_server: &str) -> Result<(), String> {
+    if !["", "en", "de"].contains(&language) {
+        return Err("unsupported device language".into());
+    }
+    if time_zone.len() > 64
+        || !time_zone
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b"_/-+".contains(&b))
+    {
+        return Err("invalid device time zone".into());
+    }
+    if !ntp_server.is_empty()
+        && (ntp_server.len() > 253
+            || url::Host::parse(ntp_server).is_err()
+            || ntp_server.chars().any(char::is_whitespace))
+    {
+        return Err("NTP server must be a host name or IP address".into());
     }
     Ok(())
 }

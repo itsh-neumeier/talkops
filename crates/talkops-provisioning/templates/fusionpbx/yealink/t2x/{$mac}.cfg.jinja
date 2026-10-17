@@ -1,0 +1,599 @@
+{# MPL-1.1 derivative: FusionPBX 20143aec4366afc2755f336d3058243479d49d44, yealink/t2x/{$mac}.cfg, blob 4d2124aedefd7945fc0d2c606a86ed423420972a. #}{% set ns = namespace(keys=keys | default({}), contact_groups=contact_groups | default({})) %}#!version:1.0.0.1
+#{{ ((microtime | default(''))) | output }}
+
+##File header "#!version:1.0.0.1" can not be edited or deleted, and must be placed in the first line.##
+
+{% for row in (lines | default('')) | values %}
+#######################################################################################
+##                           Account {{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }} Basic Settings                                ##
+#######################################################################################
+## ranges from 1 to 12
+{% if ((lookup(account | default(none), [(lookup(row | default(none), ["line_number"]) | default('')),"password"]) is defined and lookup(account | default(none), [(lookup(row | default(none), ["line_number"]) | default('')),"password"]) is not none)) %}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.enable = 1
+{% else %}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.enable = 0
+{% endif %}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.label = {{ ((lookup(account | default(none), [(lookup(row | default(none), ["line_number"]) | default('')),"label"]) | default(''))) | output }}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.display_name = {{ ((lookup(account | default(none), [(lookup(row | default(none), ["line_number"]) | default('')),"display_name"]) | default(''))) | output }}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.auth_name = {{ ((lookup(account | default(none), [(lookup(row | default(none), ["line_number"]) | default('')),"auth_id"]) | default(''))) | output }}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.password = {{ ((lookup(account | default(none), [(lookup(row | default(none), ["line_number"]) | default('')),"password"]) | default(''))) | output }}
+
+{% if ((lookup(account | default(none), [(lookup(row | default(none), ["line_number"]) | default('')),"server","1","address"]) is defined and lookup(account | default(none), [(lookup(row | default(none), ["line_number"]) | default('')),"server","1","address"]) is not none)) %}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.user_name = {{ ((lookup(account | default(none), [(lookup(row | default(none), ["line_number"]) | default('')),"user_id"]) | default(''))) | output }}@{{ ((lookup(account | default(none), [(lookup(row | default(none), ["line_number"]) | default('')),"server_address"]) | default(''))) | output }}
+{% else %}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.user_name = {{ ((lookup(account | default(none), [(lookup(row | default(none), ["line_number"]) | default('')),"user_id"]) | default(''))) | output }}
+{% endif %}
+
+{% if ((lookup(row | default(none), ["server","1","address"]) is defined and lookup(row | default(none), ["server","1","address"]) is not none)) %}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.sip_server.1.address = {{ ((lookup(row | default(none), ["server","1","address"]) | default(''))) | output }} 
+{% else %}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.sip_server_host = {{ ((lookup(account | default(none), [(lookup(row | default(none), ["line_number"]) | default('')),"server_address"]) | default(''))) | output }}
+{% endif %}
+
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.sip_server_port = {{ ((lookup(account | default(none), [(lookup(row | default(none), ["line_number"]) | default('')),"sip_port"]) | default(''))) | output }}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.outbound_host = {{ ((lookup(account | default(none), [(lookup(row | default(none), ["line_number"]) | default('')),"outbound_proxy"]) | default(''))) | output }}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.outbound_port = {{ ((lookup(account | default(none), [(lookup(row | default(none), ["line_number"]) | default('')),"sip_port"]) | default(''))) | output }}
+{% if ((yealink_sip_listen_port is defined and yealink_sip_listen_port is not none)) %}account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.sip_listen_port = {{ ((yealink_sip_listen_port | default(''))) | output }}{% else %}account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.sip_listen_port = 5060{% endif %}
+
+#Configure the transport type 0-UDP (default), 1-TCP, 2-TLS, 3-DNS SRV
+{% if (lookup(account | default(none), [(lookup(row | default(none), ["line_number"]) | default('')),"sip_transport"]) | default('')) == 'udp' %}account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.transport = 0{% endif %}
+{% if (lookup(account | default(none), [(lookup(row | default(none), ["line_number"]) | default('')),"sip_transport"]) | default('')) == 'tcp' %}account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.transport = 1{% endif %}
+{% if (lookup(account | default(none), [(lookup(row | default(none), ["line_number"]) | default('')),"sip_transport"]) | default('')) == 'tls' %}account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.transport = 2{% endif %}
+{% if (lookup(account | default(none), [(lookup(row | default(none), ["line_number"]) | default('')),"sip_transport"]) | default('')) == 'dns srv' %}account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.transport = 3{% endif %}
+
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.outbound_proxy.1.address = {{ ((lookup(account | default(none), [(lookup(row | default(none), ["line_number"]) | default('')),"outbound_proxy_primary"]) | default(''))) | output }}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.outbound_proxy.2.address = {{ ((lookup(account | default(none), [(lookup(row | default(none), ["line_number"]) | default('')),"outbound_proxy_secondary"]) | default(''))) | output }}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.outbound_proxy_enable = {% if ((lookup(account | default(none), [(lookup(row | default(none), ["line_number"]) | default('')),"outbound_proxy_primary"]) is defined and lookup(account | default(none), [(lookup(row | default(none), ["line_number"]) | default('')),"outbound_proxy_primary"]) is not none)) %}1{% else %}0{% endif %}
+
+{% if ((outbound_proxy_1_port is defined and outbound_proxy_1_port is not none)) %}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.outbound_proxy.1.port = {{ ((outbound_proxy_1_port | default(''))) | output }}
+{% else %}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.outbound_proxy.1.port = {{ ((lookup(account | default(none), [(lookup(row | default(none), ["line_number"]) | default('')),"sip_port"]) | default(''))) | output }}
+{% endif %}
+{% if ((outbound_proxy_1_port is defined and outbound_proxy_1_port is not none)) %}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.outbound_proxy.2.port = {{ ((outbound_proxy_2_port | default(''))) | output }}
+{% else %}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.outbound_proxy.2.port = {{ ((lookup(account | default(none), [(lookup(row | default(none), ["line_number"]) | default('')),"sip_port"]) | default(''))) | output }}
+{% endif %}
+
+#######################################################################################
+##                          Failback                                                 ##
+#######################################################################################
+## ranges from 1 to 12
+
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.reregister_enable = 0
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.retry_counts =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.failback_mode = 0
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.failback_timeout = 3600
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.naptr_build = 0
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.fallback.redundancy_type = 0
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.fallback.timeout = {{ ((yealink_outbound_proxy_fallback_interval | default(''))) | output }}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.sip_server.1.address = {{ ((lookup(account | default(none), [(lookup(row | default(none), ["line_number"]) | default('')),"server","1","address"]) | default(''))) | output }}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.sip_server.1.port = {{ ((lookup(account | default(none), [(lookup(row | default(none), ["line_number"]) | default('')),"sip_port"]) | default(''))) | output }}
+
+#Configure the transport type 0-UDP (default), 1-TCP, 2-TLS, 3-DNS-NAPTR
+{% if (lookup(account | default(none), [(lookup(row | default(none), ["line_number"]) | default('')),"sip_transport"]) | default('')) == 'udp' %}account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.sip_server.1.transport_type = 0{% endif %}
+{% if (lookup(account | default(none), [(lookup(row | default(none), ["line_number"]) | default('')),"sip_transport"]) | default('')) == 'tcp' %}account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.sip_server.1.transport_type = 1{% endif %}
+{% if (lookup(account | default(none), [(lookup(row | default(none), ["line_number"]) | default('')),"sip_transport"]) | default('')) == 'tls' %}account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.sip_server.1.transport_type = 2{% endif %}
+{% if (lookup(account | default(none), [(lookup(row | default(none), ["line_number"]) | default('')),"sip_transport"]) | default('')) == 'dns srv' %}account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.sip_server.1.transport_type = 3{% endif %}
+
+#Configure the register expiry time (in seconds), the default value is 3600.
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.sip_server.1.expires = {{ ((lookup(account | default(none), [(lookup(row | default(none), ["line_number"]) | default('')),"register_expires"]) | default(''))) | output }}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.sip_server.1.retry_counts = 3
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.sip_server.1.failback_mode = 0
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.sip_server.1.failback_timeout = 3600
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.sip_server.1.register_on_enable = 0
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.sip_server.2.address = {{ ((lookup(account | default(none), [(lookup(row | default(none), ["line_number"]) | default('')),"server","2","address"]) | default(''))) | output }}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.sip_server.2.port = {{ ((lookup(account | default(none), [(lookup(row | default(none), ["line_number"]) | default('')),"sip_port"]) | default(''))) | output }}
+
+#Configure the transport type 0-UDP (default), 1-TCP, 2-TLS, 3-DNS-NAPTR
+{% if (lookup(account | default(none), [(lookup(row | default(none), ["line_number"]) | default('')),"sip_transport"]) | default('')) == 'udp' %}account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.sip_server.2.transport_type = 0{% endif %}
+{% if (lookup(account | default(none), [(lookup(row | default(none), ["line_number"]) | default('')),"sip_transport"]) | default('')) == 'tcp' %}account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.sip_server.2.transport_type = 1{% endif %}
+{% if (lookup(account | default(none), [(lookup(row | default(none), ["line_number"]) | default('')),"sip_transport"]) | default('')) == 'tls' %}account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.sip_server.2.transport_type = 2{% endif %}
+{% if (lookup(account | default(none), [(lookup(row | default(none), ["line_number"]) | default('')),"sip_transport"]) | default('')) == 'dns srv' %}account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.sip_server.2.transport_type = 3{% endif %}
+
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.sip_server.2.expires = {{ ((lookup(account | default(none), [(lookup(row | default(none), ["line_number"]) | default('')),"register_expires"]) | default(''))) | output }}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.sip_server.2.retry_counts = 3
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.sip_server.2.failback_mode = 0
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.sip_server.2.failback_timeout = 3600
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.sip_server.2.register_on_enable = 0
+
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.dns_cache_type = 1
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.dns_cache_a.1.name =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.dns_cache_a.1.ip =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.dns_cache_a.1.ttl = 300
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.dns_cache_srv.1.name =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.dns_cache_srv.1.port = 0
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.dns_cache_srv.1.priority = 0
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.dns_cache_srv.1.target =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.dns_cache_srv.1.weight = 0
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.dns_cache_srv.1.ttl = 300
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.dns_cache_naptr.1.name =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.dns_cache_naptr.1.flags =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.dns_cache_naptr.1.order = 0
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.dns_cache_naptr.1.preference = 0
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.dns_cache_naptr.1.replace =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.dns_cache_naptr.1.service =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.dns_cache_naptr.1.ttl = 300
+
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.static_cache_pri = 0
+
+#######################################################################################
+##                           Register Advanced                                       ##
+#######################################################################################
+## ranges from 1 to 12
+
+#Configure the SIP server type 0-Default (default), 2-BroadSoft, 4-Cosmocom
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.sip_server_type =
+#Enable or disable the phone to send the account log-off message first and then send account register message when rebooting the phone 0-Disabled (default), 1-Enabled
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.unregister_on_reboot =
+
+#Enable or disable the phone to only accept the message from the server 0-Disabled (default), 1-Enabled
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.sip_trust_ctrl = 1
+
+#Configure the timeout (in seconds) for DNS query, the value ranges from 1 to 9, the default value is 8.
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.dns_query_timeout=
+
+#Enable or disable the timer to periodically refresh the DNS-SRV query result 0-Disabled (default), 1-Enabled
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.srv_ttl_timer_enable =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.proxy_require =
+
+
+#Enable or disable the phone to send the MAC address and line number in the Register message 0-Disabled (default), 1-Enabled
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.register_mac =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.register_line =
+
+#Configure the interval (in seconds) the phone retries to register when account1 fails to register. It ranges from 0 to 1800, the default value is 30.
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.reg_fail_retry_interval =
+
+#########################################################################
+##                     NAT Settings                                    ##
+#########################################################################
+
+#Enable or disable the NAT traversal 0-Disabled (default), 1-STUN
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.nat.nat_traversal = {% if ((stun_server is defined and stun_server is not none)) %}1{% else %}0{% endif %}
+
+#Configure the STUN server address.
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.nat.stun_server = {{ ((stun_server | default(''))) | output }}
+
+#Configure the STUN server port, the default value is 3478.
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.nat.stun_port = {% if ((stun_port is defined and stun_port is not none)) %}{{ ((stun_port | default(''))) | output }}{% else %}3478{% endif %}
+
+#Enable or disable the NAT keep-alive 0-Disabled, 1-Default (default), 2-Option, 3-Notify
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.nat.udp_update_enable = 3
+
+#Specify the keep-alive interval (in seconds), the default value is 30.
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.nat.udp_update_time = 30
+
+#Enable or disable the NAT Rport 0-Disabled (default), 1-Enabled
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.nat.rport = {{ ((yealink_rport | default(''))) | output }}
+
+#######################################################################################
+##                            Account {{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }} Advance Settings                              ##
+#######################################################################################
+## ranges from 1 to 12
+
+#Configure the session timer (in seconds), the default value of T1, T2, T3 is 0.5, 4, 5.
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.advanced.timer_t1 =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.advanced.timer_t2 =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.advanced.timer_t4 =
+
+voice_mail.number.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }} = {{ ((voicemail_number | default(''))) | output }}
+
+#######################################################################################
+##                            Subscribe                                              ##
+#######################################################################################
+## ranges from 1 to 12
+
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.subscribe_mwi = {{ ((yealink_subscribe_mwi | default(''))) | output }}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.subscribe_mwi_expires = 3600
+
+#Enable or disable the phone to subscribe to the voicemail through the message waiting indicator 0-Disabled (default), 1-Enabled
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.subscribe_mwi_to_vm = {{ ((yealink_subscribe_mwi_to_vm | default(''))) | output }}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.subscribe_acd_expires= 3600
+
+#######################################################################################
+##                            BLF List                                               ##
+#######################################################################################
+## ranges from 1 to 12
+
+#Configure the BLF list URI (a SIP URI, or use part of the SIP URI). For example, "2300_blflist@domain.com" or "2300_blflist".
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.blf.blf_list_uri =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.blf_list_code =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.blf_list_barge_in_code =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.blf.subscribe_period = 1800
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.blf.subscribe_event =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.out_dialog_blf_enable = 0
+
+#######################################################################################
+##                            BLA/SCA                                                ##
+#######################################################################################
+## ranges from 1 to 12
+
+#Assign account1 as shared line 0-Disabled (default), 1-Broadsoft SCA, 2-BLA
+{% if ((lookup(account | default(none), [(lookup(row | default(none), ["line_number"]) | default('')),"shared_line"]) is defined and lookup(account | default(none), [(lookup(row | default(none), ["line_number"]) | default('')),"shared_line"]) is not none)) %}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.shared_line = {{ ((lookup(account | default(none), [(lookup(row | default(none), ["line_number"]) | default('')),"shared_line"]) | default(''))) | output }}
+{% else %}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.shared_line = 0
+{% endif %}
+
+#Configure BLA number for account1 and the subscribe period (in seconds). It ranges from 60 to 7200, the default value is 300.
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.bla_number =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.bla_subscribe_period = 300
+
+#######################################################################################
+##                            Audio Codec                                            ##
+#######################################################################################
+#Audio codecs for account1 (Y ranges from 1 to 11).
+
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.1.enable = {% if ((yealink_codec_pcmu_enable is defined and yealink_codec_pcmu_enable is not none))  and  (yealink_codec_pcmu_enable | default('')) %}1{% else %}{0}{% endif %}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.1.payload_type = PCMU
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.1.priority = {% if ((yealink_codec_pcmu_priority is defined and yealink_codec_pcmu_priority is not none)) %}{{ ((yealink_codec_pcmu_priority | default(''))) | output }}{% else %}0{% endif %}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.1.rtpmap = 0
+
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.2.enable = {% if ((yealink_codec_pcma_enable is defined and yealink_codec_pcma_enable is not none))  and  (yealink_codec_pcma_enable | default('')) %}1{% else %}{0}{% endif %}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.2.payload_type = PCMA
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.2.priority = {% if ((yealink_codec_pcma_priority is defined and yealink_codec_pcma_priority is not none)) %}{{ ((yealink_codec_pcma_priority | default(''))) | output }}{% else %}0{% endif %}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.2.rtpmap = 8
+
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.3.enable = {% if ((yealink_codec_g723_53_enable is defined and yealink_codec_g723_53_enable is not none))  and  (yealink_codec_g723_53_enable | default('')) %}1{% else %}{0}{% endif %}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.3.payload_type = G723_53
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.3.priority ={% if ((yealink_codec_g723_53_priority is defined and yealink_codec_g723_53_priority is not none)) %}{{ ((yealink_codec_g723_53_priority | default(''))) | output }}{% else %}0{% endif %}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.3.rtpmap = 4
+
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.4.enable = {% if ((yealink_codec_g723_63_enable is defined and yealink_codec_g723_63_enable is not none))  and  (yealink_codec_g723_63_enable | default('')) %}1{% else %}0{% endif %}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.4.payload_type = G723_63
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.4.priority = {% if ((yealink_codec_g723_63_priority is defined and yealink_codec_g723_63_priority is not none)) %}{{ ((yealink_codec_g723_63_priority | default(''))) | output }}{% else %}0{% endif %}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.4.rtpmap = 4
+
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.5.enable = {% if ((yealink_codec_g729_enable is defined and yealink_codec_g729_enable is not none))  and  (yealink_codec_g729_enable | default('')) %}1{% else %}0{% endif %}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.5.payload_type = G729
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.5.priority = {% if ((yealink_codec_g729_priority is defined and yealink_codec_g729_priority is not none)) %}{{ ((yealink_codec_g729_priority | default(''))) | output }}{% else %}0{% endif %}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.5.rtpmap = 18
+
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.6.enable = {% if ((yealink_codec_g722_enable is defined and yealink_codec_g722_enable is not none))  and  (yealink_codec_g722_enable | default('')) %}1{% else %}0{% endif %}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.6.payload_type = G722
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.6.priority = {% if ((yealink_codec_g722_priority is defined and yealink_codec_g722_priority is not none)) %}{{ ((yealink_codec_g722_priority | default(''))) | output }}{% else %}0{% endif %}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.6.rtpmap = 9
+
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.7.enable = {% if ((yealink_codec_ilbc_enable is defined and yealink_codec_ilbc_enable is not none))  and  (yealink_codec_ilbc_enable | default('')) %}1{% else %}0{% endif %}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.7.payload_type = iLBC
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.7.priority =  {% if ((yealink_codec_iLBC_priority is defined and yealink_codec_iLBC_priority is not none)) %}{{ ((yealink_codec_iLBC_priority | default(''))) | output }}{% else %}0{% endif %}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.7.rtpmap = 106
+
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.8.enable = {% if ((yealink_codec_g726_16_enable is defined and yealink_codec_g726_16_enable is not none))  and  (yealink_codec_g726_16_enable | default('')) %}1{% else %}0{% endif %}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.8.payload_type = G726-16
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.8.priority = {% if ((yealink_codec_g726_16_priority is defined and yealink_codec_g726_16_priority is not none)) %}{{ ((yealink_codec_g726_16_priority | default(''))) | output }}{% else %}0{% endif %}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.8.rtpmap = 103
+
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.9.enable = {% if ((yealink_codec_g726_24_enable is defined and yealink_codec_g726_24_enable is not none))  and  (yealink_codec_g726_24_enable | default('')) %}1{% else %}0{% endif %}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.9.payload_type = G726-24
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.9.priority = {% if ((yealink_codec_g726_24_priority is defined and yealink_codec_g726_24_priority is not none)) %}{{ ((yealink_codec_g726_24_priority | default(''))) | output }}{% else %}0{% endif %}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.9.rtpmap = 104
+
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.10.enable = {% if ((yealink_codec_g726_32_enable is defined and yealink_codec_g726_32_enable is not none))  and  (yealink_codec_g726_32_enable | default('')) %}1{% else %}0{% endif %}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.10.payload_type = G726-32
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.10.priority = {% if ((yealink_codec_g726_32_priority is defined and yealink_codec_g726_32_priority is not none)) %}{{ ((yealink_codec_g726_32_priority | default(''))) | output }}{% else %}0{% endif %}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.10.rtpmap = 102
+
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.11.enable = {% if ((yealink_codec_g726_40_enable is defined and yealink_codec_g726_40_enable is not none))  and  (yealink_codec_g726_40_enable | default('')) %}1{% else %}0{% endif %}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.11.payload_type = G726-40
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.11.priority = {% if ((yealink_codec_g726_40_priority is defined and yealink_codec_g726_40_priority is not none)) %}{{ ((yealink_codec_g726_40_priority | default(''))) | output }}{% else %}0{% endif %}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.11.rtpmap = 105
+
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.12.enable = {% if ((yealink_codec_gsm_enable is defined and yealink_codec_gsm_enable is not none))  and  (yealink_codec_gsm_enable | default('')) %}1{% else %}0{% endif %}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.12.payload_type = GSM
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.12.priority = {% if ((yealink_codec_gsm_priority is defined and yealink_codec_gsm_priority is not none)) %}{{ ((yealink_codec_gsm_priority | default(''))) | output }}{% else %}0{% endif %}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.12.rtpmap = 3
+
+{% if (lookup(row | default(none), ["line_number"]) | default(0) | int) <= 3 %}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.13.enable = {% if ((yealink_codec_opus_enable is defined and yealink_codec_opus_enable is not none))  and  (yealink_codec_opus_enable | default('')) %}1{% else %}0{% endif %}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.13.payload_type = opus
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.13.priority = {% if ((yealink_codec_opus_priority is defined and yealink_codec_opus_priority is not none)) %}{{ ((yealink_codec_opus_priority | default(''))) | output }}{% else %}0{% endif %}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.codec.13.rtpmap = 106
+{% endif %}
+
+#######################################################################################
+##                            Audio Advanced                                         ##
+#######################################################################################
+#Specify whether to encrypt the SIP messages 0-Disabled (default), 1-Forced, 2-Negotiated
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.srtp_encryption = {{ ((yealink_srtp_encryption | default(''))) | output }}
+
+#Configure the RTP packet time. The valid values are 0 (Disabled), 10, 20 (default), 30, 40, 50, 60.
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.ptime =
+
+#######################################################################################
+##                            Anonymous Call                                         ##
+#######################################################################################
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.anonymous_call = 0
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.anonymous_call_oncode =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.anonymous_call_offcode =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.reject_anonymous_call =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.anonymous_reject_oncode =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.anonymous_reject_offcode =
+
+#######################################################################################
+##                            Pickup Code                                            ##
+#######################################################################################
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.dialoginfo_callpickup = 0
+
+#Configure the directed and group pickup codes for account 1, the settings on a per-account basis take precedence over the settings on the phone.
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.group_pickup_code =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.direct_pickup_code =
+
+#######################################################################################
+##                            DTMF                                                   ##
+#######################################################################################
+#Configure the DTMF type 0-INBAND, 1-RFC2833 (default), 2-SIP INFO, 3-AUTO+SIP INFO
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.dtmf.type = {{ ((yealink_dtmf_type | default(''))) | output }}
+
+#Configure the DTMF info type when using the SIP INFO 0-Disabled (default), 1-DTMF-Relay, 2-DTMF, 3-Telephone-Event
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.dtmf.info_type =
+
+#Configure the RFC2833 payload. It ranges from 96 to 255, the default value is 101.
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.dtmf.dtmf_payload =
+
+#######################################################################################
+##                            Alert info                                             ##
+#######################################################################################
+#Enable or disable to use the Distinctive Ring Tones 0-Disabled , 1-Enabled(default)
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.alert_info_url_enable =
+
+#Assign a ringtone for account1. The system ring tones are: common (default), Ring1.wav - Ring8.wav.
+#If you set the custom ring tone (Busy.wav) for the phone, the value is: account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.ringtone.ring_type = Config:Busy.wav
+#If you set the system ring tone (Ring2.wav) for the phone, the value is: account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.ringtone.ring_type = Resource:Ring2.wav
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.ringtone.ring_type =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.picture_info_enable = 1
+
+#######################################################################################
+##                            Conference                                             ##
+#######################################################################################
+#Configure the conference type 0-Local (default), 2-Network Conference
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.conf_type = {% if (nway_conference | default('')) == 'true' %}2{% elif (nway_conference | default('')) == 'false' %}0{% endif %}
+
+#Configure the conference URI (a SIP URI, or use part of the SIP URI). For example, "conference@domain.com" or "conference".
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.conf_uri = {% if (nway_conference | default('')) == 'true' %}nway{{ ((lookup(account | default(none), [(lookup(row | default(none), ["line_number"]) | default('')),"user_id"]) | default(''))) | output }}@{{ ((lookup(account | default(none), [(lookup(row | default(none), ["line_number"]) | default('')),"server_address"]) | default(''))) | output }}{% endif %}
+
+#######################################################################################
+##                            cid_source                                             ##
+#######################################################################################
+#Configure the type of SIP header(s) to carry the caller ID 0-FROM (default), 1-PAI 2-PAI-FROM, 3-PRID-PAI-FROM, 4-PAI-RPID-FROM, 5-RPID-FROM
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.cid_source = {{ ((yealink_cid_source | default(''))) | output }}
+
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.cid_source_privacy = 1
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.cid_source_ppi = 1
+
+#Configure the presentation of the callee ID 0-PAI-PRID, 1-DIALED DIGITS (default), 2-RFC4916
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.cp_source = {{ ((yealink_cp_source | default(''))) | output }}
+
+#######################################################################################
+##                            Session Timer                                          ##
+#######################################################################################
+#Enable or disable the session timer, 0-Disabled (default), 1-Enabled
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.session_timer.enable = {{ ((yealink_session_timer | default(''))) | output }}
+
+#Configure the refresh session timer interval (in seconds). It ranges from 1 to 9999.
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.session_timer.expires =
+
+#Configure the session timer refresher 0-Uac (default), 1-Uas
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.session_timer.refresher =
+
+#######################################################################################
+##                            Music on Hold                                          ##
+#######################################################################################
+#Configure the type of Music on Hold 0-Send the INVITE request to Music on Hold Server then hold the call 1-Hold the call then send the INVITE request to Music on Hold Server
+#Require reboot
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.music_on_hold_type =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.music_server_uri =
+
+#######################################################################################
+##                            Advanced                                               ##
+#######################################################################################
+#Enable or disable the auto answer feature 0-Disabled (default), 1-Enabled
+{% if (lookup(row | default(none), ["line_number"]) | default('')) == (yealink_auto_answer_line | default('')) %}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.auto_answer = 1
+{% else %}
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.auto_answer = 0
+{% endif %}
+
+#Enable or disable the phone to record the missed call 0-Disabled, 1-Enabled (default)
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.missed_calllog = {{ ((yealink_missed_calllog | default(''))) | output }}
+
+#Enable or disable the 100 reliable retransmission 0-Disabled (default), 1-Enabled
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.100rel_enable = {{ ((yealink_retransmission | default(''))) | output }}
+
+#Enable or disable the "user=phone" 0-Disabled (default), 1-Enabled
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.enable_user_equal_phone =
+
+#Enable or disable the simplified header field feature 0-Disabled, 1-Enabled (default)
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.compact_header_enable =
+
+#######################################################################################
+##                                   DND                                             ##
+#######################################################################################
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.dnd.enable =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.dnd.on_code =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.dnd.off_code =
+
+#######################################################################################
+##                                 Call Forward                                      ##
+#######################################################################################
+
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.always_fwd.enable =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.always_fwd.target =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.always_fwd.off_code =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.always_fwd.on_code =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.busy_fwd.enable =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.busy_fwd.target =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.busy_fwd.off_code =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.busy_fwd.on_code =
+
+#Enable or disable the no answer forward feature for account1 0-Disabled (default), 1-Enabled
+#Configure the waiting ring times before forwarding. It ranges from 0 to 20, the default value is 2.
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.timeout_fwd.enable =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.timeout_fwd.target =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.timeout_fwd.timeout =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.timeout_fwd.off_code =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.timeout_fwd.on_code =
+
+#######################################################################################
+##                                 Broadsoft Hoteling                                ##
+#######################################################################################
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.hoteling.enable = 0
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.hoteling.user_id = 0
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.hoteling.password = 0
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.hoteling.auto_login_enable = 0
+
+#######################################################################################
+##                                 Broadsoft ACD                                     ##
+#######################################################################################
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.acd.enable = 0
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.acd.unavailable_reason_enable = 0
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.acd.available = 0
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.acd.initial_state = 1
+
+#######################################################################################
+##                                 Broadsoft ACD Call Center                         ##
+#######################################################################################
+#Configure the ACD reason code of Broadsoft.(The valus of Y must be consecutive numbers.)
+#account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.bw_acd_reason_code.Y = 500(lunch time)
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.bw_acd_reason_code.1 =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.reason_code.1 =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.reason_code_name.1 = 0
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.bw_disp_code.1 =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.bw_disp_code_name.1 =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.supervisor_info_code.1 =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.supervisor_info_code_name.1 =
+
+#######################################################################################
+##                                 Broadsoft Call Center                             ##
+#######################################################################################
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.call_center.call_info_enable = 0
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.call_center.show_call_info_time = 30
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.call_center.disp_code_enable = 0
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.call_center.trace_enable = 0
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.call_center.emergency_enable = 0
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.call_center.queue_status_enable = 0
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.call_center.queue_status_light_enable = 0
+
+#######################################################################################
+##                                 Broadsoft XSI                                     ##
+#######################################################################################
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.xsi.user =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.xsi.password =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.xsi.host =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.xsi.server_type =
+account.{{ ((lookup(row | default(none), ["line_number"]) | default(''))) | output }}.xsi.port =
+{% endfor %}
+
+#######################################################################################
+##                             Line Key                                              ##
+#######################################################################################
+
+#The x of the parameter "linekey.x.line" ranges from 1 to 6.
+#The default value equals to the value of x. For example, the default value of the parameter "linekey.1.line" is 1.
+#linekey.x.lable--Define the label for each line key. Meet-Me Conference "1" or BLF "16" require pick_value.
+
+{% for row in (lookup(keys | default(none), ['line']) | default('')) | values %}
+#Configure Line Key {{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}
+linekey.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.line = {{ ((lookup(row | default(none), ["device_key_line"]) | default(''))) | output }}
+linekey.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.value = {{ ((lookup(row | default(none), ["device_key_value"]) | default(''))) | output }}
+{% if (lookup(row | default(none), ["device_key_type"]) | default('')) == "1" or (lookup(row | default(none), ["device_key_type"]) | default('')) == "16" %}
+linekey.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.pickup_value = {{ ((lookup(row | default(none), ["device_key_extension"]) | default(''))) | output }}
+{% else %}
+linekey.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.extension = {{ ((lookup(row | default(none), ["device_key_extension"]) | default(''))) | output }}
+{% endif %}
+linekey.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.type = {{ ((lookup(row | default(none), ["device_key_type"]) | default(''))) | output }}
+linekey.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.xml_phonebook =
+linekey.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.label = {{ ((lookup(row | default(none), ["device_key_label"]) | default(''))) | output }}
+{% endfor %}
+
+{% for row in (lookup(keys | default(none), ["memory"]) | default('')) | values %}
+#Expansion Memory Key {{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}
+memorykey.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.type = {{ ((lookup(row | default(none), ["device_key_type"]) | default(''))) | output }}
+memorykey.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.line = {{ ((lookup(row | default(none), ["device_key_line"]) | default(''))) | output }}
+memorykey.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.value = {{ ((lookup(row | default(none), ["device_key_value"]) | default(''))) | output }}
+memorykey.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.extension = {{ ((lookup(row | default(none), ["device_key_extension"]) | default(''))) | output }}
+memorykey.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.label = {{ ((lookup(row | default(none), ["device_key_label"]) | default(''))) | output }}
+memorykey.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.xml_phonebook =
+memorykey.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.sub_type =
+{% endfor %}
+
+##########################################################################################
+##                                  Expansion Module 1                                  ##
+##########################################################################################
+#X ranges from 1 to 16, Y ranges from 1 to 40.
+
+{% for row in (lookup(keys | default(none), ["expansion-1"]) | default('')) | values %}
+expansion_module.1.key.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.type = {{ ((lookup(row | default(none), ["device_key_type"]) | default(''))) | output }}
+expansion_module.1.key.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.line = {{ ((lookup(row | default(none), ["device_key_line"]) | default(''))) | output }}
+expansion_module.1.key.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.value = {{ ((lookup(row | default(none), ["device_key_value"]) | default(''))) | output }}
+expansion_module.1.key.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.extension = {{ ((lookup(row | default(none), ["device_key_extension"]) | default(''))) | output }}
+expansion_module.1.key.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.label = {{ ((lookup(row | default(none), ["device_key_label"]) | default(''))) | output }}
+expansion_module.1.key.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.xml_phonebook =
+{% endfor %}
+
+##########################################################################################
+##                                  Expansion Module 2                                  ##
+##########################################################################################
+
+{% for row in (lookup(keys | default(none), ["expansion-2"]) | default('')) | values %}
+expansion_module.2.key.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.type = {{ ((lookup(row | default(none), ["device_key_type"]) | default(''))) | output }}
+expansion_module.2.key.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.line = {{ ((lookup(row | default(none), ["device_key_line"]) | default(''))) | output }}
+expansion_module.2.key.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.value = {{ ((lookup(row | default(none), ["device_key_value"]) | default(''))) | output }}
+expansion_module.2.key.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.extension = {{ ((lookup(row | default(none), ["device_key_extension"]) | default(''))) | output }}
+expansion_module.2.key.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.label = {{ ((lookup(row | default(none), ["device_key_label"]) | default(''))) | output }}
+expansion_module.2.key.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.xml_phonebook =
+{% endfor %}
+
+##########################################################################################
+##                                  Expansion Module 3                                  ##
+##########################################################################################
+
+{% for row in (lookup(keys | default(none), ["expansion-3"]) | default('')) | values %}
+expansion_module.3.key.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.type = {{ ((lookup(row | default(none), ["device_key_type"]) | default(''))) | output }}
+expansion_module.3.key.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.line = {{ ((lookup(row | default(none), ["device_key_line"]) | default(''))) | output }}
+expansion_module.3.key.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.value = {{ ((lookup(row | default(none), ["device_key_value"]) | default(''))) | output }}
+expansion_module.3.key.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.extension = {{ ((lookup(row | default(none), ["device_key_extension"]) | default(''))) | output }}
+expansion_module.3.key.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.label = {{ ((lookup(row | default(none), ["device_key_label"]) | default(''))) | output }}
+expansion_module.3.key.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.xml_phonebook =
+{% endfor %}
+
+##########################################################################################
+##                                  Expansion Module 4                                  ##
+##########################################################################################
+
+{% for row in (lookup(keys | default(none), ["expansion-4"]) | default('')) | values %}
+expansion_module.4.key.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.type = {{ ((lookup(row | default(none), ["device_key_type"]) | default(''))) | output }}
+expansion_module.4.key.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.line = {{ ((lookup(row | default(none), ["device_key_line"]) | default(''))) | output }}
+expansion_module.4.key.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.value = {{ ((lookup(row | default(none), ["device_key_value"]) | default(''))) | output }}
+expansion_module.4.key.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.extension = {{ ((lookup(row | default(none), ["device_key_extension"]) | default(''))) | output }}
+expansion_module.4.key.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.label = {{ ((lookup(row | default(none), ["device_key_label"]) | default(''))) | output }}
+expansion_module.4.key.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.xml_phonebook =
+{% endfor %}
+
+##########################################################################################
+##                                  Expansion Module 5                                  ##
+##########################################################################################
+
+{% for row in (lookup(keys | default(none), ["expansion-5"]) | default('')) | values %}
+expansion_module.5.key.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.type = {{ ((lookup(row | default(none), ["device_key_type"]) | default(''))) | output }}
+expansion_module.5.key.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.line = {{ ((lookup(row | default(none), ["device_key_line"]) | default(''))) | output }}
+expansion_module.5.key.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.value = {{ ((lookup(row | default(none), ["device_key_value"]) | default(''))) | output }}
+expansion_module.5.key.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.extension = {{ ((lookup(row | default(none), ["device_key_extension"]) | default(''))) | output }}
+expansion_module.5.key.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.label = {{ ((lookup(row | default(none), ["device_key_label"]) | default(''))) | output }}
+expansion_module.5.key.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.xml_phonebook =
+{% endfor %}
+
+##########################################################################################
+##                                  Expansion Module 6                                  ##
+##########################################################################################
+
+{% for row in (lookup(keys | default(none), ["expansion-6"]) | default('')) | values %}
+expansion_module.6.key.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.type = {{ ((lookup(row | default(none), ["device_key_type"]) | default(''))) | output }}
+expansion_module.6.key.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.line = {{ ((lookup(row | default(none), ["device_key_line"]) | default(''))) | output }}
+expansion_module.6.key.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.value = {{ ((lookup(row | default(none), ["device_key_value"]) | default(''))) | output }}
+expansion_module.6.key.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.extension = {{ ((lookup(row | default(none), ["device_key_extension"]) | default(''))) | output }}
+expansion_module.6.key.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.label = {{ ((lookup(row | default(none), ["device_key_label"]) | default(''))) | output }}
+expansion_module.6.key.{{ ((lookup(row | default(none), ["device_key_id"]) | default(''))) | output }}.xml_phonebook =
+{% endfor %}

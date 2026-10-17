@@ -1,0 +1,41 @@
+{
+  "vendor": "linksys",
+  "status": "untested",
+  "models": [
+    {
+      "id": "linksys-spa2102",
+      "name": "spa2102",
+      "family": "ata",
+      "accounts": 2,
+      "line_keys": 0
+    },
+    {
+      "id": "linksys-spa3102",
+      "name": "spa3102",
+      "family": "ata",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "linksys-spa921",
+      "name": "spa921",
+      "family": "desk",
+      "accounts": 2,
+      "line_keys": 0
+    },
+    {
+      "id": "linksys-spa941",
+      "name": "spa941",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "linksys-spa942",
+      "name": "spa942",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    }
+  ]
+}

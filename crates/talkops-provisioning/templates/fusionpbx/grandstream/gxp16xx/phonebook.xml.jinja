@@ -1,0 +1,49 @@
+{# MPL-1.1 derivative: FusionPBX 20143aec4366afc2755f336d3058243479d49d44, grandstream/gxp16xx/phonebook.xml, blob f2fe0bcc85e73aa886fe04ceaba2f1583b510f0c. #}{% set ns = namespace(keys=keys | default({}), contact_groups=contact_groups | default({})) %}<?xml version="1.0" encoding="utf-8"?>
+<AddressBook>
+<version>1</version>
+{% for contact in (contacts | default('')) | values %}
+{% if (lookup(contact | default(none), ["contact_type"]) | default('')) == "group" %}
+<pbgroup>
+<id>{{ ((lookup(contact | default(none), ["id"]) | default(''))) | output }}</id>
+<name>{{ (((lookup(contact | default(none), ["group_description"]) | default('')) | truncate(10))) | output }}</name>
+</pbgroup>
+{% endif %}
+{% endfor %}
+{% set ns.i = 0 %}
+{% for contact in (contacts | default('')) | values %}
+{% if (lookup(contact | default(none), ["contact_name_given"]) | default('')) != ""  and  (lookup(contact | default(none), ["contact_type"]) | default('')) == "contact" %}
+<Contact>
+<FirstName>{{ (((lookup(contact | default(none), ["contact_name_given"]) | default('')) | truncate(24))) | output }}</FirstName>
+<LastName>{{ (((lookup(contact | default(none), ["contact_name_family"]) | default('')) | truncate(24))) | output }}</LastName>
+{% if (lookup(contact | default(none), ["contact_title"]) | default('')) != "" %}
+<JobTitle>{{ (((lookup(contact | default(none), ["contact_title"]) | default('')) | truncate(24))) | output }}</JobTitle>
+{% endif %}
+<Phone type="Work">
+<phonenumber>{{ (((lookup(contact | default(none), ["contact_work"]) | default('')) | truncate(24))) | output }}</phonenumber>
+<accountindex>1</accountindex>
+</Phone>
+{% if (lookup(contact | default(none), ["contact_home"]) | default('')) != "" %}
+<Phone type="Home">
+<phonenumber>{{ (((lookup(contact | default(none), ["contact_home"]) | default('')) | truncate(24))) | output }}</phonenumber>
+<accountindex>1</accountindex>
+</Phone>
+{% endif %}
+{% if (lookup(contact | default(none), ["contact_cell"]) | default('')) != "" %}
+<Phone type="Cell">
+<phonenumber>{{ (((lookup(contact | default(none), ["contact_cell"]) | default('')) | truncate(24))) | output }}</phonenumber>
+<accountindex>1</accountindex>
+</Phone>
+{% endif %}
+{% if (lookup(contact | default(none), ["contact_role"]) | default('')) != "" %}
+<Department>{{ (((lookup(contact | default(none), ["contact_role"]) | default('')) | truncate(24))) | output }}</Department>
+{% endif %}
+{% if (lookup(contact | default(none), ["contact_organization"]) | default('')) != "" %}
+<Company>{{ (((lookup(contact | default(none), ["contact_organization"]) | default('')) | truncate(24))) | output }}</Company>
+{% endif %}
+{% for group in (lookup(contact | default(none), ["groups"]) | default('')) | values %}
+<Group>{{ ((group | default(''))) | output }}</Group>
+{% endfor %}
+</Contact>
+{% endif %}
+{% endfor %}
+</AddressBook>

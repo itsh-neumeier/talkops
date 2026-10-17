@@ -1,0 +1,496 @@
+{
+  "vendor": "grandstream",
+  "status": "untested",
+  "models": [
+    {
+      "id": "grandstream-dp715-sm",
+      "name": "dp715.sm",
+      "family": "dect",
+      "accounts": 5,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-dp715",
+      "name": "dp715",
+      "family": "dect",
+      "accounts": 5,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-dp750",
+      "name": "dp750",
+      "family": "dect",
+      "accounts": 10,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-gac2500",
+      "name": "gac2500",
+      "family": "conference",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-gds3705",
+      "name": "gds3705",
+      "family": "intercom",
+      "accounts": 4,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-gds3710",
+      "name": "gds3710",
+      "family": "intercom",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-ghp6xx",
+      "name": "ghp6xx",
+      "family": "desk",
+      "accounts": 2,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-grp2612",
+      "name": "grp2612",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-grp2612w",
+      "name": "grp2612w",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-grp2613",
+      "name": "grp2613",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-grp2614",
+      "name": "grp2614",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-grp2615",
+      "name": "grp2615",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-grp2616",
+      "name": "grp2616",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-grp261x",
+      "name": "grp261x",
+      "family": "desk",
+      "accounts": 3,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-grp26xx",
+      "name": "grp26xx",
+      "family": "desk",
+      "accounts": 5,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-gsc3516",
+      "name": "gsc3516",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-gsc3518hs",
+      "name": "gsc3518hs",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-gswave",
+      "name": "gswave",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-gxp110x",
+      "name": "gxp110x",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-gxp116x",
+      "name": "gxp116x",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-gxp140x",
+      "name": "gxp140x",
+      "family": "desk",
+      "accounts": 2,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-gxp140xbk",
+      "name": "gxp140xbk",
+      "family": "desk",
+      "accounts": 2,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-gxp1450",
+      "name": "gxp1450",
+      "family": "desk",
+      "accounts": 2,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-gxp1450bk",
+      "name": "gxp1450bk",
+      "family": "desk",
+      "accounts": 2,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-gxp16xx",
+      "name": "gxp16xx",
+      "family": "desk",
+      "accounts": 2,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-gxp1630",
+      "name": "gxp1630",
+      "family": "desk",
+      "accounts": 3,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-gxp17xx",
+      "name": "gxp17xx",
+      "family": "desk",
+      "accounts": 3,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-gxp20xx",
+      "name": "gxp20xx",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-gxp2100",
+      "name": "gxp2100",
+      "family": "desk",
+      "accounts": 4,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-gxp2124",
+      "name": "gxp2124",
+      "family": "desk",
+      "accounts": 4,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-gxp2130",
+      "name": "gxp2130",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-gxp2135",
+      "name": "gxp2135",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-gxp2140",
+      "name": "gxp2140",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-gxp2160",
+      "name": "gxp2160",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-gxp2170",
+      "name": "gxp2170",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-gxp21xx",
+      "name": "gxp21xx",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-gxp21xxbk",
+      "name": "gxp21xxbk",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-gxp2200",
+      "name": "gxp2200",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-gxp3240",
+      "name": "gxp3240",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-gxv300x",
+      "name": "gxv300x",
+      "family": "desk",
+      "accounts": 3,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-gxv3140",
+      "name": "gxv3140",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-gxv3175",
+      "name": "gxv3175",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-gxv3175v2",
+      "name": "gxv3175v2",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-gxv3240",
+      "name": "gxv3240",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-gxv3275",
+      "name": "gxv3275",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-gxv3370",
+      "name": "gxv3370",
+      "family": "desk",
+      "accounts": 16,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-gxv3480",
+      "name": "gxv3480",
+      "family": "desk",
+      "accounts": 16,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-gxv3504",
+      "name": "gxv3504",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-gxw4004",
+      "name": "gxw4004",
+      "family": "gateway",
+      "accounts": 4,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-gxw4008",
+      "name": "gxw4008",
+      "family": "gateway",
+      "accounts": 8,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-gxw40xx",
+      "name": "gxw40xx",
+      "family": "gateway",
+      "accounts": 24,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-gxw410x",
+      "name": "gxw410x",
+      "family": "gateway",
+      "accounts": 4,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-gxw42xx",
+      "name": "gxw42xx",
+      "family": "gateway",
+      "accounts": 48,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-ht502",
+      "name": "ht502",
+      "family": "ata",
+      "accounts": 2,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-ht503",
+      "name": "ht503",
+      "family": "ata",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-ht701",
+      "name": "ht701",
+      "family": "ata",
+      "accounts": 2,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-ht702",
+      "name": "ht702",
+      "family": "ata",
+      "accounts": 2,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-ht704",
+      "name": "ht704",
+      "family": "ata",
+      "accounts": 4,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-ht801",
+      "name": "ht801",
+      "family": "ata",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-ht802",
+      "name": "ht802",
+      "family": "ata",
+      "accounts": 2,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-ht813",
+      "name": "ht813",
+      "family": "ata",
+      "accounts": 2,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-ht814",
+      "name": "ht814",
+      "family": "ata",
+      "accounts": 4,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-ht818",
+      "name": "ht818",
+      "family": "ata",
+      "accounts": 8,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-ht8x1",
+      "name": "ht8x1",
+      "family": "ata",
+      "accounts": 8,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-htx86",
+      "name": "htx86",
+      "family": "desk",
+      "accounts": 1,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-wp810",
+      "name": "wp810",
+      "family": "wifi",
+      "accounts": 2,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-wp820",
+      "name": "wp820",
+      "family": "wifi",
+      "accounts": 2,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-wp826",
+      "name": "wp826",
+      "family": "wifi",
+      "accounts": 3,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-wp8x6",
+      "name": "wp8x6",
+      "family": "wifi",
+      "accounts": 3,
+      "line_keys": 0
+    },
+    {
+      "id": "grandstream-gxv3380",
+      "name": "gxv3380",
+      "family": "desk",
+      "accounts": 16,
+      "line_keys": 0
+    }
+  ]
+}

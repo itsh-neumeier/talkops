@@ -1,0 +1,48 @@
+{
+  "vendor": "digium",
+  "status": "untested",
+  "models": [
+    {
+      "id": "digium-d40",
+      "name": "d40",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "digium-d50",
+      "name": "d50",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "digium-d60",
+      "name": "d60",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "digium-d62",
+      "name": "d62",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "digium-d65",
+      "name": "d65",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    },
+    {
+      "id": "digium-d70",
+      "name": "d70",
+      "family": "desk",
+      "accounts": 6,
+      "line_keys": 0
+    }
+  ]
+}

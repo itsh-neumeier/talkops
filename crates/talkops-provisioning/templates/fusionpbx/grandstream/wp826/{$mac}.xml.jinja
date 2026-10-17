@@ -1,0 +1,156 @@
+{# MPL-1.1 derivative: FusionPBX 20143aec4366afc2755f336d3058243479d49d44, grandstream/wp826/{$mac}.xml, blob 33ef8d47916084b3da2f73387bca1b2e2fa6f652. #}{% set ns = namespace(keys=keys | default({}), contact_groups=contact_groups | default({})) %}<?xml version="1.0" encoding="UTF-8"?>
+<gs_provision version="1">
+	<config version="2">
+		<!-- Account General Settings -->
+		{% for line in range(1, (3) + 1) %}
+		{% set ns.row = (lookup(lines | default(none), [(line | default(''))]) | default('')) %}
+		<!-- Account Active -->
+		<!-- Yes, No -->
+		{% if php_bool((lookup(ns | default(none), ["row","enabled"]) | default(''))) %}
+		<item name="account.{{ ((line | default(''))) | output }}.enable">Yes</item>
+
+		<!-- Account Name -->
+		<item name="account.{{ ((line | default(''))) | output }}.name">{{ ((lookup(ns | default(none), ["row","display_name"]) | default(''))) | output }}</item>
+
+		<!-- SIP Server -->
+		<item name="account.{{ ((line | default(''))) | output }}.sip.server.1.address">{{ ((lookup(ns | default(none), ["row","server_address"]) | default(''))) | output }}</item>
+
+		<!-- SIP User ID -->
+		<item name="account.{{ ((line | default(''))) | output }}.sip.userid">{{ ((lookup(ns | default(none), ["row","user_id"]) | default(''))) | output }}</item>
+
+		<!-- SIP Authentication ID -->
+		<item name="account.{{ ((line | default(''))) | output }}.sip.subscriber.userId">{{ ((lookup(ns | default(none), ["row","auth_id"]) | default(''))) | output }}</item>
+
+		<!-- SIP Authentication Password -->
+		<item name="account.{{ ((line | default(''))) | output }}.sip.subscriber.password">{{ ((lookup(ns | default(none), ["row","password"]) | default(''))) | output }}</item>
+		<!-- Display Name -->
+		<item name="account.{{ ((line | default(''))) | output }}.sip.subscriber.name">{{ ((lookup(ns | default(none), ["row","display_name"]) | default(''))) | output }}</item>
+		<!-- Voice Mail Access Number -->
+		<item name="account.{{ ((line | default(''))) | output }}.sip.voicemail.number">{{ ((voicemail_number | default(''))) | output }}</item>
+		<!-- Preferred Vocoder -->
+		<item name="account.{{ ((line | default(''))) | output }}.codec.choice">
+			<part name="1">PCMU</part>
+			<part name="2">PCMA</part>
+			<part name="3">G.722</part>
+			<part name="4">OPUS</part>
+			<part name="5">OPUS</part>
+			<part name="6">OPUS</part>
+			<part name="7">OPUS</part>
+			<part name="8">OPUS</part>
+                </item>
+		<!-- DialPlan -->
+		<item name="account.{{ ((line | default(''))) | output }}.call.dialplan">{{ ((grandstream_dial_plan | default(''))) | output }}</item>
+		{% else %}
+		<item name="account.{{ ((line | default(''))) | output }}.enable">No</item>
+		{% endif %} 
+		{% endfor %}
+
+		<!-- Phone Settings - General Settings -->
+		<!-- Ethernet Settings -->
+		<!-- Preferred Internet Protocol -->
+		<!-- BothAndPreferIPv4, BothAndPreferIPv6, IPv4Only, IPv6Only -->
+		{% if (grandstream_ipv_mode | default(''))=='0' %}
+		<item name="network.internetProtocol">BothAndPreferIPv4</item>
+		{% elif (grandstream_ipv_mode | default(''))=='1' %}
+		<item name="network.internetProtocol">BothAndPreferIPv6</item>
+		{% elif (grandstream_ipv_mode | default(''))=='2' %}
+		<item name="network.internetProtocol">IPv4Only</item>
+		{% elif (grandstream_ipv_mode | default(''))=='3' %}
+		<item name="network.internetProtocol">IPv6Only</item>
+		{% else %}
+		<item name="network.internetProtocol">BothAndPreferIPv4</item>
+		{% endif %} 
+		<!-- Wi-Fi Settings -->
+		<!-- Wi-Fi Function -->
+		{% if ((grandstream_wifi_enable is defined and grandstream_wifi_enable is not none)) %}
+		<!-- No, Yes -->
+		<item name="wifi.enable">{% if php_bool((grandstream_wifi_enable | default(''))) %}Yes{% else %}No{% endif %}</item>
+		<!-- ESSID -->
+		{% if ((grandstream_wifi_essid is defined and grandstream_wifi_essid is not none)) %}
+		<item name="wifi.essidname">{{ ((grandstream_wifi_essid | default(''))) | output }}</item>
+		<!-- Password -->
+		<item name="wifi.essidpassword">{{ ((grandstream_wifi_password | default(''))) | output }}</item>
+		<!-- Security Mode for Hidden SSID -->
+		<!-- None, WEP, WPA/WPA2_PSK, 802.1X_EAP -->
+		<item name="wifi.hiddenessid.securitymode">{{ ((grandstream_wifi_hidden_security | default(''))) | output }}</item>
+		{% endif %}
+		<!-- Layer 2 QoS 802.1p Priority Value (Wi-Fi) -->
+		<item name="wifi.layer2qos.priority">0</item>
+		{% endif %}
+		<!-- System Settings -->
+		<!-- Assign NTP Server Address -->
+		{% if ((ntp_server_primary is defined and ntp_server_primary is not none)) %}
+		<item name="dateTime.ntp.server.1">{{ ((ntp_server_primary | default(''))) | output }}</item>
+		{% else %}
+		<item name="dateTime.ntp.server.1">pool.ntp.org</item>
+		{% endif %}
+
+		<!-- # Secondary NTP Server -->
+		<!-- # String -->
+		{% if ((ntp_server_secondary is defined and ntp_server_secondary is not none)) %}
+		<item name="dateTime.ntp.server.2">{{ ((ntp_server_secondary | default(''))) | output }}</item>
+		{% else %}
+		<item name="dateTime.ntp.server.2">2.us.pool.ntp.org</item>
+		{% endif %}
+		<!-- Time Zone -->
+		{% if ((grandstream_time_zone is defined and grandstream_time_zone is not none)) %}
+		<item name="dateTime.timezone">{{ ((grandstream_time_zone | default(''))) | output }}</item>
+		{% elif ((grandstream_gxp_time_zone is defined and grandstream_gxp_time_zone is not none)) %}
+		<item name="dateTime.timezone">{{ ((grandstream_gxp_time_zone | default(''))) | output }}</item>
+		{% endif %}
+		<!-- Admin Password -->
+		{% if ((admin_password is defined and admin_password is not none)) %}
+		<item name="users.admin.password">{{ ((admin_password | default(''))) | output }}</item>
+		{% endif %}
+		<!-- User Password -->
+		{% if ((device_password is defined and device_password is not none)) %}
+		<item name="users.user.password">{{ ((device_password | default(''))) | output }}</item>
+		{% endif %}
+		<!-- System Settings - TR069 -->
+		<item name="tr069">
+			<part name="connectionRequestUsername">{{ ((((mac | default('')) | replace('-','')) | upper)) | output }}</part>
+			<part name="url">https://acsguestb.gdms.cloud</part>
+		</item>
+		<!-- Firmware Upgrade Mode -->
+		<!-- TFTP, HTTP, HTTPS -->
+	    	{% if ((grandstream_firmware_upgrade_protocol is defined and grandstream_firmware_upgrade_protocol is not none)) %}
+    			{% if (grandstream_firmware_upgrade_protocol | default(''))=="0" %}<item name="provisioning.firmware.protocol">TFTP</item>{% endif %}
+	    		{% if (grandstream_firmware_upgrade_protocol | default(''))=="1" %}<item name="provisioning.firmware.protocol">HTTP</item>{% endif %}
+    			{% if (grandstream_firmware_upgrade_protocol | default(''))=="2" %}<item name="provisioning.firmware.protocol">HTTPS</item>{% endif %}
+    		{% else %}
+	    	<item name="provisioning.firmware.protocol">HTTP</item>
+    		{% endif %}
+	    	<!-- Firmware Server Path -->
+		{% if ((grandstream_firmware_path is defined and grandstream_firmware_path is not none))  and  ((firmware_version is defined and firmware_version is not none)) %}
+		<item name="provisioning.firmware.serverPath">{{ ((grandstream_firmware_path | default(''))) | output }}/{{ ((firmware_version | default(''))) | output }}</item>
+		{% elif ((grandstream_firmware_path is defined and grandstream_firmware_path is not none)) %}
+		<item name="provisioning.firmware.serverPath">{{ ((grandstream_firmware_path | default(''))) | output }}</item>
+		{% else %}
+		<item name="provisioning.firmware.serverPath">{{ ((artifact_base | default(''))) | output }}/resources/firmware/</item>
+		<item name="provisioning.firmware.username">{{ ((http_auth_username | default(''))) | output }}</item>
+		<item name="provisioning.firmware.password">{{ ((http_auth_password | default(''))) | output }}</item>
+		{% endif %}
+		<!-- TFTP, HTTP, HTTPS -->
+		<item name="provisioning.config.protocol">HTTPS</item>
+		<!-- Config Server Path -->
+		{% if (grandstream_config_server_path | default(''))=="none" %}
+		<item name="provisioning.config.serverPath"></item>
+		{% elif ((grandstream_config_server_path is defined and grandstream_config_server_path is not none)) %}
+		<item name="provisioning.config.serverPath">{{ ((grandstream_config_server_path | default(''))) | output }}</item>
+		{% else %}
+		<item name="provisioning.config.serverPath">{{ ((artifact_base | default(''))) | output }}/</item>
+		<item name="provisioning.config.username">{{ ((http_auth_username | default(''))) | output }}</item>
+		<item name="provisioning.config.password">{{ ((http_auth_password | default(''))) | output }}</item>
+		{% endif %}
+		<!-- Phonebook -->
+		<item name="phonebook.download">
+			{% if ((grandstream_phonebook_download is defined and grandstream_phonebook_download is not none)) %}
+			<part name="mode">{% if (grandstream_phonebook_download | default(''))=="0" %}Disabled{% elif (grandstream_phonebook_download | default(''))=="1" %}Enabled Use TFTP{% elif (grandstream_phonebook_download | default(''))=="2" %}Enabled Use HTTP{% elif (grandstream_phonebook_download | default(''))=="3" %}Enabled Use HTTPS{% endif %}</part>
+			{% endif %}
+			<part name="server">{{ ((grandstream_phonebook_xml_server_path | default(''))) | output }}{{ ((mac | default(''))) | output }}</part>
+			<part name="interval">{{ ((grandstream_phonebook_download_interval | default(''))) | output }}</part>
+			<part name="username">{{ ((http_auth_username | default(''))) | output }}</part>
+			<part name="password">{{ ((http_auth_password | default(''))) | output }}</part>
+		</item>
+	</config>
+</gs_provision>

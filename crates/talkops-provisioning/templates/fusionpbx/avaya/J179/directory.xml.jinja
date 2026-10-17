@@ -1,0 +1,14 @@
+{# MPL-1.1 derivative: FusionPBX 20143aec4366afc2755f336d3058243479d49d44, avaya/J179/directory.xml, blob 8b3dfd825ee3264954c2dccfece06038a1bed8db. #}{% set ns = namespace(keys=keys | default({}), contact_groups=contact_groups | default({})) %}<IPPhoneDirectory>
+{% for row in (contacts | default('')) | values %}
+    <DirectoryEntry>
+    <LastName>{{ ((lookup(row | default(none), ["contact_name_family"]) | default(''))) | output }}</LastName>
+    <FirstName>{{ ((lookup(row | default(none), ["contact_name_given"]) | default(''))) | output }}</FirstName>
+    <PhoneNumbers>
+        <Phone>
+            <Number>{% if (lookup(row | default(none), ["category"]) | default('')) == "extensions" %}{{ ((lookup(row | default(none), ["phone_extension"]) | default(''))) | output }}{% else %}{{ ((lookup(row | default(none), ["phone_number"]) | default(''))) | output }}{% endif %}</Number>
+            <Type>Work</Type>                                      
+        </Phone>
+    </PhoneNumbers>
+    </DirectoryEntry> 
+{% endfor %}
+</IPPhoneDirectory>

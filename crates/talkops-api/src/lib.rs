@@ -15,6 +15,7 @@ pub mod door_dtmf;
 pub mod doors;
 pub mod error;
 pub mod esl;
+pub mod fax;
 pub mod fsxml;
 pub mod ldap;
 pub mod mailer;
@@ -132,6 +133,7 @@ impl AppState {
 /// Shared media volumes (same paths in the FreeSWITCH container).
 #[derive(Debug, Clone)]
 pub struct MediaPaths {
+    pub fax: PathBuf,
     pub voicemail: PathBuf,
     pub sounds: PathBuf,
     pub recordings: PathBuf,
@@ -142,6 +144,7 @@ pub struct MediaPaths {
 impl Default for MediaPaths {
     fn default() -> Self {
         Self {
+            fax: PathBuf::from("/var/lib/talkops/fax"),
             voicemail: PathBuf::from("/var/lib/talkops/voicemail"),
             sounds: PathBuf::from("/var/lib/talkops/sounds"),
             recordings: PathBuf::from("/var/lib/talkops/recordings"),
@@ -257,6 +260,7 @@ pub fn api_router() -> (Router<AppState>, utoipa::openapi::OpenApi) {
         .merge(routes::identity::router())
         .merge(routes::users::router())
         .merge(routes::roles::router())
+        .merge(routes::fax::router())
         .merge(routes::extensions::router())
         .merge(routes::trunks::router())
         .merge(routes::settings::router())

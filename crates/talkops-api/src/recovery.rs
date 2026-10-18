@@ -571,6 +571,7 @@ fn prepare_inner(archive: &Path, password: Option<&SecretString>, limit: u64) ->
             configuration_name(n) && kind.is_file()
         } else if let Some(rest) = name.strip_prefix("files/") {
             [
+                "fax",
                 "voicemail",
                 "sounds",
                 "recordings",
@@ -649,6 +650,7 @@ fn prepare_inner(archive: &Path, password: Option<&SecretString>, limit: u64) ->
     }
     if manifest.volumes.iter().any(|v| {
         ![
+            "fax",
             "voicemail",
             "sounds",
             "recordings",

@@ -35,6 +35,7 @@ pub enum Outcome {
 /// Parses a record and stores it with its recording. `Err` means the
 /// database failed and the record must be delivered again.
 pub async fn ingest(state: &AppState, xml: &str) -> Result<Outcome, CoreError> {
+    crate::fax::ingest_cdr(&state.db, xml).await?;
     let (tenant, cdr, recording) = match fsxml::cdr::parse(xml) {
         Ok(Some(parsed)) => parsed,
         Ok(None) => {

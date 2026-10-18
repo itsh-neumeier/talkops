@@ -15,6 +15,15 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  fax-adapters:
+    name: Fax MIME and document fixtures
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install fax conversion tools
+        run: sudo apt-get update -qq && sudo apt-get install -y python3-pil python3-reportlab poppler-utils fonts-dejavu-core
+      - run: python3 -m unittest discover -s tests/fax -v
+
   rust:
     name: Rust (fmt, clippy, test)
     runs-on: ubuntu-24.04
@@ -111,6 +120,7 @@ jobs:
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/roles.mjs
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/settings-system.mjs
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/audit.mjs
+          PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/fax.mjs
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/call-list.mjs
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/phonebook.mjs
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/phone-keys.mjs

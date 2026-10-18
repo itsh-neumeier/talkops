@@ -6,6 +6,7 @@
 //! claimed.
 
 mod api;
+mod fax;
 mod live;
 mod realtime;
 mod resources;
@@ -43,6 +44,7 @@ const LANES: &[&[&str]] = &[
     ],
     &[recordings::JOB_TRANSCRIBE],
     &[talkops_core::live_transcripts::JOB],
+    &[talkops_core::fax::PREPARE, talkops_core::fax::RECEIVE],
 ];
 
 /// Running jobs without a heartbeat for this long are handed to another worker.
@@ -380,6 +382,9 @@ enum JobEnd {
 async fn run(ctx: &Ctx, job: &Job) -> anyhow::Result<JobEnd> {
     let done = |r: anyhow::Result<()>| r.map(|_| JobEnd::Done);
     match job.kind.as_str() {
+        talkops_core::fax::PREPARE | talkops_core::fax::RECEIVE => {
+            done(fax::run(&ctx.pool, job).await)
+        }
         audio::JOB_TTS_CLIP => done(tts_clip(ctx, job).await),
         voicemail::JOB_TTS_GREETING => done(tts_greeting(ctx, job).await),
         vmc::JOB_TTS_MESSAGE_INFO => done(tts_message_info(ctx, job).await),

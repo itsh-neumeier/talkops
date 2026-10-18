@@ -1,100 +1,85 @@
-# PDF fax over SIP proposal
+# Fax over SIP and mail input
 
 ## Task state
 
 - Task ID: 20261018-codex-fax-sip-proposal
 - Date: 2026-10-18, Europe/Berlin
 - Tool: Codex
-- Status: In progress. Proposal prepared; user feedback required before code.
+- Status: In progress. Implementation complete; final checks in progress.
 - Branch: `codex/fax-sip-proposal`
-- Base commit: `7beb63d5b8e3917b7621588413afcec2a8893456`
-- Related commits or PR: proposal commit `f58ed84`,
-  [draft PR #53](https://github.com/itsh-neumeier/talkops/pull/53).
+- Base: `7beb63d5b8e3917b7621588413afcec2a8893456` (`origin/main`).
+- PR: https://github.com/itsh-neumeier/talkops/pull/53 (draft).
 
-## Goal
+## Goal and result
 
-Propose PDF fax send and receive over SIP, saved header/footer, role checks,
-own/global numbers and mail-to-fax. The user requires review before changes.
+The user approved the reviewed proposal with "mach das so". Implement web fax,
+mail attachment fax, incoming dedicated fax routes, saved text and role checks.
+The implementation is in this branch. Release actions belong to the release chat.
 
-## Result
+## Changes and decisions
 
-Prepared and pushed a proposal based on the verified remote `main` and
-current code. Draft PR #53 presents it for user review.
-No feature code or migration is implemented. No fax was sent.
-Commit, push and a draft PR are authorized. Feature implementation needs
-the user's response to the proposal. Release actions belong to the release chat.
-
-## Changes
-
-- `docs/fax-sip-proposal.md`: scope, UI, permissions, sender and receive
-  routing, header/footer rendering, mail transport options, restart handling,
-  test plan, dependencies and proposed future release notes.
-- This task summary: durable review boundary and continuation instructions.
-
-## Decisions
-
-- Separate worktree at `C:/Users/timo/.codex/worktrees/fax-sip-proposal/talkops`.
-  The app worktree tool could not resolve the parent folder as a repository;
-  `git worktree add` created the checkout from `origin/main`.
-- Preserve source checkout commit `397fc83` and the three untracked
-  Dahua task summaries. Do not use the stale local `main` as a base.
-- Recommend existing FreeSWITCH `mod_spandsp`, existing queue and mail renderer.
-- Recommend SMTP submission to an existing secured mailbox, retrieved over
-  IMAPS. Direct SMTP gateway is an alternative for user review.
-- User confirmed: the caret was a typo. The subject must contain only one
-  clean international number, such as `+49123456`.
-- User requires a sender email whitelist. Invalid subjects and senders
-  outside the list receive a rejection notice at the sender address.
-- User confirmed: fax only one or more PDF/image attachments, including
-  mixed attachments. Do not use body text, HTML or inline signature images.
-- User confirmed: put the sender email address in the fax header. This
-  overrides the saved header for mail submissions. The configurable footer
-  remains; it must not use mail body content.
-- Proposed supported image formats: JPEG, PNG, TIFF, BMP and WebP.
-  The proposal includes mixed-file ordering, image bounds and failure cases.
-- Recommend explicit fax receive routes; shared voice/fax behavior is open.
-- This is a documentation proposal, not an accepted ADR or a ready feature PR.
+- Use a separate worktree at `C:/Users/timo/.codex/worktrees/fax-sip-proposal/talkops`.
+  Preserve the original checkout, local commit `397fc83` and its untracked files.
+- Add durable fax state, queue jobs, per-trunk dispatch, CDR reconciliation,
+  result reports, retention, backup media and role-scoped API access.
+- Use FreeSWITCH mod_spandsp with G.711 and configurable T.38 modes.
+  Use explicit incoming fax destinations. Do not detect fax on voice calls.
+- Render the PDF preview and transmitted Group 4 TIFF from the same pages.
+  Support mixed PDF, JPEG, PNG, TIFF, BMP and WebP attachments in order.
+- Retrieve a dedicated SMTP mailbox over verified IMAPS. The mail server must
+  bind authenticated senders. An administrator confirms this restriction.
+- Require an exact sender whitelist and a subject containing only an international
+  number, such as `+49123456`. Queue rejection notices for invalid submissions.
+- Fax only attachments. Ignore body, HTML, inline signatures and quoted content.
+  The mail fax header contains only the sender email; the saved footer still applies.
+- Do not automatically retry an uncertain transmission. Busy or unanswered calls
+  with zero pages can retry up to three attempts. Web sends require preview submission.
+- Add English/German UI and user docs, ADR 0040, API/DB tests, Python conversion
+  fixtures, browser checks and a real SIP media round-trip CI test.
 
 ## Checks
 
-- Passed: remote default branch and target commit verified with `ls-remote`;
-  `git fetch origin --prune`; source status, local-only commit and worktrees
-  inspected. `gh pr list --state open` returned no open PRs at task start.
-- Passed: current code and applicable task summaries inspected for fax,
-  routing, roles, outgoing SMTP, mail templates, notifications and backups.
-- Passed: local Markdown link and task date checks for both new files.
-  The remote target and unchanged source checkout were verified again.
-- Passed: `git diff --cached --check`; staged scope contains only the
-  proposal and this task summary (two Markdown files).
-- Passed: feature branch pushed and draft PR #53 created against `main`.
-- Passed on follow-up: worktree and PR inspected; remote target unchanged.
-  Local Markdown links and `git diff --check` passed after the mail rule
-  update. The proposal includes explicit acceptance examples.
-- Not run: Rust, web, database, image, SIP and mail tests. No runtime change.
-- STE review: clear English review using project guidance. Full official
-  standard unavailable; full language review pending.
+- Passed: verified remote main; original checkout preserved; staged diff check.
+- Passed: MSVC cargo check for API and worker before final small changes.
+- Passed: first four PostgreSQL fax integration tests; seven real Python MIME and
+  conversion tests, including PDF conversion with Poppler.
+- Passed: web check (zero errors/warnings), 35 web tests, build and final lint.
+- Passed: first fax browser check (attachments, preview, send, whitelist, mobile,
+  permissions). A final rerun is in progress.
+- In progress: full workspace Rust tests, final five fax API tests and extended
+  fax backup restore test. Private PostgreSQL 17.11 uses port 55436.
+- Local limitations: GNU toolchain lacks gcc/dlltool. MSVC is available.
+  Full all-targets clippy reports existing Windows-only dead code in worker
+  realtime tests. Linux CI must run the exact repository command.
+- First full parallel test build failed because Windows exhausted paging resources.
+  The retry uses one build job and two test threads.
+- Not run locally: Docker images and live SIP/T.38. No Linux Docker daemon is
+  available. The new E2E workflow runs those tests on the test stack.
+- CodeRabbit CLI is absent. Manual review is in progress.
+- Language review used the project clear-English rules. The full official STE
+  standard was unavailable; full language review remains pending.
 
-## Dependencies and open work
+## Dependencies and upgrade
 
-- No migration ID or new runtime dependency in this contribution.
-- Future migrations must follow the latest verified sequence. Current maximum
-  is `20261105000001`. Allocate unique IDs at implementation time.
-- User feedback still needed: remaining scope, mail transport, dedicated
-  incoming number versus voice/fax detection. Mail content rules are settled.
-- Future tests need Linux, PostgreSQL, FreeSWITCH, a test mail server,
-  a fax peer, and provider access for a real trunk interoperability check.
+- No dependency on another PR. Recheck migration IDs at integration time.
+- Migrations: `20261106000001` (destination enum), `20261106000002` (fax tables).
+- Add Python to the server; Pillow, ReportLab, Poppler and DejaVu to the worker.
+  Add the shared `fax` volume to all three services and to backup/recovery.
+- Fax is disabled by default. Administrators configure numbers, permissions,
+  dedicated destinations and optional IMAPS/SMTP before enabling it.
+- Apply both migrations before the new binary. Do not downgrade after assigning
+  fax destinations. No version bump, release tag or publication in this task.
+- Provider interoperability and delivery through the deployment mail server need
+  an operator acceptance test with that provider and server.
 
 ## Next action
 
-Wait for user feedback on draft PR #53 or in this chat.
-After feedback, refresh the remote target, record the accepted behavior,
-then implement and test. Keep the PR a draft until the feature is complete.
+Finish local and Linux CI checks, fix failures, update this summary and the PR
+with actual results, then mark the PR ready only when the required checks pass.
 
 ## References
 
-- [Proposal](../fax-sip-proposal.md)
-- `20261015-claude-roles-permissions.md`
-- `20261016-claude-mail-design-editor.md`
-- `20261016-claude-notifications.md`
-- `20261016-claude-storage-targets.md`
-- `docs/release-workflow.md`
+- [Accepted proposal](../fax-sip-proposal.md)
+- [ADR 0040](../adr/0040-fax-over-sip-and-mail-input.md)
+- [English user guide](../en/fax.md)
+- Related existing summaries: roles, mail design, notifications and storage targets.

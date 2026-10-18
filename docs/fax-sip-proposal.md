@@ -1,6 +1,6 @@
 # PDF fax over SIP: proposal for user review
 
-Status: Proposed. Implementation needs user feedback first.
+Status: Accepted by the user on 2026-10-18. Implementation and verification in progress.
 Date: 2026-10-18 (Europe/Berlin).
 Base: `origin/main`, `7beb63d5b8e3917b7621588413afcec2a8893456`.
 
@@ -11,13 +11,14 @@ web interface or through a configured mail address. Authorized users can
 change the fax header and footer. An outbound fax uses an assigned own
 number or a configured global number.
 
-The user requested a proposal before implementation. This contribution
-contains only this proposal and a task summary. It adds no runtime code,
-database migration, dependency, UI control or configuration change.
+The user requested a proposal before implementation. The first revision
+contained only this proposal and a task summary. The user then approved
+implementation with "mach das so". The feature branch now contains runtime
+code, database migrations, UI controls and configuration changes.
 Commit, push and draft PR creation are authorized. The release chat owns
 integration, version changes, tags and publication.
 
-## Verified current state
+## Verified baseline at proposal start
 
 - The remote default branch is `main`. No open PR was returned at task start.
 - The source checkout has one local commit and three untracked task summaries.
@@ -287,7 +288,7 @@ separately. Do not describe a planned test as passed.
 
 ## Dependencies, migrations and release handoff
 
-This proposal needs no other open PR, runtime dependency or migration.
+The initial proposal needed no other open PR, runtime dependency or migration.
 The verified base contains roles, mail templates, notifications and storage
 targets. Recheck the remote and concurrent PRs before implementation.
 
@@ -296,11 +297,10 @@ recommended mailbox transport is selected. Check versions, licenses,
 image size and amd64/arm64 support before adding them. Direct SMTP gateway
 mode has a different deployment dependency and needs its own review decision.
 
-Allocate migration IDs only when implementation starts. The greatest current
-ID is `20261105000001`; do not choose a lower timestamp from today's date.
-Use unique IDs after the verified migration sequence. Record every actual
-ID and upgrade effect in the implementation PR. Add an ADR after feedback;
-do not reserve a shared ADR number in this proposal.
+Implementation uses migrations `20261106000001` (destination enum) and
+`20261106000002` (fax tables). These follow the verified prior maximum
+`20261105000001`. ADR 0040 records the approved design. Recheck concurrent
+IDs before release integration.
 
 The feature is disabled by default on upgrade. Existing numbers retain
 their routes. New enum values require the upgraded API/UI and must not be
@@ -312,19 +312,17 @@ Suggested release notes after implementation and verification:
 > own and shared fax numbers, role permissions, mail-to-fax submission and
 > delivery reports. Add fax document backup and retention controls.
 
-This proposal alone has no user feature release note.
+The proposal-only revision has no user feature release note.
 
-## Feedback required before implementation
+## Recorded review decisions
 
 Confirmed mail rules: a number-only subject, whitelisted sender, rejection
 notice to the sender, PDF/image attachments only, no mail body content, and
 the sender email address in the fax header. The original caret was a typo.
 
-1. Confirm or change the remaining scope and default behavior above.
-2. Select mail input: existing SMTP mailbox with IMAPS retrieval
-   (recommended), or direct authenticated SMTP gateway to TalkOps.
-3. Confirm dedicated incoming fax routes (recommended), or request shared
-   voice/fax detection on an existing voice number.
+The user approved the remaining scope with "mach das so". Use the recommended
+existing SMTP mailbox with IMAPS retrieval and dedicated incoming fax routes.
+The direct SMTP gateway and automatic voice/fax detection are not selected.
 
 ## Sources
 

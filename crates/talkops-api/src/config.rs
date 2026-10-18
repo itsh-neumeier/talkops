@@ -129,6 +129,9 @@ fn parse_peer(s: &str) -> Result<(std::net::IpAddr, u8), String> {
 /// Database and data directories: everything a backup contains.
 #[derive(Debug, Clone, clap::Args)]
 pub struct Storage {
+    /// Shared fax documents, prepared TIFF files and received faxes.
+    #[arg(long, env = "TALKOPS_FAX_DIR", default_value = "/var/lib/talkops/fax")]
+    pub fax_dir: PathBuf,
     /// Postgres connection string.
     #[arg(long, env = "TALKOPS_DATABASE_URL", hide_env_values = true)]
     pub database_url: String,

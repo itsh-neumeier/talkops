@@ -408,7 +408,23 @@ talkops/
 └── .github/workflows/            ci.yml · freeswitch.yml · e2e.yml · release.yml
 ```
 
+## Fax over SIP
+
+Fax uses the existing `mod_spandsp` module. The Rust API stores fax state,
+selects the permitted trunk number and originates the call through ESL.
+The media worker prepares bounded PDF and image attachments. It creates
+Group 4 TIFF and a PDF preview from the same page images. All three services
+share the `fax` volume. Backup and restore include this volume.
+
+Mail input reads a dedicated SMTP mailbox over IMAPS. The API checks a
+number-only subject and an exact sender whitelist. Only file attachments
+become fax pages. The accepted sender email address is the fax header.
+Rejection notices and reports use the existing SMTP output and mail renderer.
+See [ADR 0040](adr/0040-fax-over-sip-and-mail-input.md) and
+[the user guide](en/fax.md).
+
 ## Roadmap
+
 
 | Phase | Inhalt | Status |
 |---|---|---|

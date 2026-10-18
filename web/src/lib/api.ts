@@ -90,6 +90,13 @@ export type Role = 'admin' | 'operator' | 'user';
 
 /** Permission keys (see talkops_core::roles). */
 export type Permission =
+	| 'fax.send'
+	| 'fax.mail_submit'
+	| 'fax.templates.edit'
+	| 'fax.use_global'
+	| 'fax.access_all'
+	| 'fax.delete'
+	| 'fax.manage'
 	| 'calls.active'
 	| 'calls.view_all'
 	| 'calls.live_transcript'
@@ -929,7 +936,7 @@ export interface RenderedMail {
 }
 
 export type DestinationType =
-	'none' | 'extension' | 'voicemail' | 'ring_group' | 'time_condition' | 'ivr' | 'queue';
+	'fax' | 'none' | 'extension' | 'voicemail' | 'ring_group' | 'time_condition' | 'ivr' | 'queue';
 
 export interface RingGroup {
 	id: string;

@@ -78,6 +78,7 @@ services:
       TALKOPS_TURN_RELAY_ONLY: ${TALKOPS_TURN_RELAY_ONLY:-false}
     volumes:
       - recordings:/var/lib/talkops/recordings
+      - fax:/var/lib/talkops/fax
       - voicemail:/var/lib/talkops/voicemail
       - sounds:/var/lib/talkops/sounds
       - provisioning:/var/lib/talkops/provisioning
@@ -110,6 +111,7 @@ services:
       TZ: ${TZ:-Europe/Berlin}
     volumes:
       - recordings:/var/lib/talkops/recordings
+      - fax:/var/lib/talkops/fax
       - voicemail:/var/lib/talkops/voicemail
       - sounds:/var/lib/talkops/sounds
       - freeswitch-db:/usr/local/freeswitch/var/lib/freeswitch/db
@@ -135,6 +137,7 @@ services:
       TALKOPS_WHISPER_VAD: ${TALKOPS_WHISPER_VAD:-true}
     volumes:
       - recordings:/var/lib/talkops/recordings
+      - fax:/var/lib/talkops/fax
       - voicemail:/var/lib/talkops/voicemail
       - sounds:/var/lib/talkops/sounds
       - models:/var/lib/talkops/models
@@ -188,6 +191,7 @@ services:
       - caddy-config:/config
 
 volumes:
+  fax:
   postgres:
   recordings:
   voicemail:

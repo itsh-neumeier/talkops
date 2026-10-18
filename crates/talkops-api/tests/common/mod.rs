@@ -38,6 +38,7 @@ pub fn state(db: PgPool) -> AppState {
         "s3cret",
     )
     .with_media(talkops_api::MediaPaths {
+        fax: dir.join("fax"),
         voicemail: dir.join("voicemail"),
         sounds: dir.join("sounds"),
         recordings: dir.join("recordings"),

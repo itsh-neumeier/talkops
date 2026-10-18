@@ -82,6 +82,9 @@ jobs:
       - name: Run SIPp scenarios
         run: WEBRTC_E2E=1 SIP_HOST=$(hostname -I | awk '{print $1}') tests/e2e/run.sh
 
+      - name: Fax PDF and image media round trips
+        run: SIP_HOST=$(hostname -I | awk '{print $1}') bash tests/fax/e2e.sh
+
       - name: Logs
         if: failure()
         run: docker compose logs --no-color --tail 300

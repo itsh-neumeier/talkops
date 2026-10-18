@@ -24,6 +24,7 @@
 	import VoicemailControl from '#lib/components/VoicemailControl.svelte';
 	import MailDesign from '#lib/components/MailDesign.svelte';
 	import NotificationSettings from '#lib/components/NotificationSettings.svelte';
+	import FaxSettings from '#lib/components/FaxSettings.svelte';
 	import SettingsNav, {
 		sections,
 		sectionVisible,
@@ -488,6 +489,8 @@
 					</form>
 					<MailDesign />
 				{/if}
+			{:else if section === 'fax'}
+				{#if can('fax.manage')}<FaxSettings />{/if}
 			{:else if section === 'notifications'}
 				{#if can('notifications.manage')}<NotificationSettings />{/if}
 			{:else if section === 'security'}

@@ -71,6 +71,11 @@ The implementation is in this branch. Release actions belong to the release chat
 - The final identity check rejects changes to a prepared fax's number, trunk,
   source or whitelist user mapping. Submission, dispatch and the answered call
   use the same check. All seven local fax tests passed after this change.
+- Commit `038852e` passed full Linux CI again (401 passed, one existing ignored
+  test). SIPp scenarios passed. Fax txfax/rxfax started but the media round trip
+  timed out. Set the soft RTP timer before media activation on both fax legs:
+  SpanDSP reads before it writes, so two silent peers need an independent clock.
+  Add fax state and channel diagnostics to a timed-out fixture.
 - CodeRabbit CLI is absent. Manual review checked access, secret handling,
   dispatch/cancel races, partial results and missing report attachments.
   Fixed a FreeSWITCH default-header fallback: use URL-encoded empty text so the

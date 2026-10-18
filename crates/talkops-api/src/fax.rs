@@ -121,6 +121,8 @@ async fn dispatch(s: &AppState) -> anyhow::Result<()> {
         "talkops_direction=outbound".into(),
         "originate_timeout=60".into(),
         "ignore_early_media=true".into(),
+        // Both fax engines need a clock even before the peer sends its first RTP packet.
+        "rtp_timer_name=soft".into(),
     ];
     for (app, value) in &actions {
         if *app == "set" && !value.starts_with("absolute_codec_string=") {
@@ -294,6 +296,7 @@ async fn call(session: &mut OutboundSession, s: &AppState) -> anyhow::Result<()>
         .execute("set", "absolute_codec_string=PCMA,PCMU")
         .await?;
     if !outbound {
+        session.execute("set", "rtp_timer_name=soft").await?;
         let mode = session
             .var("talkops_trunk_id")
             .and_then(|v| v.parse::<Uuid>().ok())

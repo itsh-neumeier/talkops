@@ -55,7 +55,13 @@ for mode in audio required; do
     if [ "$state" = failed ] || [ "$state" = unknown ]; then echo "$report"; exit 1; fi
     sleep 2
   done
-  [ "$completed" = true ] || { echo 'Fax media transfer did not finish'; exit 1; }
+  if [ "$completed" != true ]; then
+    echo 'Fax media transfer did not finish'
+    echo "$report"
+    api GET /faxes
+    docker compose exec -T freeswitch sh -c 'fs_cli -p "$TALKOPS_ESL_PASSWORD" -x "show channels as json"'
+    exit 1
+  fi
   echo "$report" | jq -e '.pages == 2 and .attempts == 1' >/dev/null
   if [ "$mode" = required ]; then
     echo "$report" | jq -e '.result | endswith("transport negotiated")' >/dev/null

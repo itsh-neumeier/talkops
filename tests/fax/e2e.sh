@@ -12,7 +12,11 @@ api() {
   [ $# -lt 3 ] || args+=(-H 'Content-Type: application/json' --data "$3")
   curl "${args[@]}" "$BASE/api/v1$2"
 }
-csrf=$(api POST /auth/login '{"username":"admin","password":"e2e-password-1"}' | jq -er .csrf_token)
+if api GET /setup | jq -e '.needs_setup' >/dev/null; then
+  csrf=$(api POST /setup '{"username":"admin","display_name":"Admin","password":"e2e-password-1"}' | jq -er .csrf_token)
+else
+  csrf=$(api POST /auth/login '{"username":"admin","password":"e2e-password-1"}' | jq -er .csrf_token)
+fi
 owner=$(api GET /auth/me | jq -er .user.id)
 trunk=$(api POST /trunks "$(jq -nc --arg host "$SIP_HOST:$SIP_TRUNK_PORT" '{name:"Fax media fixture",preset:"generic",enabled:true,overrides:{registrar:$host,proxy:$host,register:false}}')" | jq -er .id)
 account=$(api POST "/trunks/$trunk/accounts" '{"username":"fax-e2e","password":"fax-e2e-secret","enabled":true}' | jq -er .id)
@@ -34,6 +38,7 @@ PY
 )
 payload=$(echo "$payload" | jq -c --arg source "$source" '.number_id=$source')
 for mode in audio required; do
+  printf 'Fax media test starting: %s\n' "$mode"
   previous=$(api GET /faxes | jq -c '[.[] | select(.direction=="inbound") | .id]')
   config=$(echo "$config" | jq -c --arg trunk "$trunk" --arg mode "$mode" '.trunk_modes[$trunk]=$mode')
   api PUT /settings/fax "$(jq -nc --argjson config "$config" '{config:$config}')" >/dev/null
@@ -60,9 +65,13 @@ for mode in audio required; do
     echo "$report"
     api GET /faxes
     docker compose exec -T freeswitch sh -c 'fs_cli -p "$TALKOPS_ESL_PASSWORD" -x "show channels as json"'
+    for call in $(api GET /faxes | jq -r '.[].call_uuid // empty'); do
+      docker compose exec -T freeswitch sh -c 'for var in rtp_use_timer_name local_media_ip local_media_port remote_media_ip remote_media_port fax_t38_status; do printf "%s %s: " "$1" "$var"; fs_cli -p "$TALKOPS_ESL_PASSWORD" -x "uuid_getvar $1 $var"; done' sh "$call"
+    done
     exit 1
   fi
   echo "$report" | jq -e '.pages == 2 and .attempts == 1' >/dev/null
+  printf 'Fax transfer confirmed; checking received PDF: %s\n' "$mode"
   if [ "$mode" = required ]; then
     echo "$report" | jq -e '.result | endswith("transport negotiated")' >/dev/null
   else

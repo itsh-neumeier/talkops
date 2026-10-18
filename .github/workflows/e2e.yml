@@ -79,11 +79,11 @@ jobs:
           npx playwright install --with-deps chromium
           echo "PLAYWRIGHT_MODULE=$RUNNER_TEMP/pw/node_modules/playwright/index.mjs" >> "$GITHUB_ENV"
 
-      - name: Run SIPp scenarios
-        run: WEBRTC_E2E=1 SIP_HOST=$(hostname -I | awk '{print $1}') tests/e2e/run.sh
-
       - name: Fax PDF and image media round trips
         run: SIP_HOST=$(hostname -I | awk '{print $1}') bash tests/fax/e2e.sh
+
+      - name: Run SIPp scenarios
+        run: WEBRTC_E2E=1 SIP_HOST=$(hostname -I | awk '{print $1}') tests/e2e/run.sh
 
       - name: Logs
         if: failure()

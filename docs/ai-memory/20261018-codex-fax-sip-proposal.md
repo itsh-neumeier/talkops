@@ -76,6 +76,19 @@ The implementation is in this branch. Release actions belong to the release chat
   timed out. Set the soft RTP timer before media activation on both fax legs:
   SpanDSP reads before it writes, so two silent peers need an independent clock.
   Add fax state and channel diagnostics to a timed-out fixture.
+- Final runtime validation on `4f4fb81` passed. Full Linux CI passed with 401
+  Rust tests and one existing ignored Whisper/model test. All web/browser,
+  Compose, server/worker build and smoke checks passed. FreeSWITCH build,
+  module, codec and non-root checks passed. Two-page PDF/image fax round trips
+  passed over G.711 and negotiated T.38, including the received PDFs. The full
+  SIPp and browser softphone workflow then passed.
+  [CI run](https://github.com/itsh-neumeier/talkops/actions/runs/39160218878),
+  [E2E run](https://github.com/itsh-neumeier/talkops/actions/runs/39160218879),
+  [FreeSWITCH run](https://github.com/itsh-neumeier/talkops/actions/runs/39160218894).
+- The closing commit changes only this summary. No runtime code changed after
+  the validated `4f4fb81` commit. The PR records checks for the final documentation
+  revision and the release handoff state. Local preview and private PostgreSQL
+  test services were stopped. The feature worktree is clean and pushed.
 - CodeRabbit CLI is absent. Manual review checked access, secret handling,
   dispatch/cancel races, partial results and missing report attachments.
   Fixed a FreeSWITCH default-header fallback: use URL-encoded empty text so the

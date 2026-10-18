@@ -234,11 +234,28 @@ async fn cancel(
     if f.owner_id != a.id && !a.can(Permission::FaxManage) {
         return Err(ApiError::Forbidden);
     }
-    sqlx::query("UPDATE faxes SET state='cancelled',updated_at=now(),result='Cancelled by user' WHERE tenant_id=$1 AND id=$2 AND state IN ('preparing','draft','queued','dialing','sending')").bind(a.tenant).bind(id).execute(&s.db).await?;
-    if let (Some(uuid), Some(esl)) = (f.call_uuid, s.telephony.esl.get().await) {
-        let _ = esl
-            .api(&format!("uuid_kill {uuid} ORIGINATOR_CANCEL"))
-            .await;
+    // Serialize with dispatch so a queued fax cannot acquire an unseen call UUID.
+    let mut tx = s.db.begin().await?;
+    let current: Fax =
+        sqlx::query_as("SELECT * FROM faxes WHERE tenant_id=$1 AND id=$2 FOR UPDATE")
+            .bind(a.tenant)
+            .bind(id)
+            .fetch_one(&mut *tx)
+            .await?;
+    sqlx::query("UPDATE faxes SET state='cancelled',updated_at=now(),result='Cancelled by user' WHERE tenant_id=$1 AND id=$2 AND state IN ('preparing','draft','queued','dialing','sending')").bind(a.tenant).bind(id).execute(&mut *tx).await?;
+    tx.commit().await?;
+    if ["dialing", "sending"].contains(&current.state.as_str()) {
+        let confirmed = match (current.call_uuid, s.telephony.esl.get().await) {
+            (Some(uuid), Some(esl)) => esl
+                .api(&format!("uuid_kill {uuid} ORIGINATOR_CANCEL"))
+                .await
+                .is_ok_and(|reply| reply.trim().starts_with("+OK")),
+            _ => false,
+        };
+        if !confirmed {
+            sqlx::query("UPDATE faxes SET state='unknown',result='Cancellation unconfirmed. Verify delivery before resend.',updated_at=now() WHERE tenant_id=$1 AND id=$2 AND state='cancelled'")
+                .bind(a.tenant).bind(id).execute(&s.db).await?;
+        }
     }
     record(&s, &a, "cancel", Some(id)).await?;
     Ok(StatusCode::NO_CONTENT)
@@ -311,11 +328,16 @@ async fn remove(
             "cancel active fax before deletion".into(),
         ));
     }
-    sqlx::query("DELETE FROM faxes WHERE tenant_id=$1 AND id=$2")
+    let removed = sqlx::query("DELETE FROM faxes WHERE tenant_id=$1 AND id=$2 AND state NOT IN ('preparing','queued','dialing','sending','received')")
         .bind(a.tenant)
         .bind(id)
         .execute(&s.db)
-        .await?;
+        .await?.rows_affected();
+    if removed == 0 {
+        return Err(ApiError::Conflict(
+            "fax state changed before deletion".into(),
+        ));
+    }
     let _ = tokio::fs::remove_dir_all(crate::fax::directory(&s, a.tenant, id)).await;
     record(&s, &a, "delete", Some(id)).await?;
     Ok(StatusCode::NO_CONTENT)
@@ -465,7 +487,8 @@ async fn options(State(s): State<AppState>, a: AuthUser) -> ApiResult<Json<Optio
     numbers.retain(|n| {
         n.enabled
             && ((!cfg.always_global && own.contains(&n.id))
-                || (Some(n.id) == cfg.global_number_id && a.can(Permission::FaxUseGlobal)))
+                || (Some(n.id) == cfg.global_number_id
+                    && (own.contains(&n.id) || a.can(Permission::FaxUseGlobal))))
     });
     Ok(Json(Options {
         enabled: cfg.enabled,

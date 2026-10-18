@@ -199,6 +199,11 @@ async fn dispatch(s: &AppState) -> anyhow::Result<()> {
         .execute(&mut *tx)
         .await?;
     tx.commit().await?;
+    let still_dialing: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM faxes WHERE tenant_id=$1 AND id=$2 AND call_uuid=$3 AND state='dialing')")
+        .bind(f.tenant_id).bind(f.id).bind(call).fetch_one(&s.db).await?;
+    if !still_dialing {
+        return Ok(());
+    }
     // An uncertain command outcome must never cause another originate automatically.
     if esl.bgapi(&command).await.is_err() {
         mark_unknown(&s.db, &f, "Originate outcome unknown; verify before resend").await?;
@@ -635,15 +640,12 @@ async fn deliver_mail(s: &AppState) -> anyhow::Result<()> {
         values.insert("fax.destination".into(), f.destination);
         values.insert("fax.pages".into(), f.pages.to_string());
         if kind == "fax_received" {
-            if let Ok(bytes) =
-                tokio::fs::read(directory(s, tenant, fax_id).join("document.pdf")).await
-            {
-                attachments.push(crate::mailer::MailAttachment {
-                    filename: "fax.pdf".into(),
-                    content_type: "application/pdf".into(),
-                    data: bytes,
-                });
-            }
+            let bytes = tokio::fs::read(directory(s, tenant, fax_id).join("document.pdf")).await?;
+            attachments.push(crate::mailer::MailAttachment {
+                filename: "fax.pdf".into(),
+                content_type: "application/pdf".into(),
+                data: bytes,
+            });
         }
     }
     let lang = settings::get(&s.db, tenant).await?.default_language;

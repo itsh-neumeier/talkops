@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import MagicMock, patch
 from email.message import EmailMessage
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -58,6 +59,48 @@ class MailTests(unittest.TestCase):
         for i in range(11):
             msg.add_attachment(b"file", maintype="image", subtype="png", filename=str(i))
         self.assertIn("10 files", helper.parse_mail(msg.as_bytes())["error"])
+
+
+class MailboxTests(unittest.TestCase):
+    def setUp(self):
+        self.config = {"host": "mail.example.com", "port": 993, "username": "fax",
+                       "password": "fixture", "folder": "INBOX"}
+        self.conn = MagicMock()
+        self.conn.__enter__.return_value = self.conn
+        self.conn.select.return_value = ("OK", [b"1"])
+        self.conn.response.return_value = ("UIDVALIDITY", [b"42"])
+
+    def test_peek_does_not_ack_and_tls_is_verified(self):
+        raw = b"From: allowed@example.com\r\nSubject: +49123456\r\n\r\nprivate body"
+        self.conn.uid.side_effect = [("OK", [b"7"]), ("OK", [b"7 (RFC822.SIZE 70)"]),
+                                     ("OK", [(b"7", raw)])]
+        with patch.object(helper.imaplib, "IMAP4_SSL", return_value=self.conn) as connect:
+            result = helper.mailbox(self.config)
+            context = connect.call_args.kwargs["ssl_context"]
+            self.assertTrue(context.check_hostname)
+            self.assertEqual(context.verify_mode, helper.ssl.CERT_REQUIRED)
+        self.assertEqual(result["uid"], "7")
+        self.assertEqual(result["validity"], "42")
+        self.assertEqual(self.conn.uid.call_args.args, ("fetch", "7", "(BODY.PEEK[])"))
+        self.assertNotIn("private body", json.dumps(result))
+
+    def test_ack_checks_validity_and_marks_seen(self):
+        config = dict(self.config, ack="7", validity="41")
+        with patch.object(helper.imaplib, "IMAP4_SSL", return_value=self.conn):
+            with self.assertRaises(ValueError):
+                helper.mailbox(config)
+            self.conn.uid.assert_not_called()
+            config["validity"] = "42"
+            self.assertTrue(helper.mailbox(config)["acknowledged"])
+        self.conn.uid.assert_called_once_with("store", "7", "+FLAGS.SILENT", "(\\Seen)")
+
+    def test_oversized_message_is_not_downloaded(self):
+        self.conn.uid.side_effect = [("OK", [b"8"]), ("OK", [b"8 (RFC822.SIZE 999999999)"])]
+        with patch.object(helper.imaplib, "IMAP4_SSL", return_value=self.conn):
+            result = helper.mailbox(self.config)
+        self.assertTrue(result["automatic"])
+        self.assertIn("30 MiB", result["error"])
+        self.assertEqual(self.conn.uid.call_count, 2)
 
 
 class ConversionTests(unittest.TestCase):

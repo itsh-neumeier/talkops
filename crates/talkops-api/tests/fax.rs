@@ -253,6 +253,57 @@ async fn cdr_results_are_idempotent_and_partial_is_not_success(pool: PgPool) {
     );
     talkops_api::fax::ingest_cdr(&pool, &partial).await.unwrap();
     assert_eq!(fax::get(&pool, T, id).await.unwrap().state, "failed");
+    let busy = format!(
+        "<cdr><variables><uuid>{call}</uuid><hangup_cause>USER_BUSY</hangup_cause></variables></cdr>"
+    );
+    sqlx::query("UPDATE faxes SET state='dialing',attempts=1 WHERE id=$1")
+        .bind(id)
+        .execute(&pool)
+        .await
+        .unwrap();
+    talkops_api::fax::ingest_cdr(&pool, &busy).await.unwrap();
+    assert_eq!(fax::get(&pool, T, id).await.unwrap().state, "queued");
+    sqlx::query("UPDATE faxes SET state='dialing',attempts=3 WHERE id=$1")
+        .bind(id)
+        .execute(&pool)
+        .await
+        .unwrap();
+    talkops_api::fax::ingest_cdr(&pool, &busy).await.unwrap();
+    assert_eq!(fax::get(&pool, T, id).await.unwrap().state, "failed");
+    // A durable CDR can settle a transmission after control-plane loss.
+    sqlx::query("UPDATE faxes SET state='unknown' WHERE id=$1")
+        .bind(id)
+        .execute(&pool)
+        .await
+        .unwrap();
+    talkops_api::fax::ingest_cdr(&pool, &xml).await.unwrap();
+    assert_eq!(fax::get(&pool, T, id).await.unwrap().state, "succeeded");
+    let incoming = Uuid::new_v4();
+    sqlx::query("INSERT INTO faxes(id,tenant_id,owner_id,direction,state,call_uuid) VALUES($1,$2,$3,'inbound','sending',$1)")
+        .bind(incoming).bind(T).bind(user).execute(&pool).await.unwrap();
+    talkops_api::fax::ingest_cdr(
+        &pool,
+        &partial.replace(&call.to_string(), &incoming.to_string()),
+    )
+    .await
+    .unwrap();
+    talkops_api::fax::ingest_cdr(
+        &pool,
+        &partial.replace(&call.to_string(), &incoming.to_string()),
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        fax::get(&pool, T, incoming).await.unwrap().state,
+        "received"
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM jobs WHERE kind='fax.receive'")
+            .fetch_one(&pool)
+            .await
+            .unwrap(),
+        1
+    );
 }
 
 #[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
@@ -342,6 +393,21 @@ async fn prepared_documents_need_submit_and_obey_access_checks(pool: PgPool) {
         .await;
     assert_eq!(status, StatusCode::OK, "{new}");
     assert_ne!(new["id"], f["id"]);
+    let new_id: Uuid = new["id"].as_str().unwrap().parse().unwrap();
+    sqlx::query("UPDATE faxes SET state='sending',call_uuid=$2 WHERE id=$1")
+        .bind(new_id)
+        .bind(Uuid::new_v4())
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert_eq!(
+        admin
+            .post(&format!("/api/v1/faxes/{new_id}/cancel"), json!({}))
+            .await
+            .0,
+        StatusCode::NO_CONTENT
+    );
+    assert_eq!(fax::get(&pool, T, new_id).await.unwrap().state, "unknown");
     assert_eq!(
         admin
             .call("DELETE", &format!("/api/v1/faxes/{id}"), None)
@@ -370,5 +436,102 @@ async fn prepared_documents_need_submit_and_obey_access_checks(pool: PgPool) {
     assert_ne!(
         admin.get("/api/v1/faxes/template").await.1["header"],
         "Custom"
+    );
+}
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn rejection_outbox_delivers_once_without_original_content(pool: PgPool) {
+    use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+    use tokio::time::{Duration, timeout};
+    let (s, _, _) = fixture(&pool).await;
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    talkops_core::mail::update(
+        &pool,
+        T,
+        &s.secrets,
+        &talkops_core::mail::SmtpInput {
+            host: "127.0.0.1".into(),
+            port: listener.local_addr().unwrap().port().into(),
+            security: "none".into(),
+            username: String::new(),
+            password: None,
+            from: "pbx@example.com".into(),
+        },
+    )
+    .await
+    .unwrap();
+    let smtp = tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.unwrap();
+        let (read, mut write) = stream.into_split();
+        let mut read = BufReader::new(read);
+        write.write_all(b"220 fixture ESMTP\r\n").await.unwrap();
+        let mut message = String::new();
+        let mut data = false;
+        loop {
+            let mut line = String::new();
+            if read.read_line(&mut line).await.unwrap() == 0 {
+                break;
+            }
+            if data {
+                if line == ".\r\n" {
+                    write.write_all(b"250 queued\r\n").await.unwrap();
+                    break;
+                }
+                message.push_str(&line);
+            } else if line.starts_with("DATA") {
+                write.write_all(b"354 send data\r\n").await.unwrap();
+                data = true;
+            } else if line.starts_with("EHLO") {
+                write
+                    .write_all(b"250-fixture\r\n250 8BITMIME\r\n")
+                    .await
+                    .unwrap();
+            } else {
+                write.write_all(b"250 OK\r\n").await.unwrap();
+            }
+        }
+        message
+    });
+    let input = serde_json::from_value(json!({"uid":"smtp-1","validity":"1","sender":"denied@example.com","subject":"+49123456","automatic":false,"files":[],"error":"","fingerprint":"smtp-1"})).unwrap();
+    talkops_api::fax::admit_mail(&s, T, input, "smtp-fixture")
+        .await
+        .unwrap();
+    talkops_api::fax::spawn(s);
+    let message = timeout(Duration::from_secs(15), smtp)
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(message.contains("denied@example.com"));
+    assert!(message.contains("Auto-Submitted: auto-replied"));
+    assert!(!message.contains("Content-Disposition: attachment"));
+    timeout(Duration::from_secs(5), async {
+        loop {
+            let sent: bool = sqlx::query_scalar(
+                "SELECT sent FROM fax_mail_outbox WHERE recipient='denied@example.com'",
+            )
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+            if sent {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    })
+    .await
+    .unwrap();
+    let attempts: i32 = sqlx::query_scalar(
+        "SELECT attempts FROM fax_mail_outbox WHERE recipient='denied@example.com'",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(attempts, 1);
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM faxes")
+            .fetch_one(&pool)
+            .await
+            .unwrap(),
+        0
     );
 }

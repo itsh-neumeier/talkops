@@ -6,7 +6,7 @@ Base: `origin/main`, `7beb63d5b8e3917b7621588413afcec2a8893456`.
 
 ## Goal and review boundary
 
-Add PDF fax send and receive functions to TalkOps. Users can send from the
+Add document fax send and receive functions to TalkOps. Users can send from the
 web interface or through a configured mail address. Authorized users can
 change the fax header and footer. An outbound fax uses an assigned own
 number or a configured global number.
@@ -76,6 +76,12 @@ Avoid a second automatic page header from SpanDSP.
 Snapshot the effective template and sender details when a job is created.
 Changes apply to later submissions.
 
+For mail-to-fax, the user's confirmed rule overrides the saved header:
+print only the accepted sender email address in the fax header. Do not add
+the sender display name, subject or mail body. The saved footer remains
+available, but must not use mail body content. The protocol station identity
+and SIP caller ID remain the resolved outgoing fax number.
+
 ### Own and global numbers
 
 Offer two outbound policies: **own number, otherwise global** and
@@ -105,35 +111,79 @@ existing mail server. A user sends the mail through SMTP to, for example,
 contain the address, IMAP host, port, TLS mode, folder and encrypted login
 secret. The existing outgoing SMTP configuration sends reports.
 
-The subject contains exactly one international number after MIME decoding
-and removal of outer whitespace. Example: `+491245235`. Proposed syntax:
+Confirmed by the user: the subject contains only one clean international
+number, such as `+49123456`. The caret in the original example was a typing
+error. Validate after MIME decoding and removal of outer whitespace. Syntax:
 `^\+[1-9][0-9]{1,14}$`. This checks E.164 shape, not whether a number is
 allocated. Apply the configured destination policy after this check.
 Do not extract a number from arbitrary subject text. Reject multiple
 numbers, `Re:`, control characters and the literal `^` inside a number.
-The user's `+49^1245235` example needs clarification before this is fixed.
 
-Accept PDF attachments only, in MIME order. Ignore the mail body. Reject an
-entire submission if it has no PDF, an unsupported document attachment or
-an invalid PDF. Ignore ordinary inline signature images. Do not send a
-partial set of attachments. Apply the same limits and conversion as web
-uploads. Proposed limits: 20 MiB decoded PDFs, 50 pages, 10 attachments,
-and a bounded 30 MiB raw MIME message.
+Confirmed by the user: use only file attachments as fax pages. Accept one
+or more PDFs or image files, including a mixture, in MIME attachment order.
+Do not convert any plain-text body, HTML body, quoted thread, signature or
+inline body image into a fax page. The only mail metadata printed on the
+fax is the accepted sender email address in the header.
 
-Map a verified mail identity to an enabled TalkOps user. That user needs
-both fax send and mail submission permissions. The mail server must restrict
-this mailbox to authenticated submissions and bind sender addresses to the
-authenticated account. A `From` header or address allowlist alone is not
-proof of identity. Arbitrary Internet mail must not create paid fax calls.
-The deployment guide must state this requirement and provide a tested
-mail-server configuration. Mail input stays disabled by default.
+Proposed image formats: JPEG, PNG, TIFF, BMP and WebP. Check file signatures
+and decode the file; do not trust its extension or MIME label. Apply image
+orientation, preserve all pages of a multipage TIFF, and fit each image on
+a fax page without cropping. Reject animated images with an explicit error.
+Reject an entire submission with no supported file attachment, an unsupported
+file attachment, or any invalid or encrypted document. Do not send a partial
+set of attachments. Proposed limits: 20 MiB decoded attachments, 50 output
+pages, 10 attachments, a 30 MiB raw MIME message, and bounded decoded image
+dimensions and pixel count. Use the same preparation pipeline as web uploads.
+
+Confirmed by the user: the sender email address must be on a whitelist.
+Add an administrator-managed list under Fax settings. Each enabled entry
+contains one complete sender address and the sending user or shared fax
+endpoint used to resolve permissions and the outgoing number. Compare the
+parsed single `From` address, not its display name or an address substring.
+Do not accept wildcard entries, multiple From addresses or Reply-To as a
+replacement identity. Apply a documented address normalization policy.
+An empty whitelist permits no mail-to-fax submissions.
+
+Apply the subject check and whitelist check before creating any conversion
+or send job. A match does not bypass the configured fax number and access
+policy. Recheck the entry before dialing a queued mail fax. Store the
+accepted email address with the transmission and use it as the fax header.
+
+The whitelist is the application admission rule. The existing mail server
+must also supply a trusted sender identity or enforce sender binding for
+authenticated submissions. A forged From header must not bypass the list.
+Document and test this transport requirement. Mail input stays disabled
+by default.
 
 Store a unique mailbox identity plus UIDVALIDITY and UID before marking a
 message processed. Store a bounded message fingerprint for duplicate
 detection. A database transaction creates the fax and conversion job before
 the message is moved to Processed. Reconnects must not submit it again.
-Invalid messages move to Rejected and appear in an input log. Send reports
-only to the configured verified user address, never an arbitrary Reply-To.
+Invalid messages move to Rejected and appear in an input log.
+
+Confirmed by the user: reject a message with an invalid subject or a sender
+outside the whitelist and send a rejection notice to the sender. The notice
+states that submission is not permitted, or that the subject must contain
+only a number such as `+49123456`. Invalid or missing attachments also produce
+an actionable rejection. Address the notice to the parsed sender address,
+including a sender outside the whitelist; never substitute Reply-To. Do not
+echo attachments, mail body, whitelist contents or fax credentials. Queue
+the notice independently: notification retries must never create a fax.
+Use duplicate protection and suppress response loops for automatic messages
+and delivery reports. A message with no usable sender is rejected and logged.
+Ordinary fax reports go to the accepted sender address.
+
+Examples for the implementation tests:
+
+| Subject | Sender | Attachments | Result |
+| --- | --- | --- | --- |
+| `+49123456` | Whitelisted | One PDF | Submit; sender email in header. |
+| `+49123456` | Whitelisted | Two PDFs and a JPEG | One fax in attachment order; sender email in header. |
+| `+49123456` | Whitelisted | PNG only; body contains other text | Fax the PNG only; no body text. |
+| `+49123456` | Not whitelisted | Valid PDF | No fax; send not-permitted notice to sender. |
+| `Fax +49123456`, `Re: +49123456`, or `+49^123456` | Whitelisted | Valid PDF | No fax; send invalid-subject notice to sender. |
+| `+49123456` | Whitelisted | No file attachments; body and inline logo only | No fax; send missing-attachment notice. |
+| `+49123456` | Whitelisted | Valid PDF and invalid image | No partial fax; send invalid-attachment notice. |
 
 Alternative for review: direct SMTP submission to a dedicated gateway.
 Use a maintained mail server such as Postfix for TLS, authenticated users,
@@ -157,13 +207,13 @@ A mail failure must not resend the fax. Report partial reception explicitly.
 
 | Area | Planned changes |
 | --- | --- |
-| Core | Add fax settings, endpoints, grants, templates, documents, transmissions, attempts and mail receipts. Keep tenant-safe relations and typed errors. |
+| Core | Add fax settings, endpoints, grants, templates, documents, transmissions, attempts, sender whitelist and mail receipts. Keep tenant-safe relations and typed errors. |
 | Database | Add forward-only schema migrations. Extend the destination enum in a separate migration before any migration uses the new value. Add role keys without granting new chargeable actions to existing user/operator roles. |
 | API | Add `/api/v1/faxes` for upload, preview, submit, history, files, reports, cancel and resend. Add settings and endpoint management routes. Register OpenAPI schemas and audit mutations. |
 | Routing | Extend `trunks`, `numbering`, XML dialplan generation, destination validation and all routing selectors with the fax destination. Keep business rules in Rust. |
 | Transmission | Add an API-side fax dispatcher and ESL result handling. Tag calls with fax and attempt IDs. Correlate final results and CDR data. |
-| Worker | Add bounded PDF normalization, page composition, multipage fax TIFF creation and received TIFF-to-PDF conversion jobs. |
-| Mail | Add the selected ingress adapter, duplicate protection and fax report types to the existing renderer. Keep secrets encrypted and out of logs. |
+| Worker | Add bounded PDF and image normalization, page composition, multipage fax TIFF creation and received TIFF-to-PDF conversion jobs. |
+| Mail | Add the selected ingress adapter, whitelist checks, strict subject validation, rejection notices, duplicate protection and fax report types. Keep secrets encrypted and out of logs. |
 | UI | Add the Fax page, Fax settings, endpoint access controls, role labels, API types and both translations. |
 | Operations | Add a `fax` volume to all three services, media paths, capacity checks, backup/restore, retention and deployment docs. |
 
@@ -171,6 +221,8 @@ Use Poppler for PDF rendering and libtiff tools for fax TIFF assembly and
 received PDF conversion, subject to an image-level compatibility fixture.
 Render at a supported monochrome fax resolution. Test page dimensions,
 compression and multipage order against the pinned FreeSWITCH build.
+Decode supported image files with a maintained image library and the same
+resource limits. Match preview output to the final monochrome document.
 Run converters without a shell, with fixed server-generated paths,
 resource limits, a timeout and a private temporary directory. Reject
 encrypted, corrupt and oversized PDFs. Do not pass user filenames to ESL.
@@ -200,7 +252,8 @@ calls outside voice recording, transcription and voicemail flows.
 
 Proposed role keys: `fax.send`, `fax.mail_submit`, `fax.templates.edit`,
 `fax.use_global`, `fax.access_all`, `fax.delete` and `fax.manage`.
-`fax.manage` controls endpoints, shared grants, global templates and policy;
+`fax.manage` controls endpoints, shared grants, global templates, the sender
+whitelist and policy;
 `fax.templates.edit` controls personal overrides. Shared endpoint grants
 separately specify send and inbox access. A settings permission alone does
 not grant document access. Admin retains all permissions.
@@ -217,12 +270,12 @@ direction. Backups include fax documents independently of voice recordings.
 
 | Test layer | Required evidence |
 | --- | --- |
-| Unit | Strict MIME subject parsing, number policy, template precedence, header/footer margins, limits, retry decisions and duplicate events. Include the literal caret example as a rejected case if strict E.164 is approved. |
+| Unit | Strict MIME subject parsing, exact sender whitelist matching, number policy, template precedence, sender email header, header/footer margins, PDF/image limits, retry decisions and duplicate events. Reject the literal caret example. |
 | PostgreSQL | Migration from existing data, destination validation, every new domain query, tenant isolation, grants, revoked rights, transactional queue creation, concurrent claims and duplicate mail receipts. |
 | API | Authorized and forbidden upload, send, settings, download, deletion and resend; invalid PDF; inaccessible global/own number; session and CSRF checks. |
-| Conversion | Multipage portrait/landscape PDFs, small text, Unicode, no cropped content, visible header/footer, TIFF resolution/compression, corrupt/encrypted input, timeout and cleanup. |
+| Conversion | Multipage PDFs, each supported image format, mixed attachment order, image orientation, multipage TIFF, small text, Unicode, no cropped content, sender email in mail fax header, saved footer, TIFF resolution/compression, corrupt/encrypted input, animation rejection, pixel limits, timeout and cleanup. |
 | Browser | Upload → preview → send → status; inbox; role editor; hidden/disabled unauthorized controls; mobile and desktop layouts; German and English. |
-| Mail integration | SMTP submission into the selected test mail server, trusted identity mapping, forged sender rejection, invalid subject/MIME, restart and duplicate handling, report delivery failure without another fax. |
+| Mail integration | SMTP submission into the selected test mail server, whitelist add/remove/empty list, forged sender rejection, invalid subject/MIME, sender rejection notice even outside the whitelist, duplicate/loop protection, no fax from body/HTML/inline signatures, restart handling, report failure without another fax. |
 | FreeSWITCH | Send and receive a real fixture through the pinned engine. Cover G.711, T.38 negotiation, refusal/fallback, busy, partial pages, cancellation and lost ESL connection. SIPp signaling alone does not prove document transfer. |
 | Operations | Compose validation, amd64/arm64 image builds, converter availability, non-root volume access, quota/retention, backup and restore with fax fixtures. |
 
@@ -238,7 +291,7 @@ This proposal needs no other open PR, runtime dependency or migration.
 The verified base contains roles, mail templates, notifications and storage
 targets. Recheck the remote and concurrent PRs before implementation.
 
-Implementation needs new PDF/TIFF utilities and a MIME/IMAP client if the
+Implementation needs PDF/TIFF utilities, image decoding and a MIME/IMAP client if the
 recommended mailbox transport is selected. Check versions, licenses,
 image size and amd64/arm64 support before adding them. Direct SMTP gateway
 mode has a different deployment dependency and needs its own review decision.
@@ -263,12 +316,14 @@ This proposal alone has no user feature release note.
 
 ## Feedback required before implementation
 
-1. Confirm or change the overall scope and default behavior above.
+Confirmed mail rules: a number-only subject, whitelisted sender, rejection
+notice to the sender, PDF/image attachments only, no mail body content, and
+the sender email address in the fax header. The original caret was a typo.
+
+1. Confirm or change the remaining scope and default behavior above.
 2. Select mail input: existing SMTP mailbox with IMAPS retrieval
    (recommended), or direct authenticated SMTP gateway to TalkOps.
-3. Confirm that the subject must contain only a number such as
-   `+491245235`. Is the `^` in `+49^1245235` a typing error?
-4. Confirm dedicated incoming fax routes (recommended), or request shared
+3. Confirm dedicated incoming fax routes (recommended), or request shared
    voice/fax detection on an existing voice number.
 
 ## Sources

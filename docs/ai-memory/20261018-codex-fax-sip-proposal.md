@@ -41,8 +41,18 @@ the user's response to the proposal. Release actions belong to the release chat.
 - Recommend existing FreeSWITCH `mod_spandsp`, existing queue and mail renderer.
 - Recommend SMTP submission to an existing secured mailbox, retrieved over
   IMAPS. Direct SMTP gateway is an alternative for user review.
-- Recommend strict E.164 subject and explicit fax receive routes. Clarify
-  the literal caret and shared voice/fax behavior before implementation.
+- User confirmed: the caret was a typo. The subject must contain only one
+  clean international number, such as `+49123456`.
+- User requires a sender email whitelist. Invalid subjects and senders
+  outside the list receive a rejection notice at the sender address.
+- User confirmed: fax only one or more PDF/image attachments, including
+  mixed attachments. Do not use body text, HTML or inline signature images.
+- User confirmed: put the sender email address in the fax header. This
+  overrides the saved header for mail submissions. The configurable footer
+  remains; it must not use mail body content.
+- Proposed supported image formats: JPEG, PNG, TIFF, BMP and WebP.
+  The proposal includes mixed-file ordering, image bounds and failure cases.
+- Recommend explicit fax receive routes; shared voice/fax behavior is open.
 - This is a documentation proposal, not an accepted ADR or a ready feature PR.
 
 ## Checks
@@ -57,6 +67,9 @@ the user's response to the proposal. Release actions belong to the release chat.
 - Passed: `git diff --cached --check`; staged scope contains only the
   proposal and this task summary (two Markdown files).
 - Passed: feature branch pushed and draft PR #53 created against `main`.
+- Passed on follow-up: worktree and PR inspected; remote target unchanged.
+  Local Markdown links and `git diff --check` passed after the mail rule
+  update. The proposal includes explicit acceptance examples.
 - Not run: Rust, web, database, image, SIP and mail tests. No runtime change.
 - STE review: clear English review using project guidance. Full official
   standard unavailable; full language review pending.
@@ -66,8 +79,8 @@ the user's response to the proposal. Release actions belong to the release chat.
 - No migration ID or new runtime dependency in this contribution.
 - Future migrations must follow the latest verified sequence. Current maximum
   is `20261105000001`. Allocate unique IDs at implementation time.
-- User feedback needed: scope, mail transport, caret in subject, dedicated
-  incoming number versus voice/fax detection.
+- User feedback still needed: remaining scope, mail transport, dedicated
+  incoming number versus voice/fax detection. Mail content rules are settled.
 - Future tests need Linux, PostgreSQL, FreeSWITCH, a test mail server,
   a fax peer, and provider access for a real trunk interoperability check.
 

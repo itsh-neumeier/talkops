@@ -215,7 +215,7 @@ async fn submit(
     if f.owner_id != a.id {
         return Err(ApiError::Forbidden);
     }
-    fax::resolve_number(&s.db, a.tenant, a.id, f.number_id).await?;
+    fax::route_for_document(&s.db, &f).await?;
     let changed=sqlx::query("UPDATE faxes SET state='queued',updated_at=now() WHERE tenant_id=$1 AND id=$2 AND state='draft'").bind(a.tenant).bind(id).execute(&s.db).await?.rows_affected();
     if changed != 1 {
         return Err(ApiError::Conflict("fax is not a prepared draft".into()));

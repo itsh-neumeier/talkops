@@ -63,6 +63,14 @@ The implementation is in this branch. Release actions belong to the release chat
 - The implementation checkpoint passed Linux clippy, web checks, Compose and
   both application image builds. Final CI/E2E on the last revision is the release
   gate. Consult the PR checks for current results; superseded runs can be cancelled.
+- Commit `1179b9a` passed full Linux CI: 401 Rust tests passed, one existing
+  Whisper/model-dependent test was ignored. FreeSWITCH image checks and the
+  existing SIPp/browser softphone scenarios passed. The new fax media test failed:
+  originate split the unquoted socket argument at spaces, dropping `async full`.
+  Quote both originate arguments. Select the fixture's sender number explicitly.
+- The final identity check rejects changes to a prepared fax's number, trunk,
+  source or whitelist user mapping. Submission, dispatch and the answered call
+  use the same check. All seven local fax tests passed after this change.
 - CodeRabbit CLI is absent. Manual review checked access, secret handling,
   dispatch/cancel races, partial results and missing report attachments.
   Fixed a FreeSWITCH default-header fallback: use URL-encoded empty text so the

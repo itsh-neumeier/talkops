@@ -80,23 +80,9 @@ async fn dispatch(s: &AppState) -> anyhow::Result<()> {
     let Some(f) = f else {
         return Ok(());
     };
-    let route = fax::resolve_number(&s.db, f.tenant_id, f.owner_id, f.number_id).await;
-    let allowed = if f.sender_email.is_empty() {
-        true
-    } else {
-        fax::mail_user(&s.db, f.tenant_id, &f.sender_email)
-            .await
-            .is_ok_and(|u| u == f.owner_id)
-    };
+    let route = fax::route_for_document(&s.db, &f).await;
     let route = match route {
-        Ok(route)
-            if allowed
-                && Some(route.number_id) == f.number_id
-                && Some(route.trunk_id) == f.trunk_id
-                && route.e164 == f.source =>
-        {
-            route
-        }
+        Ok(route) => route,
         _ => {
             sqlx::query("UPDATE faxes SET state='failed',result='Fax permission or sender route is no longer available',updated_at=now() WHERE id=$1").bind(f.id).execute(&mut *tx).await?;
             queue_report(
@@ -186,8 +172,10 @@ async fn dispatch(s: &AppState) -> anyhow::Result<()> {
     ]);
     safe(dial).map_err(anyhow::Error::msg)?;
     safe(&s.outbound_socket).map_err(anyhow::Error::msg)?;
+    // originate separates arguments on spaces. Quote the complete socket
+    // application so "async full" stays inside its argument (mod_commands).
     let command = format!(
-        "originate {{^^|{}}}{dial} &socket({} async full)",
+        "originate '{{^^|{}}}{dial}' '&socket({} async full)'",
         vars.join("|"),
         s.outbound_socket
     );
@@ -240,11 +228,11 @@ async fn call(session: &mut OutboundSession, s: &AppState) -> anyhow::Result<()>
         if f.call_uuid != Some(call_uuid) || f.state != "dialing" {
             anyhow::bail!("stale fax attempt");
         }
-        fax::resolve_number(&s.db, tenant, f.owner_id, f.number_id).await?;
-        if !f.sender_email.is_empty() {
-            fax::mail_user(&s.db, tenant, &f.sender_email).await?;
+        fax::route_for_document(&s.db, &f).await?;
+        let changed = sqlx::query("UPDATE faxes SET state='sending',updated_at=now() WHERE tenant_id=$1 AND id=$2 AND state='dialing'").bind(tenant).bind(id).execute(&s.db).await?.rows_affected();
+        if changed != 1 {
+            anyhow::bail!("fax cancelled before transmission");
         }
-        sqlx::query("UPDATE faxes SET state='sending',updated_at=now() WHERE tenant_id=$1 AND id=$2 AND state='dialing'").bind(tenant).bind(id).execute(&s.db).await?;
         f
     } else {
         let endpoint: Uuid = session

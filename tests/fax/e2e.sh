@@ -32,6 +32,7 @@ pdf=io.BytesIO(); c=canvas.Canvas(pdf); c.drawString(40,700,'TalkOps PDF attachm
 print(json.dumps({'destination':'+49155510002','files':[{'name':'one.pdf','data':base64.b64encode(pdf.getvalue()).decode()},{'name':'two.png','data':base64.b64encode(png.getvalue()).decode()}]}))
 PY
 )
+payload=$(echo "$payload" | jq -c --arg source "$source" '.number_id=$source')
 for mode in audio required; do
   previous=$(api GET /faxes | jq -c '[.[] | select(.direction=="inbound") | .id]')
   config=$(echo "$config" | jq -c --arg trunk "$trunk" --arg mode "$mode" '.trunk_modes[$trunk]=$mode')

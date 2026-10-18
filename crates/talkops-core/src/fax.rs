@@ -413,6 +413,21 @@ pub async fn resolve_number(
         .await?
         .ok_or_else(|| invalid("fax route is unavailable"))
 }
+/// Recheck the exact snapshotted identity before submitting or transmitting a document.
+pub async fn route_for_document(db: &PgPool, f: &Fax) -> CoreResult<trunks::OutboundRoute> {
+    let route = resolve_number(db, f.tenant_id, f.owner_id, f.number_id).await?;
+    if Some(route.number_id) != f.number_id
+        || Some(route.trunk_id) != f.trunk_id
+        || route.e164 != f.source
+        || (!f.sender_email.is_empty()
+            && mail_user(db, f.tenant_id, &f.sender_email).await? != f.owner_id)
+    {
+        return Err(invalid(
+            "fax sender identity or route changed; prepare a new document",
+        ));
+    }
+    Ok(route)
+}
 #[allow(clippy::too_many_arguments)]
 pub async fn create(
     db: &PgPool,

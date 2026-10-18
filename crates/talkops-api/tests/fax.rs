@@ -95,6 +95,10 @@ async fn mail_admission_is_atomic_whitelisted_and_body_free(pool: PgPool) {
     assert_eq!(faxes.len(), 1);
     assert_eq!(faxes[0].header, "allowed@example.com");
     assert_eq!(faxes[0].sender_email, "allowed@example.com");
+    assert!(fax::route_for_document(&pool, &faxes[0]).await.is_ok());
+    let mut changed = faxes[0].clone();
+    changed.source = "+49999999".into();
+    assert!(fax::route_for_document(&pool, &changed).await.is_err());
     assert_eq!(
         sqlx::query_scalar::<_, i64>("SELECT count(*) FROM jobs WHERE kind='fax.prepare'")
             .fetch_one(&pool)
@@ -107,7 +111,22 @@ async fn mail_admission_is_atomic_whitelisted_and_body_free(pool: PgPool) {
             .await
             .is_err()
     );
+    let replacement: Uuid = sqlx::query_scalar("INSERT INTO users(tenant_id,username,display_name,role) VALUES($1,'replacement','Replacement','admin') RETURNING id")
+        .bind(T).fetch_one(&pool).await.unwrap();
+    fax::save_whitelist(
+        &pool,
+        T,
+        &[fax::Whitelist {
+            email: "allowed@example.com".into(),
+            user_id: replacement,
+            enabled: true,
+        }],
+    )
+    .await
+    .unwrap();
+    assert!(fax::route_for_document(&pool, &faxes[0]).await.is_err());
     fax::save_whitelist(&pool, T, &[]).await.unwrap();
+    assert!(fax::route_for_document(&pool, &faxes[0]).await.is_err());
     assert!(
         fax::mail_user(&pool, T, "allowed@example.com")
             .await

@@ -264,8 +264,8 @@ preview, report and mutation. Check mail permissions again at submission
 and before dialing. Audit settings, submission, cancellation, resend and
 deletion without storing PDF contents or secrets in the audit log.
 Retention skips active transmissions and removes all document derivatives.
-Proposed retention default: 30 days, configurable separately for each
-direction. Backups include fax documents independently of voice recordings.
+Retention defaults to 30 days. The implementation uses one configured period
+for both directions. Backups include fax documents independently of voice recordings.
 
 ## Planned verification and acceptance
 

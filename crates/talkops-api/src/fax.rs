@@ -151,7 +151,7 @@ async fn dispatch(s: &AppState) -> anyhow::Result<()> {
     vars.extend([
         "absolute_codec_string=PCMA,PCMU".into(),
         "fax_ident=".to_owned() + &f.source,
-        "fax_header=".into(),
+        "fax_header=%00".into(),
         "fax_use_ecm=true".into(),
         "fax_enable_t38=".to_owned()
             + if cfg
@@ -279,7 +279,10 @@ async fn call(session: &mut OutboundSession, s: &AppState) -> anyhow::Result<()>
         .to_str()
         .ok_or_else(|| anyhow::anyhow!("invalid fax path"))?;
     safe(path).map_err(anyhow::Error::msg)?;
-    session.execute("set", "fax_header=").await?;
+    // An empty `set` removes the variable and restores SpanDSP's default header.
+    // mod_spandsp URL-decodes this constant to an empty string instead. The
+    // rendered TIFF already contains the exact user/mail header (v1.10.12 pvt_init).
+    session.execute("set", "fax_header=%00").await?;
     let ident = if outbound {
         f.source.clone()
     } else if let Some(id) = session

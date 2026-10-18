@@ -56,6 +56,11 @@ for mode in audio required; do
   done
   [ "$completed" = true ] || { echo 'Fax media transfer did not finish'; exit 1; }
   echo "$report" | jq -e '.pages == 2 and .attempts == 1' >/dev/null
+  if [ "$mode" = required ]; then
+    echo "$report" | jq -e '.result | endswith("transport negotiated")' >/dev/null
+  else
+    echo "$report" | jq -e '.result | endswith("transport off")' >/dev/null
+  fi
   for _ in $(seq 1 30); do
     inbox=$(api GET /faxes)
     if echo "$inbox" | jq -e --arg endpoint "$endpoint" --argjson previous "$previous" 'any(.[]; . as $fax | .direction=="inbound" and .endpoint_id==$endpoint and .state=="succeeded" and .pages==2 and ($previous | index($fax.id) | not))' >/dev/null; then break; fi

@@ -5,7 +5,7 @@
 - Task ID: 20261018-codex-fax-sip-proposal
 - Date: 2026-10-18, Europe/Berlin
 - Tool: Codex
-- Status: In progress. Implementation complete; final checks in progress.
+- Status: Implementation complete. Final readiness and live CI results are in PR #53.
 - Branch: `codex/fax-sip-proposal`
 - Base: `7beb63d5b8e3917b7621588413afcec2a8893456` (`origin/main`).
 - PR: https://github.com/itsh-neumeier/talkops/pull/53 (draft).
@@ -41,21 +41,32 @@ The implementation is in this branch. Release actions belong to the release chat
 
 - Passed: verified remote main; original checkout preserved; staged diff check.
 - Passed: MSVC cargo check for API and worker before final small changes.
-- Passed: first four PostgreSQL fax integration tests; seven real Python MIME and
-  conversion tests, including PDF conversion with Poppler.
+- Passed: seven PostgreSQL fax integration tests, including a local SMTP server,
+  own/shared/global number policy, revoked rights, queue limits, cancellation,
+  late CDR recovery and duplicate events. Two backup tests passed, including
+  replacement and restoration of a fax PDF fixture.
+- Passed: ten Python MIME, IMAPS protocol and conversion tests, including PDF
+  conversion with Poppler. IMAPS tests check verified TLS, BODY.PEEK[], UIDVALIDITY,
+  acknowledgement and rejection of oversized messages without download.
 - Passed: web check (zero errors/warnings), 35 web tests, build and final lint.
-- Passed: first fax browser check (attachments, preview, send, whitelist, mobile,
-  permissions). A final rerun is in progress.
-- In progress: full workspace Rust tests, final five fax API tests and extended
-  fax backup restore test. Private PostgreSQL 17.11 uses port 55436.
+- Passed: final fax browser check (attachments, preview, send, whitelist, mobile,
+  permissions). Shell syntax check passed for the SIP media fixture.
+- Local Rust tests use PostgreSQL 17.11 on private port 55436 and MSVC.
 - Local limitations: GNU toolchain lacks gcc/dlltool. MSVC is available.
   Full all-targets clippy reports existing Windows-only dead code in worker
   realtime tests. Linux CI must run the exact repository command.
 - First full parallel test build failed because Windows exhausted paging resources.
-  The retry uses one build job and two test threads.
+  The single-build-job retry was stopped to run the focused API/backup tests.
+  Full Linux workspace checks run in CI; do not claim a full local Windows pass.
 - Not run locally: Docker images and live SIP/T.38. No Linux Docker daemon is
   available. The new E2E workflow runs those tests on the test stack.
-- CodeRabbit CLI is absent. Manual review is in progress.
+- The implementation checkpoint passed Linux clippy, web checks, Compose and
+  both application image builds. Final CI/E2E on the last revision is the release
+  gate. Consult the PR checks for current results; superseded runs can be cancelled.
+- CodeRabbit CLI is absent. Manual review checked access, secret handling,
+  dispatch/cancel races, partial results and missing report attachments.
+  Fixed a FreeSWITCH default-header fallback: use URL-encoded empty text so the
+  engine does not add a second header above the rendered sender email.
 - Language review used the project clear-English rules. The full official STE
   standard was unavailable; full language review remains pending.
 
@@ -74,8 +85,10 @@ The implementation is in this branch. Release actions belong to the release chat
 
 ## Next action
 
-Finish local and Linux CI checks, fix failures, update this summary and the PR
-with actual results, then mark the PR ready only when the required checks pass.
+Use PR #53 as the release handoff. It records final head, test results and readiness.
+The release chat must wait for required CI/E2E checks on that head, recheck the
+target and migration IDs, then select the release. No release action is delegated
+to this development branch.
 
 ## References
 

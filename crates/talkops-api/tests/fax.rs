@@ -535,3 +535,99 @@ async fn rejection_outbox_delivers_once_without_original_content(pool: PgPool) {
         0
     );
 }
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn sender_policy_rechecks_own_global_shared_and_pending_limit(pool: PgPool) {
+    let (s, owner, number) = fixture(&pool).await;
+    let role: Uuid = sqlx::query_scalar("INSERT INTO roles(tenant_id,name,permissions) VALUES($1,'Fax sender',ARRAY['fax.send']) RETURNING id")
+        .bind(T).fetch_one(&pool).await.unwrap();
+    let user: Uuid = sqlx::query_scalar("INSERT INTO users(tenant_id,username,display_name,role_id) VALUES($1,'sender','Sender',$2) RETURNING id")
+        .bind(T).bind(role).fetch_one(&pool).await.unwrap();
+    assert!(
+        fax::resolve_number(&pool, T, user, Some(number))
+            .await
+            .is_err()
+    );
+    let mut endpoint = fax::Endpoint {
+        id: Uuid::new_v4(),
+        name: "Shared sender".into(),
+        owner_id: owner,
+        send_users: vec![user],
+        receive_users: vec![],
+        reception_email: String::new(),
+        enabled: true,
+    };
+    fax::save_endpoint(&pool, T, &endpoint).await.unwrap();
+    sqlx::query("UPDATE numbers SET destination_type='fax',destination_id=$2 WHERE id=$1")
+        .bind(number)
+        .bind(endpoint.id)
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert_eq!(
+        fax::resolve_number(&pool, T, user, None)
+            .await
+            .unwrap()
+            .number_id,
+        number
+    );
+    let mut cfg = fax::settings(&pool, T).await.unwrap();
+    cfg.always_global = true;
+    fax::save_settings(&pool, T, &cfg, None, &s.secrets)
+        .await
+        .unwrap();
+    assert_eq!(
+        fax::resolve_number(&pool, T, user, None)
+            .await
+            .unwrap()
+            .number_id,
+        number
+    );
+    endpoint.send_users.clear();
+    fax::save_endpoint(&pool, T, &endpoint).await.unwrap();
+    assert!(fax::resolve_number(&pool, T, user, None).await.is_err());
+    sqlx::query("UPDATE roles SET permissions=ARRAY['fax.send','fax.use_global'] WHERE id=$1")
+        .bind(role)
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert_eq!(
+        fax::resolve_number(&pool, T, user, None)
+            .await
+            .unwrap()
+            .number_id,
+        number
+    );
+    sqlx::query("INSERT INTO faxes(tenant_id,owner_id,direction,state) SELECT $1,$2,'outbound','draft' FROM generate_series(1,20)")
+        .bind(T).bind(user).execute(&pool).await.unwrap();
+    let result = fax::create(
+        &pool,
+        T,
+        user,
+        Uuid::new_v4(),
+        "+49654321",
+        None,
+        vec![fax::InputFile {
+            file: "input-0.bin".into(),
+            name: "one.pdf".into(),
+        }],
+        "",
+        false,
+        None,
+    )
+    .await;
+    assert!(result.is_err());
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM jobs WHERE kind='fax.prepare'")
+            .fetch_one(&pool)
+            .await
+            .unwrap(),
+        0
+    );
+    sqlx::query("UPDATE users SET enabled=false WHERE id=$1")
+        .bind(user)
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert!(fax::resolve_number(&pool, T, user, None).await.is_err());
+}

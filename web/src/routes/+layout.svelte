@@ -39,6 +39,7 @@
 		{ href: '/phone', key: 'nav.phone', role: 'user' },
 		{ href: '/calls', key: 'nav.calls', role: 'user' },
 		{ href: '/voicemail', key: 'nav.voicemail', role: 'user' },
+		{ href: '/fax', key: 'fax.title', role: 'user' },
 		{ href: '/doors', key: 'nav.doors', role: 'user' },
 		{ href: '/phonebook', key: 'nav.phonebook', role: 'user' },
 		{ href: '/search', key: 'nav.search', role: 'user' },

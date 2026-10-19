@@ -246,6 +246,7 @@ async fn serve(config: Config) -> anyhow::Result<()> {
         &config.xmlcurl_password,
     )
     .with_media(MediaPaths {
+        fax: config.storage.fax_dir.clone(),
         voicemail: config.storage.voicemail_dir.clone(),
         sounds: config.storage.sounds_dir.clone(),
         recordings: config.storage.recordings_dir.clone(),
@@ -283,9 +284,22 @@ async fn serve(config: Config) -> anyhow::Result<()> {
         .await
         .with_context(|| format!("cannot bind {}", config.esl_outbound_listen))?;
     let vm_ctx = VmContext::from(&state);
+    let fax_state = state.clone();
     tokio::spawn(talkops_esl::outbound::serve(outbound, move |session| {
-        talkops_api::voicemail::handle(session, vm_ctx.clone())
+        let state = fax_state.clone();
+        let ctx = vm_ctx.clone();
+        async move {
+            if session
+                .var("talkops_app")
+                .is_some_and(|v| v.starts_with("fax_"))
+            {
+                talkops_api::fax::handle(session, state).await;
+            } else {
+                talkops_api::voicemail::handle(session, ctx).await;
+            }
+        }
     }));
+    talkops_api::fax::spawn(state.clone());
     talkops_api::mailer::spawn(state.db.clone(), state.secrets.clone(), state.media.clone());
     talkops_api::notifier::spawn(state.db.clone(), state.secrets.clone(), state.media.clone());
     talkops_api::retention::spawn(db.clone(), state.media.clone());

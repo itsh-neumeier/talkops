@@ -9,6 +9,7 @@ pub mod dashboard;
 pub mod diagnostics;
 pub mod doors;
 pub mod extensions;
+pub mod fax;
 pub mod fs;
 pub mod groups;
 pub mod health;

@@ -100,6 +100,7 @@ impl BackupConfig {
                 .cloned()
                 .collect(),
             volumes: vec![
+                ("fax", s.fax_dir.clone()),
                 ("voicemail", s.voicemail_dir.clone()),
                 ("sounds", s.sounds_dir.clone()),
                 ("recordings", s.recordings_dir.clone()),

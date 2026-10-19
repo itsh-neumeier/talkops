@@ -4,3 +4,4 @@
 backup-password
 backup.env
 recovered/
+__pycache__/

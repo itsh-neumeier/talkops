@@ -332,6 +332,12 @@ pub fn planned_var<'a>(actions: &'a [Action], name: &str) -> Option<&'a str> {
 /// Adds call recording (and the announcement) in front of the first
 /// `bridge`/`callcenter` if the tenant or an involved extension wants it.
 async fn with_recording(r: &Routing<'_>, mut actions: Vec<Action>) -> CoreResult<Vec<Action>> {
+    if actions
+        .iter()
+        .any(|(app, data)| *app == "set" && data.starts_with("talkops_app=fax_"))
+    {
+        return Ok(actions);
+    }
     let Some(pos) = actions
         .iter()
         .position(|(app, _)| *app == "bridge" || *app == "callcenter")
@@ -1175,7 +1181,7 @@ fn codec_string(codecs: &[String]) -> String {
         .join(",")
 }
 
-fn outbound_actions(
+pub(crate) fn outbound_actions(
     catalog: &PresetCatalog,
     dial_plan: &DialPlanSettings,
     route: &OutboundRoute,
@@ -1586,6 +1592,22 @@ pub fn route_to<'a>(
             return unavailable();
         };
         match kind {
+            NumberDestination::Fax => {
+                let enabled = talkops_core::fax::settings(r.pool, tenant).await?.enabled;
+                if !enabled
+                    || !talkops_core::fax::endpoints(r.pool, tenant)
+                        .await?
+                        .iter()
+                        .any(|e| e.id == id && e.enabled)
+                {
+                    return unavailable();
+                }
+                Ok(vec![
+                    set("talkops_app", "fax_in"),
+                    set("talkops_fax_endpoint", id.to_string()),
+                    ("socket", format!("{} async full", r.socket)),
+                ])
+            }
             NumberDestination::Extension => match extensions::get(r.pool, tenant, id).await {
                 Ok(ext) => ring_extension(r, tenant, &ext).await,
                 Err(_) => unavailable(),

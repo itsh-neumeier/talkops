@@ -234,6 +234,7 @@ async fn setup(pool: &PgPool) -> (VmContext, Uuid, std::path::PathBuf) {
         )
         .unwrap(),
         media: Arc::new(MediaPaths {
+            fax: dir.join("fax"),
             voicemail: dir.join("voicemail"),
             sounds: dir.join("sounds"),
             recordings: dir.join("recordings"),

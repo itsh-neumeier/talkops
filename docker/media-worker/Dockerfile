@@ -88,17 +88,19 @@ LABEL org.opencontainers.image.title="talkops-media-worker" \
       org.opencontainers.image.licenses="AGPL-3.0-only"
 
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates tzdata curl libgomp1 \
+      python3 python3-pil python3-reportlab poppler-utils fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --system --gid 10001 talkops \
     && useradd --system --uid 10001 --gid talkops --no-create-home --shell /usr/sbin/nologin talkops \
     && mkdir -p /var/lib/talkops/recordings /var/lib/talkops/voicemail /var/lib/talkops/sounds \
-                /var/lib/talkops/models \
+                /var/lib/talkops/models /var/lib/talkops/fax \
     && chown -R talkops:talkops /var/lib/talkops
 
 COPY --from=piper /opt/piper /opt/piper
 COPY --from=piper /voices /usr/share/talkops/voices
 COPY --from=whisper /opt/whisper /opt/whisper
 COPY --from=build /usr/local/bin/talkops-media-worker /usr/local/bin/talkops-media-worker
+COPY scripts/fax/helper.py /usr/share/talkops/fax/helper.py
 
 ENV TALKOPS_LOG_FORMAT=json \
     TALKOPS_WORKER_HEARTBEAT_FILE=/tmp/talkops-worker.alive

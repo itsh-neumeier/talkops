@@ -68,6 +68,7 @@ LEONET [EN](docs/en/leonet.md) / [DE](docs/de/leonet.md) ·
 Yealink phones [EN](docs/en/yealink.md) / [DE](docs/de/yealink.md) ·
 codec profiles for Wi-Fi handsets [EN](docs/en/codec-profiles.md) / [DE](docs/de/codec-profile.md) ·
 voicemail [EN](docs/en/voicemail.md) / [DE](docs/de/voicemail.md) ·
+fax and mail-to-fax [EN](docs/en/fax.md) / [DE](docs/de/fax.md) ·
 e-mail design and texts [EN](docs/en/mail.md) / [DE](docs/de/e-mail.md) ·
 e-mail notifications [EN](docs/en/notifications.md) / [DE](docs/de/benachrichtigungen.md) ·
 call routing [EN](docs/en/call-routing.md) / [DE](docs/de/anrufsteuerung.md) ·

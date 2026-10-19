@@ -8,7 +8,8 @@
 - Status: In progress. Proposal prepared; user feedback required.
 - Branch: codex/spam-blocklist-visibility
 - Base commit: 488e42a1a5e2853ef1ce5a5e0ada253d97a5c99d
-- Related commits or PR: Pending
+- Related commits or PR: proposal commit `660c32e`;
+  [draft PR 56](https://github.com/itsh-neumeier/talkops/pull/56).
 
 ## Goal
 
@@ -19,8 +20,9 @@ application changes.
 ## Result
 
 Inspected current routing, CDR ingestion, call views, permissions and
-statistics. Prepared a proposal and test plan. No application code or
-migration changed. The exclusive worktree is
+statistics. Committed and pushed a proposal and test plan. Draft PR 56 is
+open for user feedback. No application code or migration changed.
+The exclusive worktree is
 `C:/Users/timo/.codex/worktrees/spam-blocklist-visibility/talkops`.
 The app worktree tool could not find the nested repository. Created the
 worktree with Git. Added an exact Git safe-directory exception for this

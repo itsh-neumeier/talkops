@@ -85,3 +85,19 @@ verify GitHub release plus all six image architectures and moving tags.
 - docs/ai-memory/20261017-codex-release-1.8.3.md
 - docs/adr/0040-fax-over-sip-and-mail-input.md
 - docs/release-workflow.md
+
+## Merged checkpoint
+
+- Integration PR: https://github.com/itsh-neumeier/talkops/pull/54
+- Final candidate: 4716681c5aaf3b581a046d7dfa9fa8b71dbca937.
+- All 16 candidate checks passed: PR CI39206930642, E2E39206930647 and
+  FreeSWITCH39206930576; duplicate push CI39206925728, E2E39206925734 and
+  FreeSWITCH39206925645 also passed. Rust: 401 passed, one existing ignored.
+- Fax audio and required T.38 transfers were confirmed; received PDFs checked.
+  All existing SIPp/browser checks passed. Python fixtures passed.
+- PR54 merged 2026-10-19T06:13:12Z; source PR53 merged through it one second later.
+- Released-candidate main: 488e42a1a5e2853ef1ce5a5e0ada253d97a5c99d.
+  Its tree equals the tested candidate. Source ancestry was checked.
+- Exact-main CI39208652398, E2E39208652451 and FreeSWITCH39208652404 are running.
+  No tag exists yet. Publication remains gated on these exact-head results.
+- Do not push the batch branch again. Save final records through the audit ref.

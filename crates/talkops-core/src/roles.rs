@@ -51,6 +51,13 @@ macro_rules! permissions {
 }
 
 permissions! {
+    FaxSend = "fax.send", "fax", false;
+    FaxMailSubmit = "fax.mail_submit", "fax", false;
+    FaxTemplatesEdit = "fax.templates.edit", "fax", false;
+    FaxUseGlobal = "fax.use_global", "fax", false;
+    FaxAccessAll = "fax.access_all", "fax", false;
+    FaxDelete = "fax.delete", "fax", false;
+    FaxManage = "fax.manage", "fax", true;
     CallsActive = "calls.active", "calls", false;
     CallsViewAll = "calls.view_all", "calls", false;
     CallsLiveTranscript = "calls.live_transcript", "calls", false;

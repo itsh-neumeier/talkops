@@ -11,8 +11,10 @@ import {
 	type TimeCondition
 } from './api.ts';
 import { t } from './i18n/index.svelte.ts';
+import type { FaxEndpoint } from './fax.ts';
 
 export const targets = $state({
+	faxes: [] as FaxEndpoint[],
 	extensions: [] as Extension[],
 	groups: [] as RingGroup[],
 	conditions: [] as TimeCondition[],
@@ -21,14 +23,15 @@ export const targets = $state({
 });
 
 export async function loadTargets() {
-	const [extensions, groups, conditions, menus, queues] = await Promise.all([
+	const [extensions, groups, conditions, menus, queues, faxes] = await Promise.all([
 		api.get<Extension[]>('/extensions'),
 		api.get<RingGroup[]>('/ring-groups'),
 		api.get<TimeCondition[]>('/time-conditions'),
 		api.get<Attendant[]>('/attendants'),
-		api.get<Queue[]>('/queues')
+		api.get<Queue[]>('/queues'),
+		api.get<FaxEndpoint[]>('/fax-endpoints')
 	]);
-	Object.assign(targets, { extensions, groups, conditions, menus, queues });
+	Object.assign(targets, { extensions, groups, conditions, menus, queues, faxes });
 }
 
 export interface TargetOption {
@@ -43,6 +46,12 @@ const named = (n: { number: string | null; name: string }) =>
 /** Options grouped by destination type (labels are i18n keys). */
 export function targetGroups(): { key: string; options: TargetOption[] }[] {
 	return [
+		{
+			key: 'dest.fax',
+			options: targets.faxes
+				.filter((f) => f.enabled)
+				.map((f) => ({ type: 'fax', id: f.id, label: f.name }))
+		},
 		{
 			key: 'dest.extension',
 			options: targets.extensions.map((e) => ({

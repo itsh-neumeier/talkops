@@ -16,6 +16,8 @@ pub mod dialing;
 pub mod doors;
 pub mod error;
 pub mod extensions;
+pub mod fax;
+pub mod fax_adapter;
 pub mod holidays;
 pub mod identity;
 

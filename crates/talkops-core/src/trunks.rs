@@ -367,6 +367,7 @@ pub async fn active_gateways(pool: &PgPool) -> CoreResult<Vec<GatewayRow>> {
 #[sqlx(type_name = "number_destination", rename_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
 pub enum NumberDestination {
+    Fax,
     None,
     Extension,
     RingGroup,

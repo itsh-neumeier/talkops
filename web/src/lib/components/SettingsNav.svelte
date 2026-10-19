@@ -3,6 +3,7 @@
 	import { can } from '#lib/session.svelte.ts';
 
 	export type Section =
+		| 'fax'
 		| 'telephony'
 		| 'calls'
 		| 'voicemail'
@@ -15,6 +16,7 @@
 		| 'account';
 	/** Settings sections; a section shows when the user has one of `perms`. */
 	export const sections: { id: Section; icon: string; perms: Permission[] }[] = [
+		{ id: 'fax', icon: '📠', perms: ['fax.manage'] },
 		{ id: 'telephony', icon: '☎', perms: ['settings.manage'] },
 		{ id: 'calls', icon: '🎵', perms: ['settings.manage'] },
 		{ id: 'voicemail', icon: '📮', perms: ['voicemail.settings'] },

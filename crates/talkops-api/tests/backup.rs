@@ -79,6 +79,7 @@ async fn backup_and_restore(db: PgPool) {
         rclone: talkops_api::rclone::Rclone::from_env(),
         target_roots: vec![],
         volumes: vec![
+            ("fax", vol("fax")),
             ("voicemail", vol("voicemail")),
             ("recordings", vol("recordings")),
             ("cdr-spool", vol("cdr-spool")),
@@ -89,6 +90,8 @@ async fn backup_and_restore(db: PgPool) {
     std::fs::write(vol("deployment/docker-compose.yml"), "services: {}\n").unwrap();
     std::fs::create_dir_all(vol("voicemail/ext1")).unwrap();
     std::fs::create_dir_all(vol("recordings")).unwrap();
+    std::fs::create_dir_all(vol("fax")).unwrap();
+    std::fs::write(vol("fax/document.pdf"), b"%PDF-fax-fixture").unwrap();
     std::fs::write(vol("voicemail/ext1/msg.wav"), b"RIFF-message").unwrap();
     std::fs::write(vol("recordings/call.wav"), b"RIFF-call").unwrap();
     std::fs::create_dir_all(vol("cdr-spool/rejected")).unwrap();
@@ -178,6 +181,7 @@ async fn backup_and_restore(db: PgPool) {
     assert_eq!(status, StatusCode::NOT_FOUND);
 
     // Change everything, then restore.
+    std::fs::write(vol("fax/document.pdf"), b"changed-fax").unwrap();
     sqlx::query("UPDATE backup_settings SET hour = 7")
         .execute(&db)
         .await
@@ -212,7 +216,10 @@ async fn backup_and_restore(db: PgPool) {
     let manifest = backup::restore(&cfg, &pool, &cfg.dir.join(&name))
         .await
         .expect("restore");
-    assert_eq!(manifest.volumes, ["voicemail", "recordings", "cdr-spool"]);
+    assert_eq!(
+        manifest.volumes,
+        ["fax", "voicemail", "recordings", "cdr-spool"]
+    );
     let hour: i16 = sqlx::query_scalar("SELECT hour FROM backup_settings")
         .fetch_one(&pool)
         .await
@@ -239,6 +246,10 @@ async fn backup_and_restore(db: PgPool) {
         .await
         .unwrap();
     assert_eq!(sessions, 0, "restored sessions invalidated");
+    assert_eq!(
+        std::fs::read(vol("fax/document.pdf")).unwrap(),
+        b"%PDF-fax-fixture"
+    );
     assert_eq!(
         std::fs::read(vol("voicemail/ext1/msg.wav")).unwrap(),
         b"RIFF-message"

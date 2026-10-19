@@ -6,6 +6,35 @@ All notable changes to TalkOps. The format follows
 
 ## [Unreleased]
 
+## [1.8.4] – 2026-10-19
+
+### Added
+
+- Add SIP fax sending from PDF and image files. Require a page preview and a
+  separate send action. Add saved header/footer text and role-based access.
+- Add dedicated incoming fax destinations, shared inboxes and optional PDF
+  email delivery. Support own, shared and global sender numbers.
+- Add attachment-only mail-to-fax through a verified IMAPS mailbox. Require an
+  exact sender whitelist and an international number as the complete subject.
+  Exclude body text, HTML, quotes and inline signatures. Send rejection notices.
+- Add fax status reports, cancellation, explicit resends, retention and backup
+  support. Do not retry uncertain delivery automatically.
+- Add G.711 and negotiated T.38 fax media round-trip checks to E2E.
+
+### Upgrade notes
+
+- Back up before upgrading. Apply migrations 20261106000001 and 20261106000002
+  before starting the new binary. Do not downgrade after assigning fax routes.
+- Deploy the updated Compose file. All three services need the shared fax volume.
+  New image packages provide Python, document conversion tools and fonts.
+- Fax stays disabled until configured. Assign permissions, sender numbers and
+  dedicated receive destinations. Both directions default to 30-day retention.
+- Mail input needs outgoing SMTP and an IMAPS mailbox whose server restricts
+  authenticated users to their assigned sender addresses. A From header alone
+  does not authenticate a sender. Verify the deployment provider and mail server.
+- Users and numbers referenced by fax records cannot be hard-deleted. Remove
+  document references and reassign destination ownership first.
+
 ## [1.8.3] – 2026-10-17
 
 ### Added

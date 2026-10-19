@@ -119,7 +119,7 @@ RUN groupadd --system --gid 10001 talkops \
 COPY conf/ /usr/local/freeswitch/etc/freeswitch/
 COPY docker-entrypoint.sh fs-healthcheck.sh /usr/local/bin/
 RUN mkdir -p /var/lib/talkops/recordings /var/lib/talkops/voicemail /var/lib/talkops/sounds \
-                /var/lib/talkops/cdr-spool \
+                /var/lib/talkops/cdr-spool /var/lib/talkops/fax \
     && for d in var/lib/freeswitch/db var/lib/freeswitch/storage var/lib/freeswitch/recordings \
                 share/freeswitch/sounds/music/default \
                 var/log/freeswitch/xml_cdr var/run/freeswitch var/cache/freeswitch; do \

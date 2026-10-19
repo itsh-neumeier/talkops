@@ -48,19 +48,20 @@ LABEL org.opencontainers.image.title="talkops-server" \
       org.opencontainers.image.source="https://github.com/itsh-neumeier/talkops" \
       org.opencontainers.image.licenses="AGPL-3.0-only"
 
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates tzdata postgresql-client \
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates tzdata postgresql-client python3 \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --system --gid 10001 talkops \
     && useradd --system --uid 10001 --gid talkops --no-create-home --shell /usr/sbin/nologin talkops \
     && mkdir -p /var/lib/talkops/recordings /var/lib/talkops/voicemail /var/lib/talkops/sounds \
                 /var/lib/talkops/provisioning /var/lib/talkops/snapshots /var/lib/talkops/backups \
-                /var/lib/talkops/cdr-spool /var/lib/talkops/targets \
+                /var/lib/talkops/cdr-spool /var/lib/talkops/targets /var/lib/talkops/fax \
     && chown -R talkops:talkops /var/lib/talkops
 
 COPY --from=build /usr/local/bin/talkops /usr/local/bin/talkops
 COPY --from=rclone /usr/local/bin/rclone /usr/local/bin/rclone
 COPY --from=web /src/web/build /usr/share/talkops/web
 COPY presets/ /usr/share/talkops/presets/
+COPY scripts/fax/helper.py /usr/share/talkops/fax/helper.py
 COPY THIRD_PARTY_NOTICES.md /usr/share/doc/talkops/THIRD_PARTY_NOTICES.md
 COPY crates/talkops-provisioning/reference/fusionpbx/MPL-1.1.txt /usr/share/doc/talkops/fusionpbx/MPL-1.1.txt
 COPY crates/talkops-provisioning/reference/fusionpbx/licenses.php /usr/share/doc/talkops/fusionpbx/licenses.php

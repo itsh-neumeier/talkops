@@ -57,6 +57,7 @@ pub async fn all_numbers<'e>(db: impl PgExecutor<'e>, tenant: TenantId) -> CoreR
 /// Table holding the targets of a destination kind.
 fn table(kind: NumberDestination) -> Option<&'static str> {
     match kind {
+        NumberDestination::Fax => Some("fax_endpoints"),
         NumberDestination::None => None,
         NumberDestination::Extension | NumberDestination::Voicemail => Some("extensions"),
         NumberDestination::RingGroup => Some("ring_groups"),

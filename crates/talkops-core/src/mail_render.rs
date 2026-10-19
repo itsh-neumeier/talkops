@@ -223,7 +223,47 @@ pub const NOTIFICATION: MailKind = MailKind {
 
 /// Registry of all mail types. New mail types add their entry here; the
 /// editor and the API list them automatically.
-pub const KINDS: &[&MailKind] = &[&VOICEMAIL, &NOTIFICATION, &TEST];
+pub const FAX_RESULT: MailKind = MailKind {
+    key: "fax_sent",
+    placeholders: &[
+        ph("fax.id", "123", "123"),
+        ph("fax.source", "+49123456", "+49123456"),
+        ph("fax.destination", "+49654321", "+49654321"),
+        ph("fax.pages", "2", "2"),
+        ph(
+            "fax.reason",
+            "Faxübertragung abgeschlossen",
+            "Fax transfer completed",
+        ),
+    ],
+    subject: ["Faxbericht {{ fax.id }}", "Fax report {{ fax.id }}"],
+    body: [
+        "Fax: {{ fax.id }}\n\nVon: {{ fax.source }}\n\nAn: {{ fax.destination }}\n\nSeiten: {{ fax.pages }}\n\nErgebnis: {{ fax.reason }}",
+        "Fax: {{ fax.id }}\n\nFrom: {{ fax.source }}\n\nTo: {{ fax.destination }}\n\nPages: {{ fax.pages }}\n\nResult: {{ fax.reason }}",
+    ],
+};
+pub const FAX_RECEIVED: MailKind = MailKind {
+    key: "fax_received",
+    ..FAX_RESULT
+};
+pub const FAX_FAILED: MailKind = MailKind {
+    key: "fax_failed",
+    ..FAX_RESULT
+};
+pub const FAX_REJECTED: MailKind = MailKind {
+    key: "fax_rejected",
+    subject: ["Mail-to-Fax abgelehnt", "Mail-to-fax rejected"],
+    ..FAX_RESULT
+};
+pub const KINDS: &[&MailKind] = &[
+    &VOICEMAIL,
+    &NOTIFICATION,
+    &TEST,
+    &FAX_RESULT,
+    &FAX_RECEIVED,
+    &FAX_FAILED,
+    &FAX_REJECTED,
+];
 
 pub fn kind(key: &str) -> Option<&'static MailKind> {
     KINDS.iter().copied().find(|k| k.key == key)

@@ -1,6 +1,6 @@
 # Fax send and receive repair: proposal
 
-Status: Pending user review. No implementation changes are approved yet.
+Status: Approved by the user on 2026-10-19. Implementation and verification in progress.
 Date: 2026-10-19 (Europe/Berlin).
 Base: `origin/main`, `488e42a1a5e2853ef1ce5a5e0ada253d97a5c99d`.
 
@@ -64,105 +64,62 @@ provider transport test can assess those later stages.
 - The earlier task records passing G.711 and T.38 round trips in CI. Those
   results do not prove compatibility with the reported provider or deployment.
 
-## Proposed work after approval
+## Approved repair scope
 
-### 1. Establish the failed stage
+The user approved implementation and assigned spam exceptions and blocking
+changes to a separate PR. Keep those changes out of this branch.
 
-Confirm the installed version and the deployed stack definition. Identify
-the failed HTTP request and its server log entry. For reception, inspect the
-number destination, enabled state, call UUID, SIP result, and fax handler log.
-Check shared mounts and UID/GID 10001 access in all three services.
+- Check actual server write access with a unique temporary file. Check the
+  existing 100 MiB free-space requirement. Remove the probe after the check.
+- Check storage before creating or queueing an uploaded fax. Map filesystem
+  errors during upload to safe fax error responses. Remove incomplete uploads.
+- Return `fax_storage_unavailable` (HTTP 503) or `fax_storage_full` (HTTP 507).
+  Log the failed operation and path on the server. Do not expose internal paths
+  or operating-system details in the API response.
+- Show translated error messages. Keep the attachments so the user can retry
+  after correcting the stack. Keep preview and permission checks unchanged.
+- Add a fax storage check to the existing admin settings. State that this
+  checks server access only. The worker and FreeSWITCH still need the same mount.
+- Keep the correct production Compose mounts. Document how to repair an old
+  deployed stack without disabling its read-only root filesystem or replacing
+  existing fax data. No production settings were changed from this chat.
+- Document the confirmed PhoneBlock rejection. Do not change spam code, its
+  settings, exceptions, or call-list presentation. The separate PR owns these.
+- Do not add routing warnings or change T.38 settings as part of this repair.
+  The supplied logs do not establish a route or transport defect.
 
-Use this evidence to select the repair. A deployment problem needs a stack
-or routing correction. Change transmission code only when evidence shows
-a transmission defect. Keep live configuration changes subject to the agreed
-deployment scope. This development task has no production access configured.
+## Verification contract
 
-Prioritize inspection of the effective fax path and its mounts. The same
-writable volume must be mounted in all three services at the configured fax
-path. Prepare the exact stack correction from the deployed definition. Keep
-the existing read-only root filesystem and persistent fax data.
+Add API/database tests for rejected uploads, safe errors, permission checks,
+cleanup, and recovery after a storage correction. Cover a non-writable directory
+on Unix and an invalid mount path on all platforms. Cover low free space and
+probe cleanup in storage unit tests.
 
-For the incoming test, first review the PhoneBlock decision. The current code
-has a tenant-wide PhoneBlock switch and report threshold, but no per-caller
-allowlist. A controlled retest can temporarily disable PhoneBlock, save its
-configuration, repeat the incoming fax, and restore the original setting.
-Do not disable protection or alter its threshold automatically. A permanent
-caller allowlist or per-fax exemption would be a separate product decision.
+Extend the browser fixture to test both error codes, retained attachments,
+retry to preview, German and English text, admin status, and a repeated check.
+Add image smoke tests for a read-only root without a fax mount and with a
+writable fax mount. The media E2E fixture checks the storage API before its
+existing G.711 and T.38 round trips.
 
-### 2. Make send failures actionable
+Run the relevant Rust, web, Python, shell, Compose, image, and media checks.
+Report local service limitations separately. A real provider test still needs
+an operator after the deployment storage and spam decisions are corrected.
 
-- Add a bounded fax storage check that can distinguish an unwritable
-  directory from insufficient free space. Clean up temporary probe files.
-- Return stable fax error codes with safe German and English UI messages.
-  Keep SQL details, secrets, and internal paths in protected server logs.
-- Identify upload, preparation, and send failures separately in the UI.
-  Keep the attachment selection available after a failed preparation request.
-- Keep the preview requirement and sender permission checks.
+## Dependencies and release handoff
 
-Likely files: `routes/fax.rs`, fax storage helpers, the fax page, shared
-fax types, and both translation files. Do not expose arbitrary internal
-errors through a global API error change.
+No new dependency or migration is planned. Do not edit released migrations
+`20261106000001` or `20261106000002`. The spam PR is a separate contribution;
+this storage repair has no code dependency on it. Receiving the previously
+blocked test fax depends on resolving that blocking decision operationally.
 
-### 3. Make reception configuration and failures visible
+Update draft PR 55 with the final implementation and check results. The
+release chat owns merges, version changes, tags, and publication. This task
+must not publish a release or claim that the live deployment was repaired.
 
-- Explain that PhoneBlock also applies to incoming fax. Make the blocking
-  reason visible in the relevant call details. Reuse the stored
-  `talkops_blocked` result. Check existing presentation before adding UI.
-- Keep the spam policy unchanged in this repair. A blocked call must remain
-  distinct from a started fax receiver that fails during reception.
-- Show the assigned incoming numbers for each fax destination in Fax settings.
-  Show a warning when an enabled destination has no enabled incoming number.
-  Link to number configuration. Do not reassign voice numbers automatically.
-- Add structured reasons for fax route rejection and failures before answer.
-  Include the call UUID where available so an operator can find the call.
-- If a valid fax destination was resolved and the receiver then fails, keep
-  a failed fax record with a safe reason when the database is available.
-  A database outage must still produce a correlated server log.
-- Check number matching and routing with the reported provider's call data.
-  Add a provider-specific repair only if that data proves it is necessary.
+Suggested release notes after verification:
 
-Likely files: the public dialplan, `talkops-api/src/fax.rs`, Fax settings,
-and database/API regression tests. Automatic voice/fax detection remains
-outside this proposal, as specified by ADR 0040.
-
-### 4. Verify and document the repair
-
-- API tests: image upload queues preparation; storage failures have safe
-  errors; rejected uploads leave no partial document or queued job.
-- Routing tests: active fax number starts the receiver; missing, disabled,
-  and blocked routes give the expected result; voice routes keep their behavior.
-- Reproduce the observed PhoneBlock threshold result with a local test server.
-  Check that a blocked fax route produces `603 Decline` without starting the
-  receiver, and that disabling PhoneBlock permits the configured fax route.
-- Receiver tests: failure before answer is traceable; failed fax records
-  remain tenant-scoped and use the existing inbox access rules.
-- Browser tests: actionable errors, retained attachments, and number warnings.
-- Extend image smoke checks to exercise fax directory access as the service
-  user. Verify shared storage and conversion in the stack E2E fixture.
-- Run the relevant Rust, web, Python, Compose, and fax media checks from CI.
-  Report local tool or service limitations separately.
-- Add English and German troubleshooting steps for stack upgrades, shared
-  mounts, incoming routes, and useful logs. Record a task summary and PR handoff.
-- Verify one outbound and one inbound fax with the operator's real provider
-  after deployment. CI peers alone cannot close provider acceptance.
-
-## Review and release boundary
-
-This PR contains the proposal and task summary only. Wait for user feedback
-before changing runtime code, tests, deployment files, or live settings.
-Commit, push, and draft PR creation are authorized by the user's task prompt.
-The release chat owns merges, version changes, tags, and publication.
-
-No new dependency or migration is planned. Reassess this if runtime evidence
-requires a schema change. Do not edit released migrations `20261106000001`
-or `20261106000002`.
-
-Suggested release notes after implementation and verification:
-
-> Improve fax upload error messages and incoming fax diagnostics. Show missing
-> incoming number assignments. Document shared fax storage and PhoneBlock
-> behavior for incoming fax calls.
+> Report fax storage failures with actionable messages. Add an administrator
+> storage check and document shared-volume repairs after stack upgrades.
 
 Language review uses the repository clear-English rules. The official
 ASD-STE100 standard was unavailable. Full language review remains pending.

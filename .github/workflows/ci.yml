@@ -183,3 +183,5 @@ jobs:
           cache-to: type=gha,scope=${{ matrix.image }}-amd64,mode=max
       - name: Smoke test
         run: docker run --rm ${{ matrix.image }}:ci --version
+      - name: Fax storage with a read-only root filesystem
+        run: bash tests/fax/storage-image.sh ${{ matrix.image }}:ci

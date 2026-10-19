@@ -215,6 +215,10 @@ async fn api_settings_permissions_and_prepared_submit(pool: PgPool) {
         StatusCode::FORBIDDEN
     );
     assert_eq!(
+        bob.get("/api/v1/settings/fax/storage").await.0,
+        StatusCode::FORBIDDEN
+    );
+    assert_eq!(
         bob.post(
             "/api/v1/faxes",
             json!({"destination":"+49123456","files":[]})
@@ -241,6 +245,132 @@ async fn api_settings_permissions_and_prepared_submit(pool: PgPool) {
     assert_eq!(admin.get("/api/v1/faxes/options").await.0, StatusCode::OK);
     assert_eq!(admin.get("/api/v1/faxes/template").await.0, StatusCode::OK);
     assert_eq!(admin.get("/api/v1/fax-endpoints").await.0, StatusCode::OK);
+}
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn storage_failure_is_safe_atomic_and_recoverable(pool: PgPool) {
+    let mut admin = setup_admin(&router(pool.clone())).await;
+    let (s, _, number) = fixture(&pool).await;
+    let root = tempfile::tempdir().unwrap();
+    let path = root.path().join("private-fax-path");
+    // An invalid mount reproduces an unavailable directory on every platform.
+    std::fs::write(&path, b"preserve existing data").unwrap();
+    let media = talkops_api::MediaPaths {
+        fax: path.clone(),
+        ..(*s.media).clone()
+    };
+    let s = s.with_media(media);
+    admin.router = talkops_api::app(s.clone(), None);
+    let payload = json!({"destination":"+49654321","number_id":number,"files":[{"name":"one.png","data":"iVBORw0KGgo="}]});
+    let (status, view) = admin.get("/api/v1/settings/fax/storage").await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(view, json!({"status":"unavailable"}));
+    let (status, error) = admin.post("/api/v1/faxes", payload.clone()).await;
+    assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
+    assert_eq!(error["error"], "fax_storage_unavailable");
+    assert!(!error.to_string().contains("private-fax-path"));
+    assert_eq!(std::fs::read(&path).unwrap(), b"preserve existing data");
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM faxes")
+            .fetch_one(&pool)
+            .await
+            .unwrap(),
+        0
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM jobs WHERE kind='fax.prepare'")
+            .fetch_one(&pool)
+            .await
+            .unwrap(),
+        0
+    );
+
+    // Repair the simulated mount without restarting the API.
+    std::fs::remove_file(&path).unwrap();
+    let (status, view) = admin.get("/api/v1/settings/fax/storage").await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(view, json!({"status":"ready"}));
+    assert_eq!(std::fs::read_dir(&path).unwrap().count(), 0);
+
+    let mut invalid = payload.clone();
+    invalid["files"]
+        .as_array_mut()
+        .unwrap()
+        .push(json!({"name":"invalid.png","data":"%invalid"}));
+    let (status, _) = admin.post("/api/v1/faxes", invalid).await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(
+        std::fs::read_dir(path.join(T.to_string())).unwrap().count(),
+        0
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM faxes")
+            .fetch_one(&pool)
+            .await
+            .unwrap(),
+        0
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM jobs WHERE kind='fax.prepare'")
+            .fetch_one(&pool)
+            .await
+            .unwrap(),
+        0
+    );
+
+    let (status, fax) = admin.post("/api/v1/faxes", payload).await;
+    assert_eq!(status, StatusCode::OK, "{fax}");
+    assert_eq!(fax["state"], "preparing");
+    let id: Uuid = fax["id"].as_str().unwrap().parse().unwrap();
+    assert_eq!(
+        std::fs::read(talkops_api::fax::directory(&s, T, id).join("input-0.bin")).unwrap(),
+        b"\x89PNG\r\n\x1a\n"
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM jobs WHERE kind='fax.prepare'")
+            .fetch_one(&pool)
+            .await
+            .unwrap(),
+        1
+    );
+}
+
+#[cfg(unix)]
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn read_only_fax_directory_rejects_upload_without_queueing(pool: PgPool) {
+    use std::os::unix::fs::PermissionsExt;
+    let mut admin = setup_admin(&router(pool.clone())).await;
+    let (s, _, number) = fixture(&pool).await;
+    let root = tempfile::tempdir().unwrap();
+    let media = talkops_api::MediaPaths {
+        fax: root.path().to_owned(),
+        ..(*s.media).clone()
+    };
+    admin.router = talkops_api::app(s.with_media(media), None);
+    std::fs::set_permissions(root.path(), std::fs::Permissions::from_mode(0o555)).unwrap();
+    let response = admin.post("/api/v1/faxes", json!({"destination":"+49654321","number_id":number,"files":[{"name":"one.png","data":"iVBORw0KGgo="}]})).await;
+    std::fs::set_permissions(root.path(), std::fs::Permissions::from_mode(0o700)).unwrap();
+    assert_eq!(
+        response.0,
+        StatusCode::SERVICE_UNAVAILABLE,
+        "{}",
+        response.1
+    );
+    assert_eq!(response.1["error"], "fax_storage_unavailable");
+    assert_eq!(std::fs::read_dir(root.path()).unwrap().count(), 0);
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM faxes")
+            .fetch_one(&pool)
+            .await
+            .unwrap(),
+        0
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM jobs WHERE kind='fax.prepare'")
+            .fetch_one(&pool)
+            .await
+            .unwrap(),
+        0
+    );
 }
 #[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
 async fn cdr_results_are_idempotent_and_partial_is_not_success(pool: PgPool) {

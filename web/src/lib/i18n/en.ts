@@ -1,4 +1,12 @@
 export default {
+	'fax.storageTitle': 'Fax storage',
+	'fax.storageReady': 'The server can write to fax storage. At least 100 MiB is available.',
+	'fax.storageUnavailable':
+		'Fax storage is not writable. Ask an administrator to check the shared fax volume and its permissions.',
+	'fax.storageFull': 'Fax storage has insufficient free space. At least 100 MiB is required.',
+	'fax.storageHint':
+		'This checks server access. The server, media worker and FreeSWITCH must share the same writable fax volume. After an image update, also update the stack configuration.',
+	'fax.checkStorage': 'Check fax storage again',
 	'fax.resetTemplate': 'Use global defaults',
 	'fax.inputLog': 'Mail input log',
 	'fax.mailReports': 'Mail reports',

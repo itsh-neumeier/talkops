@@ -5,7 +5,7 @@
 - Task ID: 20261019-codex-fax-send-receive-fix
 - Date: 2026-10-19, Europe/Berlin
 - Tool: Codex
-- Status: In progress. Proposal awaits user review before implementation.
+- Status: In progress. User approved implementation on 2026-10-19.
 - Branch: `codex/fax-send-receive-fix`
 - Base commit: `488e42a1a5e2853ef1ce5a5e0ada253d97a5c99d`
 - Related PR: https://github.com/itsh-neumeier/talkops/pull/55 (draft)
@@ -13,22 +13,27 @@
 ## Goal
 
 Repair web fax send failures and incoming calls that do not reach the fax inbox.
-The user explicitly requires a proposal and feedback before implementation.
+The user required a proposal before implementation and has now approved it.
+The user assigned spam exceptions and blocking changes to a separate PR.
 
 ## Result
 
 Read project and release instructions. Verified remote `main` and merged PR 53.
 Inspected upload, worker conversion, incoming routing, receiver, settings UI,
 Compose mounts, and existing tests. The user later supplied settings and logs.
-Created a proposal. No runtime code or live settings changed.
-Committed and pushed the proposal. Draft PR 55 is available for user feedback.
-Updated the proposal with a filesystem error and a PhoneBlock rejection from
-the supplied logs. No direct production access is available.
+Committed the reviewed proposal in draft PR 55. Implemented safe upload storage
+errors, an administrator storage check, translated UI messages, regression tests,
+image smoke checks, and troubleshooting documentation. Verification is in progress.
+No direct production access is available. No live settings changed.
 
 ## Changes
 
-- `docs/fax-send-receive-fix-proposal.md`: evidence, hypotheses, proposed repair,
-  acceptance tests, documentation, and the user review boundary.
+- `docs/fax-send-receive-fix-proposal.md`: evidence and approved repair scope.
+- API fax storage helper, upload handler and typed errors: real write/space
+  checks, safe HTTP 503/507 responses, and incomplete upload cleanup.
+- Fax settings and send UI: administrator check and translated storage errors.
+- API/storage/browser tests, image smoke fixture and E2E: failure and recovery.
+- `docs/en/fax.md`, `docs/de/fax.md`: mount repair and rejection diagnosis.
 - This summary: continuation and release handoff context.
 
 ## Decisions
@@ -48,12 +53,15 @@ the supplied logs. No direct production access is available.
   This is the confirmed rejection reason for that supplied test call.
 - Startup confirms version 1.8.4 and current schema. FreeSWITCH connects before
   the incoming test. Do not treat the earlier startup retries as its cause.
-- Current PhoneBlock has no per-caller allowlist. Propose a controlled operator
-  retest with its switch disabled, then restore it. Keep live spam settings
-  unchanged. A permanent exception needs a separate product decision.
+- Keep PhoneBlock and all spam changes outside this PR at the user's request.
+  Document the confirmed rejection only. No code dependency on the separate PR.
 - Do not change T.38 settings to address these failures. The supplied logs
   do not show that transmission negotiation or conversion has started.
-- Submit documentation as a draft PR. Wait for feedback before implementation.
+- The user approved implementation. No further confirmation is required for
+  code, tests, documentation, commit, push, or the existing PR update.
+- The repository Compose mounts are already correct. Do not weaken the root
+  filesystem protection. Diagnose the deployed mount separately; its exact
+  definition is still pending. All three services need the same writable volume.
 
 ## Checks
 
@@ -63,24 +71,33 @@ the supplied logs. No direct production access is available.
   filesystem and database errors can return the generic 500 response.
 - Passed: matched supplied PhoneBlock and call rejection logs to the dialplan;
   checked spam threshold semantics and the available blocking settings.
-- Not run: runtime suites. This checkpoint changes documentation only.
+- Passed: web check (zero errors/warnings), 35 web tests, production build, and
+  lint after normalizing local checkout line endings. No unrelated web content changed.
+- Passed: fax browser fixture with retained files, both storage errors, repair
+  and retry, German/English messages, settings recheck, mobile layout and roles.
+- Passed: all ten Python fax conversion/MIME/IMAPS tests; shell syntax checks.
+- Passed: MSVC `cargo check -p talkops-api --tests --locked`, Rust formatting,
+  production/development Compose validation, and final whitespace check.
+- In progress: focused database/storage tests and final CI/E2E validation.
+- Review: CodeRabbit CLI is not installed. Manual diff review checks permissions,
+  safe responses, probe cleanup, partial-upload cleanup, and preserved spam scope.
 - Not run: provider send/receive and production checks. No production access.
 - STE review: repository clear-English rules applied. Full standard unavailable;
   full language review remains pending.
 
 ## Dependencies and open work
 
-- Need user feedback before implementation. Need effective stack mounts and
-  fax path to identify the exact filesystem correction. Retest reception after
-  an operator-approved PhoneBlock configuration change.
+- Need effective stack mounts and fax path to identify the exact deployment
+  correction. Requested only volume sections and optional TALKOPS_FAX_DIR.
+- Retest reception with an allowed caller after the separate spam decision.
 - No new dependencies or migrations planned. Existing fax migrations are
   `20261106000001` and `20261106000002`; do not edit released files.
 - Recheck remote target before implementation. Release actions stay separate.
 
 ## Next action
 
-Wait for the user's review. Then reproduce the failed stage, implement the
-approved repair, add tests and documentation, and update the same draft PR.
+Complete Rust and CI checks, review the final diff, commit and push the repair,
+and update PR 55 with verification results and deployment limits.
 
 ## References
 

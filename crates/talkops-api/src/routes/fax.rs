@@ -3,6 +3,7 @@ use crate::{
     AppState,
     auth::AuthUser,
     error::{ApiError, ApiResult},
+    fax::storage,
 };
 use axum::{
     Json,
@@ -32,6 +33,7 @@ pub fn router() -> OpenApiRouter<AppState> {
         .routes(routes!(resend))
         .routes(routes!(remove))
         .routes(routes!(get_settings, put_settings))
+        .routes(routes!(storage_status))
         .routes(routes!(get_endpoints, put_endpoint))
         .routes(routes!(get_whitelist, put_whitelist))
         .routes(routes!(get_template, put_template, reset_template))
@@ -92,7 +94,7 @@ pub struct Upload {
     #[serde(skip)]
     pub receipt: Option<fax::Receipt>,
 }
-#[utoipa::path(post,path="/api/v1/faxes",tag="fax",request_body=Upload,responses((status=200,body=Fax)))]
+#[utoipa::path(post,path="/api/v1/faxes",tag="fax",request_body=Upload,responses((status=200,body=Fax),(status=503,body=crate::error::ErrorBody),(status=507,body=crate::error::ErrorBody)))]
 async fn upload(
     State(s): State<AppState>,
     a: AuthUser,
@@ -124,15 +126,13 @@ pub async fn store_upload(
     }
     let id = Uuid::new_v4();
     let dir = crate::fax::directory(s, tenant, id);
-    tokio::fs::create_dir_all(&dir)
+    storage::check(&s.media.fax)
         .await
-        .map_err(|e| ApiError::Internal(e.to_string()))?;
-    if fs2::available_space(&dir).map_err(|e| ApiError::Internal(e.to_string()))?
-        < 100 * 1024 * 1024
-    {
-        return Err(ApiError::Conflict("Insufficient fax storage".into()));
-    }
+        .map_err(ApiError::FaxStorage)?;
     let result = async {
+        tokio::fs::create_dir_all(&dir).await.map_err(|e| {
+            ApiError::FaxStorage(storage::io_error(&dir, "create document directory", &e))
+        })?;
         let mut files = Vec::new();
         let mut total = 0;
         for (i, file) in input.files.into_iter().enumerate() {
@@ -148,7 +148,9 @@ pub async fn store_upload(
             let name = format!("input-{i}.bin");
             tokio::fs::write(dir.join(&name), bytes)
                 .await
-                .map_err(|e| ApiError::Internal(e.to_string()))?;
+                .map_err(|e| {
+                    ApiError::FaxStorage(storage::io_error(&dir, "write attachment", &e))
+                })?;
             files.push(InputFile {
                 file: name,
                 name: file
@@ -348,6 +350,19 @@ pub struct SettingsView {
     pub has_password: bool,
     pub numbers: Vec<trunks::PhoneNumber>,
     pub users: Vec<FaxUser>,
+}
+#[derive(Serialize, utoipa::ToSchema)]
+pub struct StorageView {
+    pub status: storage::StorageStatus,
+}
+#[utoipa::path(get,path="/api/v1/settings/fax/storage",tag="fax",responses((status=200,body=StorageView)))]
+async fn storage_status(State(s): State<AppState>, a: AuthUser) -> ApiResult<Json<StorageView>> {
+    a.require_perm(Permission::FaxManage)?;
+    let status = match storage::check(&s.media.fax).await {
+        Ok(()) => storage::StorageStatus::Ready,
+        Err(e) => e.status(),
+    };
+    Ok(Json(StorageView { status }))
 }
 #[derive(Serialize, sqlx::FromRow, utoipa::ToSchema)]
 pub struct FaxUser {

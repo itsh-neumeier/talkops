@@ -63,6 +63,7 @@ try {
   assert.equal(await blocks.nth(2).getByRole('button').count(), 0);
   await blocks.nth(0).getByText('Blockierungsdetails').click();
   assert.match(await blocks.nth(0).textContent(), /Passende Regel: \+4930\*/);
+  if (process.env.SCREENSHOT_DIR) await page.screenshot({ path: `${process.env.SCREENSHOT_DIR}/blocking-desktop.png`, fullPage: true });
   assert.match(await page.locator('tbody tr').last().textContent(), /besetzt\/abgelehnt/);
   await blocks.first().getByRole('button', { name: 'Zur Whitelist hinzufügen' }).click();
   const dialog = page.getByRole('dialog', { name: 'Zur Whitelist hinzufügen' });
@@ -70,6 +71,7 @@ try {
   assert.match(await dialog.textContent(), /\+493012345600/);
   assert.match(await dialog.textContent(), /gesamten Mandanten/);
   await dialog.getByLabel('Notiz').fill('Trusted');
+  if (process.env.SCREENSHOT_DIR) await page.screenshot({ path: `${process.env.SCREENSHOT_DIR}/blocking-dialog.png`, fullPage: true });
   f.setFail(true);
   await dialog.getByRole('button', { name: 'Nummer freigeben' }).click();
   await dialog.getByText('Permission revoked', { exact: false }).waitFor();
@@ -93,6 +95,7 @@ try {
   assert.match(await firstRecent.textContent(), /Eingehender Anruf an \+493012345699/);
   assert.doesNotMatch(await firstRecent.textContent(), /Verpasst|Nst: Unbekannt/);
   assert.match(await firstRecent.textContent(), /Auf Whitelist/);
+  if (process.env.SCREENSHOT_DIR) await page.screenshot({ path: `${process.env.SCREENSHOT_DIR}/blocking-recent.png`, fullPage: true });
   // A role with only the whitelist permission can find and use its settings.
   await page.goto(`${BASE}/routing`);
   await page.getByRole('heading', { name: 'Whitelist', exact: true }).waitFor();

@@ -55,7 +55,7 @@ async fn whitelist_is_exact_tenant_scoped_idempotent_and_audited(db: PgPool) {
         blocking::allowed_numbers(&db, T, &[input.number.clone(), "+49301234567".into()])
             .await
             .unwrap(),
-        [input.number.clone()]
+        std::slice::from_ref(&input.number)
     );
     let other: Uuid = sqlx::query_scalar("INSERT INTO tenants(name) VALUES('Other') RETURNING id")
         .fetch_one(&db)
@@ -68,7 +68,7 @@ async fn whitelist_is_exact_tenant_scoped_idempotent_and_audited(db: PgPool) {
             .is_empty()
     );
     assert!(
-        blocking::allowed_numbers(&db, TenantId(other), &[input.number.clone()])
+        blocking::allowed_numbers(&db, TenantId(other), std::slice::from_ref(&input.number))
             .await
             .unwrap()
             .is_empty()

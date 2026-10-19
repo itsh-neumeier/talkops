@@ -9,6 +9,7 @@ const BASE = process.env.BASE || 'http://127.0.0.1:5184';
 const catalog = [
   ['calls.active', 'calls', false], ['calls.view_all', 'calls', false],
   ['phonebook.edit', 'phonebook', false], ['users.view', 'users', false], ['users.manage', 'users', true],
+  ['blocking.allowlist', 'routing', false],
   ['audit.view', 'system', false], ['backups.manage', 'system', true]
 ].map(([key, area, sensitive]) => ({ key, area, sensitive }));
 const at = '2026-10-15T09:00:00Z';
@@ -60,6 +61,8 @@ try {
   // Change two cells of the default user role, see the save bar, save.
   await page.getByRole('checkbox', { name: 'Änderungsprotokoll: Standardbenutzer' }).check();
   await page.getByRole('checkbox', { name: 'Telefonbuch bearbeiten: Standardbenutzer' }).check();
+  assert.equal(await page.getByRole('checkbox', { name: 'Whitelist verwalten: Standardbenutzer' }).isChecked(), false);
+  await page.getByRole('checkbox', { name: 'Whitelist verwalten: Standardbenutzer' }).check();
   await page.getByText('Rollen mit ungespeicherten Änderungen: 1').waitFor();
   // The area box of "Anrufe" for the operator: all checked.
   assert.equal(await page.getByRole('checkbox', { name: 'Alle in „Anrufe“ für Operator' }).isChecked(), true);
@@ -67,7 +70,7 @@ try {
   await page.getByText('Rollen gespeichert.').waitFor();
   assert.equal(puts.length, 1);
   assert.equal(puts[0][0], '/api/v1/roles/r-user');
-  assert.deepEqual(puts[0][1].permissions, ['phonebook.edit', 'audit.view'], 'catalog order');
+  assert.deepEqual(puts[0][1].permissions, ['phonebook.edit', 'blocking.allowlist', 'audit.view'], 'catalog order');
   // Own role in the user list and as a choice.
   await page.getByRole('tab', { name: 'Benutzer' }).click();
   await page.getByRole('cell', { name: 'Empfang' }).waitFor();

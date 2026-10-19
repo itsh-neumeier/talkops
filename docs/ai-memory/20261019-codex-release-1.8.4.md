@@ -101,3 +101,14 @@ verify GitHub release plus all six image architectures and moving tags.
 - Exact-main CI39208652398, E2E39208652451 and FreeSWITCH39208652404 are running.
   No tag exists yet. Publication remains gated on these exact-head results.
 - Do not push the batch branch again. Save final records through the audit ref.
+
+## Publication started
+
+Exact-main CI39208652398, E2E39208652451 and FreeSWITCH39208652404 all passed.
+Fresh guards verified the unchanged main, empty open scope, source ancestry,
+identical candidate tree, matching versions and latest successful main gates.
+New annotated tag v1.8.4 was pushed once on
+488e42a1a5e2853ef1ce5a5e0ada253d97a5c99d.
+Tag object: a1d8d158746063a502dcec0ae9adba225d66c0be.
+Release39210410306 is running. Extra tag CI39210410441, E2E39210410301 and
+FreeSWITCH39210410212 are running. Publication/artifact verification is pending.

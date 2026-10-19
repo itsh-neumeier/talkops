@@ -68,6 +68,15 @@ impl SpamCheck {
         tenant: TenantId,
         caller: Option<&str>,
     ) -> CoreResult<Option<Blocked>> {
+        // Read local exceptions on every lookup, before settings/token decryption
+        // and before any cached community result.
+        if let Some(caller) = caller
+            && !blocking::allowed_numbers(db, tenant, &[caller.to_owned()])
+                .await?
+                .is_empty()
+        {
+            return Ok(None);
+        }
         let settings = blocking::effective(db, tenant, &self.secrets).await?;
         let Some(caller) = caller else {
             return Ok(settings.block_anonymous.then_some(Blocked::Anonymous));

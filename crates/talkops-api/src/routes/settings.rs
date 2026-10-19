@@ -128,6 +128,9 @@ pub struct CallEntry {
     /// Own number (E.164): for inbound calls the number that the caller
     /// dialed, for outbound calls the number that supplied the caller ID.
     pub via_number: Option<String>,
+    /// Current membership, only returned to whitelist managers.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub allowlisted: Option<bool>,
 }
 
 /// Call log, filtered and sorted. Operators and admins see all calls, users
@@ -166,11 +169,31 @@ pub async fn list_calls(
         cdr::list_scoped(&state.db, auth.tenant, &query, &scope),
         cdr::count(&state.db, auth.tenant, &query, &scope)
     )?;
+    let allowed = if auth.can(Permission::BlockingAllowlist) {
+        Some(
+            talkops_core::blocking::allowed_numbers(
+                &state.db,
+                auth.tenant,
+                &rows
+                    .iter()
+                    .map(|c| c.caller_number.clone())
+                    .collect::<Vec<_>>(),
+            )
+            .await?
+            .into_iter()
+            .collect::<std::collections::HashSet<_>>(),
+        )
+    } else {
+        None
+    };
     let entries = rows
         .into_iter()
         .map(|cdr| {
             let (caller, called, via_number) = directory.record_parties(&cdr);
             CallEntry {
+                allowlisted: allowed
+                    .as_ref()
+                    .map(|numbers| numbers.contains(&cdr.caller_number)),
                 cdr,
                 caller,
                 called,

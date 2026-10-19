@@ -1,4 +1,6 @@
 //! Fax control plane. Dialing is separate from retryable conversion and mail jobs.
+pub mod storage;
+
 use crate::{
     AppState,
     fsxml::{self, dialplan},

@@ -1,6 +1,38 @@
 import type en from './en';
 
 const de: Record<keyof typeof en, string> = {
+	'fax.storageTitle': 'Fax-Speicher',
+	'fax.storageReady':
+		'Der Server kann in den Fax-Speicher schreiben. Mindestens 100 MiB sind verfügbar.',
+	'fax.storageUnavailable':
+		'Der Fax-Speicher ist nicht beschreibbar. Bitte die Administration bitten, das gemeinsame Fax-Volume und dessen Berechtigungen zu prüfen.',
+	'fax.storageFull': 'Im Fax-Speicher ist zu wenig Platz frei. Mindestens 100 MiB werden benötigt.',
+	'fax.storageHint':
+		'Diese Prüfung testet den Serverzugriff. Server, Media-Worker und FreeSWITCH müssen dasselbe beschreibbare Fax-Volume verwenden. Nach einem Image-Update auch die Stack-Konfiguration aktualisieren.',
+	'fax.checkStorage': 'Fax-Speicher erneut prüfen',
+	'perm.blocking.allowlist': 'Whitelist verwalten',
+	'perm.blocking.allowlist.hint':
+		'Einzelne Rufnummern für den gesamten Mandanten freigeben. Übersteuert eigene Sperrlisten und PhoneBlock.',
+	'calls.result.blocked': 'Blockiert',
+	'block.source.list': 'Sperrliste',
+	'block.source.phoneblock': 'PhoneBlock',
+	'block.source.anonymous': 'Anonym',
+	'block.source.unknown': 'Spam-Schutz',
+	'block.details': 'Blockierungsdetails',
+	'block.match': 'Passende Regel: {pattern}',
+	'block.votes': 'PhoneBlock-Meldungen: {count}',
+	'block.calledNumber': 'Eingehender Anruf an',
+	'block.allowlist': 'Whitelist',
+	'block.allowNumber': 'Internationale Rufnummer',
+	'block.allowAdd': 'Zur Whitelist hinzufügen',
+	'block.allowConfirm': 'Nummer freigeben',
+	'block.allowEffect':
+		'Künftige eingehende Anrufe dieser exakten Rufnummer umgehen eigene Sperrlisten und PhoneBlock für den gesamten Mandanten. Andere Routingregeln gelten weiterhin. Frühere Anrufe behalten ihr ursprüngliches Ergebnis.',
+	'block.allowed': 'Auf Whitelist',
+	'block.allowEmpty': 'Keine Whitelist-Einträge.',
+	'block.allowRemove': 'Whitelist-Ausnahme entfernen',
+	'block.allowRemoveEffect':
+		'Künftige Anrufe dieser Rufnummer können wieder durch vorhandene Sperrlisten und PhoneBlock blockiert werden.',
 	'fax.resetTemplate': 'Globale Vorgaben verwenden',
 	'fax.inputLog': 'Maileingangsprotokoll',
 	'fax.mailReports': 'Mailberichte',

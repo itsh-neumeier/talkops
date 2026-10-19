@@ -348,6 +348,7 @@ async fn tenant_isolation_and_call_history(db: PgPool) {
                 duration_secs: 0,
                 billsec: 0,
                 hangup_cause: "NO_ANSWER".into(),
+                blocked_reason: None,
                 recording_id: None,
             },
         )

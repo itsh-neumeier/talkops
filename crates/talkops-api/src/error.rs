@@ -16,6 +16,7 @@ pub enum ApiError {
     TooManyRequests,
     /// A device TalkOps talks to (door station) failed.
     Device(String),
+    FaxStorage(crate::fax::storage::StorageError),
     Internal(String),
 }
 
@@ -49,6 +50,16 @@ impl IntoResponse for ApiError {
                 "too many attempts, try again later".to_owned(),
             ),
             ApiError::Device(m) => (StatusCode::BAD_GATEWAY, "device", m),
+            ApiError::FaxStorage(e) => (
+                match e {
+                    crate::fax::storage::StorageError::Full => StatusCode::INSUFFICIENT_STORAGE,
+                    crate::fax::storage::StorageError::Unavailable => {
+                        StatusCode::SERVICE_UNAVAILABLE
+                    }
+                },
+                e.code(),
+                e.to_string(),
+            ),
             ApiError::Internal(m) => {
                 tracing::error!(error = %m, "internal error");
                 (

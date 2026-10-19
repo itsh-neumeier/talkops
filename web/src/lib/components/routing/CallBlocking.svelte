@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { api } from '#lib/api.ts';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
+	import CallAllowlist from './CallAllowlist.svelte';
 	import { formatDateTime, t } from '#lib/i18n/index.svelte.ts';
 	import { can } from '#lib/session.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
@@ -25,6 +26,7 @@
 	let saved = $state(false);
 
 	async function load() {
+		if (!can('blocking.manage')) return;
 		try {
 			blocks = await api.get<Block[]>('/call-blocks');
 			settings = await api.get<Settings>('/call-blocks/settings');
@@ -108,145 +110,148 @@
 
 <div class="space-y-4">
 	<ErrorBox {error} />
+	{#if can('blocking.allowlist')}<CallAllowlist />{/if}
 
-	<section class="card space-y-3">
-		<h2>{t('block.list')}</h2>
-		<p class="text-sm text-slate-600 dark:text-slate-300">{t('block.listHint')}</p>
-		<form class="flex flex-wrap items-end gap-2" onsubmit={add}>
-			<div>
-				<label for="b-pattern">{t('block.pattern')}</label>
-				<input
-					id="b-pattern"
-					class="input font-mono"
-					placeholder="+4930123456 / +49900*"
-					bind:value={pattern}
-					required
-				/>
-			</div>
-			<div class="min-w-48 flex-1">
-				<label for="b-label">{t('block.label')}</label>
-				<input id="b-label" class="input" maxlength="100" bind:value={label} />
-			</div>
-			<button class="btn btn-primary">{t('block.add')}</button>
-		</form>
-		{#if blocks.length}
-			<table class="w-full text-left text-sm">
-				<thead class="text-slate-500 dark:text-slate-400">
-					<tr
-						><th class="py-1">{t('block.pattern')}</th><th class="py-1">{t('block.label')}</th><th
-							class="py-1">{t('block.added')}</th
-						><th></th></tr
-					>
-				</thead>
-				<tbody>
-					{#each blocks as b (b.id)}
-						<tr class="border-t border-slate-200 dark:border-slate-700">
-							<td class="py-1.5 font-mono">{b.pattern}</td>
-							<td class="py-1.5">{b.label}</td>
-							<td class="py-1.5 text-slate-500 dark:text-slate-400"
-								>{formatDateTime(b.created_at)}</td
-							>
-							<td class="py-1.5 text-right"
-								><button class="btn btn-danger btn-sm" onclick={() => remove(b)}
-									>{t('common.delete')}</button
-								></td
-							>
-						</tr>
-					{/each}
-				</tbody>
-			</table>
-		{:else}
-			<p class="text-sm text-slate-500 dark:text-slate-400">{t('block.empty')}</p>
-		{/if}
-	</section>
+	{#if can('blocking.manage')}
+		<section class="card space-y-3">
+			<h2>{t('block.list')}</h2>
+			<p class="text-sm text-slate-600 dark:text-slate-300">{t('block.listHint')}</p>
+			<form class="flex flex-wrap items-end gap-2" onsubmit={add}>
+				<div>
+					<label for="b-pattern">{t('block.pattern')}</label>
+					<input
+						id="b-pattern"
+						class="input font-mono"
+						placeholder="+4930123456 / +49900*"
+						bind:value={pattern}
+						required
+					/>
+				</div>
+				<div class="min-w-48 flex-1">
+					<label for="b-label">{t('block.label')}</label>
+					<input id="b-label" class="input" maxlength="100" bind:value={label} />
+				</div>
+				<button class="btn btn-primary">{t('block.add')}</button>
+			</form>
+			{#if blocks.length}
+				<table class="w-full text-left text-sm">
+					<thead class="text-slate-500 dark:text-slate-400">
+						<tr
+							><th class="py-1">{t('block.pattern')}</th><th class="py-1">{t('block.label')}</th><th
+								class="py-1">{t('block.added')}</th
+							><th></th></tr
+						>
+					</thead>
+					<tbody>
+						{#each blocks as b (b.id)}
+							<tr class="border-t border-slate-200 dark:border-slate-700">
+								<td class="py-1.5 font-mono">{b.pattern}</td>
+								<td class="py-1.5">{b.label}</td>
+								<td class="py-1.5 text-slate-500 dark:text-slate-400"
+									>{formatDateTime(b.created_at)}</td
+								>
+								<td class="py-1.5 text-right"
+									><button class="btn btn-danger btn-sm" onclick={() => remove(b)}
+										>{t('common.delete')}</button
+									></td
+								>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			{:else}
+				<p class="text-sm text-slate-500 dark:text-slate-400">{t('block.empty')}</p>
+			{/if}
+		</section>
 
-	{#if settings}
-		<form class="card space-y-3" onsubmit={saveSettings}>
-			<h2>{t('block.sources')}</h2>
-			{#if saved}<p class="text-sm text-emerald-700 dark:text-emerald-400">
-					{t('common.saved')}
-				</p>{/if}
-			<label class="flex items-center gap-2"
-				><input
-					type="checkbox"
-					bind:checked={settings.block_anonymous}
-					disabled={!can('blocking.settings')}
-				/>
-				{t('block.anonymous')}</label
-			>
-			<fieldset class="space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
-				<legend class="px-1 text-sm font-medium">PhoneBlock</legend>
-				<p class="text-sm text-slate-600 dark:text-slate-300">
-					{t('block.phoneblockHint')}
-					<a
-						class="text-teal-700 underline dark:text-teal-300"
-						href="https://phoneblock.net/phoneblock/"
-						target="_blank"
-						rel="noopener noreferrer">phoneblock.net</a
-					>
-				</p>
+		{#if settings}
+			<form class="card space-y-3" onsubmit={saveSettings}>
+				<h2>{t('block.sources')}</h2>
+				{#if saved}<p class="text-sm text-emerald-700 dark:text-emerald-400">
+						{t('common.saved')}
+					</p>{/if}
 				<label class="flex items-center gap-2"
 					><input
 						type="checkbox"
-						bind:checked={settings.phoneblock_enabled}
+						bind:checked={settings.block_anonymous}
 						disabled={!can('blocking.settings')}
 					/>
-					{t('block.phoneblockEnable')}</label
+					{t('block.anonymous')}</label
 				>
-				<div class="grid grid-cols-1 gap-3 @lg:grid-cols-2">
-					<div>
-						<label for="b-token">{t('block.token')}</label>
-						<input
-							id="b-token"
-							class="input font-mono"
-							type="password"
-							autocomplete="off"
-							placeholder={settings.phoneblock_token_set ? t('block.tokenKeep') : ''}
-							bind:value={token}
+				<fieldset class="space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+					<legend class="px-1 text-sm font-medium">PhoneBlock</legend>
+					<p class="text-sm text-slate-600 dark:text-slate-300">
+						{t('block.phoneblockHint')}
+						<a
+							class="text-teal-700 underline dark:text-teal-300"
+							href="https://phoneblock.net/phoneblock/"
+							target="_blank"
+							rel="noopener noreferrer">phoneblock.net</a
+						>
+					</p>
+					<label class="flex items-center gap-2"
+						><input
+							type="checkbox"
+							bind:checked={settings.phoneblock_enabled}
 							disabled={!can('blocking.settings')}
 						/>
-						{#if settings.phoneblock_token_set && can('blocking.settings')}
-							<button
-								type="button"
-								class="mt-1 text-xs text-red-600 underline"
-								onclick={removeToken}>{t('block.tokenRemove')}</button
-							>
-						{/if}
+						{t('block.phoneblockEnable')}</label
+					>
+					<div class="grid grid-cols-1 gap-3 @lg:grid-cols-2">
+						<div>
+							<label for="b-token">{t('block.token')}</label>
+							<input
+								id="b-token"
+								class="input font-mono"
+								type="password"
+								autocomplete="off"
+								placeholder={settings.phoneblock_token_set ? t('block.tokenKeep') : ''}
+								bind:value={token}
+								disabled={!can('blocking.settings')}
+							/>
+							{#if settings.phoneblock_token_set && can('blocking.settings')}
+								<button
+									type="button"
+									class="mt-1 text-xs text-red-600 underline"
+									onclick={removeToken}>{t('block.tokenRemove')}</button
+								>
+							{/if}
+						</div>
+						<div>
+							<label for="b-votes">{t('block.minVotes')}</label>
+							<input
+								id="b-votes"
+								class="input w-28"
+								type="number"
+								min="1"
+								max="100"
+								bind:value={settings.phoneblock_min_votes}
+								disabled={!can('blocking.settings')}
+							/>
+							<p class="hint">{t('block.minVotesHint')}</p>
+						</div>
 					</div>
-					<div>
-						<label for="b-votes">{t('block.minVotes')}</label>
-						<input
-							id="b-votes"
-							class="input w-28"
-							type="number"
-							min="1"
-							max="100"
-							bind:value={settings.phoneblock_min_votes}
-							disabled={!can('blocking.settings')}
-						/>
-						<p class="hint">{t('block.minVotesHint')}</p>
+				</fieldset>
+				{#if can('blocking.settings')}
+					<div class="flex justify-end">
+						<button class="btn btn-primary">{t('common.save')}</button>
 					</div>
-				</div>
-			</fieldset>
-			{#if can('blocking.settings')}
-				<div class="flex justify-end">
-					<button class="btn btn-primary">{t('common.save')}</button>
-				</div>
-			{/if}
+				{/if}
+			</form>
+		{/if}
+
+		<form class="card flex flex-wrap items-end gap-2" onsubmit={test}>
+			<div>
+				<label for="b-test">{t('block.test')}</label>
+				<input
+					id="b-test"
+					class="input font-mono"
+					placeholder="+4930123456"
+					bind:value={testNumber}
+				/>
+			</div>
+			<button class="btn">{t('block.testRun')}</button>
+			{#if testResult}<p class="w-full text-sm" data-testid="block-test">{testResult}</p>{/if}
 		</form>
 	{/if}
-
-	<form class="card flex flex-wrap items-end gap-2" onsubmit={test}>
-		<div>
-			<label for="b-test">{t('block.test')}</label>
-			<input
-				id="b-test"
-				class="input font-mono"
-				placeholder="+4930123456"
-				bind:value={testNumber}
-			/>
-		</div>
-		<button class="btn">{t('block.testRun')}</button>
-		{#if testResult}<p class="w-full text-sm" data-testid="block-test">{testResult}</p>{/if}
-	</form>
 </div>

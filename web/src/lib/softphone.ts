@@ -1,4 +1,5 @@
 import type { Call } from './api.ts';
+import { isBlocked } from './calls/blocking.ts';
 
 /** A number or a SIP address; never let pasted text change the SIP URI structure. */
 export function callTarget(input: string): { display: string; uri: string | null } | null {
@@ -26,7 +27,11 @@ export function callbackNumber(call: Call, extensionId: string): string {
 }
 
 export function missedIncoming(call: Call, extensionId: string): boolean {
-	return !call.answered_at && (call.direction === 'inbound' || call.extension_id !== extensionId);
+	return (
+		!isBlocked(call) &&
+		!call.answered_at &&
+		(call.direction === 'inbound' || call.extension_id !== extensionId)
+	);
 }
 
 /** Generate local PCM audio. Blob URLs comply with the existing media CSP. */

@@ -31,8 +31,9 @@ pub struct Bucket {
     pub inbound: i64,
     pub outbound: i64,
     pub internal: i64,
-    /// Inbound calls nobody answered.
+    /// Unanswered inbound calls, excluding known blocked calls.
     pub missed: i64,
+    pub blocked: i64,
 }
 
 #[derive(Debug, Clone, Serialize, utoipa::ToSchema)]
@@ -47,7 +48,8 @@ pub struct CallStats {
     pub outbound: i64,
     pub internal: i64,
     pub missed: i64,
-    /// Answered inbound calls in percent (`None` without inbound calls).
+    pub blocked: i64,
+    /// Answered non-blocked inbound calls in percent (`None` without eligible calls).
     pub answer_rate: Option<f64>,
     /// Average talk time of answered calls in seconds.
     pub avg_talk_secs: i64,
@@ -97,8 +99,10 @@ pub async fn calls(
                 count(c.id) FILTER (WHERE c.direction = 'inbound') AS inbound,
                 count(c.id) FILTER (WHERE c.direction = 'outbound') AS outbound,
                 count(c.id) FILTER (WHERE c.direction = 'internal') AS internal,
-                count(c.id) FILTER (WHERE c.direction = 'inbound' AND c.answered_at IS NULL)
-                    AS missed
+                count(c.id) FILTER (WHERE c.direction = 'inbound' AND c.answered_at IS NULL
+                    AND c.blocked_reason IS NULL) AS missed,
+                count(c.id) FILTER (WHERE c.direction = 'inbound' AND c.blocked_reason IS NOT NULL)
+                    AS blocked
          FROM b
          LEFT JOIN cdr c ON c.tenant_id = $1 AND c.started_at >= b.t AND c.started_at < b.e
          WHERE b.e IS NOT NULL
@@ -128,6 +132,8 @@ pub async fn calls(
         sum(|b| b.internal),
         sum(|b| b.missed),
     );
+    let blocked = sum(|b| b.blocked);
+    let eligible = inbound - blocked;
     Ok(CallStats {
         range,
         end,
@@ -136,8 +142,9 @@ pub async fn calls(
         outbound,
         internal,
         missed,
-        answer_rate: (inbound > 0)
-            .then(|| ((inbound - missed) as f64 * 1000.0 / inbound as f64).round() / 10.0),
+        blocked,
+        answer_rate: (eligible > 0)
+            .then(|| ((eligible - missed) as f64 * 1000.0 / eligible as f64).round() / 10.0),
         avg_talk_secs: avg.unwrap_or(0.0).round() as i64,
         buckets,
     })

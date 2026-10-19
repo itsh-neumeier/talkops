@@ -18,6 +18,7 @@ else
   csrf=$(api POST /auth/login '{"username":"admin","password":"e2e-password-1"}' | jq -er .csrf_token)
 fi
 owner=$(api GET /auth/me | jq -er .user.id)
+api GET /settings/fax/storage | jq -e '.status == "ready"' >/dev/null
 trunk=$(api POST /trunks "$(jq -nc --arg host "$SIP_HOST:$SIP_TRUNK_PORT" '{name:"Fax media fixture",preset:"generic",enabled:true,overrides:{registrar:$host,proxy:$host,register:false}}')" | jq -er .id)
 account=$(api POST "/trunks/$trunk/accounts" '{"username":"fax-e2e","password":"fax-e2e-secret","enabled":true}' | jq -er .id)
 endpoint=$(python3 -c 'import uuid; print(uuid.uuid4())')

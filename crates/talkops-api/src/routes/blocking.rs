@@ -24,6 +24,47 @@ pub fn router() -> OpenApiRouter<AppState> {
         .routes(routes!(delete_block))
         .routes(routes!(get_block_settings, update_block_settings))
         .routes(routes!(test_number))
+        .routes(routes!(list_allowlist, create_allow))
+        .routes(routes!(delete_allow))
+}
+
+#[utoipa::path(get, path = "/api/v1/call-allowlist", tag = "routing", responses((status = 200, body = Vec<blocking::CallAllow>)))]
+pub async fn list_allowlist(
+    State(state): State<AppState>,
+    auth: AuthUser,
+) -> ApiResult<Json<Vec<blocking::CallAllow>>> {
+    auth.require_perm(Permission::BlockingAllowlist)?;
+    Ok(Json(blocking::allowlist(&state.db, auth.tenant).await?))
+}
+
+#[utoipa::path(post, path = "/api/v1/call-allowlist", tag = "routing", request_body = blocking::CallAllowInput,
+    responses((status = 201, body = blocking::CallAllow), (status = 200, body = blocking::CallAllow)))]
+pub async fn create_allow(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Json(input): Json<blocking::CallAllowInput>,
+) -> ApiResult<(StatusCode, Json<blocking::CallAllow>)> {
+    auth.require_perm(Permission::BlockingAllowlist)?;
+    let (entry, created) = blocking::allow(&state.db, &auth.actor(), &input).await?;
+    Ok((
+        if created {
+            StatusCode::CREATED
+        } else {
+            StatusCode::OK
+        },
+        Json(entry),
+    ))
+}
+
+#[utoipa::path(delete, path = "/api/v1/call-allowlist/{id}", tag = "routing", params(("id" = Uuid, Path)), responses((status = 204)))]
+pub async fn delete_allow(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<Uuid>,
+) -> ApiResult<StatusCode> {
+    auth.require_perm(Permission::BlockingAllowlist)?;
+    blocking::disallow(&state.db, &auth.actor(), id).await?;
+    Ok(StatusCode::NO_CONTENT)
 }
 
 /// Blocked numbers and prefixes.

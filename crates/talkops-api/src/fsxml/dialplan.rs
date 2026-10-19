@@ -1376,6 +1376,7 @@ async fn plan_public(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Actio
             format!("force_transfer_context={CONTEXT_TRANSFER}"),
         ),
         set("talkops_direction", "inbound"),
+        set("talkops_destination", sanitize_value(&req.destination)),
         set("talkops_trunk_id", trunk_id.to_string()),
         // Only for the legs to phones; the trunk leg keeps its codec.
         (

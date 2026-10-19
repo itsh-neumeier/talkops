@@ -1,4 +1,35 @@
 export default {
+	'fax.storageTitle': 'Fax storage',
+	'fax.storageReady': 'The server can write to fax storage. At least 100 MiB is available.',
+	'fax.storageUnavailable':
+		'Fax storage is not writable. Ask an administrator to check the shared fax volume and its permissions.',
+	'fax.storageFull': 'Fax storage has insufficient free space. At least 100 MiB is required.',
+	'fax.storageHint':
+		'This checks server access. The server, media worker and FreeSWITCH must share the same writable fax volume. After an image update, also update the stack configuration.',
+	'fax.checkStorage': 'Check fax storage again',
+	'perm.blocking.allowlist': 'Manage call whitelist',
+	'perm.blocking.allowlist.hint':
+		'Allow exact numbers for the whole tenant, overriding local block lists and PhoneBlock.',
+	'calls.result.blocked': 'Blocked',
+	'block.source.list': 'Block list',
+	'block.source.phoneblock': 'PhoneBlock',
+	'block.source.anonymous': 'Anonymous',
+	'block.source.unknown': 'Spam protection',
+	'block.details': 'Blocking details',
+	'block.match': 'Matched rule: {pattern}',
+	'block.votes': 'PhoneBlock reports: {count}',
+	'block.calledNumber': 'Inbound call to',
+	'block.allowlist': 'Whitelist',
+	'block.allowNumber': 'International number',
+	'block.allowAdd': 'Add to whitelist',
+	'block.allowConfirm': 'Allow number',
+	'block.allowEffect':
+		'Future inbound calls from this exact number bypass local block lists and PhoneBlock for the whole tenant. Other routing rules still apply. Past calls keep their original result.',
+	'block.allowed': 'On whitelist',
+	'block.allowEmpty': 'No whitelist entries.',
+	'block.allowRemove': 'Remove whitelist exception',
+	'block.allowRemoveEffect':
+		'Future calls from this number can be blocked again by existing block lists and PhoneBlock.',
 	'fax.resetTemplate': 'Use global defaults',
 	'fax.inputLog': 'Mail input log',
 	'fax.mailReports': 'Mail reports',

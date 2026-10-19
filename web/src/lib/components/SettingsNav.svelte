@@ -93,7 +93,10 @@
 	} = $props();
 
 	const visible = $derived(sections.filter(sectionVisible));
-	const allowed = (p: { perm: Permission | null }) => !p.perm || can(p.perm);
+	const allowed = (p: { href: string; perm: Permission | null }) =>
+		!p.perm ||
+		can(p.perm) ||
+		(p.href === '/routing' && (can('blocking.manage') || can('blocking.allowlist')));
 	const personal = $derived(settingsPages.filter((p) => p.group === 'personal' && allowed(p)));
 	const pages = $derived(settingsPages.filter((p) => p.group === 'setup' && allowed(p)));
 	const path = $derived(page.url.pathname);

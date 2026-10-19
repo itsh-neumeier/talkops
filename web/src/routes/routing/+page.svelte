@@ -11,19 +11,28 @@
 	import { loadTargets } from '#lib/destinations.svelte.ts';
 	import { t, type MessageKey } from '#lib/i18n/index.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
+	import { can } from '#lib/session.svelte.ts';
 
-	const tabs: { id: string; key: MessageKey }[] = [
+	const allTabs: { id: string; key: MessageKey }[] = [
 		{ id: 'groups', key: 'routing.groups' },
 		{ id: 'schedules', key: 'routing.schedules' },
 		{ id: 'menus', key: 'routing.menus' },
 		{ id: 'queues', key: 'routing.queues' },
 		{ id: 'blocking', key: 'routing.blocking' }
 	];
+	const tabs = $derived(
+		allTabs.filter((x) =>
+			x.id === 'blocking'
+				? can('blocking.manage') || can('blocking.allowlist')
+				: can('routing.view')
+		)
+	);
 	let tab = $state('groups');
 	let loaded = $state(false);
 	let error = $state('');
 
 	onMount(async () => {
+		tab = tabs[0]?.id ?? '';
 		try {
 			const saved = localStorage.getItem('talkops.routingTab');
 			if (saved && tabs.some((x) => x.id === saved)) tab = saved;
@@ -31,7 +40,7 @@
 			// storage unavailable
 		}
 		try {
-			await loadTargets();
+			if (can('routing.view')) await loadTargets();
 			loaded = true;
 		} catch (err) {
 			error = errorMessage(err);

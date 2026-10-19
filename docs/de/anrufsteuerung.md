@@ -1,5 +1,32 @@
 # Anrufsteuerung
 
+## Lokale Whitelist für den Spam-Schutz
+
+Unter **Einstellungen → Anrufsteuerung → Anrufsperre → Whitelist** lassen
+sich einzelne internationale Rufnummern freigeben oder Freigaben entfernen.
+Dafür ist das Recht **Whitelist verwalten** (`blocking.allowlist`) nötig.
+Standardmäßig hat es nur der Administrator. Er kann es weiteren Rollen
+unter **Benutzer → Rollen** zuweisen.
+
+Das Recht allein erlaubt den Zugriff auf die Whitelist. Es gewährt keine
+Routingverwaltung, keine Verwaltung der Sperrliste, keinen Zugriff auf
+PhoneBlock-Zugangsdaten und keine Einsicht in alle Anrufe.
+
+Eine Freigabe gilt für den gesamten Mandanten und sofort ab dem nächsten
+eingehenden Anruf. Sie übersteuert sowohl die eigene Sperrliste als auch
+PhoneBlock, einschließlich zwischengespeicherter Ablehnungen. Bei einer
+gesperrten Vorwahl kann so genau eine Nummer freigegeben werden. Zeitpläne
+und andere Routingregeln gelten weiterhin. Anonyme Anrufer und
+Platzhalter-Einträge können nicht freigegeben werden.
+
+Beim Löschen warnt der Dialog, dass die Nummer wieder blockiert werden
+kann. Die ursprünglichen Sperrregeln bleiben erhalten. Alle Änderungen
+werden im Audit-Log protokolliert. Die Freigabe ändert keine Liste im
+PhoneBlock-Konto. Backups enthalten Whitelist und gespeicherte Anrufgründe.
+
+Die Anzeige und direkte Freigabe aus der Anrufliste sind in der
+[Anrufliste](anrufliste.md#blockierte-anrufe-und-whitelist) beschrieben.
+
 Unter **Einstellungen → Anrufsteuerung** legst du fest, wohin Anrufe gehen. Rufnummern,
 Ausweichziele, Menütasten und Öffnungszeiten können auf jedes dieser Ziele
 zeigen: Nebenstelle, Voicemail einer Nebenstelle, Rufgruppe, Zeitsteuerung,

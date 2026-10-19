@@ -151,3 +151,86 @@ python3 -m unittest discover -s tests/fax -v
 
 Migration IDs: `20261106000001` and `20261106000002`. Apply both with the
 upgraded server. Do not run an older binary after assigning a fax destination.
+
+## Troubleshoot storage after an update
+
+An image update does not update an existing Compose or Portainer stack
+definition. The server and worker have read-only root filesystems. A missing
+fax mount can cause `Read-only file system (os error 30)` during upload.
+
+Open **Settings → Fax → Fax storage**. Select **Check fax storage again**.
+This check creates, writes, and removes a small temporary file as the server
+user. It also checks for at least 100 MiB of free space. A successful check
+proves server access only. Check worker and FreeSWITCH access separately.
+
+Add these entries to the existing stack definition if they are missing.
+Keep its other volumes and service settings. Use the same named volume for
+all three services. Keep any existing fax data in that volume.
+
+```yaml
+services:
+  talkops:
+    volumes:
+      - fax:/var/lib/talkops/fax
+  media-worker:
+    volumes:
+      - fax:/var/lib/talkops/fax
+  freeswitch:
+    volumes:
+      - fax:/var/lib/talkops/fax
+volumes:
+  fax:
+```
+
+If fax data is in another volume or bind mount, use that existing source
+for all three services. The destination must match the configured fax path.
+For a custom `TALKOPS_FAX_DIR`, set the same path for the API and worker.
+Mount the volume at that path in all three containers. The API passes the
+path to FreeSWITCH.
+
+Apply the changed stack definition. With Compose, run this command from the
+existing deployment directory, with its usual environment and override files:
+
+```sh
+docker compose up -d talkops media-worker freeswitch
+```
+
+In Portainer, edit and update the existing stack. Keep the same project and
+volume sources. A restart alone does not apply a changed volume definition.
+Keep `read_only: true` for the API and worker. Only the fax volume needs writes.
+
+Check access as the configured service user in each container:
+
+```sh
+for service in talkops media-worker freeswitch; do
+  docker compose exec -T "$service" sh -ec '
+    id
+    probe=$(mktemp /var/lib/talkops/fax/.fax-check-XXXXXX)
+    trap '\''rm -f "$probe"'\'' EXIT
+    printf "fax storage check\n" > "$probe"
+    cat "$probe"
+  '
+done
+```
+
+Use the custom destination path in this command if configured. Each service
+must run as UID/GID 10001 and must use the same shared volume. For a bind
+mount, give UID/GID 10001 write access to the existing fax directory.
+
+Uploads return `fax_storage_unavailable` (HTTP 503) for an inaccessible
+directory, or `fax_storage_full` (HTTP 507) for insufficient space. The send
+page shows a translated explanation and keeps the selected attachments.
+After the repair, prepare the preview again. No fax is queued by a rejected
+upload. Server logs include the failed storage operation and path.
+
+## Troubleshoot rejected incoming calls
+
+PhoneBlock and the local call blocking settings also apply to incoming fax.
+A log entry `inbound call blocked` with `phoneblock:4` means that four spam
+reports met the configured blocking threshold. TalkOps rejects that call
+before it starts the fax receiver. The call can have zero duration and
+`CALL_REJECTED`, with no fax document.
+
+Review the blocking decision under the call blocking settings. Then test
+reception with an allowed caller. This storage repair does not change spam
+rules, exceptions, or T.38 settings.

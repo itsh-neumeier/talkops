@@ -6,13 +6,15 @@
 		direction,
 		caller,
 		called,
-		via = null
+		via = null,
+		blocked = false
 	}: {
 		direction: Call['direction'] | null;
 		caller: Party;
 		called: Party;
 		/** Own number: the dialed number (inbound) or the caller ID (outbound). */
 		via?: string | null;
+		blocked?: boolean;
 	} = $props();
 </script>
 
@@ -24,7 +26,10 @@
 {/snippet}
 
 {#if direction === 'inbound'}
-	<p>{t('dash.call.inbound')} <CallParty party={called} />{@render viaNumber()}</p>
+	{#if blocked}<p>
+			{t('block.calledNumber')} <span class="font-mono">{via || called.number || '—'}</span>
+		</p>
+	{:else}<p>{t('dash.call.inbound')} <CallParty party={called} />{@render viaNumber()}</p>{/if}
 	<p>{t('dash.call.from')} <CallParty party={caller} flag={direction === 'inbound'} /></p>
 {:else if direction === 'outbound'}
 	<p>{t('dash.call.outbound')} <CallParty party={caller} />{@render viaNumber()}</p>

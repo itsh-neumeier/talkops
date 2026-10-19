@@ -772,6 +772,7 @@ async fn cdr_and_audit(pool: PgPool) {
         duration_secs: 5,
         billsec: 4,
         hangup_cause: "NORMAL_CLEARING".into(),
+        blocked_reason: None,
         recording_id: None,
     };
     assert!(cdr::insert(&pool, T, &c).await.unwrap());
@@ -863,6 +864,7 @@ async fn cdr_filters_sort_and_scope(pool: PgPool) {
                 duration_secs: 10 * n as i32,
                 billsec: if answered { 10 * n as i32 } else { 0 },
                 hangup_cause: cause.into(),
+                blocked_reason: None,
                 recording_id: None,
             }
         };

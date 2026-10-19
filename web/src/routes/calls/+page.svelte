@@ -6,6 +6,7 @@
 	import SortButton from '#lib/components/SortButton.svelte';
 	import LoadingContent from '#lib/components/LoadingContent.svelte';
 	import PhoneNumber from '#lib/components/PhoneNumber.svelte';
+	import CallBlockStatus from '#lib/components/CallBlockStatus.svelte';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { syncAddress } from '#lib/list/address.ts';
@@ -111,6 +112,12 @@
 		} finally {
 			if (moreRun === moreGeneration) loadingMore = false;
 		}
+	}
+	function markAllowed(number: string) {
+		calls =
+			calls?.map((call) =>
+				call.caller_number === number ? { ...call, allowlisted: true } : call
+			) ?? null;
 	}
 
 	/** Text filters wait for a short typing pause. */
@@ -447,7 +454,10 @@
 							</td>
 							<td class="col-opt font-mono">{c.answered_at ? formatDuration(c.billsec) : '—'}</td>
 							<td>
-								{#if result === 'answered'}<span class="badge whitespace-nowrap badge-ok">OK</span>
+								{#if result === 'blocked'}<CallBlockStatus call={c} onallowed={markAllowed} />
+								{:else if result === 'answered'}<span class="badge whitespace-nowrap badge-ok"
+										>OK</span
+									>
 								{:else if result === 'busy'}<span
 										class="badge whitespace-nowrap badge-warn"
 										title={c.hangup_cause}>{t('calls.result.busy')}</span

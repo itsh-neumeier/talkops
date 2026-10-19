@@ -79,6 +79,7 @@ permissions! {
     RoutingManage = "routing.manage", "routing", false;
     RoutingOverride = "routing.override", "routing", false;
     BlockingManage = "blocking.manage", "routing", false;
+    BlockingAllowlist = "blocking.allowlist", "routing", false;
     BlockingSettings = "blocking.settings", "routing", false;
     TrunksView = "trunks.view", "trunks", false;
     TrunksManage = "trunks.manage", "trunks", true;

@@ -3,12 +3,135 @@
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, PgExecutor};
+use sqlx::{FromRow, PgExecutor, PgPool};
 use uuid::Uuid;
 
 use crate::crypto::SecretBox;
 use crate::error::{CoreError, CoreResult};
 use crate::tenant::TenantId;
+
+#[derive(Debug, Clone, FromRow, Serialize, utoipa::ToSchema)]
+pub struct CallAllow {
+    pub id: Uuid,
+    pub number: String,
+    pub label: String,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Deserialize, utoipa::ToSchema)]
+pub struct CallAllowInput {
+    /// Exact international number. Prefix exceptions are not supported.
+    pub number: String,
+    #[serde(default)]
+    pub label: String,
+}
+
+/// Exact E.164 syntax; do not interpret an extension or a prefix as a number.
+pub fn normalize_allow_number(input: &str) -> CoreResult<String> {
+    let number: String = input.chars().filter(|c| !c.is_whitespace()).collect();
+    let digits = number.strip_prefix('+').unwrap_or("");
+    if !(3..=15).contains(&digits.len())
+        || digits.starts_with('0')
+        || !digits.bytes().all(|c| c.is_ascii_digit())
+    {
+        return Err(CoreError::Validation(
+            "number must be an exact international number, e.g. +4930123456".into(),
+        ));
+    }
+    Ok(number)
+}
+
+/// Only recognize the marker written by the inbound dialplan.
+pub fn valid_block_reason(reason: &str) -> bool {
+    reason == "anonymous"
+        || reason
+            .strip_prefix("list:")
+            .is_some_and(|p| normalize_pattern(p).is_ok_and(|normalized| normalized == p))
+        || reason.strip_prefix("phoneblock:").is_some_and(|v| {
+            !v.is_empty() && v.bytes().all(|c| c.is_ascii_digit()) && v.parse::<u32>().is_ok()
+        })
+}
+
+pub async fn allowlist<'e>(
+    db: impl PgExecutor<'e>,
+    tenant: TenantId,
+) -> CoreResult<Vec<CallAllow>> {
+    Ok(sqlx::query_as(
+        "SELECT id, number, label, created_at FROM call_allowlist WHERE tenant_id = $1 ORDER BY number",
+    ).bind(tenant).fetch_all(db).await?)
+}
+
+/// Batch membership lookup, also used before the PhoneBlock cache lookup.
+pub async fn allowed_numbers<'e>(
+    db: impl PgExecutor<'e>,
+    tenant: TenantId,
+    numbers: &[String],
+) -> CoreResult<Vec<String>> {
+    Ok(sqlx::query_scalar(
+        "SELECT number FROM call_allowlist WHERE tenant_id = $1 AND number = ANY($2)",
+    )
+    .bind(tenant)
+    .bind(numbers)
+    .fetch_all(db)
+    .await?)
+}
+
+/// The audit entry and the exception are committed together. Duplicate requests
+/// return the existing exception without changing its label or creating an audit.
+pub async fn allow(
+    db: &PgPool,
+    actor: &crate::audit::Actor,
+    input: &CallAllowInput,
+) -> CoreResult<(CallAllow, bool)> {
+    let number = normalize_allow_number(&input.number)?;
+    let label: String = input.label.trim().chars().take(100).collect();
+    let mut tx = db.begin().await?;
+    let created: Option<CallAllow> = sqlx::query_as(
+        "INSERT INTO call_allowlist (tenant_id, number, label) VALUES ($1, $2, $3)
+         ON CONFLICT (tenant_id, number) DO NOTHING RETURNING id, number, label, created_at",
+    )
+    .bind(actor.tenant)
+    .bind(&number)
+    .bind(&label)
+    .fetch_optional(&mut *tx)
+    .await?;
+    let is_new = created.is_some();
+    let entry = match created {
+        Some(entry) => {
+            crate::audit::record(&mut *tx, actor, "create", "call_allowlist",
+                Some(entry.id.to_string()), serde_json::json!({"number": number, "label": label})).await?;
+            entry
+        }
+        None => sqlx::query_as(
+            "SELECT id, number, label, created_at FROM call_allowlist WHERE tenant_id = $1 AND number = $2",
+        ).bind(actor.tenant).bind(&number).fetch_one(&mut *tx).await?,
+    };
+    tx.commit().await?;
+    Ok((entry, is_new))
+}
+
+pub async fn disallow(db: &PgPool, actor: &crate::audit::Actor, id: Uuid) -> CoreResult<()> {
+    let mut tx = db.begin().await?;
+    let number: String = sqlx::query_scalar(
+        "DELETE FROM call_allowlist WHERE tenant_id = $1 AND id = $2 RETURNING number",
+    )
+    .bind(actor.tenant)
+    .bind(id)
+    .fetch_optional(&mut *tx)
+    .await?
+    .ok_or(CoreError::NotFound)?;
+    crate::audit::record(
+        &mut *tx,
+        actor,
+        "delete",
+        "call_allowlist",
+        Some(id.to_string()),
+        serde_json::json!({"number": number}),
+    )
+    .await?;
+    tx.commit().await?;
+    Ok(())
+}
 
 #[derive(Debug, Clone, FromRow, Serialize, utoipa::ToSchema)]
 pub struct CallBlock {
@@ -263,6 +386,45 @@ pub async fn update_settings(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn exact_allow_numbers_and_stored_reasons() {
+        assert_eq!(
+            normalize_allow_number(" +49 30 123456 ").unwrap(),
+            "+4930123456"
+        );
+        for bad in [
+            "101",
+            "anonymous",
+            "+4930*",
+            "004930123456",
+            "+012345",
+            "+1234567890123456",
+            "+49${x}",
+        ] {
+            assert!(normalize_allow_number(bad).is_err(), "{bad}");
+        }
+        for reason in [
+            "anonymous",
+            "list:+4930123456",
+            "list:+4930*",
+            "phoneblock:4",
+            "phoneblock:4294967295",
+        ] {
+            assert!(valid_block_reason(reason), "{reason}");
+        }
+        for reason in [
+            "",
+            "CALL_REJECTED",
+            "list:101",
+            "list:+49 ${x}",
+            "phoneblock:-1",
+            "phoneblock:",
+            "phoneblock:4294967296",
+        ] {
+            assert!(!valid_block_reason(reason), "{reason}");
+        }
+    }
 
     #[test]
     fn patterns() {

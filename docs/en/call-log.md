@@ -12,7 +12,7 @@ calls. Users see the calls of their own extensions.
 | From | The caller: an extension number with its name, or an external number. |
 | To | The called party. For an answered inbound call: the answering extension, the own number that the caller dialed, and the extension name, for example `Ext. 101 via +4995431241` and `Familie Zweig`. |
 | Duration | Talk time of an answered call. |
-| Result | `OK`, `busy/declined` or `not answered`. |
+| Result | `OK`, `busy/declined`, `not answered` or `Blocked` with its source. |
 | Recording | Play button for a recorded call. |
 
 ## Phone book names
@@ -61,7 +61,7 @@ panel of this column. A colored dot shows an active filter.
 | Direction | One or more directions. |
 | From | Text in the number, the name, the extension or the phone book name. |
 | To | Text in the number, the answering extension, the dialed own number or the phone book name. |
-| Result | Answered, not answered, busy/declined. |
+| Result | Answered, not answered, busy/declined, blocked. |
 | Recording | All, with recording, with transcript, without recording. |
 
 The text filters start after a short typing pause. **Reset** clears the
@@ -86,3 +86,29 @@ number of loaded calls and the number of all matching calls. Click
 The header `X-Total-Count` has the number of all matching calls. Each call
 also has the resolved parties `caller` and `called` and, for inbound calls,
 `via_number`.
+
+## Blocked calls and whitelist exceptions
+
+The call log and dashboard recent calls show **Blocked** with the source:
+**Block list**, **PhoneBlock** or **Anonymous**. Open **Blocking details** to
+see the matching pattern or report count and the technical hangup cause.
+The destination shows the dialed number. A blocked call did not ring a phone.
+
+A user with **Manage call whitelist** (`blocking.allowlist`) can select
+**Add to whitelist** on a blocked call with an international caller number.
+The confirmation shows the exact number and accepts an optional label.
+Select **Allow number** to save the exception for the whole tenant.
+An anonymous caller has no number that can be whitelisted.
+
+The exception applies to future inbound calls. It overrides local block
+lists, including prefixes, and PhoneBlock. Other routing rules still apply.
+The original block result stays in call history. **On whitelist** shows the
+current exception separately. Call visibility rights do not change.
+
+Known blocked calls match the blocked filter, not the missed or busy filter.
+Dashboard missed counts and answer rate exclude known blocked calls. Total
+and inbound counts still include them. The API supplies `blocked_reason`;
+whitelist managers also receive current `allowlisted` membership.
+
+Older records without a stored reason keep their previous result. TalkOps
+does not infer a reason from a general rejection or today's block lists.

@@ -39,6 +39,9 @@ pub struct Cdr {
     pub duration_secs: i32,
     pub billsec: i32,
     pub hangup_cause: String,
+    /// Decision at call time, independent of current block or allow lists.
+    #[serde(default)]
+    pub blocked_reason: Option<String>,
     /// Recording of the call, if any.
     #[sqlx(default)]
     #[serde(default)]
@@ -46,20 +49,20 @@ pub struct Cdr {
 }
 
 const COLUMNS: &str = "id, call_uuid, direction, caller_number, caller_name, destination, extension_id, \
-                       dest_extension_id, trunk_id, number_id, started_at, answered_at, ended_at, duration_secs, billsec, hangup_cause";
+                       dest_extension_id, trunk_id, number_id, started_at, answered_at, ended_at, duration_secs, billsec, hangup_cause, blocked_reason";
 
 /// Inserts a CDR; duplicates (same call UUID, e.g. retried posts) are ignored.
 pub async fn insert<'e>(db: impl PgExecutor<'e>, tenant: TenantId, c: &Cdr) -> CoreResult<bool> {
     let res = sqlx::query(
         "INSERT INTO cdr (tenant_id, call_uuid, direction, caller_number, caller_name, destination,
                           extension_id, dest_extension_id, trunk_id, number_id, started_at, answered_at,
-                          ended_at, duration_secs, billsec, hangup_cause)
+                          ended_at, duration_secs, billsec, hangup_cause, blocked_reason)
          VALUES ($1, $2, $3, $4, $5, $6,
                  (SELECT id FROM extensions WHERE id = $7 AND tenant_id = $1),
                  (SELECT id FROM extensions WHERE id = $16 AND tenant_id = $1),
                  (SELECT id FROM trunks WHERE id = $8 AND tenant_id = $1),
                  (SELECT id FROM numbers WHERE id = $9 AND tenant_id = $1),
-                 $10, $11, $12, $13, $14, $15)
+                 $10, $11, $12, $13, $14, $15, $17)
          ON CONFLICT (call_uuid) DO NOTHING",
     )
     .bind(tenant)
@@ -78,6 +81,7 @@ pub async fn insert<'e>(db: impl PgExecutor<'e>, tenant: TenantId, c: &Cdr) -> C
     .bind(c.billsec)
     .bind(&c.hangup_cause)
     .bind(c.dest_extension_id)
+    .bind(&c.blocked_reason)
     .execute(db)
     .await?;
     Ok(res.rows_affected() == 1)
@@ -99,7 +103,7 @@ pub struct CdrQuery {
     pub until: Option<DateTime<Utc>>,
     /// Comma-separated directions: `inbound`, `outbound`, `internal`.
     pub direction: Option<String>,
-    /// Comma-separated results: `answered`, `missed`, `busy`.
+    /// Comma-separated results: `answered`, `missed`, `busy`, `blocked`.
     pub result: Option<String>,
     /// Caller: number, name or extension (substring).
     pub from: Option<String>,
@@ -198,17 +202,20 @@ fn push_filters(
         for r in results {
             match r {
                 "answered" => {
-                    b.push(" OR cdr.answered_at IS NOT NULL");
+                    b.push(" OR (cdr.blocked_reason IS NULL AND cdr.answered_at IS NOT NULL)");
                 }
                 "missed" => {
-                    b.push(" OR (cdr.answered_at IS NULL AND NOT cdr.hangup_cause = ANY(")
+                    b.push(" OR (cdr.blocked_reason IS NULL AND cdr.answered_at IS NULL AND NOT cdr.hangup_cause = ANY(")
                         .push_bind(busy.clone())
                         .push("))");
                 }
                 "busy" => {
-                    b.push(" OR (cdr.answered_at IS NULL AND cdr.hangup_cause = ANY(")
+                    b.push(" OR (cdr.blocked_reason IS NULL AND cdr.answered_at IS NULL AND cdr.hangup_cause = ANY(")
                         .push_bind(busy.clone())
                         .push("))");
+                }
+                "blocked" => {
+                    b.push(" OR cdr.blocked_reason IS NOT NULL");
                 }
                 _ => {}
             }

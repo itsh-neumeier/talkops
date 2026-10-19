@@ -89,3 +89,18 @@ plus all three manifests for amd64/arm64 and stable moving tags.
 - docs/ai-memory/20261019-codex-spam-blocklist-visibility.md
 - docs/ai-memory/20261019-codex-release-1.8.4.md
 - docs/release-workflow.md
+
+## Merged checkpoint
+
+- Integration PR: https://github.com/itsh-neumeier/talkops/pull/57
+- Final candidate: 9f1a29ed88e73b1e6dfe65fe7e308f4b337aa7b1.
+- All 14 final candidate checks passed: PR CI39252972813/E2E39252972792 and
+  push CI39252965249/E2E39252965273. Rust: 413 passed, one existing ignored.
+- Both fax media round trips passed. The blocked-call historical reason and
+  exact-whitelist next-call scenario ran; all SIPp/browser E2E checks passed.
+- PR57 merged 2026-10-19T12:48:29Z. PR55/PR56 became merged through it two seconds later.
+- Main: b1fa28350dc1830e222a27ee770641edb1935ccc. Its tree equals the candidate;
+  both source heads are ancestors. Source heads and old main were unchanged.
+- Exact-main CI39254950679 and E2E39254950487 are running. No tag exists yet.
+- FreeSWITCH sources/workflow did not change; no separate main FreeSWITCH run applies.
+- Do not push the batch branch again. Archive later task-only changes with the audit ref.

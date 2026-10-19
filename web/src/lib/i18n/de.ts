@@ -1,6 +1,15 @@
 import type en from './en';
 
 const de: Record<keyof typeof en, string> = {
+	'fax.storageTitle': 'Fax-Speicher',
+	'fax.storageReady':
+		'Der Server kann in den Fax-Speicher schreiben. Mindestens 100 MiB sind verfügbar.',
+	'fax.storageUnavailable':
+		'Der Fax-Speicher ist nicht beschreibbar. Bitte die Administration bitten, das gemeinsame Fax-Volume und dessen Berechtigungen zu prüfen.',
+	'fax.storageFull': 'Im Fax-Speicher ist zu wenig Platz frei. Mindestens 100 MiB werden benötigt.',
+	'fax.storageHint':
+		'Diese Prüfung testet den Serverzugriff. Server, Media-Worker und FreeSWITCH müssen dasselbe beschreibbare Fax-Volume verwenden. Nach einem Image-Update auch die Stack-Konfiguration aktualisieren.',
+	'fax.checkStorage': 'Fax-Speicher erneut prüfen',
 	'fax.resetTemplate': 'Globale Vorgaben verwenden',
 	'fax.inputLog': 'Maileingangsprotokoll',
 	'fax.mailReports': 'Mailberichte',

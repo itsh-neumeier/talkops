@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { api, type PhoneNumber } from '#lib/api.ts';
-	import type { FaxConfig, FaxEndpoint, FaxWhitelist } from '#lib/fax.ts';
+	import type { FaxConfig, FaxEndpoint, FaxWhitelist, FaxStorageStatus } from '#lib/fax.ts';
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
 	import ErrorBox from './ErrorBox.svelte';
@@ -17,6 +17,19 @@
 	let saved = $state(false);
 	let saving = $state(false);
 	let editing = $state<FaxEndpoint | null>(null);
+	let storage = $state<FaxStorageStatus | null>(null);
+	let checkingStorage = $state(false);
+	async function checkStorage() {
+		checkingStorage = true;
+		try {
+			storage = (await api.get<{ status: FaxStorageStatus }>('/settings/fax/storage')).status;
+		} catch (e) {
+			storage = null;
+			error = errorMessage(e);
+		} finally {
+			checkingStorage = false;
+		}
+	}
 	let inputLog = $state<{
 		receipts: { sender: string; result: string; created_at: string }[];
 		deliveries: { recipient: string; kind: string; sent: boolean; attempts: number }[];
@@ -24,6 +37,7 @@
 	const trunks = $derived([...new Set(numbers.map((n) => n.trunk_id))]);
 	onMount(() => {
 		void load();
+		void checkStorage();
 	});
 	async function load() {
 		try {
@@ -91,6 +105,20 @@
 <ErrorBox {error} />
 {#if saved}<p role="status" class="badge-ok">{t('fax.saved')}</p>{/if}
 {#if cfg}
+	<section class="card mb-4 space-y-3 p-4">
+		<h2>{t('fax.storageTitle')}</h2>
+		{#if storage === 'ready'}<p role="status">{t('fax.storageReady')}</p>
+		{:else if storage === 'unavailable'}<p role="status" class="text-red-600 dark:text-red-400">
+				{t('fax.storageUnavailable')}
+			</p>
+		{:else if storage === 'full'}<p role="status" class="text-red-600 dark:text-red-400">
+				{t('fax.storageFull')}
+			</p>{/if}
+		<p class="text-sm">{t('fax.storageHint')}</p>
+		<button class="btn" disabled={checkingStorage} onclick={checkStorage}
+			>{t('fax.checkStorage')}</button
+		>
+	</section>
 	<form class="space-y-4" onsubmit={save}>
 		<section class="card space-y-3 p-4">
 			<h2>{t('fax.title')}</h2>

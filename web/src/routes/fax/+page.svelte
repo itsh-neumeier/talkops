@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { api, type PhoneNumber } from '#lib/api.ts';
-	import type { Fax } from '#lib/fax.ts';
+	import { api, ApiError, type PhoneNumber } from '#lib/api.ts';
+	import { faxStorageMessageKey, type Fax } from '#lib/fax.ts';
 	import { can } from '#lib/session.svelte.ts';
 	import { t, type MessageKey } from '#lib/i18n/index.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
@@ -21,6 +21,10 @@
 	let preview = $state<Fax | null>(null);
 	let template = $state({ header: '', footer: '' });
 	let templateOpen = $state(false);
+	function faxError(e: unknown) {
+		const key = e instanceof ApiError ? faxStorageMessageKey(e.code) : null;
+		return key ? t(key) : errorMessage(e);
+	}
 	const tabs = $derived([
 		...(can('fax.send') ? [{ id: 'send', label: t('fax.send') }] : []),
 		{ id: 'outbox', label: t('fax.outbox') },
@@ -84,7 +88,7 @@
 			});
 			await refresh();
 		} catch (e) {
-			error = errorMessage(e);
+			error = faxError(e);
 		} finally {
 			busy = false;
 		}
@@ -107,7 +111,7 @@
 			}
 			await refresh();
 		} catch (e) {
-			error = errorMessage(e);
+			error = faxError(e);
 		} finally {
 			busy = false;
 		}

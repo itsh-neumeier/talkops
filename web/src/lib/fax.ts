@@ -42,3 +42,12 @@ export interface FaxConfig {
 	trusted_mailbox: boolean;
 	trunk_modes: Record<string, string>;
 }
+
+export type FaxStorageStatus = 'ready' | 'unavailable' | 'full';
+
+/** Only known, safe fax storage codes have a localized message. */
+export function faxStorageMessageKey(code: string) {
+	if (code === 'fax_storage_unavailable') return 'fax.storageUnavailable' as const;
+	if (code === 'fax_storage_full') return 'fax.storageFull' as const;
+	return null;
+}

@@ -134,3 +134,88 @@ des verschlüsselten Postfachpassworts benötigt.
 
 Migrations-IDs: `20261106000001` und `20261106000002`. Nach Einrichtung
 eines Faxziels keine ältere Programmversion mit dieser Datenbank betreiben.
+
+## Speicherfehler nach einem Update beheben
+
+Ein Image-Update aktualisiert keine vorhandene Compose- oder Portainer-Stack-
+Definition. Server und Worker haben ein schreibgeschütztes Root-Dateisystem.
+Ein fehlender Fax-Mount kann beim Upload `Read-only file system (os error 30)`
+auslösen.
+
+Unter **Einstellungen → Fax → Fax-Speicher** auf **Fax-Speicher erneut prüfen**
+klicken. Die Prüfung erstellt, schreibt und entfernt eine kleine Testdatei als
+Serverbenutzer. Außerdem müssen mindestens 100 MiB frei sein. Ein positives
+Ergebnis bestätigt nur den Serverzugriff. Worker und FreeSWITCH separat prüfen.
+
+Fehlende Einträge in der bestehenden Stack-Definition ergänzen. Andere Volumes
+und Einstellungen beibehalten. Alle drei Dienste müssen dasselbe Volume nutzen.
+Vorhandene Faxdaten bleiben in ihrem bisherigen Volume.
+
+```yaml
+services:
+  talkops:
+    volumes:
+      - fax:/var/lib/talkops/fax
+  media-worker:
+    volumes:
+      - fax:/var/lib/talkops/fax
+  freeswitch:
+    volumes:
+      - fax:/var/lib/talkops/fax
+volumes:
+  fax:
+```
+
+Liegen bereits Faxdaten in einem anderen Volume oder Bind-Mount, diese Quelle
+für alle drei Dienste verwenden. Der Zielpfad muss dem konfigurierten Faxpfad
+entsprechen. Bei eigenem `TALKOPS_FAX_DIR` denselben Pfad für API und Worker
+setzen und das Volume bei allen drei Containern dort einhängen. Die API
+übergibt diesen Pfad an FreeSWITCH.
+
+Die geänderte Stack-Definition anwenden. Mit Compose im bestehenden
+Deployment-Verzeichnis und mit den üblichen Umgebungs- und Override-Dateien:
+
+```sh
+docker compose up -d talkops media-worker freeswitch
+```
+
+In Portainer den bestehenden Stack bearbeiten und aktualisieren. Projekt und
+Volume-Quellen beibehalten. Ein Neustart allein übernimmt keine geänderten
+Mounts. `read_only: true` bei API und Worker beibehalten. Nur das Fax-Volume
+benötigt Schreibzugriff.
+
+Den Zugriff in jedem Container als konfigurierten Dienstbenutzer prüfen:
+
+```sh
+for service in talkops media-worker freeswitch; do
+  docker compose exec -T "$service" sh -ec '
+    id
+    probe=$(mktemp /var/lib/talkops/fax/.fax-check-XXXXXX)
+    trap '\''rm -f "$probe"'\'' EXIT
+    printf "fax storage check\n" > "$probe"
+    cat "$probe"
+  '
+done
+```
+
+Bei eigener Konfiguration den Zielpfad im Befehl anpassen. Alle Dienste müssen
+mit UID/GID 10001 auf dasselbe Volume zugreifen. Bei einem Bind-Mount dieser
+UID/GID Schreibzugriff auf das bestehende Faxverzeichnis geben.
+
+Uploads liefern `fax_storage_unavailable` (HTTP 503) bei unzugänglichem Speicher
+oder `fax_storage_full` (HTTP 507) bei zu wenig freiem Platz. Das Sendefenster
+zeigt eine übersetzte Erklärung und behält ausgewählte Anhänge bei. Nach der
+Korrektur die Vorschau erneut vorbereiten. Ein abgewiesener Upload erzeugt
+keinen Faxauftrag. Das Serverlog enthält den betroffenen Vorgang und Pfad.
+
+## Abgewiesene eingehende Anrufe prüfen
+
+PhoneBlock und die lokalen Anrufsperren gelten auch für eingehende Faxe.
+`inbound call blocked` mit `phoneblock:4` bedeutet, dass vier Spam-Meldungen
+den eingestellten Sperrschwellwert erreicht haben. TalkOps weist diesen Anruf
+vor dem Start des Fax-Empfängers ab. Deshalb können null Sekunden Dauer und
+`CALL_REJECTED` ohne Faxdokument erscheinen.
+
+Die Sperrentscheidung in den Einstellungen für Anrufsperren prüfen. Danach
+den Empfang mit einem zugelassenen Anrufer testen. Diese Speicherkorrektur
+ändert keine Spam-Regeln, Ausnahmen oder T.38-Einstellungen.

@@ -1,6 +1,6 @@
 # Fax send and receive repair: proposal
 
-Status: Approved by the user on 2026-10-19. Implementation and verification in progress.
+Status: Approved and implemented. PR 55 records final readiness and check results.
 Date: 2026-10-19 (Europe/Berlin).
 Base: `origin/main`, `488e42a1a5e2853ef1ce5a5e0ada253d97a5c99d`.
 

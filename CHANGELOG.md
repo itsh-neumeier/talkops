@@ -6,6 +6,40 @@ All notable changes to TalkOps. The format follows
 
 ## [Unreleased]
 
+## [1.8.5] – 2026-10-19
+
+### Added
+
+- Show the stored reason for blocked inbound calls in the call list and recent
+  calls. Distinguish local block lists, PhoneBlock and anonymous caller rules.
+- Add exact local whitelist entries with a separate blocking.allowlist permission.
+  Apply them before local block lists and cached PhoneBlock results. Keep tenant
+  and call visibility restrictions. Save actual changes with atomic audit entries.
+- Add an administrator fax storage check and safe, translated storage errors.
+  Keep attachments after failed preparation so users can retry after repair.
+
+### Fixed
+
+- Check actual fax storage writes, cleanup and free space before creating jobs.
+  Return HTTP 503 for unavailable storage and 507 for insufficient free space.
+- Preserve blocked reasons through CDR ingestion and retry spool replay. Keep
+  historical decisions unchanged when numbers are later whitelisted.
+- Keep blocked calls separate from missed calls in filters, totals, statistics
+  and softphone classification. Include them in inbound call volume.
+
+### Upgrade notes
+
+- Back up and apply migration 20261106000003 before starting the new binary.
+  Existing CDR rows keep a null block reason; no historical reason is inferred.
+- Admins have blocking.allowlist. Grant it explicitly to other roles. Exceptions
+  are local to TalkOps and do not modify PhoneBlock accounts or other routing rules.
+- Update existing Compose/Portainer stacks as needed. Server, worker and
+  FreeSWITCH must share the same writable fax volume with UID/GID 10001 access.
+  Preserve existing documents and read-only root filesystems. An image update
+  alone does not repair old mounts. The administrator check tests server access.
+- Retest real fax send/receive after deployment and any intended spam exception.
+  Production storage recovery and provider acceptance were not performed here.
+
 ## [1.8.4] – 2026-10-19
 
 ### Added

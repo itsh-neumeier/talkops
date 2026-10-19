@@ -19,9 +19,11 @@ The user explicitly requires a proposal and feedback before implementation.
 
 Read project and release instructions. Verified remote `main` and merged PR 53.
 Inspected upload, worker conversion, incoming routing, receiver, settings UI,
-Compose mounts, and existing tests. No production logs or settings are available.
+Compose mounts, and existing tests. The user later supplied settings and logs.
 Created a proposal. No runtime code or live settings changed.
 Committed and pushed the proposal. Draft PR 55 is available for user feedback.
+Updated the proposal with a filesystem error and a PhoneBlock rejection from
+the supplied logs. No direct production access is available.
 
 ## Changes
 
@@ -37,11 +39,20 @@ Committed and pushed the proposal. Draft PR 55 is available for user feedback.
 - Preserve the original checkout's local commit and three untracked summaries.
   Preserve the earlier fax worktree and all other checkouts.
 - An old stack definition without the fax volume can explain an upload 500.
-  This is a hypothesis, not a confirmed cause in the user's deployment.
+  The logs now confirm `Read-only file system (os error 30)` with three HTTP
+  500 events. They do not identify the failing path or effective mounts.
 - A global sender number does not assign an incoming fax destination.
-  Missing or disabled routing and failure before answer need separate diagnosis.
-- Ask for installed version, updated stack status, number assignment, and the
-  relevant safe server log. Continue source inspection while the answer is pending.
+  The user confirms configuration. Do not assume the incoming route is missing.
+- The incoming test is blocked with `phoneblock:4`, followed by zero duration
+  and `CALL_REJECTED`. The dialplan returns SIP 603 before fax reception.
+  This is the confirmed rejection reason for that supplied test call.
+- Startup confirms version 1.8.4 and current schema. FreeSWITCH connects before
+  the incoming test. Do not treat the earlier startup retries as its cause.
+- Current PhoneBlock has no per-caller allowlist. Propose a controlled operator
+  retest with its switch disabled, then restore it. Keep live spam settings
+  unchanged. A permanent exception needs a separate product decision.
+- Do not change T.38 settings to address these failures. The supplied logs
+  do not show that transmission negotiation or conversion has started.
 - Submit documentation as a draft PR. Wait for feedback before implementation.
 
 ## Checks
@@ -50,6 +61,8 @@ Committed and pushed the proposal. Draft PR 55 is available for user feedback.
 - Passed: `git diff --cached --check`; only the proposal and this summary are staged.
 - Source inspection: current Compose mounts fax in all three services; upload
   filesystem and database errors can return the generic 500 response.
+- Passed: matched supplied PhoneBlock and call rejection logs to the dialplan;
+  checked spam threshold semantics and the available blocking settings.
 - Not run: runtime suites. This checkpoint changes documentation only.
 - Not run: provider send/receive and production checks. No production access.
 - STE review: repository clear-English rules applied. Full standard unavailable;
@@ -57,7 +70,9 @@ Committed and pushed the proposal. Draft PR 55 is available for user feedback.
 
 ## Dependencies and open work
 
-- Need user feedback on the proposal and runtime evidence to identify the cause.
+- Need user feedback before implementation. Need effective stack mounts and
+  fax path to identify the exact filesystem correction. Retest reception after
+  an operator-approved PhoneBlock configuration change.
 - No new dependencies or migrations planned. Existing fax migrations are
   `20261106000001` and `20261106000002`; do not edit released files.
 - Recheck remote target before implementation. Release actions stay separate.

@@ -13,6 +13,33 @@ Base: `origin/main`, `488e42a1a5e2853ef1ce5a5e0ada253d97a5c99d`.
 The screenshots show symptoms. They do not identify the failed HTTP request,
 the SIP response, the configured destination, or the server error.
 
+## Deployment evidence supplied after the first proposal
+
+The user confirms the stack and fax route are configured. The settings image
+shows fax enabled, a global sender number, and T.38 preferred with audio fallback.
+Treat an absent incoming route as a diagnostic possibility, not an established
+cause. Do not copy private numbers, hosts, or complete logs into this PR.
+
+- The supplied startup log confirms TalkOps `1.8.4` and an up-to-date schema.
+- Three HTTP 500 events accompany `Read-only file system (os error 30)` at
+  09:01:55, 09:01:58, and 09:18:26 UTC on 2026-10-19. In the reported upload
+  context, this identifies filesystem access as the first repair target.
+  The generic error does not contain the path or HTTP route. The exact failing
+  mount or path must still be checked in the running stack.
+- The incoming test call at 08:59:22 UTC is explicitly blocked with reason
+  `phoneblock:4`. Its call record has zero duration and `CALL_REJECTED`.
+  The code rejects blocked callers with SIP `603 Decline` before it starts
+  the fax receiver. This explains the reported busy/rejected call for this test.
+- `4` is the number of PhoneBlock reports returned by the check. This result
+  meets the configured blocking threshold. It is not a fax protocol error.
+- Initial FreeSWITCH connection refusals end with a successful connection at
+  08:56:17 UTC, before the test call. These startup messages do not establish
+  an ongoing FreeSWITCH outage.
+
+The logs do not establish a T.38 negotiation or document conversion failure.
+The filesystem failure and PhoneBlock rejection must be resolved before a
+provider transport test can assess those later stages.
+
 ## Verified code and release state
 
 - Remote HEAD points to `main`. PR 53 is merged into the 1.8.4 release line.
@@ -26,7 +53,8 @@ the SIP response, the configured destination, or the server error.
 - The production Compose file mounts one shared `fax` volume in the API,
   worker, and FreeSWITCH. The API and worker have read-only root filesystems.
   Updating images without updating an older stack definition can leave the
-  fax directory unwritable. This is a hypothesis for this installation.
+  fax directory unwritable. An absent mount remains a hypothesis; the supplied
+  logs prove a read-only filesystem error, not which mount is missing.
 - Incoming fax requires an enabled fax destination and an assigned incoming
   number. A global outgoing fax number does not create an incoming route.
 - The dialplan rejects missing or disabled destinations. Spam blocking also
@@ -50,6 +78,18 @@ or routing correction. Change transmission code only when evidence shows
 a transmission defect. Keep live configuration changes subject to the agreed
 deployment scope. This development task has no production access configured.
 
+Prioritize inspection of the effective fax path and its mounts. The same
+writable volume must be mounted in all three services at the configured fax
+path. Prepare the exact stack correction from the deployed definition. Keep
+the existing read-only root filesystem and persistent fax data.
+
+For the incoming test, first review the PhoneBlock decision. The current code
+has a tenant-wide PhoneBlock switch and report threshold, but no per-caller
+allowlist. A controlled retest can temporarily disable PhoneBlock, save its
+configuration, repeat the incoming fax, and restore the original setting.
+Do not disable protection or alter its threshold automatically. A permanent
+caller allowlist or per-fax exemption would be a separate product decision.
+
 ### 2. Make send failures actionable
 
 - Add a bounded fax storage check that can distinguish an unwritable
@@ -66,6 +106,11 @@ errors through a global API error change.
 
 ### 3. Make reception configuration and failures visible
 
+- Explain that PhoneBlock also applies to incoming fax. Make the blocking
+  reason visible in the relevant call details. Reuse the stored
+  `talkops_blocked` result. Check existing presentation before adding UI.
+- Keep the spam policy unchanged in this repair. A blocked call must remain
+  distinct from a started fax receiver that fails during reception.
 - Show the assigned incoming numbers for each fax destination in Fax settings.
   Show a warning when an enabled destination has no enabled incoming number.
   Link to number configuration. Do not reassign voice numbers automatically.
@@ -87,6 +132,9 @@ outside this proposal, as specified by ADR 0040.
   errors; rejected uploads leave no partial document or queued job.
 - Routing tests: active fax number starts the receiver; missing, disabled,
   and blocked routes give the expected result; voice routes keep their behavior.
+- Reproduce the observed PhoneBlock threshold result with a local test server.
+  Check that a blocked fax route produces `603 Decline` without starting the
+  receiver, and that disabling PhoneBlock permits the configured fax route.
 - Receiver tests: failure before answer is traceable; failed fax records
   remain tenant-scoped and use the existing inbox access rules.
 - Browser tests: actionable errors, retained attachments, and number warnings.
@@ -113,7 +161,8 @@ or `20261106000002`.
 Suggested release notes after implementation and verification:
 
 > Improve fax upload error messages and incoming fax diagnostics. Show missing
-> incoming number assignments and document the shared fax storage requirements.
+> incoming number assignments. Document shared fax storage and PhoneBlock
+> behavior for incoming fax calls.
 
 Language review uses the repository clear-English rules. The official
 ASD-STE100 standard was unavailable. Full language review remains pending.

@@ -104,3 +104,13 @@ plus all three manifests for amd64/arm64 and stable moving tags.
 - Exact-main CI39254950679 and E2E39254950487 are running. No tag exists yet.
 - FreeSWITCH sources/workflow did not change; no separate main FreeSWITCH run applies.
 - Do not push the batch branch again. Archive later task-only changes with the audit ref.
+
+## Publication started
+
+Exact-main CI39254950679 and E2E39254950487 passed. Fresh guards verified
+unchanged main, empty open scope, both source ancestors, identical candidate
+and main trees, matching package versions and latest successful main gates.
+New annotated v1.8.5 was pushed once on b1fa28350dc1830e222a27ee770641edb1935ccc.
+Tag object: 0963dfb4500904f26c40be88814c9a7e0cfa0667.
+Release39256855610 is running. Extra tag CI39256855605, E2E39256855675 and
+FreeSWITCH39256855604 are running. Artifact verification remains pending.

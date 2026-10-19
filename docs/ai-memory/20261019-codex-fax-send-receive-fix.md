@@ -8,7 +8,7 @@
 - Status: In progress. Proposal awaits user review before implementation.
 - Branch: `codex/fax-send-receive-fix`
 - Base commit: `488e42a1a5e2853ef1ce5a5e0ada253d97a5c99d`
-- Related PR: Pending
+- Related PR: https://github.com/itsh-neumeier/talkops/pull/55 (draft)
 
 ## Goal
 
@@ -21,6 +21,7 @@ Read project and release instructions. Verified remote `main` and merged PR 53.
 Inspected upload, worker conversion, incoming routing, receiver, settings UI,
 Compose mounts, and existing tests. No production logs or settings are available.
 Created a proposal. No runtime code or live settings changed.
+Committed and pushed the proposal. Draft PR 55 is available for user feedback.
 
 ## Changes
 

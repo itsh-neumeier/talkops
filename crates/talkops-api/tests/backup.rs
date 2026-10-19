@@ -124,6 +124,16 @@ async fn backup_and_restore(db: PgPool) {
     .execute(&db)
     .await
     .unwrap();
+    // Call decisions and exact local exceptions are part of the database dump.
+    let (status, _) = admin
+        .post(
+            "/api/v1/call-allowlist",
+            json!({"number": "+4930123456", "label": "Trusted"}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::CREATED);
+    sqlx::query("INSERT INTO cdr(tenant_id, call_uuid, direction, caller_number, destination, started_at, ended_at, hangup_cause, blocked_reason) VALUES($1, 'backup-blocked', 'inbound', '+4930123456', '+4930999999', now(), now(), 'CALL_REJECTED', 'phoneblock:12')")
+        .bind(talkops_core::tenant::TenantId::DEFAULT).execute(&db).await.unwrap();
     // Run a backup through the API and wait for it.
     let (status, _) = admin.post("/api/v1/backups", json!({})).await;
     assert_eq!(status, StatusCode::ACCEPTED);
@@ -181,6 +191,14 @@ async fn backup_and_restore(db: PgPool) {
     assert_eq!(status, StatusCode::NOT_FOUND);
 
     // Change everything, then restore.
+    sqlx::query("DELETE FROM call_allowlist")
+        .execute(&db)
+        .await
+        .unwrap();
+    sqlx::query("UPDATE cdr SET blocked_reason = NULL WHERE call_uuid = 'backup-blocked'")
+        .execute(&db)
+        .await
+        .unwrap();
     std::fs::write(vol("fax/document.pdf"), b"changed-fax").unwrap();
     sqlx::query("UPDATE backup_settings SET hour = 7")
         .execute(&db)
@@ -225,6 +243,17 @@ async fn backup_and_restore(db: PgPool) {
         .await
         .unwrap();
     assert_eq!(hour, 5, "database restored");
+    let number: String = sqlx::query_scalar("SELECT number FROM call_allowlist")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(number, "+4930123456");
+    let reason: String =
+        sqlx::query_scalar("SELECT blocked_reason FROM cdr WHERE call_uuid = 'backup-blocked'")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(reason, "phoneblock:12");
     let saved: String = sqlx::query_scalar("SELECT key_enc FROM transcription_providers")
         .fetch_one(&pool)
         .await

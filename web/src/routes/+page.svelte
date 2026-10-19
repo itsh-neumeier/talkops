@@ -19,6 +19,8 @@
 	import CallChart from '#lib/components/CallChart.svelte';
 	import ActiveCalls from '#lib/components/ActiveCalls.svelte';
 	import CallSummary from '#lib/components/CallSummary.svelte';
+	import CallBlockStatus from '#lib/components/CallBlockStatus.svelte';
+	import { isBlocked } from '#lib/calls/blocking.ts';
 	import GettingStarted from '#lib/components/GettingStarted.svelte';
 	import { formatDateTime, formatDuration, t, type MessageKey } from '#lib/i18n/index.svelte.ts';
 	import { can, isAdmin } from '#lib/session.svelte.ts';
@@ -138,7 +140,12 @@
 			(tr) => tr.enabled && tr.accounts.length > 0 && registered(tr) === tr.accounts.length
 		).length
 	);
-	const missed = (c: Call) => c.direction === 'inbound' && !c.answered_at;
+	const missed = (c: Call) => c.direction === 'inbound' && !c.answered_at && !isBlocked(c);
+	function markAllowed(number: string) {
+		recent = recent.map((call) =>
+			call.caller_number === number ? { ...call, allowlisted: true } : call
+		);
+	}
 	/** Fallback when the API sends no resolved party. */
 	const rawParty = (number: string, name: string): CallPartyData => ({
 		number,
@@ -336,12 +343,18 @@
 												caller={c.caller ?? rawParty(c.caller_number, c.caller_name)}
 												called={c.called ?? rawParty(c.destination, '')}
 												via={c.via_number}
+												blocked={isBlocked(c)}
 											/>
+											<CallBlockStatus call={c} onallowed={markAllowed} />
 										</div>
 									</div>
 									<span class="shrink-0 text-right text-xs text-slate-500">
 										{formatDateTime(c.started_at)}<br />
-										{missed(c) ? t('dash.missedCall') : formatDuration(c.billsec)}
+										{isBlocked(c)
+											? '—'
+											: missed(c)
+												? t('dash.missedCall')
+												: formatDuration(c.billsec)}
 									</span>
 								</li>
 							{/each}

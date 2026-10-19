@@ -118,6 +118,7 @@ export type Permission =
 	| 'routing.manage'
 	| 'routing.override'
 	| 'blocking.manage'
+	| 'blocking.allowlist'
 	| 'blocking.settings'
 	| 'trunks.view'
 	| 'trunks.manage'
@@ -409,6 +410,9 @@ export interface Call {
 	duration_secs: number;
 	billsec: number;
 	hangup_cause: string;
+	blocked_reason?: string | null;
+	/** Current whitelist membership, only supplied to whitelist managers. */
+	allowlisted?: boolean;
 	recording_id: string | null;
 	dest_extension_id?: string | null;
 	number_id?: string | null;
@@ -431,6 +435,7 @@ export interface CallStats {
 	outbound: number;
 	internal: number;
 	missed: number;
+	blocked: number;
 	answer_rate: number | null;
 	avg_talk_secs: number;
 }

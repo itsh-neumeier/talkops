@@ -414,6 +414,7 @@ impl Directory {
                 duration_secs: 0,
                 billsec: 0,
                 hangup_cause: String::new(),
+                blocked_reason: None,
                 recording_id: j.recording_id,
             };
             let (caller, called, via_number) = self.record_parties(&record);
@@ -1008,6 +1009,7 @@ mod tests {
             duration_secs: 1,
             billsec: 1,
             hangup_cause: String::new(),
+            blocked_reason: None,
             recording_id: None,
         };
         let (caller, called, via) = dir.record_parties(&record);

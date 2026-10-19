@@ -1,10 +1,11 @@
 // Filter and sort state of the call list, kept in the address bar.
 import { parseOrder, pickList, queryString, type Order } from '../list/sort.ts';
+import { isBlocked } from './blocking.ts';
 
 export type { Order };
 
 export type Direction = 'inbound' | 'outbound' | 'internal';
-export type Result = 'answered' | 'missed' | 'busy';
+export type Result = 'answered' | 'missed' | 'busy' | 'blocked';
 export type RecordingFilter = '' | 'with' | 'transcript' | 'without';
 export type SortKey = 'time' | 'duration';
 
@@ -24,7 +25,7 @@ export interface CallFilters {
 }
 
 export const DIRECTIONS: Direction[] = ['inbound', 'outbound', 'internal'];
-export const RESULTS: Result[] = ['answered', 'missed', 'busy'];
+export const RESULTS: Result[] = ['answered', 'missed', 'busy', 'blocked'];
 export const RECORDING_FILTERS: RecordingFilter[] = ['with', 'transcript', 'without'];
 /** Hangup causes shown as "busy or declined" (same list as the server). */
 export const BUSY_CAUSES = ['USER_BUSY', 'CALL_REJECTED'];
@@ -126,7 +127,14 @@ export function activeCount(f: CallFilters): Record<string, boolean> {
 }
 
 /** Result of a call: answered, busy or declined, or missed. */
-export function callResult(c: { answered_at: string | null; hangup_cause: string }): Result {
+export function callResult(c: {
+	answered_at: string | null;
+	hangup_cause: string;
+	direction?: Direction;
+	blocked_reason?: string | null;
+}): Result {
+	if (c.direction && isBlocked({ direction: c.direction, blocked_reason: c.blocked_reason }))
+		return 'blocked';
 	if (c.answered_at) return 'answered';
 	return BUSY_CAUSES.includes(c.hangup_cause) ? 'busy' : 'missed';
 }

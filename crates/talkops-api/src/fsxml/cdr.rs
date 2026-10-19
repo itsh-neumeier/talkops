@@ -63,6 +63,9 @@ pub fn parse(xml: &str) -> Result<Option<(TenantId, Cdr, Option<String>)>, Strin
         duration_secs: num("duration"),
         billsec: num("billsec"),
         hangup_cause: var("hangup_cause").unwrap_or_default(),
+        blocked_reason: var("talkops_blocked").filter(|reason| {
+            direction == Direction::Inbound && talkops_core::blocking::valid_block_reason(reason)
+        }),
         recording_id: None,
     };
     Ok(Some((tenant, cdr, var("talkops_recording"))))
@@ -178,5 +181,40 @@ mod tests {
         let xml = SAMPLE.replace("<talkops_direction>outbound</talkops_direction>", "");
         assert!(parse(&xml).unwrap().is_none());
         assert!(parse("<cdr/>").is_err());
+    }
+
+    #[test]
+    fn block_marker_requires_an_inbound_call_and_a_known_reason() {
+        for reason in ["anonymous", "list:%2B4930*", "phoneblock:12"] {
+            let xml = SAMPLE
+                .replace("<talkops_direction>outbound", "<talkops_direction>inbound")
+                .replace(
+                    "</variables>",
+                    &format!("<talkops_blocked>{reason}</talkops_blocked></variables>"),
+                );
+            let (_, cdr, _) = parse(&xml).unwrap().unwrap();
+            assert_eq!(
+                cdr.blocked_reason.as_deref(),
+                Some(percent_decode(reason).as_str())
+            );
+        }
+        for (direction, reason) in [
+            ("inbound", "CALL_REJECTED"),
+            ("inbound", "list:101"),
+            ("outbound", "phoneblock:12"),
+            ("internal", "anonymous"),
+        ] {
+            let xml = SAMPLE
+                .replace(
+                    "<talkops_direction>outbound",
+                    &format!("<talkops_direction>{direction}"),
+                )
+                .replace(
+                    "</variables>",
+                    &format!("<talkops_blocked>{reason}</talkops_blocked></variables>"),
+                );
+            assert!(parse(&xml).unwrap().unwrap().1.blocked_reason.is_none());
+        }
+        assert!(parse(SAMPLE).unwrap().unwrap().1.blocked_reason.is_none());
     }
 }

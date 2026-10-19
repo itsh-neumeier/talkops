@@ -1,5 +1,34 @@
 # Anrufliste
 
+## Blockierte Anrufe und Whitelist
+
+Anrufliste und letzte Anrufe zeigen **Blockiert** mit der Quelle:
+**Sperrliste**, **PhoneBlock** oder **Anonym**. Unter **Blockierungsdetails**
+stehen die passende Regel oder die Zahl der Meldungen und der technische
+Auflegegrund. Als Ziel erscheint die gewählte Rufnummer. Ein blockierter
+Anruf hat kein Telefon zum Klingeln gebracht.
+
+Mit **Whitelist verwalten** (`blocking.allowlist`) kann ein Benutzer bei
+einer bekannten internationalen Anrufernummer **Zur Whitelist hinzufügen**
+wählen. Der Dialog zeigt die exakte Nummer und ein optionales Notizfeld.
+**Nummer freigeben** speichert die Ausnahme für den gesamten Mandanten.
+Anonyme Anrufer können nicht auf die Whitelist gesetzt werden.
+
+Die Freigabe gilt sofort für künftige Anrufe und übersteuert eigene
+Sperrlisten einschließlich Vorwahlen sowie PhoneBlock. Andere Routingregeln
+gelten weiterhin. Frühere Anrufe behalten den ursprünglichen
+Blockierungsgrund; **Auf Whitelist** zeigt die aktuelle Freigabe separat.
+Die Sichtbarkeit fremder Anrufe wird dadurch nicht erweitert.
+
+Der Ergebnisfilter **Blockiert** enthält bekannte blockierte Anrufe.
+Diese zählen nicht zusätzlich als verpasst oder besetzt. Auch die
+Verpasst-Zahl und Annahmequote im Dashboard schließen bekannte blockierte
+Anrufe aus; Gesamtzahl und eingehende Anrufe enthalten sie weiterhin.
+
+Ältere Datensätze ohne gespeicherten Grund behalten ihr bisheriges Ergebnis.
+TalkOps leitet den Grund nicht aus einer allgemeinen Ablehnung oder dem
+heutigen Stand der Sperrlisten ab.
+
 Die **Anrufliste** zeigt die beendeten Anrufe. Admins und Operatoren sehen
 alle Anrufe, Benutzer die Anrufe ihrer eigenen Nebenstellen.
 

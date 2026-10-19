@@ -1,5 +1,12 @@
 # Benutzer und Rollen
 
+Das Recht **Whitelist verwalten** (`blocking.allowlist`) erlaubt das Lesen,
+Hinzufügen und Entfernen exakter Rufnummern-Ausnahmen für den gesamten
+Mandanten. Standardmäßig hat es nur der Administrator. Es ist unabhängig
+von **Rufnummern sperren** und **Spam-Schutz einstellen**. Es erweitert
+nicht die Sichtbarkeit von Anrufen. Siehe
+[lokale Whitelist](anrufsteuerung.md#lokale-whitelist-für-den-spam-schutz).
+
 Jeder Benutzer hat genau eine **Rolle**. Die Rolle bestimmt die
 Berechtigungen. Unter **Einstellungen → Benutzer → Rollen** siehst und
 änderst du die Rollen.

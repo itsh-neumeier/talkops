@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { isBlocked } from '#lib/calls/blocking.ts';
 	import PageHeader from '#lib/components/PageHeader.svelte';
 	import PhoneNumber from '#lib/components/PhoneNumber.svelte';
 	import LoadingContent from '#lib/components/LoadingContent.svelte';
@@ -982,7 +983,8 @@
 									disabled={status !== 'ready'}
 									onclick={() => dialNumber(callbackNumber(c, selected))}>📞</button
 								>
-								{t(`dir.${c.direction}`)}{#if missedIncoming(c, selected)}
+								{t(`dir.${c.direction}`)}{#if isBlocked(c)}
+									· {t('calls.result.blocked')}{:else if missedIncoming(c, selected)}
 									· {t('calls.missed')}{:else if !c.answered_at}
 									· {t('phone.unanswered')}{/if}</span
 							>

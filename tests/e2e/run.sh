@@ -333,6 +333,27 @@ video_call trunk-audio uas_audio_only.xml trunk_call_video.xml "$SIP_HOST:$SIP_T
 # A trunk with video passes the provider's video to an extension with video.
 set_video "/api/v1/trunks/$TRUNK" true
 video_call trunk-video uas_video.xml trunk_call_video.xml "$SIP_HOST:$SIP_TRUNK_PORT"
+
+log "blocked inbound call keeps its reason and an exact whitelist permits the next call"
+BLOCK_ID=$(api POST /api/v1/call-blocks '{"pattern":"+4930999999","label":"E2E blocking"}' | jq -r .id) || fail "create call block"
+sipp "$SIP_HOST:$SIP_TRUNK_PORT" -sf "$DIR/trunk_call_blocked.xml" -inf "$WORK/video.csv" \
+    -m 1 -p 5096 -min_rtp_port 17900 -max_rtp_port 17950 -i "$SIP_HOST" -timeout 30 -timeout_error \
+    -trace_err -error_file "$WORK/blocked.log" >/dev/null \
+    || { cat "$WORK/blocked.log" 2>/dev/null; fail "blocked call did not return 603"; }
+BLOCK_UUID=""
+for _ in $(seq 1 15); do
+    BLOCK_UUID=$(api GET '/api/v1/calls?result=blocked' | jq -r '[.[] | select(.caller_number == "+4930999999" and .blocked_reason == "list:+4930999999")][0].call_uuid // empty')
+    [ -n "$BLOCK_UUID" ] && break
+    sleep 1
+done
+[ -n "$BLOCK_UUID" ] || fail "blocked call reason missing from CDR"
+ALLOW_ID=$(api POST /api/v1/call-allowlist '{"number":"+4930999999","label":"E2E exception"}' | jq -r .id) || fail "create whitelist exception"
+video_call trunk-whitelisted uas_video.xml trunk_call_video.xml "$SIP_HOST:$SIP_TRUNK_PORT"
+api GET '/api/v1/calls?result=blocked' | jq -e --arg uuid "$BLOCK_UUID" \
+    '.[] | select(.call_uuid == $uuid and .blocked_reason == "list:+4930999999" and .allowlisted == true)' >/dev/null \
+    || fail "whitelist changed the historical decision"
+api DELETE "/api/v1/call-allowlist/$ALLOW_ID" >/dev/null || fail "remove whitelist exception"
+api DELETE "/api/v1/call-blocks/$BLOCK_ID" >/dev/null || fail "remove call block"
 set_video "/api/v1/extensions/$EXT21" false
 
 if [ "${WEBRTC_E2E:-0}" = 1 ]; then

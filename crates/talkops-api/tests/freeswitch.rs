@@ -1609,6 +1609,41 @@ async fn call_blocking(db: PgPool) {
         .await;
     assert_eq!(r, json!({"blocked": true, "reason": "phoneblock:12"}));
 
+    // Local exceptions beat exact rules, prefix rules and cached PhoneBlock
+    // results. They apply to the next lookup without a reload or cache expiry.
+    for number in ["+4930999888", "+499001234567", "+4930555000"] {
+        assert!(blocked(&call(number).await));
+        let (status, entry) = f
+            .admin
+            .post("/api/v1/call-allowlist", json!({"number": number}))
+            .await;
+        assert_eq!(status, StatusCode::CREATED, "{entry}");
+        let actions = call(number).await;
+        assert!(!blocked(&actions), "{number}: {actions:?}");
+        assert!(has(&actions, "set", "talkops_destination=+49891234567"));
+        let (_, test) = f
+            .admin
+            .post("/api/v1/call-blocks/test", json!({"number": number}))
+            .await;
+        assert_eq!(test, json!({"blocked": false, "reason": null}));
+        assert!(blocked(&call("anonymous").await));
+        assert!(
+            blocked(&call("+499001234568").await),
+            "a neighboring number still matches the prefix"
+        );
+        let status = f
+            .admin
+            .call(
+                "DELETE",
+                &format!("/api/v1/call-allowlist/{}", entry["id"].as_str().unwrap()),
+                None,
+            )
+            .await
+            .0;
+        assert_eq!(status, StatusCode::NO_CONTENT);
+        assert!(blocked(&call(number).await));
+    }
+
     // A wrong token or an unreachable PhoneBlock never blocks.
     f.admin
         .put(

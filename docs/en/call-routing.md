@@ -92,3 +92,30 @@ Every queue has its own page with three tabs:
 - **Test a number** shows whether and why a call would be blocked.
 
 Blocked calls are logged as `inbound call blocked` with the reason.
+
+The call log and recent calls also keep the reason in the call record.
+See [blocked calls](call-log.md#blocked-calls-and-whitelist-exceptions).
+
+### Local whitelist
+
+Open **Settings → Call routing → Call blocking → Whitelist** to add or
+remove exact international numbers. This area needs `blocking.allowlist`.
+The permission alone gives access to this area; it does not give access
+to routing configuration, block lists or PhoneBlock credentials.
+Only administrators have this permission by default. An administrator can
+grant it to another role in **Users → Roles**.
+
+An entry permits future inbound calls from that exact number to bypass
+the local block list and PhoneBlock. It can override a block prefix for
+one number. A successful save applies to the next call, including when
+PhoneBlock has a cached rejection. Schedules and other routing still apply.
+Anonymous callers cannot match an entry. Prefix whitelist entries are not
+supported. The exception is local; it does not change a PhoneBlock account.
+
+To remove an entry, select **Delete** and confirm that blocking can apply
+again. Existing block rules remain stored. Every whitelist change has an
+audit entry. Backups include the whitelist and stored call decisions.
+
+The API provides `GET` and `POST /api/v1/call-allowlist` and
+`DELETE /api/v1/call-allowlist/{id}`. Each operation requires
+`blocking.allowlist`. Duplicate creation returns the existing entry.

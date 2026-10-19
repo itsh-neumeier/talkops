@@ -1,6 +1,6 @@
 # Blocked calls and local whitelist: proposal for user review
 
-Status: Proposed. User feedback is required before implementation.
+Status: Accepted by the user on 2026-10-19. Implementation and verification in progress.
 Date: 2026-10-19 (Europe/Berlin).
 Base: `origin/main`, `488e42a1a5e2853ef1ce5a5e0ada253d97a5c99d`.
 
@@ -9,10 +9,12 @@ Base: `origin/main`, `488e42a1a5e2853ef1ce5a5e0ada253d97a5c99d`.
 Show why TalkOps blocked an inbound call in the call list and recent calls.
 Let an authorized user put a blocked number on a local whitelist.
 
-The user requested a proposal before application changes. This revision adds
-only this proposal and a task summary. It does not change application code,
-database migrations, permissions or call routing. Commit, push and a draft
-PR are authorized. The release chat owns integration and publication.
+The user reviewed the proposal and approved implementation with
+"ok mach das so" on 2026-10-19. The initial revision contained only the
+proposal and a task summary. The feature branch now includes application
+changes, tests, user documentation and migration `20261106000003`.
+Commit, push and PR updates are authorized. The release chat owns integration
+and publication. The task summary records verification results.
 
 ## Verified baseline
 
@@ -196,10 +198,9 @@ and new reporting screens are outside this proposal.
 
 ### Migrations and dependencies
 
-No migration is added or reserved in the proposal. Implementation is expected
-to add one forward migration for the CDR field and whitelist table. Its ID
-must follow the latest migration in the verified target and be checked against
-concurrent PRs. At this base, the highest ID is `20261106000002`.
+Implementation adds forward migration `20261106000003` for the CDR field
+and whitelist table. The verified base's highest ID is `20261106000002`.
+Check the new ID against concurrent PRs before integration.
 
 Update the permission catalog, role editor translations and role tests.
 Verify backup and restore include the new table and CDR field. New runtime
@@ -225,8 +226,8 @@ Run the applicable commands from `.github/workflows/ci.yml`: Rust formatting,
 clippy and workspace tests with PostgreSQL; web lint, type checks, unit tests,
 build and browser regressions. Extend the FreeSWITCH blocking integration
 test and add a controlled SIPp scenario. Report unavailable service checks
-separately from passing checks. This proposal revision runs documentation
-checks only; it makes no claim that the proposed behavior is implemented.
+separately from passing checks. The task summary and PR record the commands
+and actual results for the implementation.
 
 Update English and German call log, call routing and roles documentation.
 Save implementation results and migration IDs in the task summary and PR.
@@ -238,11 +239,11 @@ Let authorized users add exact numbers to a local whitelist. Apply whitelist
 exceptions before local block lists and PhoneBlock. Keep blocked calls
 separate from missed calls and retain their original reason in call history.
 
-## Review requested
+## Review decision
 
-The recommended scope is the complete proposal above. Confirm or change the
+The user approved the complete proposal on 2026-10-19. This includes the
 separate role permission, tenant-wide exact-number exceptions, and exclusion
-of known blocked calls from missed-call statistics before implementation.
+of known blocked calls from missed-call statistics.
 
 ## References
 

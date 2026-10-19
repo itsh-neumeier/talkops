@@ -1,20 +1,21 @@
-# Blocked call visibility and whitelist proposal
+# Blocked call visibility and authorized whitelist
 
 ## Task state
 
 - Task ID: 20261019-codex-spam-blocklist-visibility
 - Date: 2026-10-19, Europe/Berlin
 - Tool: Codex
-- Status: In progress. User approved implementation; verification in progress.
+- Status: Completed. Implementation is pushed; CI and E2E passed on `63dde4e`.
 - Branch: codex/spam-blocklist-visibility
 - Base commit: 488e42a1a5e2853ef1ce5a5e0ada253d97a5c99d
-- Related commits or PR: proposal commit `660c32e`;
-  [draft PR 56](https://github.com/itsh-neumeier/talkops/pull/56).
+- Related commits or PR: proposal `660c32e`, implementation `09288ab`,
+  test review `63dde4e`;
+  [PR 56](https://github.com/itsh-neumeier/talkops/pull/56).
 
 ## Goal
 
 Show block list decisions in the call list and recent calls. Let authorized
-users whitelist numbers. The user reviewed the proposal and approved implementation on 2026-10-19
+users whitelist numbers. The user approved the proposal on 2026-10-19
 with "ok mach das so".
 
 ## Result
@@ -22,7 +23,9 @@ with "ok mach das so".
 Implemented stored CDR block reasons, an exact local whitelist, the separate
 role permission, call view actions and settings, result filters and statistics.
 Added core, API, parser, browser, backup and SIPp tests. Added English and German
-user documentation. Verification is in progress; the PR remains a draft.
+user documentation. Local checks, complete Linux CI and full stack E2E passed.
+The final summary commit changes documentation only. The PR is ready for
+the release manager. No merge or publication was performed.
 The exclusive worktree is
 `C:/Users/timo/.codex/worktrees/spam-blocklist-visibility/talkops`.
 The app worktree tool could not find the nested repository. Created the
@@ -43,7 +46,7 @@ worktree because its Git metadata is on a network share.
 ## Decisions
 
 - The user approved the complete proposal. Commit, push and PR updates are
-  authorized. Keep the PR in draft until implementation and checks are done.
+  authorized. Integration and publication belong to the release manager.
 - Store the existing `talkops_blocked` reason in CDRs. The old parser lost
   the reason. Do not reconstruct old reasons from lists.
 - Use exact local exceptions before local block lists and PhoneBlock.
@@ -58,14 +61,32 @@ worktree because its Git metadata is on a network share.
 ## Checks
 
 - Passed: remote target and open PR verification; source and diff inspection.
-- Passed: core PostgreSQL tests in `call_allowlist` (3 tests), including audit
-  rollback, concurrent duplicate creation, scope, filtering and statistics.
+- Passed: core PostgreSQL tests in `call_allowlist` (4 tests), including audit
+  rollback, concurrent duplicate creation, scope, filtering, statistics and
+  upgrade from a schema with existing calls.
 - Passed: web lint, type check (zero errors/warnings), unit tests (38), build.
 - Passed: `tests/browser/call-blocking.mjs`, `call-list.mjs`,
   `call-presentation.mjs`, `roles.mjs` and `tests/e2e/softphone-ui.mjs`.
   New browser checks cover two languages, both themes, narrow layouts,
   historical decisions, errors, whitelist management and restricted roles.
-- Pending: API/FreeSWITCH/backup/role regressions, clippy and workspace tests.
+- Passed: API integration regressions (40): `call_blocking`, `freeswitch`,
+  `backup`, `roles` and `webrtc`. Backup/restore retains both new data types.
+- Passed: Core/API library tests (195), including reason validation and parsing.
+- Passed: clippy for `talkops-core` and `talkops-api`, all targets, locked,
+  warnings denied; Rust formatting and diff whitespace checks.
+- Passed: layout, active-call and motion browser regressions. Repeated the new
+  browser and role checks against the final build. Inspected screenshots.
+- Passed: 49 unique migration IDs, local document links, SIPp XML and Bash syntax.
+- GitHub: [complete CI](https://github.com/itsh-neumeier/talkops/actions/runs/39247229234)
+  passed on `63dde4e`: Rust fmt, clippy, workspace tests, web/browser checks,
+  Compose, fax fixtures and both image builds.
+- GitHub: [full stack E2E](https://github.com/itsh-neumeier/talkops/actions/runs/39247229232)
+  passed on `63dde4e`. This includes the new real SIP rejection/whitelist
+  scenario, historical decision check, fax media and browser softphone.
+- Corrected: initial clippy findings in new tests used unnecessary clones.
+  Full local workspace clippy also finds an existing Windows-only dead-code
+  warning in the unchanged media-worker. Linux CI passed that clippy step.
+- CodeRabbit CLI is not installed. Completed a local diff review.
 - Local setup: PostgreSQL 17.11 uses an exclusive data directory at
   `C:/Users/timo/.codex/tmp/spam-blocking-pg` on port 55438. Verified with
   `SHOW data_directory`. Rust uses the installed MSVC toolchain because
@@ -73,7 +94,7 @@ worktree because its Git metadata is on a network share.
   `A:/aislop/codex/talkops/spam-blocking-target` after a disk-full failure.
 - Corrected during checks: Svelte pattern quoting and the expected filter
   order in a unit test. Converted local web checkout text to LF for lint;
-  no unrelated content changes are intended. Restored a document whose
+  no unrelated content changes are in the commits. Restored a document whose
   write failed when the disk filled, then applied its intended addition.
 - Not run locally: Docker/FreeSWITCH/SIPp stack. Docker daemon is unavailable.
   The new SIPp case is wired into the existing E2E workflow.
@@ -85,13 +106,15 @@ worktree because its Git metadata is on a network share.
 - Migration ID: `20261106000003` (nullable CDR reason, tenant whitelist).
   Existing rows retain a null reason. No automatic non-admin permission grant.
 - No new runtime package, external service or dependency on another PR.
-- Complete verification and review, then commit, push and update PR 56.
-  The release manager owns integration, versions, tags and publication.
+- Rechecked remote `main`: still `488e42a`. PR 55 has no migration. Shared
+  translation and CI files can need a mechanical merge that preserves both tasks.
+- No feature work remains. The release manager owns integration, versions,
+  tags and publication. Recheck migration IDs and target state at integration.
 
 ## Next action
 
-Finish Rust/API checks, inspect final diff and migration IDs, record results,
-commit and push, and update the PR description and readiness.
+Release manager: review and integrate PR 56. Preserve both tasks if shared
+translation or CI files need a merge. Validate the combined release candidate.
 
 ## References
 

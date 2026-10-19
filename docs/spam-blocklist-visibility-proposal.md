@@ -1,6 +1,6 @@
 # Blocked calls and local whitelist: proposal for user review
 
-Status: Accepted by the user on 2026-10-19. Implementation and verification in progress.
+Status: Implemented and verified. User approval: 2026-10-19.
 Date: 2026-10-19 (Europe/Berlin).
 Base: `origin/main`, `488e42a1a5e2853ef1ce5a5e0ada253d97a5c99d`.
 

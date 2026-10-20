@@ -5,7 +5,7 @@
 - Task ID: 20261020-codex-readme-wiki-proposal
 - Date: 2026-10-20, Europe/Berlin
 - Tool: Codex
-- Status: Implementation complete; final PR checks and release handoff in progress.
+- Status: Completed implementation; current GitHub check and readiness state is in PR #58.
 - Branch: codex/readme-wiki-proposal
 - Base commit: b1fa28350dc1830e222a27ee770641edb1935ccc
 - Related PR: https://github.com/itsh-neumeier/talkops/pull/58
@@ -66,12 +66,19 @@ The live Wiki is not published. Use the release-chat procedure in docs/wiki/READ
 - Passed: node scripts/docs/build-wiki.mjs --check, 73 pages and 646 local links.
   Both builds in the reproducibility check produce identical bytes.
 - Passed: working-copy Wiki generation and generated navigation/fragment checks.
+- Passed: GitHub Markdown API rendered ten representative source/generated pages.
+  Both README tables and all three tables in each language reference render
+  correctly. The localhost WebSocket reference matches the source port 5066.
 - Passed: manifest covers all 34 pairs and every current UI +page.svelte route.
 - Passed: README and maintainer links/fragments, case-insensitive slug uniqueness,
   missing translation/target/fragment, external URLs with parentheses, code
   examples, source-only references, local images and input/output symlink cases.
 - Passed: git diff --check. Application crates, migrations, versions, Compose
   defaults and package dependency files remain unchanged.
+- Corrected: final whitespace review found a damaged English reference table.
+  Restored its Markdown separators and checked the rendered tables in both languages.
+- Passed: initial implementation's GitHub Node 22 documentation job. Final-head
+  results and all application CI/E2E results are recorded in the PR.
 - Not run locally: Rust/database, web application, Docker image, SIP/hardware,
   provider fax and production recovery tests. No runtime behavior changed.
   The existing full CI/E2E workflows also run on the PR; consult exact-head results.
@@ -93,8 +100,8 @@ The live Wiki is not published. Use the release-chat procedure in docs/wiki/READ
 
 ## Next action
 
-Finish PR checks and mark PR #58 ready after relevant documentation checks pass.
-The release chat integrates the PR, builds the clean source with --release and
+Use PR #58 for final check results and readiness. The release chat integrates
+the PR, builds the clean source with --release and
 publishes the Wiki through the recorded procedure. Do not force-push Wiki history.
 
 ## References

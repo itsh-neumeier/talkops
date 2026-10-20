@@ -53,7 +53,7 @@ Konto. Audio- und Videoeinstellungen stehen unter [Codec-Profile](codec-profile.
 ## Nicht stören und Weiterleitung ändern
 
 1. Öffne **Einstellungen → Meine Telefone** und suche die Nebenstelle.
-2. Setze **Nicht stören** oder trage das Ziel für **Alle Anrufe weiterleiten an** ein.
+2. Setze **Nicht stören** oder trage das Ziel für **Alle Anrufe umleiten an** ein.
 3. Speichere und rufe die Nebenstelle von einem zweiten Telefon an.
 4. Leere später das Weiterleitungsfeld oder deaktiviere Nicht stören.
 

@@ -1,5 +1,11 @@
 # Audit log
 
+[Handbook](index.md) · [Deutsch](../de/audit-log.md)
+
+## Before you start
+
+You need: audit.view for the log; audit.manage for retention and export configuration.
+
 TalkOps writes an audit entry for each administrative change. An entry has
 the time, the user, the IP address, the action, the object and details. The
 details never contain passwords or keys.
@@ -87,3 +93,9 @@ FTPS, HTTPS, S3 with TLS or SMB 3).
   (`audit.manage`).
 
 See [ADR 0037](../adr/0037-audit-export-and-retention.md).
+
+## Check the result
+
+Make a harmless audited change and inspect its actor, action and permitted export.
+
+For failures, use [troubleshooting](troubleshooting.md). Preserve existing data and configuration during diagnosis.

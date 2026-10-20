@@ -1,5 +1,11 @@
 # Active calls
 
+[Handbook](index.md) · [Deutsch](../de/laufende-gespraeche.md)
+
+## Before you start
+
+You need: calls.active for the dashboard; live transcript permissions are separate.
+
 The dashboard shows direction and local extension in the first line.
 The second line shows the remote party. Names come from all phonebook sections
 and all three number fields. National and international formats match the
@@ -91,3 +97,9 @@ worker together. Run migrations before use.
 See [recording settings](recording.md) and
 implementation ([ADR 0022](../adr/0022-active-call-identities-and-live-previews.md),
 [ADR 0024](../adr/0024-transcription-engines-per-purpose.md)).
+
+## Check the result
+
+Place a test call and confirm the live view and its completed call-log entry.
+
+For failures, use [troubleshooting](troubleshooting.md). Preserve existing data and configuration during diagnosis.

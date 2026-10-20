@@ -1,5 +1,11 @@
 # Änderungsprotokoll (Audit-Log)
 
+[Handbuch](index.md) · [English](../en/audit-log.md)
+
+## Voraussetzungen
+
+Du benötigst: audit.view für das Protokoll; audit.manage für Aufbewahrung und Export.
+
 TalkOps schreibt für jede administrative Änderung einen Audit-Eintrag mit
 Zeit, Benutzer, IP-Adresse, Aktion, Objekt und Details. Die Details enthalten
 nie Passwörter oder Schlüssel.
@@ -80,3 +86,9 @@ verschlüsselt die Dateien nicht; ein Speicherziel mit verschlüsselter
 Übertragung verwenden (SFTP, FTPS, HTTPS, S3 mit TLS oder SMB 3).
 
 Die API steht in der [englischen Anleitung](../en/audit-log.md#api).
+
+## Ergebnis prüfen
+
+Führe eine unkritische protokollierte Änderung aus und prüfe Akteur, Aktion und erlaubten Export.
+
+Bei Fehlern: [Fehlerbehebung](fehlerbehebung.md). Erhalte bisherige Daten und Konfiguration während der Diagnose.

@@ -1,21 +1,23 @@
 # README and bilingual handbook proposal
 
-Status: Proposed. User feedback is required before implementation.
+Status: Approved by the user on 2026-10-20 with "Ja mach das so".
+Implementation continues in PR #58. The sections below record the agreed scope.
 Review base: `b1fa28350dc1830e222a27ee770641edb1935ccc` on `origin/main`.
 Review date: 2026-10-20 (Europe/Berlin).
 
 ## Review scope
 
 This proposal defines the README, handbook structure and GitHub Wiki delivery.
-It includes sample text for review. This PR adds only the proposal and its task
-summary. The current README, user guides, application and live Wiki stay as they
-are until the user reviews the proposal.
+It includes the sample text used for review. The initial PR added only this
+proposal and its task summary. After approval, the same PR implements the
+README, handbook sources and Wiki build tools. Live Wiki publication stays with
+the release chat.
 
 The user requested this review before changes. After approval, implement the
 agreed scope on this branch and keep the PR in draft until checks pass.
 The release chat owns merges, version changes, tags and publication.
 
-## Current state and corrections
+## State at the initial review and required corrections
 
 - The remote default branch is `main`. The base contains TalkOps version 1.8.5
   in [Cargo.toml](../../Cargo.toml) and [CHANGELOG.md](../../CHANGELOG.md).
@@ -244,11 +246,11 @@ separate checks. An inaccessible Wiki must not be reported as published.
   tests are required only if implementation changes application behavior.
   Existing repository CI remains the validation contract for the final PR.
 
-## Feedback requested
+## Approved scope
 
 Recommended scope: English `README.md` plus German `README.de.md`; the 34 topic
 pairs above; repository sources with a generated Wiki; publication by the release
-chat. The user can approve this scope or request changes before implementation.
+chat. The user approved this scope before implementation.
 
 No migration IDs, dependency upgrades or runtime compatibility changes are
 proposed. Suggested release notes after implementation:
@@ -256,4 +258,4 @@ proposed. Suggested release notes after implementation:
 > Add English and German README entry points and a complete bilingual handbook.
 > Add checked GitHub Wiki generation from the reviewed documentation sources.
 
-Do not use those release notes for this proposal-only PR state.
+Use those release notes when the agreed implementation passes its checks.

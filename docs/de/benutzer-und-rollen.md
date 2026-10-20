@@ -1,5 +1,11 @@
 # Benutzer und Rollen
 
+[Handbuch](index.md) · [English](../en/users-and-roles.md)
+
+## Voraussetzungen
+
+Du benötigst: Ein Administratorkonto für Rollenänderungen; Benutzerverwaltung benötigt users.manage.
+
 Das Recht **Whitelist verwalten** (`blocking.allowlist`) erlaubt das Lesen,
 Hinzufügen und Entfernen exakter Rufnummern-Ausnahmen für den gesamten
 Mandanten. Standardmäßig hat es nur der Administrator. Es ist unabhängig
@@ -75,8 +81,48 @@ fest, wer sich anmelden darf.
 
 ## Berechtigungen
 
-Die vollständige Liste mit den Schlüsseln steht in der
-[englischen Dokumentation](../en/users-and-roles.md#permissions).
+| Bereich | Berechtigung | Schlüssel |
+| --- | --- | --- |
+| Anrufe | Laufende Gespräche und Statistik sehen | `calls.active` |
+| Anrufe | Alle Anrufdatensätze sehen | `calls.view_all` |
+| Anrufe | Live-Transkript eigener Gespräche | `calls.live_transcript` |
+| Anrufe | Live-Transkript aller Gespräche | `calls.live_transcript_all` |
+| Aufzeichnungen | Alle Aufzeichnungen/Transkripte, protokolliert | `recordings.access_all` |
+| Aufzeichnungen | Aufzeichnungen löschen | `recordings.delete` |
+| Aufzeichnungen | Erneut transkribieren | `recordings.retranscribe` |
+| Aufzeichnungen | Eigene Transkriptionsaufträge | `transcriptions.view` |
+| Aufzeichnungen | Alle Transkriptionsaufträge und Worker-Ressourcen | `transcriptions.manage` |
+| Voicemail | Alle Mailboxen | `voicemail.access_all` |
+| Voicemail | Voicemail- und Mail-Einstellungen | `voicemail.settings` |
+| Telefonbuch | Kontakte und Bereiche bearbeiten/importieren | `phonebook.edit` |
+| Nebenstellen | Nebenstellen sehen | `extensions.view` |
+| Nebenstellen | Nebenstellen verwalten | `extensions.manage` |
+| Nebenstellen | Softphone mit beliebiger Nebenstelle | `softphone.any_extension` |
+| Benutzer | Benutzer sehen | `users.view` |
+| Benutzer | Benutzer verwalten, kritisch | `users.manage` |
+| Anrufsteuerung | Anrufsteuerung sehen | `routing.view` |
+| Anrufsteuerung | Anrufsteuerung verwalten | `routing.manage` |
+| Anrufsteuerung | Zeitsteuerung umschalten | `routing.override` |
+| Anrufsteuerung | Nummern sperren | `blocking.manage` |
+| Anrufsteuerung | Spam-Schutz einstellen | `blocking.settings` |
+| Anrufsteuerung | Exakte lokale Whitelist-Ausnahmen verwalten | `blocking.allowlist` |
+| Trunks | Trunks und Nummern sehen | `trunks.view` |
+| Trunks | Trunks und Nummern verwalten, kritisch | `trunks.manage` |
+| Telefone | Telefone sehen | `phones.view` |
+| Telefone | Telefone verwalten | `phones.manage` |
+| Türen | Türsprechstellen verwalten | `doors.manage` |
+| System | Telefonieeinstellungen | `settings.manage` |
+| System | Transkriptionseinstellungen, kritisch | `transcription.settings` |
+| System | SIP-Anmeldeschutz, kritisch | `security.manage` |
+| System | LDAP und SSO, kritisch | `identity.manage` |
+| System | Backups, kritisch | `backups.manage` |
+| System | Speicherziele, kritisch | `storage.manage` |
+| System | Diagnose und Neustart, kritisch | `diagnostics.manage` |
+| System | Änderungsprotokoll lesen | `audit.view` |
+| System | Audit-Aufbewahrung und Export, kritisch | `audit.manage` |
+
+Die zusätzlichen Faxrechte stehen in [Fax](fax.md). Sie gelten unabhängig von
+den Rechten für Telefonie und Anrufdatensätze.
 
 Filter, Downloads, Aufbewahrung und automatischen Export des
 Änderungsprotokolls beschreibt [Änderungsprotokoll](audit-log.md).
@@ -92,3 +138,9 @@ Filter, Downloads, Aufbewahrung und automatischen Export des
   eingebaute Rolle.
 - `GET /api/v1/auth/me` liefert `permissions` (für Administratoren alle
   Schlüssel).
+
+## Ergebnis prüfen
+
+Melde dich als betroffener Testbenutzer an und prüfe erlaubte und gesperrte Aktionen.
+
+Bei Fehlern: [Fehlerbehebung](fehlerbehebung.md). Erhalte bisherige Daten und Konfiguration während der Diagnose.

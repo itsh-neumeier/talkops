@@ -1,5 +1,11 @@
 # Gesprächsaufzeichnung und Transkription
 
+[Handbuch](index.md) · [English](../en/recording.md)
+
+## Voraussetzungen
+
+Du benötigst: settings.manage für Aufzeichnungsvorgaben; transcription.settings für Engine-Verbindungen.
+
 TalkOps kann Gespräche aufzeichnen, Aufnahmen und Sprachnachrichten lokal in
 Text umwandeln (Whisper) und diesen Text durchsuchen. Kein Audio verlässt den
 Server.
@@ -207,3 +213,9 @@ sich direkt abspielen.
 Eine Minute Gespräch belegt etwa 1,9 MB (8 kHz, 16 Bit, Stereo; mit
 HD-Codecs mehr). Aufnahmen liegen im Volume `recordings`
 (`<mandant>/<jahr-monat>/<anruf>.wav`) – denken Sie an die Datensicherung.
+
+## Ergebnis prüfen
+
+Zeichne einen erlaubten Testanruf auf und prüfe Wiedergabe, Transkript und Zugriffsbeschränkungen.
+
+Bei Fehlern: [Fehlerbehebung](fehlerbehebung.md). Erhalte bisherige Daten und Konfiguration während der Diagnose.

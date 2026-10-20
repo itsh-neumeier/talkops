@@ -1,5 +1,11 @@
 # Call recording and transcription
 
+[Handbook](index.md) · [Deutsch](../de/aufzeichnung.md)
+
+## Before you start
+
+You need: settings.manage for recording defaults; transcription.settings for engine connections.
+
 TalkOps can record calls, turn recordings and voicemails into text locally
 (Whisper) and search that text. No audio leaves the server.
 
@@ -198,3 +204,9 @@ voicemails. Syntax as in web search engines: `"exact phrase"`, `-exclude`,
 One minute of a call takes about 1.9 MB (8 kHz, 16 bit, stereo; more with HD
 codecs). Recordings live in the `recordings` volume
 (`<tenant>/<year-month>/<call>.wav`) – include it in your backups.
+
+## Check the result
+
+Record a permitted test call and confirm playback, transcript and access restrictions.
+
+For failures, use [troubleshooting](troubleshooting.md). Preserve existing data and configuration during diagnosis.

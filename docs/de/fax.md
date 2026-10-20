@@ -1,5 +1,11 @@
 # Fax
 
+[Handbuch](index.md) · [English](../en/fax.md)
+
+## Voraussetzungen
+
+Du benötigst: fax.manage für Einrichtung und die aufgeführten Faxrechte für Versand und Lesen.
+
 TalkOps versendet PDFs und Bilder als Fax über einen SIP-Trunk. Eingehende
 Faxrufnummern liefern Dokumente in einen Eingang und optional per E-Mail.
 Nach einem Upgrade ist Fax zunächst deaktiviert.
@@ -219,3 +225,9 @@ vor dem Start des Fax-Empfängers ab. Deshalb können null Sekunden Dauer und
 Die Sperrentscheidung in den Einstellungen für Anrufsperren prüfen. Danach
 den Empfang mit einem zugelassenen Anrufer testen. Diese Speicherkorrektur
 ändert keine Spam-Regeln, Ausnahmen oder T.38-Einstellungen.
+
+## Ergebnis prüfen
+
+Prüfe Speicher, Vorschau und Providerübertragung mit einem unkritischen Testdokument in beide Richtungen.
+
+Bei Fehlern: [Fehlerbehebung](fehlerbehebung.md). Erhalte bisherige Daten und Konfiguration während der Diagnose.

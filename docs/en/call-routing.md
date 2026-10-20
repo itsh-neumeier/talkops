@@ -1,5 +1,11 @@
 # Call routing
 
+[Handbook](index.md) · [Deutsch](../de/anrufsteuerung.md)
+
+## Before you start
+
+You need: routing.manage for flow changes; blocking permissions are separate.
+
 **Settings → Call routing** decides where calls go. Phone numbers, fallbacks, menu keys
 and opening hours can point to any destination: extension, an extension's
 voicemail, ring group, time condition, Smart Attendant or queue. Internal numbers
@@ -119,3 +125,9 @@ audit entry. Backups include the whitelist and stored call decisions.
 The API provides `GET` and `POST /api/v1/call-allowlist` and
 `DELETE /api/v1/call-allowlist/{id}`. Each operation requires
 `blocking.allowlist`. Duplicate creation returns the existing entry.
+
+## Check the result
+
+Call a test number through each changed branch, including timeout and closed hours.
+
+For failures, use [troubleshooting](troubleshooting.md). Preserve existing data and configuration during diagnosis.

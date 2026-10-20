@@ -1,5 +1,11 @@
 # Provisionierungsprofile und Vorlagen
 
+[Handbuch](index.md) · [English](../en/provisioning.md)
+
+## Voraussetzungen
+
+Du benötigst: phones.manage, ein unterstütztes Gerät und eine erreichbare Provisionierungsadresse.
+
 Die zusätzlichen Herstellerprofile und Kategorien sind unter
 [Herstellereinstellungen und Gerätekopien](hersteller-provisionierung.md)
 beschrieben.
@@ -130,3 +136,9 @@ Zugangsdaten und Kontozuordnungen bleiben erhalten. Ältere API-Clients, die
 `provisioning` nicht mitsenden, bewahren die gespeicherten Ausnahmen.
 Nach Änderungen am Telefon synchronisieren. Ein alter „Zuletzt gesehen“-Wert
 bestätigt keinen neuen erfolgreichen Resync.
+
+## Ergebnis prüfen
+
+Prüfe tatsächlichen Geräteabruf, Kontoregistrierung und einen Testanruf.
+
+Bei Fehlern: [Fehlerbehebung](fehlerbehebung.md). Erhalte bisherige Daten und Konfiguration während der Diagnose.

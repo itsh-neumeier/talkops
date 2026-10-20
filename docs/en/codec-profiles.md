@@ -1,5 +1,11 @@
 # Codec profiles and video per device
 
+[Handbook](index.md) · [Deutsch](../de/codec-profile.md)
+
+## Before you start
+
+You need: Access to own device settings or extensions.manage for other extensions.
+
 A codec profile sets the audio codec that TalkOps uses with one device.
 TalkOps (FreeSWITCH) converts the audio for the other party. The other party
 keeps its codec. Use a profile for devices in a Wi-Fi network with packet
@@ -106,3 +112,9 @@ These settings in the Wi-Fi network often help more than the codec:
 (`read_codec` and `write_codec`). A call to a device with Robust shows
 `iLBC` on the leg of the device and the codec of the other party on the
 other leg.
+
+## Check the result
+
+Test the actual audio/video path after a new registration or provisioning download.
+
+For failures, use [troubleshooting](troubleshooting.md). Preserve existing data and configuration during diagnosis.

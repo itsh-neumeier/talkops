@@ -1,5 +1,11 @@
 # Call log
 
+[Handbook](index.md) · [Deutsch](../de/anrufliste.md)
+
+## Before you start
+
+You need: A signed-in account; calls.view_all for other users’ calls.
+
 The **Call log** shows the finished calls. Admins and operators see all
 calls. Users see the calls of their own extensions.
 
@@ -112,3 +118,9 @@ whitelist managers also receive current `allowlisted` membership.
 
 Older records without a stored reason keep their previous result. TalkOps
 does not infer a reason from a general rejection or today's block lists.
+
+## Check the result
+
+Compare a completed test call with its time, direction, result and filters.
+
+For failures, use [troubleshooting](troubleshooting.md). Preserve existing data and configuration during diagnosis.

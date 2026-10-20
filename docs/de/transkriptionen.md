@@ -1,5 +1,11 @@
 # Transkriptions-Jobs
 
+[Handbuch](index.md) · [English](../en/transcriptions.md)
+
+## Voraussetzungen
+
+Du benötigst: transcriptions.view für eigene Aufträge; transcriptions.manage für alle Aufträge/Ressourcen.
+
 ## Aufnahme erneut transkribieren
 
 1. Öffne die **Anrufliste** und klicke bei einem Anruf auf **Aufnahme**.
@@ -99,3 +105,9 @@ folgt danach Änderungen langsam. Fortgesetzte Läufe zählen nicht.
 ## API
 
 Siehe die [englische Dokumentation](../en/transcriptions.md#api).
+
+## Ergebnis prüfen
+
+Verarbeite eine erlaubte Aufnahme und prüfe Abschluss, Text und gewählte Engine.
+
+Bei Fehlern: [Fehlerbehebung](fehlerbehebung.md). Erhalte bisherige Daten und Konfiguration während der Diagnose.

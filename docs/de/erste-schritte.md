@@ -1,5 +1,11 @@
 # Erste Schritte
 
+[Handbuch](index.md) · [English](../en/first-steps.md)
+
+## Voraussetzungen
+
+Du benötigst: Das erste Administratorkonto und eine laufende Installation.
+
 Bei der Ersteinrichtung zwischen einer neuen Instanz und Wiederherstellung aus
 Backup wählen. Der Restore legt keinen Ersatz-Administrator an; danach die
 wiederhergestellten Konten verwenden. Siehe
@@ -33,7 +39,8 @@ Schritte abhakt, sobald sie erledigt sind.
    - Passwort: das angezeigte SIP-Passwort
 
    Mehrere Geräte einer Nebenstelle klingeln gleichzeitig.
-   Yealink-Autoprovisioning folgt in Phase 2.
+   Automatische Einrichtung erklären [Provisionierung](provisionierung.md),
+   [Herstellereinstellungen](hersteller-provisionierung.md) und [Yealink](yealink.md).
 7. **Rufnummern zuordnen.** *Einstellungen → Rufnummern* (oder beim Trunk): für jede
    Rufnummer die (primäre) Nebenstelle wählen, bei der sie klingeln soll. Unter
    *Weitere Nebenstellen klingeln lassen …* klingeln zusätzliche Nebenstellen
@@ -81,3 +88,9 @@ SIP-Adressen sind erkennbar an Buchstaben im Namen; reine Ziffern
 Telefonie → SIP-Adressen wählen erlauben*. Für direkte Anrufe übers
 Internet sollte die externe IP eingetragen sein, sonst kommt der Ton
 womöglich nicht an.
+
+## Ergebnis prüfen
+
+Rufe eine zweite Nebenstelle an und prüfe normale ein- und ausgehende Anrufe.
+
+Bei Fehlern: [Fehlerbehebung](fehlerbehebung.md). Erhalte bisherige Daten und Konfiguration während der Diagnose.

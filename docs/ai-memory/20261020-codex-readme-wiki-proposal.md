@@ -8,7 +8,8 @@
 - Status: In progress; proposal prepared for user feedback.
 - Branch: codex/readme-wiki-proposal
 - Base commit: b1fa28350dc1830e222a27ee770641edb1935ccc
-- Related commits or PR: Pending
+- Related PR: https://github.com/itsh-neumeier/talkops/pull/58 (draft)
+- Initial proposal commit: b8a8783
 
 ## Goal
 
@@ -20,6 +21,7 @@ Commit, push and PR creation are authorized. The release chat owns publication.
 
 Prepared a proposal with README samples, a full source inventory, missing
 chapters, Wiki generation, publication steps and acceptance checks.
+Committed and pushed the proposal. Draft PR #58 is available for scope review.
 README, current guides, application code and live Wiki are unchanged.
 The proposed implementation is not complete and the PR must remain a draft.
 
@@ -63,11 +65,11 @@ The proposed implementation is not complete and the PR must remain a draft.
 - No known PR dependency. Recheck the target and open PRs after approval.
 - Migration IDs: None. No dependency, version or runtime changes.
 - Wiki access, potential initialization and publication require a later check.
-- Commit, push and draft PR: Pending.
+- Draft PR #58 contains the proposal and handoff; implementation is pending.
 
 ## Next action
 
-Publish the proposal as a draft PR and ask the user to review its scope.
+Ask the user to review the proposal in draft PR #58.
 After feedback, implement the agreed handbook and documentation checks on this
 branch. Keep the PR draft until implementation and relevant checks are complete.
 

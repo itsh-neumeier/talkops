@@ -23,7 +23,10 @@ release versions, tags and publication, including the live Wiki.
 Implemented English and German README entry points, 34 topic pairs, two language
 indexes and a reproducible Wiki build. The output has 73 Markdown pages, including
 Home, sidebar and footer. Existing guide paths remain valid.
-The live Wiki is not published. Use the release-chat procedure in docs/wiki/README.md.
+The user authorized Wiki publication in this chat on 2026-10-21. The live Wiki
+is now published from source 9010545. See the
+[publication summary](20261021-codex-wiki-publication.md) for the Wiki commit
+and live checks. PR #58 remains open for the release chat to merge the sources.
 
 ## Changes
 
@@ -93,16 +96,16 @@ The live Wiki is not published. Use the release-chat procedure in docs/wiki/READ
 
 - No PR dependency, new packages, migration IDs, runtime or upgrade changes.
 - Full PR CI status is recorded in the PR, rather than inferred from this summary.
-- Release chat must check Wiki access/initialization and existing content, build
-  from the agreed clean source commit, publish and verify rendered pages.
+- Wiki publication from 9010545 is complete. The user-provided initialized Wiki
+  was inspected, published and verified as recorded in the publication summary.
 - Local documentation checks do not certify real hardware, provider fax or
   recovery behavior. Their existing deployment acceptance checks still apply.
 
 ## Next action
 
 Use PR #58 for final check results and readiness. The release chat integrates
-the PR, builds the clean source with --release and
-publishes the Wiki through the recorded procedure. Do not force-push Wiki history.
+the source PR. The Wiki is already live; future source changes need a separate
+reviewed Wiki update through the recorded procedure.
 
 ## References
 

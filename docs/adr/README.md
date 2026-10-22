@@ -46,6 +46,7 @@ nächste freie Nummer; überholte ADRs werden nicht gelöscht, sondern auf
 | [0039](0039-source-derived-multi-vendor-provisioning.md) | Source-derived manufacturer provisioning and device copies | Accepted |
 | [0040](0040-fax-over-sip-and-mail-input.md) | Fax over SIP and mailbox input | Accepted |
 | [0041](0041-wifi-voice-survey-and-unifi-correlation.md) | Wi-Fi voice survey and read-only UniFi correlation | Accepted |
+| [0042](0042-wifi-optimization-with-confirmed-changes.md) | Wi-Fi optimization with confirmed changes | Proposed |
 
 
 Vorlage: [`template.md`](template.md)

@@ -36,6 +36,7 @@ pub enum Outcome {
 /// database failed and the record must be delivered again.
 pub async fn ingest(state: &AppState, xml: &str) -> Result<Outcome, CoreError> {
     crate::fax::ingest_cdr(&state.db, xml).await?;
+    crate::wifi_survey::ingest_cdr(state, xml).await?;
     let (tenant, cdr, recording) = match fsxml::cdr::parse(xml) {
         Ok(Some(parsed)) => parsed,
         Ok(None) => {

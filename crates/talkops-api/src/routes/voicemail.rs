@@ -132,11 +132,88 @@ pub(crate) async fn wav(path: std::path::PathBuf) -> ApiResult<Response> {
         [
             (header::CONTENT_TYPE, "audio/wav".to_owned()),
             (header::CONTENT_LENGTH, len.to_string()),
+            (header::ACCEPT_RANGES, "bytes".to_owned()),
             (header::CACHE_CONTROL, "no-store".to_owned()),
         ],
         Body::from_stream(tokio_util::io::ReaderStream::new(file)),
     )
         .into_response())
+}
+
+/// Parses a single `Range: bytes=…` request against a file of `len` bytes.
+/// Returns the inclusive byte range, `Err` for an unsatisfiable range, and
+/// `Ok(None)` without a usable header (the full file).
+pub(crate) fn byte_range(header: Option<&str>, len: u64) -> Result<Option<(u64, u64)>, ()> {
+    let Some(spec) = header.and_then(|h| h.trim().strip_prefix("bytes=")) else {
+        return Ok(None);
+    };
+    // Several ranges: answer with the full file.
+    if spec.contains(',') || len == 0 {
+        return Ok(None);
+    }
+    let (start, end) = spec.split_once('-').ok_or(())?;
+    let (start, end) = match (start.trim(), end.trim()) {
+        ("", suffix) => {
+            let n: u64 = suffix.parse().map_err(|_| ())?;
+            if n == 0 {
+                return Err(());
+            }
+            (len.saturating_sub(n), len - 1)
+        }
+        (s, "") => (s.parse().map_err(|_| ())?, len - 1),
+        (s, e) => (
+            s.parse().map_err(|_| ())?,
+            e.parse::<u64>().map_err(|_| ())?.min(len - 1),
+        ),
+    };
+    if start > end || start >= len {
+        return Err(());
+    }
+    Ok(Some((start, end)))
+}
+
+/// A WAV file with HTTP range support, so the browser can start playback
+/// at any position without loading the whole file.
+pub(crate) async fn wav_range(
+    path: std::path::PathBuf,
+    headers: &axum::http::HeaderMap,
+) -> ApiResult<Response> {
+    use tokio::io::{AsyncReadExt, AsyncSeekExt};
+    let mut file = tokio::fs::File::open(&path)
+        .await
+        .map_err(|_| ApiError::NotFound)?;
+    let len = file
+        .metadata()
+        .await
+        .map_err(|e| ApiError::Internal(e.to_string()))?
+        .len();
+    let range = headers.get(header::RANGE).and_then(|v| v.to_str().ok());
+    match byte_range(range, len) {
+        Ok(None) => wav(path).await,
+        Err(()) => Ok((
+            axum::http::StatusCode::RANGE_NOT_SATISFIABLE,
+            [(header::CONTENT_RANGE, format!("bytes */{len}"))],
+        )
+            .into_response()),
+        Ok(Some((start, end))) => {
+            file.seek(std::io::SeekFrom::Start(start))
+                .await
+                .map_err(|e| ApiError::Internal(e.to_string()))?;
+            let part = end - start + 1;
+            Ok((
+                axum::http::StatusCode::PARTIAL_CONTENT,
+                [
+                    (header::CONTENT_TYPE, "audio/wav".to_owned()),
+                    (header::CONTENT_LENGTH, part.to_string()),
+                    (header::CONTENT_RANGE, format!("bytes {start}-{end}/{len}")),
+                    (header::ACCEPT_RANGES, "bytes".to_owned()),
+                    (header::CACHE_CONTROL, "no-store".to_owned()),
+                ],
+                Body::from_stream(tokio_util::io::ReaderStream::new(file.take(part))),
+            )
+                .into_response())
+        }
+    }
 }
 
 /// The custom greeting (recorded or TTS) as WAV.

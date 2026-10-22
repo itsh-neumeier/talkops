@@ -3518,6 +3518,7 @@ dependencies = [
  "talkops-doorbell",
  "talkops-esl",
  "talkops-provisioning",
+ "talkops-unifi",
  "tar",
  "tempfile",
  "thiserror 2.0.21",

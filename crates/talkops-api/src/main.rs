@@ -294,12 +294,15 @@ async fn serve(config: Config) -> anyhow::Result<()> {
                 .is_some_and(|v| v.starts_with("fax_"))
             {
                 talkops_api::fax::handle(session, state).await;
+            } else if session.var("talkops_app") == Some(talkops_api::wifi_survey::APP) {
+                talkops_api::wifi_survey::handle(session, state).await;
             } else {
                 talkops_api::voicemail::handle(session, ctx).await;
             }
         }
     }));
     talkops_api::fax::spawn(state.clone());
+    talkops_api::wifi_survey::spawn(state.clone());
     talkops_api::mailer::spawn(state.db.clone(), state.secrets.clone(), state.media.clone());
     talkops_api::notifier::spawn(state.db.clone(), state.secrets.clone(), state.media.clone());
     talkops_api::retention::spawn(db.clone(), state.media.clone());

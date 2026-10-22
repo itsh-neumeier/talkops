@@ -8,7 +8,7 @@
 - Status: In progress (proposal published, waiting for user review)
 - Branch: `claude/wonderful-fermat-6iar0b`
 - Base commit: `b1fa28350dc1830e222a27ee770641edb1935ccc` (`origin/main`, TalkOps 1.8.5)
-- Related commits or PR: draft PR, see the PR list of the branch
+- Related commits or PR: https://github.com/itsh-neumeier/talkops/pull/59 (draft)
 
 ## Goal
 

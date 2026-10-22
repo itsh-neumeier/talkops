@@ -1,6 +1,6 @@
 # 0041 - Wi-Fi voice survey and read-only UniFi correlation
 
-- Status: Proposed (draft for user review, 2026-10-22).
+- Status: Accepted by the user on 2026-10-22.
 - Extends: ADRs 0005, 0006, 0008, 0012 and 0029.
 - Proposal: [Wi-Fi voice survey proposal](../wlan-voice-survey-proposal.md).
 
@@ -49,13 +49,21 @@ between Network versions.
   certificate from the system trust store or a pinned SHA-256 fingerprint.
   Do not offer an option that ignores TLS errors.
 - TalkOps originates the survey call to one device through ESL and controls
-  it with the outbound socket (ADR 0006). The survey records the call with
-  `record_session` in stereo (ADR 0012). A self-dial feature code starts
-  only a survey that a user armed in the web UI.
+  it with the outbound socket (ADR 0006). The socket session plays the test
+  signal with `playback` and `playback_terminators=none`. `endless_playback`
+  is not used: it does not read the DTMF queue, so FreeSWITCH fires no
+  `DTMF` events. The survey records the call with `record_session` in
+  stereo (ADR 0012). The survey owns its recording file; it is not a row of
+  the `recordings` table, so it does not appear in the call recordings of
+  the extension and is deleted with the survey. The self-dial feature code
+  `*39` starts only a survey that a user armed in the web UI for the
+  calling device.
 - The API process collects raw samples during the call (3a for collection
   only). A media worker job (ADR 0005) does the analysis, the roam rating,
   pattern detection and recommendations (3b). Rules are pure functions in
   `talkops-core` with editable thresholds.
+- The live dashboard polls a compact endpoint once a second, like other
+  live views. It does not use a new WebSocket or SSE channel.
 - Collect Wi-Fi and location data only for an active survey and only for
   the survey device. Delete survey data and the survey recording after a
   configurable retention period (default 30 days).

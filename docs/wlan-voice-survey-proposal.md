@@ -1,9 +1,43 @@
 # Wi-Fi voice survey and roaming analysis: proposal for user review
 
-Status: Proposed. Waiting for user review. No code, migration or UI change yet.
+Status: Accepted by the user on 2026-10-22 ("Freigabe"). Implemented in the same PR.
 Date: 2026-10-22 (Europe/Berlin).
 Base: `origin/main`, `b1fa28350dc1830e222a27ee770641edb1935ccc` (TalkOps 1.8.5).
 ADR draft: [ADR 0041](adr/0041-wifi-voice-survey-and-unifi-correlation.md).
+
+## Implementation notes
+
+The user approved the proposal without changes to the open points. The
+implementation uses the recommended answers: `*39` for self-dial, read
+access to the classic `stat/sta` endpoint, one tone each second with an
+announcement every 30 s, a recording for each survey, 30 days retention
+and no survey permission for the operator role.
+
+Differences from the draft below:
+
+- Delivery: one PR, with one commit for each part. The session can push
+  only one branch, so a split into three PRs was not possible.
+- The survey owns its recording file (`recordings/wifi-surveys/<tenant>/<id>.wav`).
+  It is not a row of the `recordings` table. A survey row has
+  `recording_file` instead of `recording_id`.
+- The test signal plays with `playback` in the socket session.
+  `endless_playback` does not read the DTMF queue, so FreeSWITCH fires no
+  `DTMF` events during it (source check of `mod_dptools` and
+  `switch_ivr_play_say.c`, v1.10.12).
+- No confirmation tone after a DTMF marker. The handset plays its own key
+  tone, and a second audio stream would change the measured signal.
+- A loss block is more than `loss_block_pct` loss in the ±3 s window, not
+  in one second. With 20 ms packets, a 50 ms gap is already 5 % of one
+  second, so a per-second rule would rate every audible gap as bad.
+- Roam events from `stat/event` and syslog/SIEM are not read. Roams come
+  from AP changes in the samples.
+- Handset provisioning (VAD, DSCP) is not added. The Yealink AX8x
+  parameter names are not confirmed by official documentation in this
+  repository. The guide gives manual steps. This stays in stage 4.
+- Migration IDs: `20261107000001_unifi_connections.sql`,
+  `20261107000002_wifi_surveys.sql`.
+- New prompts `wifi_survey_running` and `wifi_survey_not_armed` (rendered
+  by the media worker at start like the other system prompts).
 
 ## Goal and review boundary
 

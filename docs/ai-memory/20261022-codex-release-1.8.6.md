@@ -104,3 +104,20 @@ and reference guides to 1.8.6, including both config tag and image version.
 Keep historical fax upgrade notes unchanged. All 13 documentation tests and
 Wiki --check passed again (75 pages/654 links). The candidate must be checked
 again on its new head. Earlier candidate runs are superseded, not final gates.
+
+## Merged checkpoint
+
+- Integration PR: https://github.com/itsh-neumeier/talkops/pull/60
+- Final candidate: e2ff772ce0fb9a988244fb7528f0760b7f382c96.
+- All 16 final candidate checks passed: PR CI39781490043/E2E39781490052 and
+  push CI39781481681/E2E39781481705. Rust: 442 passed, one existing ignored.
+  Web: 40 tests and 16 existing browser suites. Docs: 13 tests, 75 pages/654 links.
+  Fax G.711/T.38, storage smoke checks, SIPp and browser softphone passed.
+- Earlier candidate14513c8 CI passed, but its pending E2E runs were automatically
+  cancelled when installation examples changed. Those superseded runs are not gates.
+- PR60 merged 2026-10-22T13:10:49Z. PR58/59 became merged through it three seconds later.
+- Main: c093fa8dddd40a14823d9e6ed41922e0e38efc74. Its tree equals the final candidate.
+  Both source heads are ancestors. Main and source heads were unchanged before merge.
+- Exact-main CI39784592529 and E2E39784592569 are running. No tag exists yet.
+- FreeSWITCH sources/workflow did not change; no separate main run applies.
+- Do not push the batch branch again. Archive later task-only changes through the audit ref.

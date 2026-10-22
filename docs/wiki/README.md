@@ -7,7 +7,7 @@ The application PR and Wiki publication are separate operations.
 
 ## Source map
 
-[pages.json](pages.json) maps 34 topic pairs and the two language indexes.
+[pages.json](pages.json) maps 35 topic pairs and the two language indexes.
 Each pair has a stable ID, source filenames, translated titles and unique Wiki
 slugs. Section order sets navigation order. `routes` maps UI pages to chapters;
 `routeExceptions` explains pages covered through another entry.

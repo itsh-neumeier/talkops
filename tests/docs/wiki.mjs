@@ -128,9 +128,9 @@ test('refuses source and output directory links without writing through them', (
 	assert.deepEqual([...readFileSync(path.join(protectedDir, 'image.png'))], [7, 8, 9]);
 }));
 
-test('repository manifest covers 34 topic pairs and all UI page routes', () => {
+test('repository manifest covers 35 topic pairs and all UI page routes', () => {
 	const manifest = JSON.parse(readFileSync(path.join(root, 'docs/wiki/pages.json'), 'utf8'));
-	assert.equal(manifest.pages.length, 35);
+	assert.equal(manifest.pages.length, 36);
 	const covered = new Set(manifest.pages.flatMap((entry) => entry.routes ?? []));
 	const exceptions = manifest.routeExceptions;
 	const walk = (directory) => readdirSync(directory, { withFileTypes: true }).flatMap((entry) => entry.isDirectory() ? walk(path.join(directory, entry.name)) : [path.join(directory, entry.name)]);
@@ -139,7 +139,7 @@ test('repository manifest covers 34 topic pairs and all UI page routes', () => {
 	for (const route of routes) assert.ok(covered.has(route) || exceptions[route], `No handbook topic for UI route ${route}`);
 	for (const route of [...covered, ...Object.keys(exceptions)]) assert.ok(routes.includes(route), `Stale handbook route: ${route}`);
 	const { output, pageCount } = buildWiki({ root, revision, workingCopy: true });
-	assert.equal(pageCount, 73);
+	assert.equal(pageCount, 75);
 	for (const lang of ['en', 'de']) {
 		const index = readFileSync(path.join(root, `docs/${lang}/index.md`), 'utf8');
 		for (const entry of manifest.pages.filter((page) => page.id !== 'index')) {

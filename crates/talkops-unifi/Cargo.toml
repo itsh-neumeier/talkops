@@ -1,6 +1,6 @@
 [package]
 name = "talkops-unifi"
-description = "Read-only client for the UniFi Network application (Wi-Fi survey)"
+description = "UniFi Network client for the Wi-Fi survey (reads; voice SSID writes per ADR 0042)"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

@@ -1,5 +1,11 @@
 # E-mail notifications
 
+[Handbook](index.md) · [Deutsch](../de/benachrichtigungen.md)
+
+## Before you start
+
+You need: notifications.manage and working outgoing SMTP.
+
 TalkOps sends an e-mail when something important happens on the phone
 system: a trunk loses its registration, FreeSWITCH is not reachable, a backup
 fails, the disk is almost full or somebody changes the configuration.
@@ -67,3 +73,9 @@ can change subject and text like the voicemail mail. Placeholders:
 `event.time`, `event.details`, `event.count`, `event.recovery` (set for a
 recovery mail) and `event.digest` (list of a digest). The mail uses the
 default language from the telephony settings.
+
+## Check the result
+
+Trigger a harmless configured event and inspect recipient and delivery log.
+
+For failures, use [troubleshooting](troubleshooting.md). Preserve existing data and configuration during diagnosis.

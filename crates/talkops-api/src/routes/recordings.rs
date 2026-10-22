@@ -84,12 +84,18 @@ pub async fn recording_audio(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(id): Path<Uuid>,
+    headers: axum::http::HeaderMap,
 ) -> ApiResult<Response> {
     let (rec, mine) = accessible(&state, &auth, id).await?;
-    if !mine {
+    // Range requests of the same playback: audit the first one only.
+    if !mine
+        && headers
+            .get(axum::http::header::RANGE)
+            .is_none_or(|r| r.as_bytes().starts_with(b"bytes=0-"))
+    {
         audit_access(&state, &auth, &rec, "listen").await;
     }
-    super::voicemail::wav(state.media.recordings.join(&rec.file)).await
+    super::voicemail::wav_range(state.media.recordings.join(&rec.file), &headers).await
 }
 
 /// The recording's transcript.

@@ -423,6 +423,21 @@ Rejection notices and reports use the existing SMTP output and mail renderer.
 See [ADR 0040](adr/0040-fax-over-sip-and-mail-input.md) and
 [the user guide](en/fax.md).
 
+## Wi-Fi voice survey
+
+A survey is a test call to one Wi-Fi device (`DeviceKind::Wifi`). The API
+originates the call through ESL, or the handset dials `*39` for a survey
+that a user armed in the web UI. The outbound socket session records the
+call in stereo and plays the test signal. Once a second, the API reads the
+`mediaStats` JSON API of FreeSWITCH for the call and the Wi-Fi state of the
+handset MAC from UniFi Network (crate `talkops-unifi`, GET requests only).
+`DTMF` events become markers; `RECV_RTCP_MESSAGE` events give downlink loss
+and jitter. The call record adds the uplink error periods. The media
+worker job `wifi_survey.analyse` rates each roam, detects patterns and
+creates recommendations. The retention loop deletes surveys with their
+recordings. See [ADR 0041](adr/0041-wifi-voice-survey-and-unifi-correlation.md)
+and [the user guide](en/wifi-survey.md).
+
 ## Roadmap
 
 
@@ -438,3 +453,5 @@ See [ADR 0040](adr/0040-fax-over-sip-and-mail-input.md) and
 | 7 | WebRTC & Identität: Softphone mit Video, LDAP/AD, OIDC, 2FA | ✅ |
 | 8 | Betrieb: Backup/Restore, Metriken, Hardening, SIP-Anmeldeschutz, Setup-Assistent, Release 1.0 | ✅ (v1.0.0) |
 | 1.1 | Audio-Clips (Computerstimme, Aufnahme, Upload), Smart Attendant, Warteschlangen wie UniFi Talk, Übersicht mit Statistik, Yealink AX83H/AX86R | ✅ (v1.1.0) |
+| WLAN 1 | WLAN-Begehung: Testanruf an WLAN-Handsets, Messung je Sekunde, Aufnahme, DTMF-Markierungen, UniFi-Abgleich (nur lesend), Roaming-Bewertung, Live-Ansicht, Vergleich (ADR 0041) | ✅ (Test mit echter UniFi-Konsole und Handset offen) |
+| WLAN 2 | Handset-Provisioning (Roaming-Schwelle, VAD, DSCP) und schreibende UniFi-Änderungen nur nach Bestätigung, mit Snapshot und Rücknahme (eigene ADR) | geplant |

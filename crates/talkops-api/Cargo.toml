@@ -37,6 +37,7 @@ talkops-core.workspace = true
 talkops-doorbell = { version = "1.0.0", path = "../talkops-doorbell" }
 talkops-esl.workspace = true
 talkops-provisioning = { version = "1.0.0", path = "../talkops-provisioning" }
+talkops-unifi = { version = "1.0.0", path = "../talkops-unifi" }
 tokio.workspace = true
 tokio-tungstenite = "0.30.0"
 tokio-util = { version = "0.7.19", features = ["io"] }

@@ -1,5 +1,11 @@
 # Anrufliste
 
+[Handbuch](index.md) · [English](../en/call-log.md)
+
+## Voraussetzungen
+
+Du benötigst: Ein angemeldetes Konto; calls.view_all für fremde Anrufe.
+
 ## Blockierte Anrufe und Whitelist
 
 Anrufliste und letzte Anrufe zeigen **Blockiert** mit der Quelle:
@@ -116,3 +122,9 @@ nächsten Anrufe.
 `X-Total-Count` enthält die Zahl aller passenden Anrufe. Jeder Anruf enthält
 zusätzlich die aufgelösten Teilnehmer `caller` und `called` und bei
 eingehenden Anrufen `via_number`.
+
+## Ergebnis prüfen
+
+Vergleiche einen Testanruf mit Zeitpunkt, Richtung, Ergebnis und Filtern.
+
+Bei Fehlern: [Fehlerbehebung](fehlerbehebung.md). Erhalte bisherige Daten und Konfiguration während der Diagnose.

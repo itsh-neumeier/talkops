@@ -1,5 +1,11 @@
 # Yealink-Telefone einrichten
 
+[Handbuch](index.md) · [English](../en/yealink.md)
+
+## Voraussetzungen
+
+Du benötigst: phones.manage und ein unterstütztes Yealink-Modell mit Konfigurationszugriff.
+
 Geräte-Ausnahmen für HTTP/HTTPS, zusätzliche Tastengruppen, Vorlagen und
 Resync-Diagnose beschreibt [Provisionierungsprofile und Vorlagen](provisionierung.md).
 
@@ -378,3 +384,9 @@ betreibe TalkOps daher nur in einem vertrauenswürdigen Netz oder hinter dem
 optionalen Caddy mit HTTPS (dann `https://…/provisioning` verwenden). Mit
 **Neue Passwörter erzeugen** werden Provisioning- und Telefon-Admin-Passwort
 ausgetauscht.
+
+## Ergebnis prüfen
+
+Prüfe Registrierung, Testanruf, zugewiesene Tasten und gewählte Verzeichnisse am Telefon.
+
+Bei Fehlern: [Fehlerbehebung](fehlerbehebung.md). Erhalte bisherige Daten und Konfiguration während der Diagnose.

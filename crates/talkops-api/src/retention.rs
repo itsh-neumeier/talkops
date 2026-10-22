@@ -66,6 +66,14 @@ pub fn spawn(db: PgPool, media: Arc<MediaPaths>) {
                     }
                 }
             }
+            match talkops_core::wifi_survey::purge_expired(&db).await {
+                Ok(files) if files.is_empty() => {}
+                Ok(files) => {
+                    tracing::info!(count = files.len(), "expired Wi-Fi surveys deleted");
+                    crate::wifi_survey::remove_recordings(&media.recordings, &files).await;
+                }
+                Err(err) => tracing::warn!(error = %err, "Wi-Fi survey retention failed"),
+            }
             match crate::doors::purge(&db, &media.snapshots).await {
                 Ok(0) => {}
                 Ok(n) => tracing::info!(count = n, "expired door events deleted"),

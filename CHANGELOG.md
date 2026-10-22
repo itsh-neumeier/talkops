@@ -6,6 +6,38 @@ All notable changes to TalkOps. The format follows
 
 ## [Unreleased]
 
+## [1.8.6] – 2026-10-22
+
+### Added
+
+- Add a Wi-Fi voice survey for Wi-Fi handsets. Start a device call or arm a
+  self-dial survey with *39. Record the call and collect media samples and markers.
+- Add read-only UniFi Network correlation with encrypted API keys and verified
+  TLS or a pinned certificate. Show access point, band, channel, signal and rates.
+- Add live survey views, roam ratings, result playback, CSV/JSON export and
+  comparison. Analyse sticky clients, ping-pong roaming and coverage patterns.
+- Add English and German README entry points and a complete bilingual handbook.
+  Include 35 topic pairs and checked generation of 75 Wiki pages from sources.
+
+### Changed
+
+- Support HTTP range requests for recording and survey audio playback.
+- Map the new survey pages into both handbook indexes and the Wiki manifest.
+
+### Upgrade notes
+
+- Back up and apply migrations 20261107000001 and 20261107000002 before starting
+  the new binary. Keep server and worker images together and reload the UI.
+- Feature code *39 is reserved for an armed survey. Configure the new survey
+  permissions and optional UniFi connection. UniFi access is read-only; writes
+  and handset roaming provisioning remain a separate phase.
+- Survey recordings and samples default to 30-day retention. MOS values are
+  estimates; downlink results depend on handset RTCP. Real UniFi/handset acceptance
+  is pending. Record Network version and classic station API compatibility.
+- The live Wiki remains the separately published, verified handbook snapshot
+  from source 9010545. This release updates repository sources and generation;
+  publishing a new Wiki snapshot is a separate operation.
+
 ## [1.8.5] – 2026-10-19
 
 ### Added

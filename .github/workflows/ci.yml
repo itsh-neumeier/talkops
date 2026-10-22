@@ -15,6 +15,17 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  documentation:
+    name: Bilingual handbook and Wiki
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node tests/docs/wiki.mjs
+      - run: node scripts/docs/build-wiki.mjs --check
+
   fax-adapters:
     name: Fax MIME and document fixtures
     runs-on: ubuntu-24.04

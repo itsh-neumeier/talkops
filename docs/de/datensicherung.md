@@ -1,6 +1,12 @@
 # Datensicherung und Wiederherstellung
 
-Ein Backup enthält Datenbank, Voicemail, Ansagen, Provisioning, Türbilder,
+[Handbuch](index.md) · [English](../en/backup.md)
+
+## Voraussetzungen
+
+Du benötigst: backups.manage, Host-Administration, Archivpasswort und einen separaten Wiederherstellungsort.
+
+Ein Backup enthält Datenbank, Faxdokumente, Voicemail, Ansagen, Provisioning, Türbilder,
 ausstehende und zurückgewiesene Anrufdatensätze aus `cdr-spool` und
 optional Gesprächsaufzeichnungen. Vollständige Wiederherstellungsbackups enthalten
 zusätzlich ausgewählte `.env`-, Compose- und Override-Dateien einschließlich
@@ -273,8 +279,24 @@ Nach der Wiederherstellung sind die gespeicherten Ziele der wiederhergestellten
 Datenbank wieder aktiv.
 
 Auf einem Host ohne laufenden TalkOps-Server listet `recover.sh fetch` Archive
-und lädt sie herunter. Die Verbindung kommt in eine private JSON-Datei; das
-Format steht in der [englischen Anleitung](../en/backup.md#restore-from-a-backup-target):
+und lädt sie herunter. Die Verbindung kommt in eine private JSON-Datei.
+Die Datei enthält Verbindung, Pfad und Geheimnisse. Beispiel für S3:
+
+```json
+{
+  "config": {"kind": "s3", "provider": "Hetzner", "endpoint": "https://fsn1.your-objectstorage.com",
+             "region": "", "access_key_id": "KEY", "path_style": false},
+  "path": "backups/talkops",
+  "secret": {"secret_access_key": "SECRET"}
+}
+```
+
+`KEY` und `SECRET` sind Platzhalter. Weitere `config`-Beispiele:
+`{"kind": "smb", "host": "nas.local", "user": "backup"}`,
+`{"kind": "webdav", "url": "https://cloud.example.com/remote.php/dav/files/u", "vendor": "nextcloud", "user": "u"}`,
+`{"kind": "sftp", "host": "backup.example.com", "user": "u", "host_keys": "ssh-ed25519 AAAA…"}`
+und `{"kind": "ftp", "host": "ftp.example.com", "user": "u", "tls": "explicit"}`.
+Passwörter stehen in `"secret": {"password": "…"}`.
 
 ```sh
 chmod 600 target.json
@@ -390,3 +412,9 @@ lesen. Phasen: `database`, `volumes`, `complete`. Ursache beheben und mit dem
 Originalarchiv erneut versuchen. Fehler vor dem Restore schreiben keinen neuen
 Phasenstand. Datenbank und Dateien sind keine gemeinsame Transaktion; ein automatischer
 Rollback beider Bereiche ist nicht vorgesehen.
+
+## Ergebnis prüfen
+
+Prüfe das Archiv und führe eine geplante Wiederherstellung auf einem isolierten kompatiblen Host aus.
+
+Bei Fehlern: [Fehlerbehebung](fehlerbehebung.md). Erhalte bisherige Daten und Konfiguration während der Diagnose.

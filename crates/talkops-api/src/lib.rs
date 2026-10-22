@@ -31,6 +31,7 @@ pub mod spam;
 pub mod telephony;
 pub mod util;
 pub mod voicemail;
+pub mod wifi_survey;
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -276,6 +277,7 @@ pub fn api_router() -> (Router<AppState>, utoipa::openapi::OpenApi) {
         .merge(routes::attendants::router())
         .merge(routes::queues::router())
         .merge(routes::recordings::router())
+        .merge(routes::wifi_survey::router())
         .merge(routes::doors::router())
         .merge(routes::webrtc::router())
         .merge(routes::backups::router())

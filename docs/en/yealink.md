@@ -1,5 +1,11 @@
 # Setting up Yealink phones
 
+[Handbook](index.md) · [Deutsch](../de/yealink.md)
+
+## Before you start
+
+You need: phones.manage and a supported Yealink model with access to its configuration.
+
 For device transport overrides, additional key groups, templates and resync
 diagnostics, see [Provisioning profiles and templates](provisioning.md).
 
@@ -364,3 +370,9 @@ Provisioning uses HTTP on the LAN. The files contain SIP passwords, so run
 TalkOps in a trusted network only, or behind the optional Caddy with HTTPS
 (then use `https://…/provisioning`). **Generate new passwords** replaces the
 provisioning and phone admin passwords.
+
+## Check the result
+
+Verify registration, a test call, assigned keys and the selected directories on the phone.
+
+For failures, use [troubleshooting](troubleshooting.md). Preserve existing data and configuration during diagnosis.

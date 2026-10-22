@@ -1,5 +1,11 @@
 # Herstellereinstellungen und Gerätekopien
 
+[Handbuch](index.md) · [English](../en/manufacturer-provisioning.md)
+
+## Voraussetzungen
+
+Du benötigst: phones.manage sowie die Anleitung des genauen Gerätemodells und seiner Firmware.
+
 Wähle beim Hinzufügen das genaue Modell. Die Quellbibliothek enthält den
 vollständigen festgeschriebenen FusionPBX-Provisionierungsbaum. Für Spectralink
 und Grandstream Wave fehlen dort nutzbare Vorlagen. Sie bleiben als gesperrte
@@ -71,3 +77,9 @@ behalten die Dateiliste ihres Modells. Die Aktivierung prüft Dateistruktur,
 Zugangsdatenzuordnung sowie leere, einzelne und vollständig belegte Konten.
 
 Weitere Angaben: [Provisionierungsprofile](provisionierung.md).
+
+## Ergebnis prüfen
+
+Prüfe abgerufene Dateien und Geräteverhalten; eine gerenderte Vorlage allein genügt nicht.
+
+Bei Fehlern: [Fehlerbehebung](fehlerbehebung.md). Erhalte bisherige Daten und Konfiguration während der Diagnose.

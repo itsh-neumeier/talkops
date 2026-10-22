@@ -1,5 +1,11 @@
 # Sign-in: two-factor, single sign-on, LDAP/AD
 
+[Handbook](index.md) · [Deutsch](../de/anmeldung.md)
+
+## Before you start
+
+You need: Own account access for TOTP; identity.manage for central identity settings.
+
 TalkOps has three kinds of accounts:
 
 | Kind | Login | Second factor |
@@ -88,3 +94,9 @@ TalkOps for these accounts only last until then.
 **Security:** a directory or SSO login never takes over a local account with
 the same name; the login then fails with a message and an admin has to
 rename or delete the local account.
+
+## Check the result
+
+Check a separate login session before ending the administrator session.
+
+For failures, use [troubleshooting](troubleshooting.md). Preserve existing data and configuration during diagnosis.

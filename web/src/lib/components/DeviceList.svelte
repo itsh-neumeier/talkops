@@ -17,7 +17,7 @@
 	import Modal from '#lib/components/Modal.svelte';
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import { copy, errorMessage } from '#lib/util.ts';
-	import { session } from '#lib/session.svelte.ts';
+	import { can, session } from '#lib/session.svelte.ts';
 
 	let {
 		extensionId,
@@ -230,6 +230,9 @@
 						</div>
 					</div>
 					<div class="space-x-1">
+						{#if d.kind === 'wifi' && can('wifi_survey.run')}
+							<a class="btn btn-sm" href={`/wifi-surveys?start=${d.id}`}>{t('wifi.startShort')}</a>
+						{/if}
 						{#if admin || !d.browser_user_id || d.browser_user_id === session.user?.id}
 							<button class="btn btn-sm" onclick={() => show(d)}>{t('ext.showCredentials')}</button>
 							<button class="btn btn-sm" onclick={() => openReset(d)}

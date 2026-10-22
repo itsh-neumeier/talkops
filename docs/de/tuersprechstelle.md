@@ -1,5 +1,11 @@
 # Türsprechstellen
 
+[Handbuch](index.md) · [English](../en/door-station.md)
+
+## Voraussetzungen
+
+Du benötigst: doors.manage und Zugriff auf die Station; Öffnerzugriff wird getrennt zugewiesen.
+
 TalkOps bindet Türsprechstellen und Innenstationen als SIP-Geräte an: Die
 Station meldet sich wie ein Telefon an, das Klingeln geht an eine
 Nebenstelle, Rufgruppe oder ein anderes Ziel, das Kamerabild (H.264) kommt
@@ -231,3 +237,9 @@ Türsprechstelle muss er nicht ausgeschaltet werden.
 - **„nicht erreichbar“ in TalkOps:** HTTP-Zugang (IP, Port, Login) prüfen –
   **Verbindung testen**. Manche Firmware erlaubt den Web-Login nur über HTTP
   im lokalen Netz.
+
+## Ergebnis prüfen
+
+Prüfe Klingeln, Audio/Video und jede erlaubte Öffneraktion an der tatsächlichen Installation.
+
+Bei Fehlern: [Fehlerbehebung](fehlerbehebung.md). Erhalte bisherige Daten und Konfiguration während der Diagnose.

@@ -1,5 +1,11 @@
 # Fax
 
+[Handbook](index.md) · [Deutsch](../de/fax.md)
+
+## Before you start
+
+You need: fax.manage for setup and the listed fax permissions for sending and reading.
+
 TalkOps can send PDFs and images as fax documents through a SIP trunk.
 An incoming number can deliver fax documents to an inbox and an optional
 email address. Fax is disabled after an upgrade until an administrator
@@ -234,3 +240,9 @@ before it starts the fax receiver. The call can have zero duration and
 Review the blocking decision under the call blocking settings. Then test
 reception with an allowed caller. This storage repair does not change spam
 rules, exceptions, or T.38 settings.
+
+## Check the result
+
+Check storage, preview and provider delivery with a harmless test document in both directions.
+
+For failures, use [troubleshooting](troubleshooting.md). Preserve existing data and configuration during diagnosis.

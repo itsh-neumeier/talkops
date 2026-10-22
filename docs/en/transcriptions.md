@@ -1,5 +1,11 @@
 # Transcription jobs
 
+[Handbook](index.md) · [Deutsch](../de/transkriptionen.md)
+
+## Before you start
+
+You need: transcriptions.view for own jobs; transcriptions.manage for all jobs/resources.
+
 ## Transcribe a recording again
 
 1. Open the **Call log** and click the **Recording** button of a call.
@@ -106,3 +112,9 @@ then follows changes slowly. Resumed runs are not measured.
 - `POST /api/v1/transcription-jobs/{id}` with
   `{"action": "pause" | "resume" | "stop" | "prioritize"}`.
 - `GET /api/v1/transcription-workers`: resource usage.
+
+## Check the result
+
+Submit a permitted recording and check completion, text and the selected engine.
+
+For failures, use [troubleshooting](troubleshooting.md). Preserve existing data and configuration during diagnosis.

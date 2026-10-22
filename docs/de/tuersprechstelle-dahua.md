@@ -1,5 +1,11 @@
 # Dahua VTO und VTH
 
+[Handbuch](index.md) · [English](../en/door-station-dahua.md)
+
+## Voraussetzungen
+
+Du benötigst: Türverwaltung, SIP-Gerätezugangsdaten und gerätespezifische lokale Konfigurationswerkzeuge.
+
 Diese Seite beschreibt, wie du Dahua-VTO-Außenstationen und
 Dahua-VTH-Innenstationen an TalkOps anbindest. Die allgemeinen Funktionen
 (Klingelziel, Öffnungscodes, Bilder, Home Assistant) stehen auf der Seite
@@ -269,3 +275,9 @@ docker compose logs -f talkops | grep "SIP authentication"
   wird bei der Ersteinrichtung des VTH gesetzt)
 - [Yeastar: Dahua Video Intercom Integration Guide](https://help.yeastar.com/download/docs/dahua-video-intercom-integration-guide-p-series-appliance-edition-en.pdf)
   (VTH: *Master VTO IP, User, Pwd*; das Live-Bild kommt von der VTO)
+
+## Ergebnis prüfen
+
+Prüfe die reale VTO-/VTH-Kombination; Registrierung belegt weder Video noch Öffnerfunktion.
+
+Bei Fehlern: [Fehlerbehebung](fehlerbehebung.md). Erhalte bisherige Daten und Konfiguration während der Diagnose.

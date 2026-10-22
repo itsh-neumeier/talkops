@@ -1,5 +1,11 @@
 # Monitoring
 
+[Handbook](index.md) · [Deutsch](../de/monitoring.md)
+
+## Before you start
+
+You need: diagnostics.manage for the system UI and host access for log/metrics setup.
+
 TalkOps exposes its state in the Prometheus text format at `/metrics`.
 
 ## Dashboard in the web UI
@@ -105,3 +111,9 @@ can open a tab directly, for example `/settings?section=system&tab=diagnostics`.
 Backups, the Portainer connection and backup targets are in the separate
 section **Settings → Backup** (permission `backups.manage`). See
 [Backup and restore](backup.md).
+
+## Check the result
+
+Check component health and a permitted metrics query; confirm configured alerts.
+
+For failures, use [troubleshooting](troubleshooting.md). Preserve existing data and configuration during diagnosis.

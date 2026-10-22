@@ -1,5 +1,11 @@
 # Browser-Softphone (WebRTC)
 
+[Handbuch](index.md) · [English](../en/softphone.md)
+
+## Voraussetzungen
+
+Du benötigst: Eine zugewiesene Nebenstelle, einen unterstützten Browser und HTTPS-Mikrofonzugriff.
+
 Das Softphone unterstützt Audio, Video, Halten, Stummschalten und Tastentöne.
 Nach dem ersten Öffnen klingelt es mit den anderen Telefonen der gewählten
 Nebenstelle und bleibt beim Navigieren innerhalb von TalkOps verbunden.
@@ -174,7 +180,6 @@ Codec-Profil *HD* oder *Robust* erhält kein Video.
 Das Softphone zeigt die Video-Taste nur bei einer Nebenstelle mit Video und
 *Mit Video annehmen* nur, wenn der eingehende Anruf Video enthält.
 
-
 Video zu Tischtelefonen (z. B. Yealink T58W, VP59) und Türsprechstellen
 nutzt H.264; Chrome, Edge, Firefox und Safari bieten H.264 an. Zwischen zwei
 Browsern läuft auch VP8.
@@ -190,3 +195,9 @@ Browsern läuft auch VP8.
 
 Für genauere Fehlersuche in der Browser-Konsole `localStorage['talkops.sipDebug'] = '1'`
 setzen und die Seite neu laden: Das Softphone protokolliert dann alle SIP-Nachrichten.
+
+## Ergebnis prüfen
+
+Rufe ein anderes Gerät an und prüfe beidseitigen Ton, Auflegen und benötigtes Video.
+
+Bei Fehlern: [Fehlerbehebung](fehlerbehebung.md). Erhalte bisherige Daten und Konfiguration während der Diagnose.

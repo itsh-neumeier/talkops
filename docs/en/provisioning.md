@@ -1,5 +1,11 @@
 # Phone provisioning profiles and templates
 
+[Handbook](index.md) · [Deutsch](../de/provisionierung.md)
+
+## Before you start
+
+You need: phones.manage, a supported device and its reachable provisioning address.
+
 See [manufacturer settings and device copies](manufacturer-provisioning.md)
 for the additional vendor profiles and categorized fields.
 
@@ -125,3 +131,9 @@ settings, template revisions and request records. Existing secrets and account
 assignments do not change. Existing API clients that omit `provisioning` keep
 the saved overrides. Resync a phone after you change its keys or template.
 Do not interpret an old "last seen" value as a successful new resync.
+
+## Check the result
+
+Check the actual device download, account registration and a test call.
+
+For failures, use [troubleshooting](troubleshooting.md). Preserve existing data and configuration during diagnosis.

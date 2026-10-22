@@ -1,5 +1,11 @@
 # LEONET einrichten
 
+[Handbuch](index.md) · [English](../en/leonet.md)
+
+## Voraussetzungen
+
+Du benötigst: SIP-Zugangsdaten des Providers, trunks.manage und settings.manage für Wahlvorgaben.
+
 LEONET-Anschlüsse registrieren **jede Rufnummer einzeln** mit eigenen
 Zugangsdaten am Registrar `sip.leovoice.online`. TalkOps legt dafür pro
 Rufnummer eine eigene Registrierung (FreeSWITCH-Gateway) an.
@@ -53,3 +59,9 @@ Alle Werte lassen sich im Trunk unter **Bearbeiten → Erweiterte Einstellungen*
   ausgehend vom TalkOps-Host, RTP 16384–16999) prüfen.
 - **Kein Ton / einseitig**: öffentliche IP unter *Einstellungen → Öffentliche IP
   für Trunks* eintragen (oder `stun:stun.l.google.com:19302`).
+
+## Ergebnis prüfen
+
+Prüfe Registrierung, eingehende Anrufe, ausgehende Rufnummernanzeige und beidseitigen Ton.
+
+Bei Fehlern: [Fehlerbehebung](fehlerbehebung.md). Erhalte bisherige Daten und Konfiguration während der Diagnose.

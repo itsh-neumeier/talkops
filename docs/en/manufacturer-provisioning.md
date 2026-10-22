@@ -1,5 +1,11 @@
 # Manufacturer settings and device copies
 
+[Handbook](index.md) · [Deutsch](../de/hersteller-provisionierung.md)
+
+## Before you start
+
+You need: phones.manage and the exact device model and firmware documentation.
+
 Select the exact model when you add a phone. The source library contains the
 complete pinned FusionPBX provisioning tree. Spectralink and Grandstream Wave
 have no usable configuration there. They remain visible as blocked entries.
@@ -70,3 +76,9 @@ copies retain the model artifact manifest. Activation checks file structure,
 credential bindings and empty, single and full account fixtures.
 
 See [provisioning profiles](provisioning.md) for transport and template controls.
+
+## Check the result
+
+Check downloaded files and device behavior; a rendered template alone is insufficient.
+
+For failures, use [troubleshooting](troubleshooting.md). Preserve existing data and configuration during diagnosis.

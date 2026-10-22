@@ -2,7 +2,7 @@
 
 [Handbook](index.md) · [Deutsch](../de/index.md)
 
-34 topics cover setup, daily use and operation. English sources and German translations are reviewed together.
+35 topics cover setup, daily use and operation. English sources and German translations are reviewed together.
 
 ## Administrator path
 
@@ -42,6 +42,7 @@
 - [Manufacturer settings and copies](manufacturer-provisioning.md)
 - [Yealink and feature codes](yealink.md)
 - [Codec profiles](codec-profiles.md)
+- [Wi-Fi survey and roaming](wifi-survey.md)
 
 ## Daily use
 

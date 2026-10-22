@@ -45,6 +45,7 @@ const LANES: &[&[&str]] = &[
     &[recordings::JOB_TRANSCRIBE],
     &[talkops_core::live_transcripts::JOB],
     &[talkops_core::fax::PREPARE, talkops_core::fax::RECEIVE],
+    &[talkops_core::wifi_survey::JOB_ANALYSE],
 ];
 
 /// Running jobs without a heartbeat for this long are handed to another worker.
@@ -396,7 +397,27 @@ async fn run(ctx: &Ctx, job: &Job) -> anyhow::Result<JobEnd> {
             end
         }
         talkops_core::live_transcripts::JOB => done(live::run(ctx, job).await),
+        talkops_core::wifi_survey::JOB_ANALYSE => done(wifi_survey_analyse(ctx, job).await),
         other => anyhow::bail!("no handler for job kind `{other}`"),
+    }
+}
+
+/// Rates the roams of a finished Wi-Fi survey (ADR 0041).
+async fn wifi_survey_analyse(ctx: &Ctx, job: &Job) -> anyhow::Result<()> {
+    let id: uuid::Uuid = job
+        .payload
+        .get("survey_id")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| anyhow::anyhow!("payload without survey_id"))?
+        .parse()?;
+    match talkops_core::wifi_survey::analyse_and_store(&ctx.pool, job.tenant_id, id).await {
+        Ok(result) => {
+            tracing::info!(survey = %id, roams = result.roams.len(), "Wi-Fi survey analysed");
+            Ok(())
+        }
+        // Deleted in the meantime: nothing to do.
+        Err(talkops_core::error::CoreError::NotFound) => Ok(()),
+        Err(err) => Err(err.into()),
     }
 }
 

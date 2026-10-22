@@ -21,6 +21,8 @@ door stations and local speech processing in a Docker Compose stack.
 - **Media:** generated, recorded or uploaded prompts; recording, local Piper
   speech synthesis and whisper.cpp transcription. Optional cloud transcription
   is configured separately by purpose.
+- **Wi-Fi:** [voice survey and roaming analysis](docs/en/wifi-survey.md) with
+  read-only UniFi data, live measurements and recorded playback.
 - **Administration:** local accounts, TOTP, OIDC, LDAP/AD, roles, audit log,
   encrypted recovery backups, storage targets, diagnostics and metrics.
 

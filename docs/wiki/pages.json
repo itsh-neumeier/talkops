@@ -10,6 +10,7 @@
     {"id":"administration","en":"Administration","de":"Administration"}
   ],
   "pages": [
+    {"id":"wifi-survey","section":"devices","routes":["/wifi-surveys"],"en":{"source":"docs/en/wifi-survey.md","slug":"EN-Wi-Fi-Survey","title":"Wi-Fi voice survey and roaming"},"de":{"source":"docs/de/wlan-begehung.md","slug":"DE-WLAN-Begehung","title":"WLAN-Begehung und Roaming"}},
     {"id":"index","section":null,"en":{"source":"docs/en/index.md","slug":"EN-Handbook","title":"English handbook"},"de":{"source":"docs/de/index.md","slug":"DE-Handbuch","title":"Deutsches Handbuch"}},
     {"id":"overview","section":"setup","en":{"source":"docs/en/overview.md","slug":"EN-Overview","title":"Overview"},"de":{"source":"docs/de/ueberblick.md","slug":"DE-Ueberblick","title":"Überblick"}},
     {"id":"installation","section":"setup","en":{"source":"docs/en/installation.md","slug":"EN-Installation","title":"Installation"},"de":{"source":"docs/de/installation.md","slug":"DE-Installation","title":"Installation"}},

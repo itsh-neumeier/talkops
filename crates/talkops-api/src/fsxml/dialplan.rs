@@ -20,7 +20,7 @@ use talkops_core::tenant::TenantId;
 use talkops_core::trunks::{self, NumberDestination, OutboundRoute, gateway_name};
 use talkops_core::voicemail;
 use talkops_core::{doors, numbering, prompts, recordings};
-use talkops_core::{queues, time_conditions};
+use talkops_core::{queues, time_conditions, wifi_survey};
 use uuid::Uuid;
 
 use super::{
@@ -565,6 +565,18 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
         return Ok(actions);
     }
 
+    if dest == wifi_survey::SELF_DIAL_CODE {
+        // Wi-Fi survey (ADR 0041): only a survey armed in the web interface
+        // for the calling device starts.
+        let (Some(device), Some(call)) = (req.uuid_var("talkops_device_id"), req.uuid_var("uuid"))
+        else {
+            return Ok(reject("403 Forbidden"));
+        };
+        actions.extend(
+            crate::wifi_survey::self_dial(r.pool, r.socket, r.sounds, tenant, device, call).await?,
+        );
+        return Ok(actions);
+    }
     if let Some(feature) = feature_code(r, tenant, &caller, &dest).await? {
         actions.extend(feature);
         return Ok(actions);
@@ -915,6 +927,7 @@ fn pickup_group(ext: &Extension) -> String {
 /// - `*97` / `*98`: own voicemail / any voicemail with PIN
 /// - `*30<number>`: toggle a time condition between schedule and closed
 /// - `*51` … `*59`: park in / pick up from a park slot
+/// - `*39`: start an armed Wi-Fi survey (handled before this function)
 async fn feature_code(
     r: &Routing<'_>,
     tenant: TenantId,

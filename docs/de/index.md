@@ -2,7 +2,7 @@
 
 [Handbuch](index.md) · [English](../en/index.md)
 
-34 Themen für Einrichtung, Alltag und Betrieb. Die englischen Quellen und die deutschen Übersetzungen werden gemeinsam geprüft.
+35 Themen für Einrichtung, Alltag und Betrieb. Die englischen Quellen und die deutschen Übersetzungen werden gemeinsam geprüft.
 
 ## Administrationspfad
 
@@ -42,6 +42,7 @@
 - [Herstellereinstellungen und Kopien](hersteller-provisionierung.md)
 - [Yealink und Funktionscodes](yealink.md)
 - [Codec-Profile](codec-profile.md)
+- [WLAN-Begehung und Roaming](wlan-begehung.md)
 
 ## Tägliche Nutzung
 

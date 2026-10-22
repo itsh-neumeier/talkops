@@ -581,3 +581,102 @@ async fn real_whisper_resumes_at_the_paused_position() {
     let same = resumed.iter().filter(|w| full.contains(w)).count();
     assert!(same as f32 / resumed.len() as f32 > 0.85);
 }
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn analyses_a_finished_wifi_survey(pool: PgPool) {
+    use talkops_core::wifi_survey as ws;
+    let dir = std::env::temp_dir().join(format!("talkops-worker-{}", uuid::Uuid::new_v4()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let ctx = Ctx {
+        pool: pool.clone(),
+        piper: tts::tests::fake_piper(&dir),
+        whisper: Whisper {
+            bin: dir.join("unused"),
+            models_dir: dir.clone(),
+            model: "base".into(),
+            threads: 1,
+            vad: false,
+        },
+        secrets: None,
+        voicemail_dir: dir.join("voicemail"),
+        sounds_dir: dir.join("sounds"),
+        recordings_dir: dir.join("recordings"),
+        worker_id: "test".into(),
+        streams: realtime::Streams::default(),
+        current_job: std::sync::Mutex::new(None),
+    };
+    let tenant = TenantId::DEFAULT;
+    let input: extensions::ExtensionInput =
+        serde_json::from_value(serde_json::json!({"number":"206", "display_name":"Walker"}))
+            .unwrap();
+    let ext = extensions::create(&pool, tenant, &input, &[])
+        .await
+        .unwrap();
+    let device: extensions::DeviceInput =
+        serde_json::from_value(serde_json::json!({"name":"AX86R", "kind":"wifi"})).unwrap();
+    let sb = talkops_core::crypto::SecretBox::from_hex(
+        "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+    )
+    .unwrap();
+    let (device, _) = extensions::create_device(&pool, tenant, &sb, &ext, &device)
+        .await
+        .unwrap();
+    let target = ws::target(&pool, tenant, device.id).await.unwrap();
+    let survey = ws::create(
+        &pool,
+        tenant,
+        &ws::NewSurvey {
+            device_id: device.id,
+            mode: "originate".into(),
+            label: String::new(),
+        },
+        &target,
+        None,
+        serde_json::json!({}),
+    )
+    .await
+    .unwrap();
+    ws::mark_answered(
+        &pool,
+        tenant,
+        survey.id,
+        sqlx::types::chrono::Utc::now(),
+        None,
+    )
+    .await
+    .unwrap();
+    for s in 1..=10 {
+        ws::add_radio(
+            &pool,
+            tenant,
+            survey.id,
+            sqlx::types::chrono::Utc::now(),
+            &ws::RadioSample {
+                offset_ms: s * 1000,
+                ap_mac: Some(if s < 5 { "a" } else { "b" }.into()),
+                ap_name: None,
+                bssid: None,
+                radio: Some("na".into()),
+                channel: Some(36),
+                rssi: Some(-60),
+                tx_rate_kbps: None,
+                rx_rate_kbps: None,
+                error: None,
+            },
+        )
+        .await
+        .unwrap();
+    }
+    ws::finish(&pool, tenant, survey.id, "NORMAL_CLEARING", None)
+        .await
+        .unwrap();
+    let job = jobs::claim(&pool, "test", &[ws::JOB_ANALYSE])
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(matches!(run(&ctx, &job).await.unwrap(), JobEnd::Done));
+    let s = ws::get(&pool, tenant, survey.id).await.unwrap();
+    assert_eq!(s.state, "analysed");
+    assert_eq!(ws::roams(&pool, tenant, survey.id).await.unwrap().len(), 1);
+    let _ = std::fs::remove_dir_all(&dir);
+}

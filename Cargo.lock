@@ -3518,6 +3518,7 @@ dependencies = [
  "talkops-doorbell",
  "talkops-esl",
  "talkops-provisioning",
+ "talkops-unifi",
  "tar",
  "tempfile",
  "thiserror 2.0.21",
@@ -3626,6 +3627,23 @@ dependencies = [
  "serde_yaml_ng",
  "thiserror 2.0.21",
  "url",
+]
+
+[[package]]
+name = "talkops-unifi"
+version = "1.8.5"
+dependencies = [
+ "axum",
+ "hex",
+ "reqwest",
+ "rustls",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "thiserror 2.0.21",
+ "tokio",
+ "tracing",
+ "webpki-roots 1.0.9",
 ]
 
 [[package]]

@@ -134,7 +134,10 @@ export type Permission =
 	| 'diagnostics.manage'
 	| 'notifications.manage'
 	| 'audit.view'
-	| 'audit.manage';
+	| 'audit.manage'
+	| 'wifi_survey.run'
+	| 'wifi_survey.manage'
+	| 'unifi.manage';
 
 export interface PermissionInfo {
 	key: Permission;

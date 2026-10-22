@@ -23,6 +23,8 @@ in einem Docker-Compose-Stack.
 - **Medien:** erzeugte, aufgenommene oder hochgeladene Ansagen, Aufzeichnung,
   lokale Piper-Spracherzeugung und whisper.cpp-Transkription. Optionale
   Cloud-Transkription wird getrennt nach Zweck eingerichtet.
+- **WLAN:** [Sprachmessung und Roaming-Auswertung](docs/de/wlan-begehung.md) mit
+  lesendem UniFi-Zugriff, Live-Messwerten und Aufzeichnungswiedergabe.
 - **Administration:** lokale Konten, TOTP, OIDC, LDAP/AD, Rollen, Änderungsprotokoll,
   verschlüsselte Wiederherstellungsbackups, Speicherziele, Diagnose und Metriken.
 

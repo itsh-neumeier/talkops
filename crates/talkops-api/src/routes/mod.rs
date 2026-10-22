@@ -37,3 +37,4 @@ pub mod trunks;
 pub mod users;
 pub mod voicemail;
 pub mod webrtc;
+pub mod wifi_survey;

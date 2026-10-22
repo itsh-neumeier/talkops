@@ -187,6 +187,16 @@ const PROMPTS: &[Prompt] = &[
         en: "The door could not be opened.",
     },
     Prompt {
+        key: "wifi_survey_running",
+        de: "Messung läuft.",
+        en: "Measurement running.",
+    },
+    Prompt {
+        key: "wifi_survey_not_armed",
+        de: "Für dieses Gerät ist keine WLAN-Begehung vorbereitet. Bitte starten Sie die Begehung zuerst in der Weboberfläche.",
+        en: "No Wi-Fi survey is prepared for this device. Please start the survey in the web interface first.",
+    },
+    Prompt {
         key: "vm_goodbye",
         de: "Auf Wiederhören.",
         en: "Goodbye.",

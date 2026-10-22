@@ -21,8 +21,8 @@ const NUMBERED: &[(&str, &str)] = &[
 /// (`talkops-api` `fsxml::dialplan::feature_code`): park slots, call
 /// forwarding off, DND on/off, voicemail.
 pub const FIXED_FEATURE_CODES: &[&str] = &[
-    "*51", "*52", "*53", "*54", "*55", "*56", "*57", "*58", "*59", "*73", "*78", "*79", "*97",
-    "*98",
+    "*51", "*52", "*53", "*54", "*55", "*56", "*57", "*58", "*59", "*39", "*73", "*78", "*79",
+    "*97", "*98",
 ];
 
 /// Feature codes followed by more digits: pickup `*8*<ext>`, time condition

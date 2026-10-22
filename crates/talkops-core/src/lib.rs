@@ -51,9 +51,11 @@ pub mod transcription_jobs;
 pub mod transcription_profiles;
 pub mod trunks;
 pub mod turn;
+pub mod unifi;
 pub mod users;
 pub mod voicemail;
 pub mod voicemail_config;
+pub mod wifi_survey;
 
 /// Version of the TalkOps build, taken from the workspace manifest.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

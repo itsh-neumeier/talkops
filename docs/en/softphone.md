@@ -1,5 +1,11 @@
 # Browser softphone (WebRTC)
 
+[Handbook](index.md) · [Deutsch](../de/softphone.md)
+
+## Before you start
+
+You need: An assigned extension, a supported browser and HTTPS microphone access.
+
 The browser softphone supports audio, video, hold, mute and key tones.
 It rings with the selected extension's other phones after you first open
 **Softphone**. It stays connected when you navigate within TalkOps.
@@ -173,7 +179,6 @@ A Wi-Fi handset with the codec profile *HD* or *Robust* gets no video.
 The softphone shows the video button only for an extension with video, and
 *Answer with video* only when the incoming call has video.
 
-
 Video to desk phones (e.g. Yealink T58W, VP59) and door stations uses H.264;
 Chrome, Edge, Firefox and Safari offer H.264. Between two browsers VP8 works
 as well.
@@ -189,3 +194,9 @@ as well.
 
 For detailed troubleshooting set `localStorage['talkops.sipDebug'] = '1'` in the
 browser console and reload the page: the softphone then logs all SIP messages.
+
+## Check the result
+
+Call another device and verify audio in both directions, hangup and required video.
+
+For failures, use [troubleshooting](troubleshooting.md). Preserve existing data and configuration during diagnosis.

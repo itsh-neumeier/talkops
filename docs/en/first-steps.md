@@ -1,5 +1,11 @@
 # First steps
 
+[Handbook](index.md) · [Deutsch](../de/erste-schritte.md)
+
+## Before you start
+
+You need: The initial administrator account and a running installation.
+
 On first setup, select a new instance or restore from a backup. Recovery does
 not create a replacement administrator. Use the restored accounts after the
 offline restore. See [Backup and restore](backup.md).
@@ -30,8 +36,9 @@ checklist that ticks off these steps as they are done.
    - username / authentication name: the shown SIP username
    - password: the shown SIP password
 
-   All devices of an extension ring at the same time. Yealink
-   auto-provisioning follows in phase 2.
+   All devices of an extension ring at the same time. For automatic setup,
+   follow [provisioning](provisioning.md), [manufacturer settings](manufacturer-provisioning.md)
+   or the detailed [Yealink guide](yealink.md).
 7. **Route numbers.** *Settings → Phone numbers* (or on the trunk): choose the (main)
    extension each number rings at. *Ring more extensions …* adds extensions that ring at
    the same time; unanswered calls go to the main extension's voicemail. The same works
@@ -76,3 +83,9 @@ SIP addresses are recognized by letters in the name; plain digits
 (`12345@domain`) stay phone numbers. Switch off under *Settings → Telephony →
 Allow dialing SIP addresses*. For direct calls over the internet the external
 IP should be set, otherwise audio may not arrive.
+
+## Check the result
+
+Call a second extension, then verify ordinary incoming and outgoing calls.
+
+For failures, use [troubleshooting](troubleshooting.md). Preserve existing data and configuration during diagnosis.

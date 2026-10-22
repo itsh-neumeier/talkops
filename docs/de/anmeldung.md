@@ -1,5 +1,11 @@
 # Anmeldung: Zwei-Faktor, Single Sign-on, LDAP/AD
 
+[Handbuch](index.md) · [English](../en/sign-in.md)
+
+## Voraussetzungen
+
+Du benötigst: Eigenen Kontozugriff für TOTP; identity.manage für zentrale Identitätseinstellungen.
+
 TalkOps kennt drei Arten von Konten:
 
 | Art | Anmeldung | Zweiter Faktor |
@@ -92,3 +98,9 @@ wählen (siehe [Benutzer und Rollen](benutzer-und-rollen.md)).
 **Sicherheit:** Ein Verzeichnis- oder SSO-Login übernimmt nie ein lokales
 Konto mit demselben Namen; dann erscheint eine Fehlermeldung und ein Admin
 muss das lokale Konto umbenennen oder löschen.
+
+## Ergebnis prüfen
+
+Prüfe eine separate Anmeldung, bevor du die Administratorsitzung beendest.
+
+Bei Fehlern: [Fehlerbehebung](fehlerbehebung.md). Erhalte bisherige Daten und Konfiguration während der Diagnose.

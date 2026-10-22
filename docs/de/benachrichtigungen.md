@@ -1,5 +1,11 @@
 # E-Mail-Benachrichtigungen
 
+[Handbuch](index.md) · [English](../en/notifications.md)
+
+## Voraussetzungen
+
+Du benötigst: notifications.manage und funktionierendes ausgehendes SMTP.
+
 TalkOps schickt eine E-Mail, wenn an der Telefonanlage etwas Wichtiges
 passiert: Ein Trunk verliert die Registrierung, FreeSWITCH ist nicht
 erreichbar, eine Datensicherung schlägt fehl, der Speicher ist fast voll oder
@@ -72,3 +78,9 @@ Platzhalter: `event.title`, `event.category`, `event.severity`,
 `event.recovery` (gesetzt bei einer Entwarnung) und `event.digest` (Liste
 einer Zusammenfassung). Die Mail nutzt die Standardsprache aus den
 Telefonie-Einstellungen.
+
+## Ergebnis prüfen
+
+Löse ein unkritisches eingerichtetes Ereignis aus und prüfe Empfänger und Versandlog.
+
+Bei Fehlern: [Fehlerbehebung](fehlerbehebung.md). Erhalte bisherige Daten und Konfiguration während der Diagnose.

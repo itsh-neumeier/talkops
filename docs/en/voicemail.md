@@ -1,5 +1,11 @@
 # Voicemail
 
+[Handbook](index.md) · [Deutsch](../de/voicemail.md)
+
+## Before you start
+
+You need: An owned mailbox; voicemail.access_all for other mailboxes and voicemail.settings for system texts.
+
 Every extension can have a voicemail box. Unanswered, busy and do-not-disturb
 calls go there; new messages light up the phone's message lamp (MWI), and an
 e-mail with the recording can be sent.
@@ -134,3 +140,9 @@ or TLS 465), credentials and sender, e.g. `TalkOps <phone@example.com>`.
 - Messages shorter than one second (caller hung up during the greeting) are
   discarded; the maximum length is set per box (default 3 min).
 - Recordings live in the `voicemail` volume – include it in your backups.
+
+## Check the result
+
+Leave a test message and confirm greeting, browser playback and configured email delivery.
+
+For failures, use [troubleshooting](troubleshooting.md). Preserve existing data and configuration during diagnosis.

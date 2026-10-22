@@ -1,5 +1,11 @@
 # Voicemail
 
+[Handbuch](index.md) · [English](../en/voicemail.md)
+
+## Voraussetzungen
+
+Du benötigst: Eine eigene Mailbox; voicemail.access_all für fremde Mailboxen und voicemail.settings für Systemtexte.
+
 Jede Nebenstelle kann eine Mailbox haben. Unbeantwortete, besetzte und
 „Nicht stören“-Anrufe landen dort; neue Nachrichten zeigt die Telefonlampe
 (MWI), auf Wunsch kommt eine E-Mail mit der Aufnahme.
@@ -141,3 +147,9 @@ Konfiguration prüfen. Das Passwort wird verschlüsselt gespeichert.
   verworfen; die maximale Länge ist pro Mailbox einstellbar (Standard 3 min).
 - Aufnahmen liegen im Volume `voicemail` – bitte in die Datensicherung
   aufnehmen.
+
+## Ergebnis prüfen
+
+Hinterlasse eine Testnachricht und prüfe Begrüßung, Browserwiedergabe und eingerichteten Mailversand.
+
+Bei Fehlern: [Fehlerbehebung](fehlerbehebung.md). Erhalte bisherige Daten und Konfiguration während der Diagnose.

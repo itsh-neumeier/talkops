@@ -1,5 +1,11 @@
 # Installation
 
+[Handbook](index.md) · [Deutsch](../de/installation.md)
+
+## Before you start
+
+You need: Host administration access and a new instance or a recovery plan.
+
 ## Requirements
 
 - Linux host (x86_64 or arm64), e.g. Debian/Ubuntu, Proxmox VM, NAS with Docker
@@ -25,8 +31,9 @@ a restore assistant.
 
 ```sh
 mkdir talkops && cd talkops
-curl -LO https://raw.githubusercontent.com/itsh-neumeier/talkops/main/docker-compose.yml
-curl -L -o .env https://raw.githubusercontent.com/itsh-neumeier/talkops/main/.env.example
+curl -fLO https://raw.githubusercontent.com/itsh-neumeier/talkops/v1.8.5/docker-compose.yml
+curl -fL -o .env https://raw.githubusercontent.com/itsh-neumeier/talkops/v1.8.5/.env.example
+sed -i 's/^TALKOPS_VERSION=.*/TALKOPS_VERSION=1.8.5/' .env
 ```
 
 Set the required values in `.env`, for example:
@@ -41,6 +48,12 @@ sed -i "s/^TALKOPS_XMLCURL_PASSWORD=$/TALKOPS_XMLCURL_PASSWORD=$(openssl rand -h
 > **Important:** `TALKOPS_SECRET_KEY` encrypts stored SIP and trunk
 > credentials. Back it up separately from the database – without it, the
 > credentials cannot be decrypted after a restore.
+
+These files and images use the existing published release 1.8.5. For a later
+release, select matching configuration and image versions. `latest` is a moving
+stable image tag; it does not pin the configuration files.
+Protect `.env` after generating secrets with `chmod 600 .env`. If you enable
+complete configuration backups, use the group-read setup in [backup](backup.md).
 
 Start:
 
@@ -66,16 +79,10 @@ Caddy uses ports 80 and 443 on the host.
 
 ## Updates
 
-```sh
-docker compose pull && docker compose up -d
-```
-
-Database migrations run automatically when `talkops` starts. Pin a version by
-setting `TALKOPS_VERSION` in `.env` (e.g. `1.0`). Make a
-[backup](backup.md) before major updates.
-
-An update restarts FreeSWITCH. The restart ends all calls in progress.
-Update when no calls are active.
+Follow [updates](updates.md). Create a backup before updating and review target
+release notes, migrations and mount changes. Keep all active Compose options.
+Database migrations run at startup. A FreeSWITCH restart ends active calls.
+An image-only downgrade is not a safe substitute for a compatible restore.
 
 ## Alternative: macvlan
 
@@ -144,3 +151,9 @@ these records, do these steps before the update:
 
 TalkOps imports the records within one minute. Records that TalkOps has
 already stored are not stored again.
+
+## Check the result
+
+Check container health, first login and the first internal call.
+
+For failures, use [troubleshooting](troubleshooting.md). Preserve existing data and configuration during diagnosis.

@@ -1,5 +1,11 @@
 # E-Mail: Design und Texte
 
+[Handbuch](index.md) · [English](../en/mail.md)
+
+## Voraussetzungen
+
+Du benötigst: voicemail.settings und SMTP-Serverzugangsdaten.
+
 TalkOps sendet Mails bei neuen Sprachnachrichten und für den SMTP-Test.
 Jede Mail hat einen HTML-Teil und einen Textteil. Design und Texte legst du
 unter **Einstellungen → E-Mail** fest. Dafür brauchst du das Recht
@@ -62,3 +68,9 @@ Adresse. **Auf Standard zurücksetzen** stellt den eingebauten Text dieser
 Mail-Art und Sprache wieder her.
 
 Die Sprache einer Voicemail-Mail ist die Sprache der Voicemail-Box.
+
+## Ergebnis prüfen
+
+Sende eine Testnachricht und prüfe Betreff, Inhalt, Links und Versandresultat.
+
+Bei Fehlern: [Fehlerbehebung](fehlerbehebung.md). Erhalte bisherige Daten und Konfiguration während der Diagnose.

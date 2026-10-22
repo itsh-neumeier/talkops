@@ -1,5 +1,11 @@
 # Anrufsteuerung
 
+[Handbuch](index.md) · [English](../en/call-routing.md)
+
+## Voraussetzungen
+
+Du benötigst: routing.manage für Ablaufänderungen; Sperrberechtigungen sind getrennt.
+
 ## Lokale Whitelist für den Spam-Schutz
 
 Unter **Einstellungen → Anrufsteuerung → Anrufsperre → Whitelist** lassen
@@ -128,3 +134,9 @@ Jede Warteschlange hat eine eigene Seite mit drei Reitern:
 - **Nummer testen** zeigt, ob und warum ein Anruf gesperrt würde.
 
 Gesperrte Anrufe stehen im Log mit `inbound call blocked` und dem Grund.
+
+## Ergebnis prüfen
+
+Prüfe jede geänderte Verzweigung mit einem Testanruf, auch Zeitüberschreitung und geschlossene Zeiten.
+
+Bei Fehlern: [Fehlerbehebung](fehlerbehebung.md). Erhalte bisherige Daten und Konfiguration während der Diagnose.

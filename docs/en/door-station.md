@@ -1,5 +1,11 @@
 # Door stations
 
+[Handbook](index.md) · [Deutsch](../de/tuersprechstelle.md)
+
+## Before you start
+
+You need: doors.manage and access to the station configuration; opener access is separately assigned.
+
 TalkOps connects door stations and indoor monitors as SIP devices: the
 station registers like a phone, its ring goes to an extension, ring group
 or another destination, and the camera picture (H.264) reaches video phones.
@@ -223,3 +229,9 @@ necessary to switch it off for a door station.
 - **"not reachable" in TalkOps:** check the HTTP access (IP, port, login)
   with **Test connection**. Some firmware only allows the web login over HTTP
   on the local network.
+
+## Check the result
+
+Check ringing, audio/video and each permitted opening action on the actual installation.
+
+For failures, use [troubleshooting](troubleshooting.md). Preserve existing data and configuration during diagnosis.

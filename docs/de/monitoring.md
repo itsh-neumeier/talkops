@@ -1,5 +1,11 @@
 # Monitoring
 
+[Handbuch](index.md) · [English](../en/monitoring.md)
+
+## Voraussetzungen
+
+Du benötigst: diagnostics.manage für die Systemansicht und Host-Zugriff für Logs/Metriken.
+
 TalkOps stellt seinen Zustand im Prometheus-Textformat unter `/metrics` bereit.
 
 ## Übersicht in der Weboberfläche
@@ -108,3 +114,9 @@ Ein Link kann einen Reiter direkt öffnen, z. B.
 Sicherungen, die Portainer-Verbindung und Sicherungsziele liegen im eigenen
 Bereich **Einstellungen → Backup** (Berechtigung `backups.manage`). Siehe
 [Datensicherung und Wiederherstellung](datensicherung.md).
+
+## Ergebnis prüfen
+
+Prüfe Komponentenstatus, berechtigten Metrikabruf und eingerichtete Alarme.
+
+Bei Fehlern: [Fehlerbehebung](fehlerbehebung.md). Erhalte bisherige Daten und Konfiguration während der Diagnose.

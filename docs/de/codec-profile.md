@@ -1,5 +1,11 @@
 # Codec-Profile und Video je Gerät
 
+[Handbuch](index.md) · [English](../en/codec-profiles.md)
+
+## Voraussetzungen
+
+Du benötigst: Zugriff auf eigene Geräteeinstellungen oder extensions.manage für andere Nebenstellen.
+
 Ein Codec-Profil legt fest, welchen Audio-Codec TalkOps mit einem Gerät
 verwendet. TalkOps (FreeSWITCH) wandelt den Ton für die Gegenseite um; die
 Gegenseite behält ihren Codec. Profile helfen bei Geräten in einem WLAN mit
@@ -108,3 +114,9 @@ Diese Einstellungen im WLAN helfen oft mehr als der Codec:
 (`read_codec` und `write_codec`). Ein Anruf zu einem Gerät mit Robust
 zeigt `iLBC` auf dem Kanal des Geräts und den Codec der Gegenseite auf
 dem anderen Kanal.
+
+## Ergebnis prüfen
+
+Prüfe nach neuer Registrierung oder Provisionierungsabruf den tatsächlichen Audio-/Videoweg.
+
+Bei Fehlern: [Fehlerbehebung](fehlerbehebung.md). Erhalte bisherige Daten und Konfiguration während der Diagnose.

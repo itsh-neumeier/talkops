@@ -1,5 +1,11 @@
 # E-mail: design and texts
 
+[Handbook](index.md) · [Deutsch](../de/e-mail.md)
+
+## Before you start
+
+You need: voicemail.settings and SMTP server credentials.
+
 TalkOps sends mails for new voicemail messages and for the SMTP test. Each
 mail has an HTML part and a plain-text part. You set the design and the
 texts in **Settings → E-mail**. You need the permission
@@ -64,3 +70,9 @@ links to a mail.
 language.
 
 The language of a voicemail mail is the language of the voicemail box.
+
+## Check the result
+
+Send a test message and inspect subject, content, links and delivery result.
+
+For failures, use [troubleshooting](troubleshooting.md). Preserve existing data and configuration during diagnosis.

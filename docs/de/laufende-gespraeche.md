@@ -1,5 +1,11 @@
 # Laufende Gespräche
 
+[Handbuch](index.md) · [English](../en/active-calls.md)
+
+## Voraussetzungen
+
+Du benötigst: calls.active für die Übersicht; Live-Transkript benötigt eigene Rechte.
+
 Die erste Zeile zeigt Richtung und lokale Nebenstelle, die zweite den
 Gesprächspartner. Namen werden mit allen Telefonbuchbereichen und den drei
 Rufnummernfeldern abgeglichen. Nationale und internationale Schreibweisen
@@ -96,3 +102,9 @@ gemeinsam aktualisieren und zuvor die Migrationen ausführen.
 Siehe [Aufzeichnung](aufzeichnung.md) und
 Implementierung ([ADR 0022](../adr/0022-active-call-identities-and-live-previews.md),
 [ADR 0024](../adr/0024-transcription-engines-per-purpose.md)).
+
+## Ergebnis prüfen
+
+Führe einen Testanruf und prüfe Live-Ansicht sowie abgeschlossenen Anrufdatensatz.
+
+Bei Fehlern: [Fehlerbehebung](fehlerbehebung.md). Erhalte bisherige Daten und Konfiguration während der Diagnose.

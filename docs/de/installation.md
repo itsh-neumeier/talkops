@@ -1,5 +1,11 @@
 # Installation
 
+[Handbuch](index.md) · [English](../en/installation.md)
+
+## Voraussetzungen
+
+Du benötigst: Host-Administration und eine neue Installation oder einen Wiederherstellungsplan.
+
 Für die Wiederherstellung auf einem neuen Host zuerst die gesicherte Konfiguration
 exportieren, bevor neue Zugangsdaten erzeugt werden. Siehe
 [Datensicherung und Wiederherstellung](datensicherung.md). Die Ersteinrichtung
@@ -26,8 +32,9 @@ dort nicht vollständig funktioniert.
 
 ```sh
 mkdir talkops && cd talkops
-curl -LO https://raw.githubusercontent.com/itsh-neumeier/talkops/main/docker-compose.yml
-curl -L -o .env https://raw.githubusercontent.com/itsh-neumeier/talkops/main/.env.example
+curl -fLO https://raw.githubusercontent.com/itsh-neumeier/talkops/v1.8.5/docker-compose.yml
+curl -fL -o .env https://raw.githubusercontent.com/itsh-neumeier/talkops/v1.8.5/.env.example
+sed -i 's/^TALKOPS_VERSION=.*/TALKOPS_VERSION=1.8.5/' .env
 ```
 
 In `.env` die Pflichtwerte setzen, z. B.:
@@ -42,6 +49,13 @@ sed -i "s/^TALKOPS_XMLCURL_PASSWORD=$/TALKOPS_XMLCURL_PASSWORD=$(openssl rand -h
 > **Wichtig:** `TALKOPS_SECRET_KEY` verschlüsselt die gespeicherten SIP- und
 > Trunk-Zugangsdaten. Sichern Sie den Wert getrennt von der Datenbank – ohne
 > ihn sind die Zugangsdaten nach einem Restore nicht mehr lesbar.
+
+Dateien und Images nutzen den veröffentlichten Stand 1.8.5. Wähle für spätere
+Releases passende Konfiguration und Image-Version gemeinsam. `latest` ist ein
+beweglicher stabiler Image-Tag und legt die Konfigurationsdateien nicht fest.
+Schütze `.env` nach Erzeugung der Geheimnisse mit `chmod 600 .env`.
+Für vollständige Konfigurationsbackups gilt stattdessen die Gruppenlese-
+Einrichtung unter [Datensicherung](datensicherung.md).
 
 Starten:
 
@@ -67,16 +81,11 @@ Caddy belegt die Ports 80 und 443 des Hosts.
 
 ## Updates
 
-```sh
-docker compose pull && docker compose up -d
-```
-
-Datenbankmigrationen laufen beim Start von `talkops` automatisch. Für feste
-Versionen `TALKOPS_VERSION` in `.env` setzen (z. B. `1.0`). Vor größeren
-Updates eine [Datensicherung](datensicherung.md) anlegen.
-
-Ein Update startet FreeSWITCH neu. Dabei enden alle laufenden Gespräche.
-Am besten aktualisieren, wenn niemand telefoniert.
+Folge der [Aktualisierungsanleitung](aktualisierung.md). Erstelle vorher ein
+Backup und prüfe Release-Hinweise, Migrationen und Mount-Änderungen.
+Erhalte alle aktiven Compose-Optionen. Migrationen laufen beim Start.
+Ein FreeSWITCH-Neustart beendet Gespräche. Ein reines Image-Downgrade ersetzt
+keine kompatible Wiederherstellung.
 
 ## Alternative: macvlan
 
@@ -148,3 +157,9 @@ diese Datensätze zu behalten, **vor** dem Update:
 
 TalkOps liest sie innerhalb einer Minute ein. Bereits gespeicherte Anrufe
 werden nicht doppelt angelegt.
+
+## Ergebnis prüfen
+
+Prüfe Containerzustand, erste Anmeldung und den ersten internen Anruf.
+
+Bei Fehlern: [Fehlerbehebung](fehlerbehebung.md). Erhalte bisherige Daten und Konfiguration während der Diagnose.

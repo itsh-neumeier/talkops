@@ -1,8 +1,14 @@
 # Backup and restore
 
+[Handbook](index.md) · [Deutsch](../de/datensicherung.md)
+
+## Before you start
+
+You need: backups.manage, host administration, an archive password and a separate recovery location.
+
 ## Backup contents
 
-A backup contains a PostgreSQL dump and the volumes `voicemail`, `sounds`,
+A backup contains a PostgreSQL dump and the volumes `fax`, `voicemail`, `sounds`,
 `provisioning`, `snapshots`, `cdr-spool` and optionally `recordings`. The spool
 contains pending and rejected call records. A complete recovery
 backup also contains selected `.env`, Compose and override files, including
@@ -392,3 +398,9 @@ volume. Phases are `database`, `volumes` and `complete`. Correct the problem and
 retry with the original archive. Preflight failures do not write a phase record.
 Database and filesystem replacement are not one transaction. Automatic rollback
 of both is not provided.
+
+## Check the result
+
+Inspect the archive and perform a planned restore on an isolated compatible host.
+
+For failures, use [troubleshooting](troubleshooting.md). Preserve existing data and configuration during diagnosis.

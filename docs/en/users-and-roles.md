@@ -1,5 +1,11 @@
 # Users and roles
 
+[Handbook](index.md) · [Deutsch](../de/benutzer-und-rollen.md)
+
+## Before you start
+
+You need: An administrator account to edit roles; user administration requires users.manage.
+
 Each user has one **role**. The role gives the permissions. Open
 **Settings → Users → Roles** to see and change the roles.
 
@@ -104,6 +110,9 @@ who can log in.
 See [Audit log](audit-log.md) for the filters, the downloads, the retention
 and the automatic export.
 
+The additional fax permissions are listed in [Fax](fax.md). They apply
+independently of telephony and call-log permissions.
+
 ## API
 
 - `GET /api/v1/roles`: permission catalog and roles (needs `users.view` or
@@ -113,3 +122,9 @@ and the automatic export.
 - `POST /api/v1/users` and `PUT /api/v1/users/{id}` accept `role_id` (any
   role, built-in or own). Without `role_id`, `role` selects a built-in role.
 - `GET /api/v1/auth/me` returns `permissions` (all keys for administrators).
+
+## Check the result
+
+Sign in as the affected test user and confirm permitted and restricted actions.
+
+For failures, use [troubleshooting](troubleshooting.md). Preserve existing data and configuration during diagnosis.

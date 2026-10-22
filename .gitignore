@@ -1,4 +1,5 @@
 /target
+/build/wiki/
 .env
 *.log
 backup-password

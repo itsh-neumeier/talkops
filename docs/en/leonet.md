@@ -1,5 +1,11 @@
 # Setting up LEONET
 
+[Handbook](index.md) · [Deutsch](../de/leonet.md)
+
+## Before you start
+
+You need: Provider SIP credentials, trunks.manage and settings.manage for dialing defaults.
+
 LEONET lines register **every phone number separately** with its own
 credentials at the registrar `sip.leovoice.online`. TalkOps creates one
 registration (FreeSWITCH gateway) per number.
@@ -50,3 +56,9 @@ All values can be overridden per trunk under **Edit → Advanced settings**.
   5080 outbound from the TalkOps host, RTP 16384–16999).
 - **No or one-way audio**: set *Settings → Public IP for trunks* (or
   `stun:stun.l.google.com:19302`).
+
+## Check the result
+
+Verify registration, incoming calls, outgoing caller ID and two-way audio.
+
+For failures, use [troubleshooting](troubleshooting.md). Preserve existing data and configuration during diagnosis.

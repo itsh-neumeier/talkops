@@ -339,6 +339,18 @@ pub async fn get<'e>(db: impl PgExecutor<'e>, tenant: TenantId, id: Uuid) -> Cor
 }
 
 /// Any tenant: the survey of a call.
+/// True while a survey of the tenant is armed, calling or running. No
+/// UniFi write may run then (ADR 0042).
+pub async fn any_active(pool: &PgPool, tenant: TenantId) -> CoreResult<bool> {
+    Ok(sqlx::query_scalar(
+        "SELECT EXISTS (SELECT 1 FROM wifi_surveys WHERE tenant_id = $1 AND state = ANY($2))",
+    )
+    .bind(tenant)
+    .bind(state::ACTIVE)
+    .fetch_one(pool)
+    .await?)
+}
+
 pub async fn by_call(pool: &PgPool, call: Uuid) -> CoreResult<Option<(TenantId, Survey)>> {
     let sql = format!("SELECT tenant_id, {COLUMNS} FROM wifi_surveys WHERE call_uuid = $1");
     let row: Option<SurveyRow> = sqlx::query_as(&sql).bind(call).fetch_optional(pool).await?;

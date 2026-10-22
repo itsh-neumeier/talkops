@@ -89,6 +89,7 @@ permissions! {
     WifiSurveyRun = "wifi_survey.run", "wifi", false;
     WifiSurveyManage = "wifi_survey.manage", "wifi", false;
     UnifiManage = "unifi.manage", "wifi", true;
+    UnifiWrite = "unifi.write", "wifi", true;
     SettingsManage = "settings.manage", "system", false;
     TranscriptionSettings = "transcription.settings", "system", true;
     SecurityManage = "security.manage", "system", true;

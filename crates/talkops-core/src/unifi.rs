@@ -1,5 +1,6 @@
-//! Read-only connection to the UniFi Network application (ADR 0041). The
-//! API key is stored encrypted (ADR 0008) and never returned.
+//! Connection to the UniFi Network application (ADR 0041). The API key is
+//! stored encrypted (ADR 0008) and never returned. Writes to the voice SSID
+//! are off until an administrator enables them (ADR 0042).
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -22,6 +23,21 @@ pub struct UnifiConnection {
     pub capabilities: serde_json::Value,
     pub last_check_at: Option<DateTime<Utc>>,
     pub last_error: Option<String>,
+    /// Integration API ID of the voice SSID.
+    pub voice_wifi_id: Option<String>,
+    /// Name of the voice SSID at selection.
+    pub voice_wifi_name: Option<String>,
+    /// "Allow write access" (ADR 0042); off by default.
+    pub write_enabled: bool,
+}
+
+impl UnifiConnection {
+    /// Integration API site ID from the last connection test.
+    pub fn site_id(&self) -> Option<&str> {
+        self.capabilities
+            .get("site_id")
+            .and_then(serde_json::Value::as_str)
+    }
 }
 
 #[derive(Clone, Deserialize, utoipa::ToSchema)]
@@ -87,7 +103,8 @@ pub fn check_api_key(key: &str) -> CoreResult<()> {
     Ok(())
 }
 
-const COLUMNS: &str = "url, site, cert_sha256, version, capabilities, last_check_at, last_error";
+const COLUMNS: &str = "url, site, cert_sha256, version, capabilities, last_check_at, last_error,
+    voice_wifi_id, voice_wifi_name, write_enabled";
 
 pub async fn get(pool: &PgPool, tenant: TenantId) -> CoreResult<Option<UnifiConnection>> {
     let sql = format!("SELECT {COLUMNS} FROM unifi_connections WHERE tenant_id = $1");
@@ -138,6 +155,13 @@ pub async fn save(
          ON CONFLICT (tenant_id) DO UPDATE SET url = EXCLUDED.url, site = EXCLUDED.site,
              cert_sha256 = EXCLUDED.cert_sha256, api_key_enc = EXCLUDED.api_key_enc,
              version = NULL, capabilities = '{{}}', last_check_at = NULL, last_error = NULL,
+             -- Another console or site: select the voice SSID again.
+             voice_wifi_id = CASE WHEN unifi_connections.url = EXCLUDED.url
+                 AND unifi_connections.site = EXCLUDED.site THEN unifi_connections.voice_wifi_id END,
+             voice_wifi_name = CASE WHEN unifi_connections.url = EXCLUDED.url
+                 AND unifi_connections.site = EXCLUDED.site THEN unifi_connections.voice_wifi_name END,
+             write_enabled = unifi_connections.write_enabled AND unifi_connections.url = EXCLUDED.url
+                 AND unifi_connections.site = EXCLUDED.site,
              updated_at = now()
          RETURNING {COLUMNS}"
     );
@@ -150,6 +174,38 @@ pub async fn save(
         .fetch_one(pool)
         .await
         .map_err(Into::into)
+}
+
+/// Sets the voice SSID (`None` clears it) and the write switch. Without a
+/// voice SSID, writes stay off.
+pub async fn set_voice_wifi(
+    pool: &PgPool,
+    tenant: TenantId,
+    wifi: Option<(&str, &str)>,
+    write_enabled: bool,
+) -> CoreResult<UnifiConnection> {
+    if let Some((id, name)) = wifi {
+        if id.is_empty() || id.len() > 64 || !id.bytes().all(|b| b.is_ascii_hexdigit() || b == b'-')
+        {
+            return Err(CoreError::Validation("invalid SSID ID".into()));
+        }
+        if name.chars().count() > 64 {
+            return Err(CoreError::Validation("SSID name too long".into()));
+        }
+    }
+    let sql = format!(
+        "UPDATE unifi_connections SET voice_wifi_id = $2, voice_wifi_name = $3,
+             write_enabled = $4 AND $2::text IS NOT NULL, updated_at = now()
+         WHERE tenant_id = $1 RETURNING {COLUMNS}"
+    );
+    sqlx::query_as(&sql)
+        .bind(tenant)
+        .bind(wifi.map(|w| w.0))
+        .bind(wifi.map(|w| w.1))
+        .bind(write_enabled)
+        .fetch_optional(pool)
+        .await?
+        .ok_or(CoreError::NotFound)
 }
 
 pub async fn delete(pool: &PgPool, tenant: TenantId) -> CoreResult<()> {

@@ -41,6 +41,7 @@
 		| 'nav.numbers'
 		| 'nav.phones'
 		| 'nav.doorStations'
+		| 'nav.wifiSurvey'
 		| 'nav.audit';
 	/**
 	 * Pages that live under Settings instead of the main menu: personal ones
@@ -72,6 +73,13 @@
 			key: 'nav.doorStations',
 			icon: '🚪',
 			perm: 'doors.manage',
+			group: 'setup'
+		},
+		{
+			href: '/wifi-surveys',
+			key: 'nav.wifiSurvey',
+			icon: '📶',
+			perm: 'wifi_survey.run',
 			group: 'setup'
 		},
 		{ href: '/audit', key: 'nav.audit', icon: '📜', perm: 'audit.view', group: 'setup' }

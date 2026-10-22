@@ -213,9 +213,17 @@ export interface UnifiConnection {
 		classic?: boolean;
 		site_id?: string | null;
 		access_points?: number;
+		wifi_broadcasts?: boolean;
+		voice_wifi?: { found: boolean; name?: string; not_writable?: string };
+		allowlist_fields?: string[];
+		write_min_version?: string;
+		write_supported?: boolean;
 	};
 	last_check_at: string | null;
 	last_error: string | null;
+	voice_wifi_id: string | null;
+	voice_wifi_name: string | null;
+	write_enabled: boolean;
 }
 
 export interface PairComparison {

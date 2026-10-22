@@ -1,6 +1,6 @@
 <script lang="ts">
-	// Wi-Fi voice survey (ADR 0041): list and start of surveys, thresholds
-	// and the read-only UniFi connection.
+	// Wi-Fi voice survey (ADR 0041): list and start of surveys, thresholds,
+	// the UniFi connection and the voice SSID changes (ADR 0042).
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
@@ -11,6 +11,7 @@
 	import PageHeader from '#lib/components/PageHeader.svelte';
 	import SkeletonRows from '#lib/components/SkeletonRows.svelte';
 	import Tabs from '#lib/components/Tabs.svelte';
+	import UnifiChanges from '#lib/components/UnifiChanges.svelte';
 	import UnifiSettings from '#lib/components/UnifiSettings.svelte';
 	import WifiSurveySettings from '#lib/components/WifiSurveySettings.svelte';
 	import { formatDateTime, t } from '#lib/i18n/index.svelte.ts';
@@ -26,11 +27,16 @@
 		type UnifiState
 	} from '#lib/wifiSurvey.ts';
 
-	type Tab = 'surveys' | 'settings' | 'unifi';
+	type Tab = 'surveys' | 'settings' | 'unifi' | 'changes';
 	const tabs = $derived([
 		{ id: 'surveys' as Tab, label: t('wifi.tabSurveys') },
 		...(can('wifi_survey.manage') ? [{ id: 'settings' as Tab, label: t('wifi.tabSettings') }] : []),
-		...(can('unifi.manage') ? [{ id: 'unifi' as Tab, label: t('wifi.tabUnifi') }] : [])
+		...(can('unifi.manage')
+			? [
+					{ id: 'unifi' as Tab, label: t('wifi.tabUnifi') },
+					{ id: 'changes' as Tab, label: t('wifi.tabChanges') }
+				]
+			: [])
 	]);
 	let tab = $state<Tab>((page.url.searchParams.get('tab') as Tab) || 'surveys');
 
@@ -140,6 +146,8 @@
 		<WifiSurveySettings />
 	{:else if tab === 'unifi'}
 		<UnifiSettings />
+	{:else if tab === 'changes'}
+		<UnifiChanges />
 	{:else}
 		<ErrorBox {error} />
 		{#if surveys && !devices.length}

@@ -121,3 +121,13 @@ again on its new head. Earlier candidate runs are superseded, not final gates.
 - Exact-main CI39784592529 and E2E39784592569 are running. No tag exists yet.
 - FreeSWITCH sources/workflow did not change; no separate main run applies.
 - Do not push the batch branch again. Archive later task-only changes through the audit ref.
+
+## Publication started
+
+Exact-main CI39784592529 and E2E39784592569 passed. Fresh guards verified
+unchanged main, empty open scope, both source ancestors, identical candidate
+and main trees, matching versions and latest successful main gates.
+New annotated v1.8.6 was pushed once on c093fa8dddd40a14823d9e6ed41922e0e38efc74.
+Tag object: 7e5720a3495dce1c87ccac042700973313b5d204.
+Release39822855165 is running. Additional tag CI39822855438, E2E39822855179 and
+FreeSWITCH39822855715 are running. Artifact verification is pending.

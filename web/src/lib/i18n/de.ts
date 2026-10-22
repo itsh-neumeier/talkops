@@ -2757,15 +2757,15 @@ const de: Record<keyof typeof en, string> = {
 	'wifi.rec.disable_vad':
 		'VAD/Silence Suppression am Handset ausschalten und die Begehung wiederholen.',
 	'wifi.rec.fast_roaming':
-		'{count} Roamings hatten eine hörbare Lücke (Ø {avg_gap_ms} ms). 802.11r (Fast Roaming), 802.11k und 802.11v (BSS Transition) auf der Sprach-SSID aktivieren und prüfen, ob das Handset 802.11r unterstützt.',
+		'Roamings mit hörbarer Lücke: {count} (Ø {avg_gap_ms} ms). 802.11r (Fast Roaming), 802.11k und 802.11v (BSS Transition) auf der Sprach-SSID aktivieren und prüfen, ob das Handset 802.11r unterstützt.',
 	'wifi.rec.min_rssi':
 		'Das Handset blieb an einem schwachen Access Point ({count}×, bis {rssi} dBm). Mindest-RSSI an den Access Points setzen (z. B. -75 dBm) oder die Roaming-Schwelle des Handsets senken.',
 	'wifi.rec.pingpong':
 		'Das Handset wechselte oft zwischen {ap} und {other_ap}. Sendeleistung dieser Access Points senken oder Position ändern.',
 	'wifi.rec.coverage':
-		'Schwache Abdeckung an {count} Stellen ({aps}). Access Point ergänzen oder Position in der Nähe der Markierungen ändern.',
+		'Stellen mit schwacher Abdeckung: {count} ({aps}). Access Point ergänzen oder Position in der Nähe der Markierungen ändern.',
 	'wifi.rec.interference':
-		'{count} Aussetzer ohne Roaming. Störungen, Kanalauslastung und das Netz hinter dem Access Point prüfen.',
+		'Aussetzer ohne Roaming: {count}. Störungen, Kanalauslastung und das Netz hinter dem Access Point prüfen.',
 	'wifi.rec.downlink_loss':
 		'Das Handset verlor Pakete von TalkOps (bis {loss_pct} %), der Uplink war sauber. Sendeleistung und Störungen auf dem AP-Kanal prüfen.',
 	'wifi.rec.band_5ghz':

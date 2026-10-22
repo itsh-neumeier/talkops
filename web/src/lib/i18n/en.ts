@@ -2721,15 +2721,15 @@ export default {
 	'wifi.rec.disable_vad':
 		'Switch off VAD / silence suppression on the handset and repeat the survey.',
 	'wifi.rec.fast_roaming':
-		'{count} roams had an audible gap (average {avg_gap_ms} ms). Enable 802.11r (Fast Roaming), 802.11k and 802.11v (BSS Transition) on the voice SSID and check that the handset supports 802.11r.',
+		'Roams with an audible gap: {count} (average {avg_gap_ms} ms). Enable 802.11r (Fast Roaming), 802.11k and 802.11v (BSS Transition) on the voice SSID and check that the handset supports 802.11r.',
 	'wifi.rec.min_rssi':
 		'The handset stayed on a weak access point ({count}×, down to {rssi} dBm). Set a minimum RSSI on the access points (e.g. -75 dBm) or lower the roaming threshold of the handset.',
 	'wifi.rec.pingpong':
 		'The handset changed often between {ap} and {other_ap}. Lower the transmit power of these access points or change their position.',
 	'wifi.rec.coverage':
-		'Weak coverage at {count} places ({aps}). Add an access point or change the position near the markers.',
+		'Places with weak coverage: {count} ({aps}). Add an access point or change the position near the markers.',
 	'wifi.rec.interference':
-		'{count} drops without a roam. Check interference, channel usage and the network behind the access point.',
+		'Drops without a roam: {count}. Check interference, channel usage and the network behind the access point.',
 	'wifi.rec.downlink_loss':
 		'The handset lost packets from TalkOps (up to {loss_pct} %) while the uplink was clean. Check the transmit power and interference on the access point channel.',
 	'wifi.rec.band_5ghz':

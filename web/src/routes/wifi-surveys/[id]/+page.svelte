@@ -423,13 +423,13 @@
 			</div>
 
 			<section class="card space-y-2 p-3">
-				<div class="flex flex-wrap gap-2">
+				<div class="grid grid-cols-2 gap-2 @xl:flex @xl:flex-wrap">
 					<button class="btn" onclick={() => mark('disturbance')}
 						>! {t('wifi.marker.disturbance')}</button
 					>
 					<button class="btn" onclick={() => mark('location')}>⌖ {t('wifi.marker.location')}</button
 					>
-					<div class="flex min-w-0 flex-1 gap-2">
+					<div class="col-span-2 flex min-w-0 flex-1 gap-2">
 						<input
 							class="input min-w-0"
 							maxlength="200"

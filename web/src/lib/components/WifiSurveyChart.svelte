@@ -22,10 +22,13 @@
 		onseek?: (offsetMs: number) => void;
 	} = $props();
 
-	const W = 1000;
+	// The drawing width follows the container, so labels keep their size
+	// on a phone.
+	let width = $state(1000);
+	const W = $derived(Math.max(320, Math.round(width)));
 	const H = 240;
 	const PAD = { left: 40, right: 8, top: 22, bottom: 22 };
-	const plotW = W - PAD.left - PAD.right;
+	const plotW = $derived(W - PAD.left - PAD.right);
 	// Upper area: RSSI; lower area: loss bars.
 	const RSSI_TOP = PAD.top;
 	const RSSI_H = 120;
@@ -153,7 +156,7 @@
 		m === 'disturbance' ? '!' : m === 'location' ? '⌖' : '✎';
 </script>
 
-<figure class="space-y-2">
+<figure class="space-y-2" bind:clientWidth={width}>
 	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 	<svg

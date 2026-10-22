@@ -60,7 +60,12 @@
 	async function openStart(device = '') {
 		startError = '';
 		checks = { vad: false, battery: false, roaming: false };
-		form = { device_id: device || devices[0]?.device_id || '', mode: 'originate', label: '' };
+		const known = devices.some((d) => d.device_id === device);
+		form = {
+			device_id: known ? device : (devices[0]?.device_id ?? ''),
+			mode: 'originate',
+			label: ''
+		};
 		startOpen = true;
 		await checkUnifi();
 	}

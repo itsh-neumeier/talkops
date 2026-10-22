@@ -86,6 +86,9 @@ permissions! {
     PhonesView = "phones.view", "phones", false;
     PhonesManage = "phones.manage", "phones", false;
     DoorsManage = "doors.manage", "doors", false;
+    WifiSurveyRun = "wifi_survey.run", "wifi", false;
+    WifiSurveyManage = "wifi_survey.manage", "wifi", false;
+    UnifiManage = "unifi.manage", "wifi", true;
     SettingsManage = "settings.manage", "system", false;
     TranscriptionSettings = "transcription.settings", "system", true;
     SecurityManage = "security.manage", "system", true;

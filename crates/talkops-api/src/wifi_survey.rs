@@ -57,7 +57,7 @@ pub fn signal(sounds: &std::path::Path, lang: &str) -> String {
     let tones = "tone_stream://L=28;%(100,900,1000)";
     match prompts::path(sounds, "wifi_survey_running", lang).filter(|p| p.is_file()) {
         Some(p) => format!("file_string://{}!silence_stream://500!{tones}", p.display()),
-        None => format!("tone_stream://L=30;%(100,900,1000)"),
+        None => "tone_stream://L=30;%(100,900,1000)".to_owned(),
     }
 }
 
@@ -366,7 +366,8 @@ async fn call_exists(esl: &EslHandle, call: Uuid) -> bool {
             .map(|r| r.trim() == "true")
             // Unknown: keep the survey.
             .unwrap_or(true),
-        None => true,
+        // Without FreeSWITCH no call can ring.
+        None => false,
     }
 }
 
@@ -484,6 +485,10 @@ async fn collect_loop(
             return Ok(());
         }
         let Some(esl) = s.telephony.esl.get().await else {
+            // FreeSWITCH is gone: the call ended with it.
+            if gone_too_long(&mut gone_since) {
+                return finish_without_record(s, tenant, &survey).await;
+            }
             continue;
         };
         if !media_known {
@@ -518,11 +523,8 @@ async fn collect_loop(
             None => {
                 // The call ended; the call record finishes the survey. If it
                 // does not arrive, finish without the error periods.
-                let since = *gone_since.get_or_insert_with(Instant::now);
-                if since.elapsed() > Duration::from_secs(90) {
-                    let secs = recording_secs(s, &survey).await;
-                    ws::finish(&s.db, tenant, survey.id, "UNKNOWN", secs).await?;
-                    return Ok(());
+                if gone_too_long(&mut gone_since) {
+                    return finish_without_record(s, tenant, &survey).await;
                 }
             }
         }
@@ -530,6 +532,18 @@ async fn collect_loop(
             ws::add_radio(&s.db, tenant, survey.id, at, &r).await?;
         }
     }
+}
+
+/// True once the call has been missing for 90 seconds.
+fn gone_too_long(since: &mut Option<Instant>) -> bool {
+    since.get_or_insert_with(Instant::now).elapsed() > Duration::from_secs(90)
+}
+
+/// Finishes a survey whose call record did not arrive.
+async fn finish_without_record(s: &AppState, tenant: TenantId, survey: &Survey) -> CoreResult<()> {
+    let secs = recording_secs(s, survey).await;
+    ws::finish(&s.db, tenant, survey.id, "UNKNOWN", secs).await?;
+    Ok(())
 }
 
 /// Reads codec and packet time of the call once.

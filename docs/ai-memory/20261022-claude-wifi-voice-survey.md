@@ -49,6 +49,11 @@ after user approval.
 - Stage 4 (UniFi writes, roaming threshold provisioning) is a follow-up
   phase with its own ADR.
 - Proposed delivery: stages 1 to 3 as three PRs.
+- User feedback 2026-10-22: the survey must be in the admin UI with all live
+  values on one screen during the walk. Added the admin page placement
+  (Settings → Wi-Fi survey with Surveys, Settings and UniFi tabs) and a
+  mobile-first live dashboard (1 s polling of a compact `/live` endpoint,
+  UI marker buttons, wake lock, offline catch-up).
 
 ## Checks
 

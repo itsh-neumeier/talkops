@@ -137,7 +137,8 @@ Decision proposal:
 
 1. A user with `wifi_survey.run` opens **Extensions → extension → Devices**.
    A Wi-Fi device row shows **Start Wi-Fi survey**. A new page
-   **Diagnostics → Wi-Fi survey** lists all surveys.
+   **Settings → Wi-Fi survey** lists all surveys (see "Place in the admin
+   area").
 2. The start dialog shows the device, the phone MAC and the UniFi state
    ("client found on AP *Hall*", "no UniFi connection" or "client not found").
    The survey also works without UniFi. Then the result has no radio data.
@@ -165,13 +166,78 @@ Decision proposal:
   - `3` = note (free text can be added later in the UI)
   - `#` = end test
   A short confirmation tone answers each accepted digit.
-- The UI shows a live view: elapsed time, current AP, RSSI, packets received
-  in the last second, loss in the last 10 s, markers. The page polls every
-  2 s. No new WebSocket channel is necessary.
+- The UI shows the live dashboard (see "Live dashboard during the walk").
 - Recording: TalkOps records the call in stereo with the existing
   `record_session` function (ADR 0012). The recording does not depend on
   the recording settings of the extension. The survey always records.
   The recording is not transcribed.
+
+### Place in the admin area
+
+The survey is a normal part of the admin area. It uses the existing
+settings navigation (`SettingsNav.svelte`) and the shared components
+(`PageHeader`, `Tabs`, `Modal`, `.scroll-x`) from `docs/ui-guidelines.md`.
+
+| Place | Content | Permission |
+| --- | --- | --- |
+| **Settings → Wi-Fi survey** (new setup page `/wifi-surveys`, next to *Phones*) | Tab **Surveys**: list, start, live dashboard, results, comparison | `wifi_survey.run` |
+| same page, tab **Settings** | Thresholds, retention, maximum duration, parallel limit | `wifi_survey.manage` |
+| same page, tab **UniFi** | Connection, API key, TLS fingerprint, connection test, detected version and endpoints | `unifi.manage` |
+| **Extensions → extension → Devices** | Button **Start Wi-Fi survey** on each Wi-Fi device row | `wifi_survey.run` |
+| **Phones → phone** | Link to the surveys of this phone and its current UniFi state | `wifi_survey.run` |
+
+A user without these permissions does not see the page or the buttons.
+
+### Live dashboard during the walk
+
+The administrator carries the handset and normally a smartphone or tablet
+with the TalkOps web UI. The live dashboard shows all live values on one
+screen, without scrolling on a phone in portrait orientation.
+
+Layout (mobile first, one column on a phone, a grid on a tablet or desktop):
+
+1. **Status bar**: state (calling / running), elapsed time, a large
+   traffic-light color for the last 5 s (green / yellow / red), **Stop**.
+2. **Value tiles** (large numbers, color by threshold):
+   - Access point: name, band and channel (for example "Hall · 5 GHz · 36")
+   - RSSI in dBm with a bar, and the trend of the last 10 s
+   - Data rate TX/RX in Mbit/s
+   - Uplink: packets in the last second (for example "50/50"), loss in % for
+     the last 10 s, longest gap in the last 10 s in ms
+   - Downlink: loss and jitter from the latest RTCP report, with its age
+   - Estimated MOS (FreeSWITCH)
+   - Roams: count, and the last roam with "from AP → to AP", gap and a
+     preliminary rating
+   - Markers: count and the latest marker
+3. **Rolling chart** of the last 2 minutes: RSSI line, loss bars for each
+   second, vertical lines for roams and markers. A switch shows the full
+   test.
+4. **Marker buttons** in the UI as an alternative to DTMF: *Disturbance*,
+   *New location*, *Note* (with a short text field). A UI marker has the
+   same effect as the DTMF digit.
+5. **Event list** (newest first): roams, gaps above the audible threshold,
+   markers, UniFi poll errors.
+
+Behavior:
+
+- The page polls the compact endpoint `GET /api/v1/wifi-surveys/{id}/live`
+  once each second. The response contains only the current values and the
+  new samples since the last request (less than 2 KB). This uses the same
+  polling method as the live transcript and diagnostics capture views. No new WebSocket or SSE channel
+  is necessary.
+- The API calculates the preliminary roam rating with the same rule
+  functions as the analysis job. The final rating after the call can differ
+  a little, because it also uses the CDR error periods.
+- The page asks for a screen wake lock (Screen Wake Lock API) so that the
+  phone screen stays on. If the browser does not support it, the page shows
+  a hint.
+- When the connection to TalkOps is lost (for example in a Wi-Fi dead zone),
+  the page shows "no connection" with the time of the last update. The
+  measurement continues on the server. The page loads the missing values
+  when the connection comes back.
+- Colors always have a text label or an icon too, for accessibility.
+- An optional **audio warning** in the browser: a short sound when the
+  last-second rating is red. Off by default.
 
 ### Result page
 
@@ -193,7 +259,7 @@ Decision proposal:
 
 ### Rating of each roam
 
-Default thresholds (editable in **Settings → Wi-Fi survey**):
+Default thresholds (editable in **Settings → Wi-Fi survey → Settings**):
 
 | Rating | Rule |
 | --- | --- |
@@ -268,7 +334,7 @@ recommendations therefore state "check this setting". They do not state
 | `talkops-api` | Routes, survey controller task (originate, outbound socket session, 1 s media poll, UniFi poll, DTMF markers), CDR extension for the error log of survey calls, retention, `Range` support for recording audio. |
 | `talkops-media-worker` | Job `wifi_survey.analyse` (analysis and recommendations) and job `wifi_survey.signal` (render the test signal with Piper once for each language). |
 | Dialplan (`fsxml`) | `*39` self-dial: transfer to the outbound socket only for an armed survey of the calling device. Add `*39` to `FIXED_FEATURE_CODES`. |
-| Web | Survey list, start dialog, live view, result page, comparison, settings. SVG charts without a new dependency. Texts in `en.ts` and `de.ts`. |
+| Web | Admin page (surveys, settings, UniFi tabs), start dialog, live dashboard, result page, comparison, settings. SVG charts without a new dependency. Texts in `en.ts` and `de.ts`. |
 
 The analysis runs as a job in the media worker. The live collection must run
 in the API process, because it needs the ESL connection and the call
@@ -379,6 +445,8 @@ mutation. Audit data never contains the API key.
 | `GET /api/v1/wifi-surveys` | `wifi_survey.run` | List (own; all with `wifi_survey.manage`) |
 | `GET /api/v1/wifi-surveys/{id}` | `wifi_survey.run` | State, summary, roams, recommendations |
 | `GET /api/v1/wifi-surveys/{id}/timeline` | `wifi_survey.run` | Samples and events |
+| `GET /api/v1/wifi-surveys/{id}/live?since=<offset_ms>` | `wifi_survey.run` | Compact live values for the dashboard (polled each second) |
+| `POST /api/v1/wifi-surveys/{id}/markers` | `wifi_survey.run` | Add a marker from the UI |
 | `POST /api/v1/wifi-surveys/{id}/stop` | `wifi_survey.run` | End the call |
 | `POST /api/v1/wifi-surveys/{id}/markers/{marker_id}` | `wifi_survey.run` | Add a note to a marker |
 | `POST /api/v1/wifi-surveys/{id}/analyse` | `wifi_survey.manage` | Run the analysis again with current thresholds |
@@ -443,8 +511,8 @@ It is not visible in the normal call recording list of the extension.
 | Stage | Content | Can run alone | Size estimate |
 | --- | --- | --- | --- |
 | 0 | Hardware prototype with the user: connection test against the real UniFi console, `stat/sta` and Integration responses, one test call to the AX8x handset with RTCP check. Result goes into this proposal and the version table. | — | Small (part of stage 1/2) |
-| 1 | Survey call, test signal, DTMF markers, recording, 1 s media samples, CDR error periods, live view, simple result page without UniFi, retention, `Range` support, permissions | Yes: finds drops without UniFi | Large (~2,500 lines incl. tests) |
-| 2 | `talkops-unifi` crate, encrypted connection, connection test and capabilities, radio samples, AP sections in the timeline | Yes | Medium (~1,500 lines) |
+| 1 | Survey call, test signal, DTMF and UI markers, recording, 1 s media samples, CDR error periods, live dashboard (media tiles), simple result page without UniFi, admin page and permissions, retention, `Range` support | Yes: finds drops without UniFi | Large (~2,500 lines incl. tests) |
+| 2 | `talkops-unifi` crate, encrypted connection, UniFi tab, connection test and capabilities, radio samples, live AP/RSSI/rate tiles and live roam display, AP sections in the timeline | Yes | Medium (~1,500 lines) |
 | 3 | Analysis job, roam rating, patterns, recommendations, roam table with playback, comparison, export, settings | Yes | Large (~2,000 lines) |
 | 4 | Follow-up phase (not in this delivery): handset provisioning (roaming threshold), UniFi write access | — | Separate proposal |
 

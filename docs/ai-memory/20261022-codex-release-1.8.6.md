@@ -95,3 +95,12 @@ GitHub release, three image manifests for amd64/arm64 and moving stable tags.
 - docs/ai-memory/20261022-claude-wifi-voice-survey.md
 - docs/ai-memory/20261019-codex-release-1.8.5.md
 - docs/adr/0041-wifi-voice-survey-and-unifi-correlation.md; docs/release-workflow.md
+
+## Candidate documentation correction
+
+Final review found installation/update examples still selected 1.8.5. Update
+the active examples in both READMEs and paired installation, Portainer, updates
+and reference guides to 1.8.6, including both config tag and image version.
+Keep historical fax upgrade notes unchanged. All 13 documentation tests and
+Wiki --check passed again (75 pages/654 links). The candidate must be checked
+again on its new head. Earlier candidate runs are superseded, not final gates.

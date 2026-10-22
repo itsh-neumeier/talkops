@@ -1,4 +1,5 @@
-//! Wi-Fi voice survey and the read-only UniFi connection (ADR 0041).
+//! Wi-Fi voice survey and the UniFi connection (ADR 0041). Changes to the
+//! voice SSID are in `unifi_write` (ADR 0042).
 //!
 //! `wifi_survey.run` starts surveys and reads own surveys;
 //! `wifi_survey.manage` reads all surveys, changes the thresholds and
@@ -200,6 +201,10 @@ pub async fn start_survey(
     Json(input): Json<NewSurvey>,
 ) -> ApiResult<(StatusCode, Json<Survey>)> {
     auth.require_perm(Permission::WifiSurveyRun)?;
+    // No survey while TalkOps changes the voice SSID (ADR 0042).
+    if talkops_core::unifi_changes::applying(&state.db, auth.tenant).await? {
+        return Err(ApiError::Conflict("a UniFi change is in progress".into()));
+    }
     let target = ws::target(&state.db, auth.tenant, input.device_id).await?;
     let snapshot = control::unifi_state(
         &state.db,
@@ -792,7 +797,7 @@ pub async fn test_unifi(
         cert_sha256: conn.cert_sha256.clone(),
     });
     let result = match client {
-        Ok(c) => c.probe(None).await,
+        Ok(c) => c.probe(None, conn.voice_wifi_id.as_deref()).await,
         Err(e) => Err(e),
     };
     match &result {

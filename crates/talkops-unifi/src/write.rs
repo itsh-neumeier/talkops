@@ -31,7 +31,7 @@ pub enum WriteError {
     Invalid(String),
     /// UniFi accepted the PUT, but the read-back differs.
     #[error("UniFi did not apply all values")]
-    Verify { after: Snapshot },
+    Verify { before: Snapshot, after: Snapshot },
 }
 
 impl WriteError {
@@ -141,6 +141,7 @@ impl Writer<'_> {
             .any(|(f, slot)| !applied.after[f.key()].same(slot));
         if mismatch {
             return Err(WriteError::Verify {
+                before: applied.before,
                 after: applied.after,
             });
         }
@@ -634,9 +635,10 @@ mod tests {
             )
             .await
             .unwrap_err();
-        let WriteError::Verify { after } = err else {
+        let WriteError::Verify { before, after } = err else {
             panic!()
         };
+        assert_eq!(before, after, "UniFi kept the old value");
         assert_eq!(
             after["uapsdEnabled"],
             Slot::Present {

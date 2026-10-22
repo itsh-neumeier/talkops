@@ -34,6 +34,7 @@ pub mod time_conditions;
 pub mod transcription;
 pub mod transcription_jobs;
 pub mod trunks;
+pub mod unifi_write;
 pub mod users;
 pub mod voicemail;
 pub mod webrtc;

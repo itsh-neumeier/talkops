@@ -1,10 +1,25 @@
 # Wi-Fi survey stage 4a: changes to the UniFi voice SSID: proposal for user review
 
-Status: Draft for user review. No implementation yet.
+Status: Accepted by the user on 2026-10-22 ("Freigegeben") with the
+recommended answers to Q1 to Q6. Implemented in the same PR.
 Date: 2026-10-22 (Europe/Berlin).
 Base: `origin/main`, `c093fa8dddd40a14823d9e6ed41922e0e38efc74` (TalkOps 1.8.6).
 ADR draft: [ADR 0042](adr/0042-unifi-voice-ssid-write-access.md).
 Previous stage: [Wi-Fi voice survey proposal](wlan-voice-survey-proposal.md), ADR 0041.
+
+## Implementation notes
+
+- The voice SSID and the write switch use their own route
+  `PUT /api/v1/unifi/voice-ssid`, not new fields of
+  `PUT /api/v1/unifi/connection`. A save of the connection resets the
+  version check; new fields there would block writes until the next test.
+- The proposal route is `GET /api/v1/wifi-surveys/{id}/unifi-proposal`.
+- A survey cannot start while a change is in the state `applying`.
+- A change row in the state `applying` that is older than five minutes
+  counts as interrupted (`failed`, error `interrupted`).
+- A read-back mismatch after the `PUT` stores the state `failed` with both
+  snapshots, so a rollback is still possible.
+- Writes on a WPA2-only SSID keep 802.11r as an instruction (Q1).
 
 ## Goal
 

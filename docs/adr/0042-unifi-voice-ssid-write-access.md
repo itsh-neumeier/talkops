@@ -1,6 +1,6 @@
 # 0042 - Changes to the UniFi voice SSID through the official API
 
-- Status: Proposed (draft for user review, 2026-10-22).
+- Status: Accepted by the user on 2026-10-22 ("Freigegeben").
 - Extends: ADR 0041. Also uses ADRs 0008 and 0029.
 - Proposal: [UniFi voice SSID write proposal](../unifi-wifi-write-proposal.md).
 
@@ -125,5 +125,10 @@ a call.
 - Negative: field names and the behavior of the `PUT` come from the
   published specification and a community client. A test on a real
   11.0 console must confirm them before the feature is marked as tested.
+- Implementation notes: the voice SSID and the write switch have their own
+  route (`PUT /api/v1/unifi/voice-ssid`). A save of the connection resets
+  the version check, so a field on `PUT /api/v1/unifi/connection` would
+  block writes until the next connection test. A survey cannot start while
+  a change is in progress.
 - Follow-up: hardware test (stage 0 of the proposal), and a later decision
   about 802.11r on WPA2-only SSIDs, minimum data rates and radio settings.

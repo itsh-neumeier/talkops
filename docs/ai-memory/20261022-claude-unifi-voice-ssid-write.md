@@ -8,7 +8,7 @@
 - Status: Completed (implementation in PR, waiting for review and hardware test)
 - Branch: `ccr-74ace6e8-93dh09` (session branch; worktree `../talkops-unifi-write`)
 - Base commit: `c093fa8dddd40a14823d9e6ed41922e0e38efc74` (`origin/main`, TalkOps 1.8.6)
-- Related commits or PR: Pending (see the PR of the branch)
+- Related commits or PR: https://github.com/itsh-neumeier/talkops/pull/62
 
 ## Goal
 
@@ -82,7 +82,7 @@ official UniFi Network Integration API. No classic API writes.
 - Passed: browser check with the real server binary and a mock console
   (Python, Network 11.0.89 format): UniFi tab, diff dialog, apply, history
   and rollback at 390 px (no horizontal scroll) and in desktop dark mode.
-- Full workspace test result: see the PR description.
+- Full workspace: 469 passed, 1 ignored, 1 failed (`read_only_fax_directory_rejects_upload_without_queueing`; root environment, unrelated, known from the stage 1 to 3 summary).
 - Not run: real UniFi console, real handset, Docker images, SIPp/E2E.
 - STE review: project writing rules applied. The full ASD-STE100 standard
   was not available; full language review is pending.

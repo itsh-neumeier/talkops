@@ -5,7 +5,9 @@ export class ApiError extends Error {
 	constructor(
 		public status: number,
 		public code: string,
-		message: string
+		message: string,
+		/** The full JSON error body, e.g. extra fields of a 409. */
+		public body: Record<string, unknown> = {}
 	) {
 		super(message);
 	}
@@ -56,7 +58,7 @@ async function sendWithHeaders<T>(
 	if (!res.ok) {
 		if (res.status === 401 && !path.startsWith('/auth/login') && path !== '/auth/me')
 			onUnauthorized();
-		throw new ApiError(res.status, data.error ?? 'error', data.message ?? res.statusText);
+		throw new ApiError(res.status, data.error ?? 'error', data.message ?? res.statusText, data);
 	}
 	return { data: data as T, headers: res.headers };
 }
@@ -137,7 +139,8 @@ export type Permission =
 	| 'audit.manage'
 	| 'wifi_survey.run'
 	| 'wifi_survey.manage'
-	| 'unifi.manage';
+	| 'unifi.manage'
+	| 'unifi.write';
 
 export interface PermissionInfo {
 	key: Permission;

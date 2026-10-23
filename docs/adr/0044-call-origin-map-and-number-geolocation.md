@@ -116,9 +116,11 @@ like invalid trunk presets.
 
 ### Map library and base map
 
-Leaflet (BSD-2-Clause) draws the map. It is small, has a canvas renderer for
-many bubbles, shows GeoJSON without a tile server and supports an optional
-tile layer. MapLibre GL JS needs WebGL and vector tiles; the map does not
+Leaflet (BSD-2-Clause) draws the map. It is small, shows GeoJSON without a
+tile server and supports an optional tile layer. The bubbles are HTML
+markers: a keyboard can focus them, and Enter opens the details. The map
+has one bubble for each area with calls, so the number of markers stays
+small. MapLibre GL JS needs WebGL and vector tiles; the map does not
 need these functions. The web UI loads Leaflet with a dynamic import only
 when the map view opens. The main bundle does not grow.
 

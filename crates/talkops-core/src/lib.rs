@@ -52,6 +52,7 @@ pub mod transcription_profiles;
 pub mod trunks;
 pub mod turn;
 pub mod unifi;
+pub mod unifi_changes;
 pub mod users;
 pub mod voicemail;
 pub mod voicemail_config;

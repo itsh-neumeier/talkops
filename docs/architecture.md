@@ -430,13 +430,30 @@ originates the call through ESL, or the handset dials `*39` for a survey
 that a user armed in the web UI. The outbound socket session records the
 call in stereo and plays the test signal. Once a second, the API reads the
 `mediaStats` JSON API of FreeSWITCH for the call and the Wi-Fi state of the
-handset MAC from UniFi Network (crate `talkops-unifi`, GET requests only).
+handset MAC from UniFi Network (crate `talkops-unifi`, GET requests in the
+survey path).
 `DTMF` events become markers; `RECV_RTCP_MESSAGE` events give downlink loss
 and jitter. The call record adds the uplink error periods. The media
 worker job `wifi_survey.analyse` rates each roam, detects patterns and
 creates recommendations. The retention loop deletes surveys with their
 recordings. See [ADR 0041](adr/0041-wifi-voice-survey-and-unifi-correlation.md)
 and [the user guide](en/wifi-survey.md).
+
+An administrator can apply recommendations to the UniFi voice SSID
+(ADR 0042). The write module of `talkops-unifi` reads the SSID through the
+Integration API, changes only allowlist fields and sends one `PUT` to
+`wifi/broadcasts/{id}`. Writes are off by default and need the permission
+`unifi.write`, Network 10.6.106 or later, no active survey and a
+confirmation in the diff dialog. The table `unifi_wifi_changes` stores the
+values of the changed fields before and after each change for the rollback.
+See [ADR 0042](adr/0042-unifi-voice-ssid-write-access.md).
+
+The same proposal can set the roaming threshold of the survey handset
+(`static.network.wifi.roaming_threshold`, phone setting of kind `int`). The
+history row waits until the handset fetches its configuration. Before a
+band removal on the voice SSID, TalkOps reads the band of each Wi-Fi handset
+from UniFi and refuses a change that would disconnect one. See
+[ADR 0043](adr/0043-wifi-handset-band-and-roaming.md).
 
 ## Roadmap
 
@@ -454,4 +471,6 @@ and [the user guide](en/wifi-survey.md).
 | 8 | Betrieb: Backup/Restore, Metriken, Hardening, SIP-Anmeldeschutz, Setup-Assistent, Release 1.0 | ✅ (v1.0.0) |
 | 1.1 | Audio-Clips (Computerstimme, Aufnahme, Upload), Smart Attendant, Warteschlangen wie UniFi Talk, Übersicht mit Statistik, Yealink AX83H/AX86R | ✅ (v1.1.0) |
 | WLAN 1 | WLAN-Begehung: Testanruf an WLAN-Handsets, Messung je Sekunde, Aufnahme, DTMF-Markierungen, UniFi-Abgleich (nur lesend), Roaming-Bewertung, Live-Ansicht, Vergleich (ADR 0041) | ✅ (Test mit echter UniFi-Konsole und Handset offen) |
-| WLAN 2 | Handset-Provisioning (Roaming-Schwelle, VAD, DSCP) und schreibende UniFi-Änderungen nur nach Bestätigung, mit Snapshot und Rücknahme (eigene ADR) | geplant |
+| WLAN 2a | Empfehlungen als Änderung an der UniFi-VoIP-SSID über die offizielle Integration API, nur nach Bestätigung, mit Snapshot und Rollback (ADR 0042) | ✅ (Test mit echter 11.0-Konsole offen) |
+| WLAN 2b | Roaming-Schwelle der Handsets aus der Begehung und Bandschutz vor SSID-Bandänderungen (ADR 0043) | ✅ (Test mit echtem AX83H offen) |
+| WLAN 2c | Band-Parameter, VAD und DSCP der Handsets (nach Bestätigung der Yealink-Parameternamen) | geplant |

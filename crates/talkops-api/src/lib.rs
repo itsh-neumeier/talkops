@@ -278,6 +278,8 @@ pub fn api_router() -> (Router<AppState>, utoipa::openapi::OpenApi) {
         .merge(routes::queues::router())
         .merge(routes::recordings::router())
         .merge(routes::wifi_survey::router())
+        .merge(routes::unifi_write::router())
+        .merge(routes::wifi_handset::router())
         .merge(routes::doors::router())
         .merge(routes::webrtc::router())
         .merge(routes::backups::router())

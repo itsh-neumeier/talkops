@@ -130,6 +130,8 @@ pub enum SettingKind {
     Bool,
     /// One of `values`.
     Choice,
+    /// An integer from `min` to `max`.
+    Int,
 }
 
 /// A comfort setting an admin can set for phones (key tone, display …).
@@ -154,6 +156,11 @@ pub struct PhoneSetting {
     /// The phone's factory value, if documented.
     #[serde(default)]
     pub default: Option<String>,
+    /// Limits of an `int`.
+    #[serde(default)]
+    pub min: Option<i32>,
+    #[serde(default)]
+    pub max: Option<i32>,
     /// Phone families that take the parameter.
     pub families: Vec<PhoneFamily>,
 }
@@ -163,6 +170,11 @@ impl PhoneSetting {
         match self.kind {
             SettingKind::Bool => value == "0" || value == "1",
             SettingKind::Choice => self.values.iter().any(|v| v == value),
+            SettingKind::Int => value.parse::<i32>().is_ok_and(|n| {
+                value == n.to_string()
+                    && self.min.is_none_or(|min| n >= min)
+                    && self.max.is_none_or(|max| n <= max)
+            }),
         }
     }
 }
@@ -236,6 +248,10 @@ impl PhoneCatalog {
                     Some("duplicate key")
                 } else if setting.kind == SettingKind::Choice && setting.values.is_empty() {
                     Some("a choice needs values")
+                } else if setting.kind == SettingKind::Int
+                    && !matches!((setting.min, setting.max), (Some(a), Some(b)) if a <= b)
+                {
+                    Some("an int needs min and max")
                 } else if setting.families.is_empty() {
                     Some("no phone families")
                 } else if setting
@@ -381,6 +397,22 @@ mod tests {
         assert!(c.check_settings(&bad).is_err());
         let unknown = SettingValues::from([("nope".to_owned(), "1".to_owned())]);
         assert!(c.check_settings(&unknown).is_err());
+
+        // Wi-Fi roaming threshold (ADR 0043): an integer from -100 to -30.
+        let roam =
+            |v: &str| SettingValues::from([("wifi_roaming_threshold".to_owned(), v.to_owned())]);
+        assert!(c.check_settings(&roam("-72")).is_ok());
+        for bad in ["-101", "-29", "-70.5", "abc", "+-70", "-070", ""] {
+            assert!(c.check_settings(&roam(bad)).is_err(), "{bad}");
+        }
+        assert_eq!(
+            c.effective_settings(ax, &SettingValues::new(), &roam("-72")),
+            [("static.network.wifi.roaming_threshold".into(), "-72".into())]
+        );
+        assert!(
+            c.effective_settings(t54w, &SettingValues::new(), &roam("-72"))
+                .is_empty()
+        );
         assert_eq!((t54w.ringtone_max_kb, t54w.wallpaper), (8192, true));
         assert_eq!(c.get("t53w").unwrap().ringtone_max_kb, 100);
         assert_eq!((ax.ringtone_max_kb, ax.wallpaper), (8192, true));

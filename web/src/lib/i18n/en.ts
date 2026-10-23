@@ -1323,6 +1323,7 @@ export default {
 	'phoneset.group.display': 'Display',
 	'phoneset.group.notifications': 'Notifications',
 	'phoneset.group.audio': 'Audio',
+	'phoneset.group.wifi': 'Wi-Fi',
 	'phoneset.key_tone': 'Key tone',
 	'phoneset.charging_tone': 'Tone when placed in the charger',
 	'phoneset.vibrate': 'Vibrate on calls',
@@ -1337,6 +1338,9 @@ export default {
 	'phoneset.voicemail_popup': 'Notice for new voicemail',
 	'phoneset.noise_filter': 'Noise filter (noise you hear)',
 	'phoneset.acoustic_shield': 'Acoustic shield (background noise while you speak)',
+	'phoneset.wifi_roaming_threshold':
+		'Roaming threshold (the handset searches a better access point below this signal)',
+	'phoneset.range': '{min} to {max}; empty keeps the value above',
 	'phoneset.v.time_format.1': '24 hours',
 	'phoneset.v.time_format.0': '12 hours (AM/PM)',
 	'phoneset.v.acoustic_shield.0': 'Off',
@@ -2594,7 +2598,8 @@ export default {
 	'perm.wifi_survey.manage.hint':
 		'Read all surveys, change thresholds and retention, delete surveys.',
 	'perm.unifi.manage': 'Manage UniFi connection',
-	'perm.unifi.manage.hint': 'Store the UniFi API key (read-only access) and test the connection.',
+	'perm.unifi.manage.hint':
+		'Store the UniFi API key, test the connection, select the voice SSID and read change proposals and the change history.',
 	'wifi.title': 'Wi-Fi survey',
 	'wifi.intro':
 		'Walk the site with a Wi-Fi handset. TalkOps measures the voice stream each second, records the call and rates each roam with data from UniFi.',
@@ -2779,7 +2784,7 @@ export default {
 		'New thresholds apply to new surveys. "Analyse again" on a survey applies them to old surveys.',
 	'wifi.unifi.title': 'UniFi Network connection',
 	'wifi.unifi.intro':
-		'TalkOps reads the access point, band, channel, signal and data rate of the survey handset. TalkOps only reads; it never changes the UniFi configuration.',
+		'TalkOps reads the access point, band, channel, signal and data rate of the survey handset. Without "Allow write access", TalkOps only reads and never changes the UniFi configuration.',
 	'wifi.unifi.url': 'Console address',
 	'wifi.unifi.site': 'Site name',
 	'wifi.unifi.apiKey': 'API key',
@@ -2803,5 +2808,158 @@ export default {
 	'wifi.unifi.available': 'available',
 	'wifi.unifi.unavailable': 'not available',
 	'wifi.unifi.noClassic':
-		'The client values are not available. The survey then has no signal, channel or data rate. Check the version table in the user guide.'
+		'The client values are not available. The survey then has no signal, channel or data rate. Check the version table in the user guide.',
+	'perm.unifi.write': 'Change the UniFi voice SSID',
+	'perm.unifi.write.hint':
+		'Switch on write access, apply survey recommendations to the voice SSID and the roaming threshold of the survey handset (with Manage phones), and roll changes back.',
+	'wifi.tabChanges': 'Wi-Fi changes',
+	'unifiWrite.propose': 'Propose change',
+	'unifiWrite.proposeHint':
+		'TalkOps reads the voice SSID from UniFi and proposes changes for these recommendations. Nothing changes before you confirm.',
+	'unifiWrite.dialogTitle': 'Change the voice SSID',
+	'unifiWrite.loading': 'Reading the voice SSID from UniFi …',
+	'unifiWrite.ssid': 'SSID: {name}',
+	'unifiWrite.col.field': 'Setting',
+	'unifiWrite.col.current': 'Current',
+	'unifiWrite.col.new': 'New',
+	'unifiWrite.col.reason': 'Recommendation',
+	'unifiWrite.select': 'Change {field}',
+	'unifiWrite.noChanges': 'The voice SSID already has the proposed values.',
+	'unifiWrite.field.bssTransitionEnabled': 'BSS transition (802.11v)',
+	'unifiWrite.field.securityConfiguration.wpa3FastRoamingEnabled': 'WPA3 fast roaming',
+	'unifiWrite.field.securityConfiguration.pmfMode': 'Protected management frames (PMF)',
+	'unifiWrite.field.handoffSuggestionsConfiguration': 'Handoff suggestions (minimum RSSI)',
+	'unifiWrite.field.broadcastingFrequenciesGHz': 'Bands',
+	'unifiWrite.field.uapsdEnabled': 'U-APSD (power save)',
+	'unifiWrite.field.multicastToUnicastConversionEnabled': 'Multicast to unicast',
+	'unifiWrite.field.arpProxyEnabled': 'ARP proxy',
+	'unifiWrite.field.dtimPeriodByFrequencyGHzOverride': 'DTIM period',
+	'unifiWrite.rec.fast_roaming': 'Slow roams',
+	'unifiWrite.rec.min_rssi': 'Sticky client',
+	'unifiWrite.rec.band_5ghz': '2.4 GHz',
+	'unifiWrite.rec.voice_ssid': 'Voice SSID',
+	'unifiWrite.rec.coverage': 'Coverage',
+	'unifiWrite.rec.pingpong': 'Ping-pong',
+	'unifiWrite.value.on': 'on',
+	'unifiWrite.value.off': 'off',
+	'unifiWrite.value.absent': 'not set',
+	'unifiWrite.hintsTitle':
+		'TalkOps does not change these settings. Change them in UniFi if necessary:',
+	'unifiWrite.hint.fast_roaming_80211r':
+		'Fast roaming (802.11r) is off. Switch it on in UniFi if all handsets support it. Some older clients cannot connect with 802.11r.',
+	'unifiWrite.hint.fast_roaming_80211k':
+		'802.11k (neighbor reports) has no setting in the UniFi API. Check it in UniFi.',
+	'unifiWrite.hint.min_data_rate':
+		'Minimum data rate: a higher rate can shorten roams, but affects all clients. Check it in UniFi.',
+	'unifiWrite.hint.tx_power':
+		'Access point transmit power is a radio setting. TalkOps does not change it.',
+	'unifiWrite.hint.coverage': 'Weak coverage: check the position and the number of access points.',
+	'unifiWrite.hint.pingpong':
+		'Ping-pong roams: check overlapping cells and the transmit power of the two access points.',
+	'unifiWrite.warn.disconnect':
+		'Clients of this SSID disconnect for a short time when UniFi applies the change. Running calls on this SSID can drop.',
+	'unifiWrite.warn.fast_roaming_compat':
+		'Some older clients cannot connect when fast roaming is on. Check the handset documentation.',
+	'unifiWrite.warn.band_2g_removed': 'Clients that support only 2.4 GHz lose this SSID.',
+	'unifiWrite.confirm': 'I understand that clients of this SSID disconnect for a short time.',
+	'unifiWrite.apply': 'Apply',
+	'unifiWrite.applied': 'UniFi applied the change. Start a new survey to compare the result.',
+	'unifiWrite.newSurvey': 'Start a new survey for comparison',
+	'unifiWrite.openHistory': 'Change history',
+	'unifiWrite.err.write_disabled':
+		'Write access to UniFi is off. Switch it on under Wi-Fi survey → UniFi.',
+	'unifiWrite.err.permission': 'You do not have the permission “Change the UniFi voice SSID”.',
+	'unifiWrite.err.version_unsupported':
+		'Writes need UniFi Network 10.6.106 or later. Run the connection test.',
+	'unifiWrite.err.no_voice_ssid': 'Select the voice SSID under Wi-Fi survey → UniFi.',
+	'unifiWrite.err.survey_active':
+		'A Wi-Fi survey is active. TalkOps does not write during a survey.',
+	'unifiWrite.err.change_in_progress': 'Another change is in progress.',
+	'unifiWrite.err.ssid_changed':
+		'The SSID changed in UniFi since the proposal. Open the proposal again.',
+	'unifiWrite.err.ssid_not_voice': 'The SSID is not the selected voice SSID.',
+	'unifiWrite.err.ssid_type': 'TalkOps changes only standard SSIDs, not IoT SSIDs.',
+	'unifiWrite.err.ssid_origin': 'The SSID is managed centrally (for example by Site Manager).',
+	'unifiWrite.err.secret_not_readable':
+		'UniFi did not return the SSID password. A full update would remove it, so TalkOps does not write.',
+	'unifiWrite.err.not_revertible': 'This change cannot be rolled back.',
+	'unifiWrite.err.unifi_forbidden':
+		'The UniFi API key may read but not write. Use a key of an administrator with write rights.',
+	'unifiWrite.err.verify_mismatch': 'UniFi did not apply all values. Check the change history.',
+	'unifiWrite.voiceTitle': 'Voice SSID and write access',
+	'unifiWrite.voiceIntro':
+		'Select the SSID of the Wi-Fi handsets. With write access, TalkOps can apply survey recommendations to this SSID after your confirmation, with a snapshot and a rollback.',
+	'unifiWrite.voiceSsid': 'Voice SSID',
+	'unifiWrite.loadSsids': 'Read SSIDs',
+	'unifiWrite.noSsid': '— none —',
+	'unifiWrite.iot': 'IoT',
+	'unifiWrite.central': 'managed centrally',
+	'unifiWrite.writeSwitch': 'Allow write access',
+	'unifiWrite.writeHint':
+		'TalkOps then changes only the listed settings of this SSID through the official UniFi Network API, and only after a confirmation. Each change disconnects the clients of the SSID for a short time.',
+	'unifiWrite.writeVersion': 'Writes need UniFi Network {min} or later. This console: {version}.',
+	'unifiWrite.cap.wifiBroadcasts': 'SSID list (wifi/broadcasts)',
+	'unifiWrite.cap.voiceWifi': 'Voice SSID',
+	'unifiWrite.cap.notFound': 'not found',
+	'unifiWrite.cap.fields': 'Changeable settings',
+	'unifiWrite.cap.write': 'Writes by version',
+	'unifiWrite.cap.possible': 'possible',
+	'unifiWrite.cap.notPossible': 'not possible',
+	'unifiWrite.cap.note':
+		'The connection test never writes. Only the first change shows if the API key may write.',
+	'unifiWrite.historyTitle': 'Changes to the voice SSID and the handsets',
+	'unifiWrite.historyIntro':
+		'Each change stores the values before and after it. A rollback restores only the changed settings.',
+	'unifiWrite.historyEmpty': 'No changes yet.',
+	'unifiWrite.col.time': 'Time',
+	'unifiWrite.col.user': 'User',
+	'unifiWrite.col.ssid': 'SSID',
+	'unifiWrite.col.fields': 'Settings',
+	'unifiWrite.col.state': 'State',
+	'unifiWrite.col.actions': 'Actions',
+	'unifiWrite.kind.rollback': 'Rollback',
+	'unifiWrite.state.applying': 'in progress',
+	'unifiWrite.state.applied': 'applied',
+	'unifiWrite.state.failed': 'failed',
+	'unifiWrite.state.rolled_back': 'rolled back',
+	'unifiWrite.survey': 'Survey',
+	'unifiWrite.details': 'Values',
+	'unifiWrite.before': 'Before',
+	'unifiWrite.after': 'After',
+	'unifiWrite.rollback': 'Roll back',
+	'unifiWrite.rollbackTitle': 'Roll back change',
+	'unifiWrite.rollbackIntro':
+		'TalkOps restores these values. Clients of the SSID disconnect for a short time.',
+	'unifiWrite.rollbackConfirm': 'Roll back now',
+	'unifiWrite.foreignTitle': 'Changed in UniFi since this change',
+	'unifiWrite.foreignIntro':
+		'Another person or system changed these settings after TalkOps. A rollback overwrites the current values.',
+	'unifiWrite.col.afterTalkops': 'After TalkOps',
+	'unifiWrite.col.now': 'Now in UniFi',
+	'unifiWrite.col.restore': 'Rollback writes',
+	'unifiWrite.rollbackAnyway': 'Roll back anyway',
+	'unifiWrite.done': 'Done.',
+	'unifiWrite.field.wifi_roaming_threshold': 'Roaming threshold',
+	'unifiWrite.handsetTitle': 'Handset: {name}',
+	'unifiWrite.handsetHint':
+		'TalkOps stores the value for this handset and asks it to fetch its configuration. The change history shows “waiting” until the handset fetched it.',
+	'unifiWrite.handsetWaiting':
+		'TalkOps stored the roaming threshold for {name}. The handset gets it with its next configuration fetch.',
+	'unifiWrite.confirmHandset': 'I confirm the change of the handset setting.',
+	'unifiWrite.bandCheck': 'Band check of the Wi-Fi handsets',
+	'unifiWrite.bandNoHandsets': 'No provisioned Wi-Fi handsets.',
+	'unifiWrite.band.ok': 'OK',
+	'unifiWrite.band.blocked': 'uses the removed band',
+	'unifiWrite.band.unknown': 'not reported by UniFi',
+	'unifiWrite.bandConfirm': 'I checked that {name} can use the remaining bands.',
+	'unifiWrite.targetHandset': 'Handset',
+	'unifiWrite.state.waiting': 'waiting for handset',
+	'unifiWrite.err.handset_band':
+		'A Wi-Fi handset is connected on the band that the change removes. It would lose the voice SSID.',
+	'unifiWrite.err.handset_unknown':
+		'UniFi does not report every Wi-Fi handset. Confirm each one by name.',
+	'unifiWrite.err.handset_changed':
+		'The handset setting changed since the proposal. Open the proposal again.',
+	'unifiWrite.err.not_wifi_handset':
+		'The phone is not a provisioned Wi-Fi handset with a roaming threshold.'
 } as const;

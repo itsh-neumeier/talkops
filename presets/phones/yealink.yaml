@@ -113,6 +113,9 @@ models:
 # "Call Waiting", "Display", "Time and Date", "Notification", "Smart Noise
 # Filtering", "Acoustic Shield"; phone_setting.vibrate.enable only appears in
 # Yealink's AX8X auto-provisioning template 180.87.0.5.
+# static.network.wifi.roaming_threshold: AX83H Wi-Fi Roaming Guide and AX83H
+# Administrator's Manual (Wi-Fi section), web UI Network > Wi-Fi > Roaming
+# Signal Threshold, -100 to -30 dBm, default -70 (ADR 0043).
 settings:
   - { key: key_tone, group: tones, param: features.send_key_tone, kind: bool, default: "1", families: [wifi] }
   - { key: charging_tone, group: tones, param: features.charging_tone.enable, kind: bool, default: "0", families: [wifi] }
@@ -128,3 +131,4 @@ settings:
   - { key: voicemail_popup, group: notifications, param: features.voice_mail_popup.enable, kind: bool, default: "1", families: [wifi] }
   - { key: noise_filter, group: audio, param: features.noise_filtering_rev.enable, kind: bool, default: "0", families: [wifi] }
   - { key: acoustic_shield, group: audio, param: features.acoustic_shield.mode, kind: choice, values: ["0", "1", "2"], families: [wifi] }
+  - { key: wifi_roaming_threshold, group: wifi, param: static.network.wifi.roaming_threshold, kind: int, min: -100, max: -30, default: "-70", families: [wifi] }

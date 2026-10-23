@@ -8,6 +8,7 @@
 	import EmptyRow from '#lib/components/EmptyRow.svelte';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
 	import PageHeader from '#lib/components/PageHeader.svelte';
+	import UnifiProposalDialog from '#lib/components/UnifiProposalDialog.svelte';
 	import WifiSurveyChart from '#lib/components/WifiSurveyChart.svelte';
 	import { formatDateTime, t, type MessageKey } from '#lib/i18n/index.svelte.ts';
 	import { can } from '#lib/session.svelte.ts';
@@ -51,6 +52,7 @@
 	let stopped = false;
 	let noteDraft = $state('');
 	let tick = $state(Date.now());
+	let proposalOpen = $state(false);
 
 	const active = $derived(!!survey && ACTIVE.includes(survey.state));
 	const summary = $derived(survey?.summary ?? liveSummary);
@@ -556,6 +558,18 @@
 						{/each}
 					</ul>
 					<p class="text-xs text-slate-500 dark:text-slate-400">{t('wifi.recommendationsHint')}</p>
+					{#if can('unifi.manage') && survey.summary}
+						<div
+							class="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3 dark:border-slate-800"
+						>
+							<button class="btn" onclick={() => (proposalOpen = true)}
+								>{t('unifiWrite.propose')}</button
+							>
+							<span class="text-xs text-slate-500 dark:text-slate-400"
+								>{t('unifiWrite.proposeHint')}</span
+							>
+						</div>
+					{/if}
 				</section>
 			{/if}
 		{/if}
@@ -735,3 +749,7 @@
 		{/if}
 	{/if}
 </div>
+
+{#if survey && can('unifi.manage')}
+	<UnifiProposalDialog bind:open={proposalOpen} surveyId={survey.id} deviceId={survey.device_id} />
+{/if}

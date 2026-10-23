@@ -90,4 +90,4 @@ between Network versions.
   The analysis uses a ±3 s window around each roam.
 - Follow-up: hardware test with a real UniFi console and a Wi-Fi handset,
   handset provisioning values (VAD, DSCP, roaming threshold), and the
-  write-access ADR.
+  write-access ADR ([ADR 0042](0042-unifi-voice-ssid-write-access.md)).

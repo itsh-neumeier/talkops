@@ -8,7 +8,7 @@
 - Status: In progress
 - Branch: codex/release-1.8.8
 - Base: a2478c81877eafce8bd1a40361c84ce097a72fa6
-- Related PR: Pending
+- Related PR: https://github.com/itsh-neumeier/talkops/pull/68
 
 ## Goal and result
 
@@ -39,12 +39,18 @@ it is excluded and preserved. No agreed ready contribution is missing.
 
 ## Checks
 
-- Source CI/E2E: all green. Combined candidate checks: pending.
+- Source CI/E2E: all green. All 16 final candidate checks passed.
+- Local cargo fmt, lint and 55 web tests passed. Docs: 13 tests, 75 pages/664 links.
+  Four Compose variants, provisioning hashes/generators, version-only metadata,
+  54 unique ordered migrations (53 released files unchanged), 2,643 matching EN/DE
+  keys/placeholders and ADR links passed. CI registers 17 browser suites.
 - Local C: has approximately 220 MB free. No local dependency installation,
   full Rust build or Linux/Docker stack. Use CI for web, services and images.
 - Git fetch obtained the refs, but automatic geometric repack failed with a
   multi-pack-index permission error. No Git files or foreign caches were removed.
-- Manual integration review in progress. CodeRabbit CLI unavailable.
+- Manual integration review completed: call/tenant scope, tile permission/audit,
+  URL validation/CSP, escaped attribution, lazy/offline loading and API/UI contracts.
+  CodeRabbit CLI unavailable.
 - STE: repository clarity rules applied. Full standard unavailable; review pending.
 
 ## Dependencies and open work
@@ -70,3 +76,18 @@ manifests for amd64/arm64, version/revision labels and 1.8/latest tags.
 - docs/ai-memory/20261023-codex-release-1.8.7.md
 - docs/adr/0044-call-origin-map-and-number-geolocation.md
 - docs/release-workflow.md
+
+## Merged checkpoint
+
+- Final candidate: f1212fe8fc10ca6a533e4694bd09efb2124d7f78.
+- PR CI39987855559/E2E39987855809 and push CI39987782510/E2E39987782459 all passed.
+  Rust: 486 passed, one existing ignored model test. Web: 55 tests and 17 browser suites.
+  DB/LDAP, recovery, storage/version smoke, G.711/T.38 fax and SIPp/softphone passed.
+  Server and worker smoke output displayed 1.8.8.
+- PR66/67 retargeted from source branches to main after integration. All sources
+  and integration PR68 are merged. Source heads unchanged before merge.
+- Main: efe4b79dd637119e130d7ff392d7dada98c014ae. Its tree equals the candidate.
+  All three source heads are ancestors. Source PRs closed at 17:04:38/39Z.
+- Exact-main CI39992089713 and E2E39992089729 are running. No tag pushed.
+- Do not push the merged integration branch again. Archive later task-only records
+  under audit/release-1.8.8 after publication.

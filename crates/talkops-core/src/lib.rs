@@ -18,6 +18,7 @@ pub mod error;
 pub mod extensions;
 pub mod fax;
 pub mod fax_adapter;
+pub mod geo;
 pub mod holidays;
 pub mod identity;
 

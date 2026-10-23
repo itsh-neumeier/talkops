@@ -76,6 +76,8 @@ services:
       TALKOPS_TURN_URLS: ${TALKOPS_TURN_URLS:-}
       TALKOPS_TURN_SECRET: ${TALKOPS_TURN_SECRET:-}
       TALKOPS_TURN_RELAY_ONLY: ${TALKOPS_TURN_RELAY_ONLY:-false}
+      # Call map data (ADR 0044); the image contains it at this path.
+      TALKOPS_GEO_DIR: ${TALKOPS_GEO_DIR:-/usr/share/talkops/presets/geo}
     volumes:
       - recordings:/var/lib/talkops/recordings
       - fax:/var/lib/talkops/fax

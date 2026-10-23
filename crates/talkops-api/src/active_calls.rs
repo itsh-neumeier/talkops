@@ -7,6 +7,7 @@ use serde::Serialize;
 use talkops_core::cdr::{Cdr, Direction};
 use talkops_core::dialing::DialPlanSettings;
 use talkops_core::extensions::{self, Device, Extension};
+use talkops_core::geo::{GeoArea, GeoIndex};
 use talkops_core::phones::{self, Contact, PhonebookSection};
 use talkops_core::settings;
 use talkops_core::tenant::TenantId;
@@ -220,6 +221,12 @@ impl Directory {
         self.dial
             .normalize_incoming(&compact)
             .unwrap_or_else(|| raw.to_owned())
+    }
+
+    /// The area of an external number for the call map. The tenant dial
+    /// plan normalizes the number first, so national formats resolve.
+    pub fn locate<'g>(&self, geo: &'g GeoIndex, raw: &str) -> Option<&'g GeoArea> {
+        geo.lookup(&self.external(raw))
     }
 
     pub fn party(&self, raw: &str, fallback: &str, id: Option<Uuid>) -> Party {
@@ -973,6 +980,37 @@ mod tests {
             Metadata::parse("Caller-Destination-Number: 303\n\n").channel_destination,
             "303"
         );
+    }
+
+    #[test]
+    fn locates_external_numbers_in_all_formats() {
+        let geo = GeoIndex::from_files([(
+            "sample.tsv",
+            "A\tDE-951\tDE\tarea\t49.89\t10.89\t49 951\tBamberg\n\
+             P\t49951\tDE-951\n\
+             A\tDE-9545\tDE\tarea\t49.8\t10.7\t49 9545\tBurgebrach\n\
+             P\t499545\tDE-9545\n",
+        )])
+        .unwrap();
+        let dir = directory();
+        for raw in [
+            "095112345",
+            "004995112345",
+            "+4995112345",
+            "+49 (0) 951 12345",
+            "0951/12345",
+        ] {
+            assert_eq!(
+                dir.locate(&geo, raw).map(|a| a.id.as_str()),
+                Some("DE-951"),
+                "{raw}"
+            );
+        }
+        // A local number takes the area code of the tenant.
+        assert_eq!(dir.locate(&geo, "8589").unwrap().name, "Burgebrach");
+        for raw in ["anonymous", "", "112", "*98", "+4930123456"] {
+            assert!(dir.locate(&geo, raw).is_none(), "{raw}");
+        }
     }
 
     #[test]

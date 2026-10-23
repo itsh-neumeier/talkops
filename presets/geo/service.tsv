@@ -1,0 +1,44 @@
+# TalkOps call origin data, format 1
+# title: Germany, Austria and Switzerland, service and non-geographic numbers
+# source: Bundesnetzagentur (DE), RTR KEM-V 2009 (AT) and BAKOM/OFCOM (CH) numbering plans
+# license: Official numbering plans (facts)
+# updated: 2026-10-23
+# maintained: by hand
+#
+# Numbers in these ranges have no location. The map counts them in the
+# "mobile / no location" bubble of the country. Coordinates: see countries.tsv.
+A	DE-service	DE	service	50.9617	9.6783	49	Germany
+P	49800	DE-service
+P	49180	DE-service
+P	49137	DE-service
+P	49138	DE-service
+P	49700	DE-service
+P	49900	DE-service
+P	4932	DE-service
+P	49118	DE-service
+P	49116	DE-service
+A	AT-service	AT	service	47.5189	14.1305	43	Austria
+P	43800	AT-service
+P	43810	AT-service
+P	43820	AT-service
+P	43821	AT-service
+P	43900	AT-service
+P	43901	AT-service
+P	43930	AT-service
+P	43931	AT-service
+P	43939	AT-service
+P	43720	AT-service
+P	43780	AT-service
+P	43118	AT-service
+A	CH-service	CH	service	46.7191	7.4640	41	Switzerland
+P	41800	CH-service
+P	41840	CH-service
+P	41842	CH-service
+P	41844	CH-service
+P	41848	CH-service
+P	41900	CH-service
+P	41901	CH-service
+P	41906	CH-service
+P	4158	CH-service
+P	41860	CH-service
+P	41878	CH-service

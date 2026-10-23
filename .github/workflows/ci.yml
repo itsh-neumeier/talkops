@@ -81,6 +81,8 @@ jobs:
       - run: cargo test --workspace --locked
         env:
           TALKOPS_TEST_PG_BIN_DIR: /usr/lib/postgresql/17/bin
+          # Shipped call map data (ADR 0044), checked by talkops-core geo tests.
+          TALKOPS_GEO_DIR: ${{ github.workspace }}/presets/geo
 
   web:
     name: Web UI (lint, check, build)

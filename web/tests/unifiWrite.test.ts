@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
 	applyBody,
+	bandState,
 	canRollBack,
+	handsetBody,
 	FIELD_KEYS,
 	initialSelection,
 	slotText,
@@ -23,6 +25,8 @@ const proposal: Proposal = {
 	not_writable: null,
 	write: { allowed: true, reason: null, version: '11.0.89', min_version: '10.6.106' },
 	hints: [{ id: 'fast_roaming_80211k', recommendation: 'fast_roaming' }],
+	band_check: null,
+	handset: null,
 	changes: [
 		{
 			field: 'bssTransitionEnabled',
@@ -84,6 +88,7 @@ test('builds the apply request from the selected rows only', () => {
 		wifi_id: 'w1',
 		base_hash: 'h1',
 		confirm: true,
+		confirm_unknown_handsets: [],
 		changes: [
 			{ field: 'bssTransitionEnabled', value: true },
 			{ field: 'securityConfiguration.wpa3FastRoamingEnabled', value: true }
@@ -101,9 +106,12 @@ test('builds the apply request from the selected rows only', () => {
 test('only applied or failed changes with snapshots can roll back', () => {
 	const c: WifiChange = {
 		id: 'c1',
+		target: 'ssid',
 		site_id: 's',
 		wifi_id: 'w1',
 		wifi_name: 'Voice',
+		phone_id: null,
+		phone_name: '',
 		kind: 'apply',
 		rollback_of: null,
 		survey_id: null,
@@ -122,6 +130,7 @@ test('only applied or failed changes with snapshots can roll back', () => {
 	assert.ok(!canRollBack({ ...c, state: 'rolled_back' }));
 	assert.ok(!canRollBack({ ...c, kind: 'rollback' }));
 	assert.ok(!canRollBack({ ...c, state: 'failed', after: null }));
+	assert.ok(canRollBack({ ...c, target: 'handset', state: 'waiting' }));
 });
 
 test('every field, hint, warning and error code has a UI text', () => {
@@ -145,4 +154,63 @@ test('every field, hint, warning and error code has a UI text', () => {
 	assert.ok(keys.has(key!));
 	assert.equal(writeErrorKey({ code: 'conflict' }), null);
 	assert.equal(writeErrorKey(new Error('x')), null);
+});
+
+test('handset proposal, band protection and warnings (ADR 0043)', () => {
+	assert.equal(valueText('wifi_roaming_threshold', '-72', l), '-72 dBm');
+	const handset = {
+		phone_id: 'p1',
+		phone_name: 'Hall',
+		model: 'ax83h',
+		setting: 'wifi_roaming_threshold' as const,
+		current: { absent: true as const },
+		effective: '-70',
+		proposed: '-75',
+		recommendation: 'min_rssi',
+		write: { allowed: true, reason: null }
+	};
+	assert.deepEqual(handsetBody(handset, 's1'), {
+		survey_id: 's1',
+		phone_id: 'p1',
+		value: '-75',
+		base_value: null,
+		confirm: true
+	});
+	assert.equal(handsetBody({ ...handset, current: { value: '-68' } }, null).base_value, '-68');
+
+	const p: Proposal = {
+		...proposal,
+		band_check: [
+			{ phone_id: 'p1', name: 'Hall', state: 'unknown', band: null },
+			{ phone_id: 'p2', name: 'Lab', state: 'ok', band: 5 }
+		]
+	};
+	const band = new Set(['broadcastingFrequenciesGHz'] as const);
+	assert.deepEqual(bandState(p, new Set(), new Set()), { blocked: false, unconfirmed: [] });
+	assert.equal(bandState(p, band, new Set()).unconfirmed.length, 1);
+	assert.equal(bandState(p, band, new Set(['p1'])).unconfirmed.length, 0);
+	const blocked: Proposal = {
+		...p,
+		band_check: [{ phone_id: 'p3', name: 'Shop', state: 'blocked', band: 2.4 }]
+	};
+	assert.ok(bandState(blocked, band, new Set()).blocked);
+	assert.deepEqual(applyBody(p, band, null, ['p1']).confirm_unknown_handsets, ['p1']);
+	// A handset-only change does not disconnect SSID clients.
+	assert.deepEqual(warnings(p, new Set()), []);
+
+	const keys = new Set(Object.keys(en));
+	for (const k of [
+		'unifiWrite.field.wifi_roaming_threshold',
+		'unifiWrite.state.waiting',
+		'unifiWrite.band.ok',
+		'unifiWrite.band.blocked',
+		'unifiWrite.band.unknown',
+		'unifiWrite.err.handset_band',
+		'unifiWrite.err.handset_unknown',
+		'unifiWrite.err.handset_changed',
+		'unifiWrite.err.not_wifi_handset',
+		'phoneset.wifi_roaming_threshold',
+		'phoneset.group.wifi'
+	])
+		assert.ok(keys.has(k), k);
 });

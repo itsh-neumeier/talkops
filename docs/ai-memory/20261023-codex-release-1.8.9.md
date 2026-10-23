@@ -1,0 +1,70 @@
+# TalkOps 1.8.9 release
+
+## Task state
+
+- Task ID: 20261023-codex-release-1.8.9
+- Date: 2026-10-23, Europe/Berlin
+- Tool: Codex
+- Status: In progress
+- Branch: codex/release-1.8.9
+- Base: efe4b79dd637119e130d7ff392d7dada98c014ae
+- Related PR: Pending
+
+## Goal and result
+
+Integrate all open ready contributions and publish the user-selected 1.8.9.
+Merge the previous 1.8.8 audit and both ready Claude Code contributions with
+full source history. No conflicts. Neither source head was in main:
+
+| Source | Exact head | Dependency |
+| --- | --- | --- |
+| PR69: outbound dialing permissions | 1bbbf24651cdb7474e41218de280733078a237bb | Released geo data |
+| PR70: offline map detail layers | 288dea5924e70a23d0d29b4c882d38ceba9e78fa | Released call map |
+
+Both final heads have 16 green checks. No open Codex contribution or missing
+agreed handoff. Draft PR61 remains review-only at 16c6c45a61655a9ff215c350ac47d499d15dae9f;
+it is excluded and preserved.
+
+## Changes and decisions
+
+- Use the explicit user-selected 1.8.9. PR69 suggests a minor release; the current
+  explicit target selects this additive scope. Existing configured tenants keep
+  unrestricted dialing; new-installation defaults are documented.
+- Version Cargo workspace, seven lock entries and npm roots with package tools.
+  No dependency version upgrade. Add English changelog and active EN/DE install examples.
+- New migration 20261110000001_dialing_permissions follows 54 released migrations.
+- No feature code changed by the release manager. Preserve foreign worktrees,
+  draft61, closed/unmerged PR36 and the unmerged development-prompt branch.
+
+## Checks
+
+- Source CI/E2E: all green. Combined candidate checks: pending.
+- Local: clean web installation/checks in progress. Full Linux/Rust/services,
+  images and SIPp/browser stack use CI; no local Linux Docker daemon.
+- Manual integration review in progress. CodeRabbit CLI unavailable.
+- STE clarity rules applied; full standard unavailable, full language review pending.
+
+## Dependencies and open work
+
+New sensitive permission dialing.manage; five seeded profiles. Country rules
+need geo data. Backup and migration required; keep server/worker together.
+PR69's dedicated SIPp blocked-call and REFER scenarios and real-phone transfer
+mark check are explicit source follow-ups, not completed acceptance evidence.
+New pure/database tests and existing workflow regressions must pass for release.
+No live deployment, hardware acceptance or Wiki publication is claimed.
+
+## Next action
+
+Validate final integration, merge, verify exact-main CI/E2E, push unused v1.8.9
+once and verify Release workflow, GitHub release, all three amd64/arm64 manifests,
+version/revision labels and 1.8/latest tags. Archive the final audit separately.
+
+## References
+
+- https://github.com/itsh-neumeier/talkops/pull/69
+- https://github.com/itsh-neumeier/talkops/pull/70
+- docs/ai-memory/20261023-claude-outbound-dialing-permissions.md
+- docs/ai-memory/20261023-claude-call-map.md
+- docs/ai-memory/20261023-codex-release-1.8.8.md
+- docs/adr/0045-outbound-dialing-permissions.md
+- docs/release-workflow.md

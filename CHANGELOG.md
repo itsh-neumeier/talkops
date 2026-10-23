@@ -6,6 +6,35 @@ All notable changes to TalkOps. The format follows
 
 ## [Unreleased]
 
+## [1.8.9] – 2026-10-23
+
+### Added
+
+- Add outbound dialing profiles with country, prefix and number rules, a tenant
+  default and an optional profile per extension. Apply the rules to dialing,
+  SIP addresses, forwarding, transfers, softphone conferences and fax.
+- Add profile management and number tests under Call routing. The new sensitive
+  permission `dialing.manage` controls changes. Show outbound block reasons
+  in the call list. Emergency numbers bypass dialing-profile checks.
+- Add offline call-map detail when zooming: state borders, rivers, lakes,
+  place names and German local network areas. Load data from the own server
+  only when needed, with theme and language support and maximum zoom 11.
+
+### Upgrade notes
+
+- Back up and apply migration 20261110000001_dialing_permissions. Keep server
+  and worker versions together and reload the UI.
+- The migration seeds five editable profiles. Tenants with an extension or trunk
+  keep unrestricted dialing. New installations use the International profile
+  with premium-rate and satellite/network prefix blocks by default.
+- Country rules need the shipped geo data. Optional tile providers still supply
+  street detail; the offline map contains no streets or places below 1,000 people.
+  Number areas do not show a caller's actual position.
+- Existing CI/E2E and new unit/database tests cover the combined release.
+  Dedicated SIPp blocked-call/REFER cases and real-phone blind-transfer marking
+  remain follow-up checks; their hardware behavior is not claimed as verified.
+- This release updates repository guide sources. It does not republish the Wiki.
+
 ## [1.8.8] – 2026-10-23
 
 ### Added

@@ -6,6 +6,34 @@ All notable changes to TalkOps. The format follows
 
 ## [Unreleased]
 
+## [1.8.8] – 2026-10-23
+
+### Added
+
+- Add an offline call map to the call log, with time ranges, category filters,
+  area summaries and links back to the matching calls. Keep the same call
+  visibility rules as the call list.
+- Add a dashboard map with the top call areas. Load Leaflet only when needed.
+- Ship number-prefix geolocation data for DE/AT/CH local network areas and
+  places worldwide, with source attribution. Mobile and service numbers have
+  no caller location. The map shows number areas, not a caller's actual position.
+- Allow administrators to configure an optional HTTPS tile server and attribution.
+  Keep the shipped offline map as the default. Adjust the page's image CSP for
+  the configured tile host.
+
+### Upgrade notes
+
+- Back up and apply migration 20261109000001_call_map_tiles. Keep server and
+  worker versions together and reload the UI.
+- The server image includes the static geo data. Custom deployments can set
+  TALKOPS_GEO_DIR; a missing directory gives an empty map index and a warning.
+- Optional external tiles send the browser IP address and map section to the
+  tile server. Check the provider's usage policy before enabling them.
+- Map queries use at most 50,000 calls per window and report truncation.
+  Number portability and VoIP limit geographic accuracy.
+- The live Wiki remains its separate snapshot. This release updates repository
+  guide sources; it does not republish the Wiki.
+
 ## [1.8.7] – 2026-10-23
 
 ### Added

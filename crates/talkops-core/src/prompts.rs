@@ -197,6 +197,11 @@ const PROMPTS: &[Prompt] = &[
         en: "No Wi-Fi survey is prepared for this device. Please start the survey in the web interface first.",
     },
     Prompt {
+        key: "dialing_blocked",
+        de: "Diese Rufnummer dürfen Sie von diesem Anschluss aus nicht anrufen.",
+        en: "You are not allowed to call this number from this line.",
+    },
+    Prompt {
         key: "vm_goodbye",
         de: "Auf Wiederhören.",
         en: "Goodbye.",

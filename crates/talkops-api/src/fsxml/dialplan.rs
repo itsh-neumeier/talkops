@@ -10,6 +10,7 @@ use std::collections::HashMap;
 use sqlx::PgPool;
 use talkops_core::attendant::{self, Node, RingStrategy};
 use talkops_core::cdr::Direction;
+use talkops_core::dial_permissions::{self, DialingProfile};
 use talkops_core::dialing::{DialPlanSettings, Dialed, NumberFormat};
 use talkops_core::error::CoreResult;
 use talkops_core::extensions::{self, CodecProfile, DeviceVideo, Extension};
@@ -100,6 +101,8 @@ pub struct Routing<'a> {
     pub telephony: &'a crate::telephony::Telephony,
     /// Call blocking (own list, anonymous, PhoneBlock).
     pub spam: &'a crate::spam::SpamCheck,
+    /// Number geolocation: the country for dialing profile rules (ADR 0045).
+    pub geo: &'a talkops_core::geo::GeoIndex,
     /// Which called extensions get video on this call (ADR 0025). The plan
     /// of the call sets it; [`CallVideo::Off`] for a new lookup.
     pub video: CallVideo,
@@ -482,6 +485,10 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
             "export",
             format!("force_transfer_context={CONTEXT_TRANSFER}"),
         ),
+        // A blind transfer by the called party applies the caller's dialing
+        // profile (ADR 0045). The caller's own leg learns the answering
+        // extension from the directory (`dial-var-api_on_answer_…`).
+        ("export", format!("nolocal:{XFER_VAR}={}", caller.id)),
         set("talkops_extension_id", caller.id.to_string()),
         set("talkops_caller_number", caller.number.clone()),
         set("talkops_caller_name", sanitize_value(&caller.display_name)),
@@ -549,6 +556,17 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
     if let Some((user, host, hide)) = sip_address(req).filter(|_| !explicit_internal_call) {
         if !settings.sip_uri_dialing {
             return Ok(reject("403 Forbidden"));
+        }
+        let profile = dial_permissions::effective(pool, tenant, caller.dialing_profile_id).await?;
+        if !dial_permissions::sip_allowed(profile.as_ref()) {
+            actions.extend(blocked_outbound(
+                r,
+                &settings,
+                &caller,
+                &format!("{user}@{host}"),
+                dial_permissions::SIP_REASON,
+            ));
+            return Ok(actions);
         }
         actions.extend(
             plan_sip_address(
@@ -624,7 +642,20 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
         return Ok(reject("404 Not Found"));
     }
     let dial_plan = settings.dial_plan();
-    let (route_number, dialed_e164, raw_dial, emergency) = match dial_plan.classify(&dest) {
+    let dialed = dial_plan.classify(&dest);
+    // Emergency calls are never checked (ADR 0045).
+    if let Some(reason) =
+        profile_blocks(r, tenant, caller.dialing_profile_id, &dial_plan, &dialed).await?
+    {
+        let shown = match &dialed {
+            Dialed::External(e164) => e164.clone(),
+            Dialed::Service(digits) => digits.clone(),
+            Dialed::Emergency(_) | Dialed::Invalid => dest.clone(),
+        };
+        actions.extend(blocked_outbound(r, &settings, &caller, &shown, &reason));
+        return Ok(actions);
+    }
+    let (route_number, dialed_e164, raw_dial, emergency) = match dialed {
         Dialed::Emergency(n) => (settings.default_number_id, None, n, true),
         Dialed::Service(n) => (
             caller.outbound_number_id.or(settings.default_number_id),
@@ -1024,6 +1055,20 @@ async fn feature_code(
         if !extensions::valid_forward_target(target) || target == caller.number {
             return Ok(Some(reject("484 Address Incomplete")));
         }
+        // An external target must be allowed by the caller's dialing profile.
+        if extensions::find_by_number(pool, tenant, target)
+            .await?
+            .is_none()
+        {
+            let dial_plan = settings::get(pool, tenant).await?.dial_plan();
+            let dialed = dial_plan.classify(target);
+            if let Some(reason) =
+                profile_blocks(r, tenant, caller.dialing_profile_id, &dial_plan, &dialed).await?
+            {
+                tracing::info!(extension = %caller.number, reason, "call forwarding target blocked by dialing profile");
+                return Ok(Some(reject("403 Forbidden")));
+            }
+        }
         extensions::set_forward_all(pool, tenant, caller.id, Some(target)).await?;
         a.extend(confirm());
         return Ok(Some(a));
@@ -1048,7 +1093,7 @@ async fn ring_extension(
     tenant: TenantId,
     target: &Extension,
 ) -> CoreResult<Vec<Action>> {
-    let (pool, catalog) = (r.pool, r.catalog);
+    let pool = r.pool;
     if !target.enabled {
         return Ok(reject("480 Temporarily Unavailable"));
     }
@@ -1075,12 +1120,15 @@ async fn ring_extension(
                 return Ok(a);
             }
         } else {
-            match forward_external(pool, catalog, tenant, target, forward).await? {
-                Some(out) => {
+            match forward_external(r, tenant, target, forward).await? {
+                Forward::Route(out) => {
                     a.extend(out);
                     return Ok(a);
                 }
-                None => return Ok(reject("480 Temporarily Unavailable")),
+                Forward::Unavailable => return Ok(reject("480 Temporarily Unavailable")),
+                // The dialing profile blocks the target: ring the extension
+                // as if no forwarding were set.
+                Forward::Blocked => {}
             }
         }
     }
@@ -1130,7 +1178,7 @@ async fn bridge_devices(
     let video = r.video.codecs_for(target);
     let endpoints: Vec<String> = devices
         .iter()
-        .map(|d| device_endpoint(d, video))
+        .map(|d| marked_endpoint(d, video, target.id))
         .chain(std::iter::once(format!("pickup/{}", pickup_group(target))))
         .collect();
     let dial = dial_string(&[endpoints], false, 0);
@@ -1147,31 +1195,48 @@ async fn bridge_devices(
     .collect())
 }
 
+/// Result of [`forward_external`].
+enum Forward {
+    Route(Vec<Action>),
+    /// No route: the number is invalid or no trunk is available.
+    Unavailable,
+    /// The forwarding extension's dialing profile blocks the number.
+    Blocked,
+}
+
 /// Forwards a call to an external number through the forwarding
-/// extension's outbound number (or the tenant default).
+/// extension's outbound number (or the tenant default). The forwarding
+/// extension's dialing profile applies (ADR 0045).
 async fn forward_external(
-    pool: &PgPool,
-    catalog: &PresetCatalog,
+    r: &Routing<'_>,
     tenant: TenantId,
     ext: &Extension,
     number: &str,
-) -> CoreResult<Option<Vec<Action>>> {
+) -> CoreResult<Forward> {
+    let pool = r.pool;
     let settings = settings::get(pool, tenant).await?;
     let dial_plan = settings.dial_plan();
-    let (dialed_e164, raw) = match dial_plan.classify(number) {
+    let dialed = dial_plan.classify(number);
+    if let Some(reason) =
+        profile_blocks(r, tenant, ext.dialing_profile_id, &dial_plan, &dialed).await?
+    {
+        tracing::warn!(extension = %ext.number, reason, "call forwarding blocked by dialing profile; ringing the extension");
+        return Ok(Forward::Blocked);
+    }
+    let (dialed_e164, raw) = match dialed {
         Dialed::External(e164) => (Some(e164.clone()), e164),
         Dialed::Service(n) => (None, n),
-        Dialed::Emergency(_) | Dialed::Invalid => return Ok(None),
+        Dialed::Emergency(_) | Dialed::Invalid => return Ok(Forward::Unavailable),
     };
     let Some(number_id) = ext.outbound_number_id.or(settings.default_number_id) else {
-        return Ok(None);
+        return Ok(Forward::Unavailable);
     };
     let Some(route) = trunks::outbound_route(pool, tenant, number_id).await? else {
-        return Ok(None);
+        return Ok(Forward::Unavailable);
     };
     // The call keeps its original direction for the call log.
     outbound_actions(
-        catalog,
+        r.catalog,
         &dial_plan,
         &route,
         &route.e164,
@@ -1179,7 +1244,62 @@ async fn forward_external(
         &raw,
         false,
     )
-    .map(Some)
+    .map(Forward::Route)
+}
+
+/// Channel variable with the extension whose dialing profile applies to a
+/// blind transfer of the channel (ADR 0045).
+pub const XFER_VAR: &str = "talkops_xfer_extension_id";
+
+/// The reason if the dialing profile `own` (or the tenant's default
+/// profile) blocks `dialed`; `None` if the call is allowed. Emergency
+/// numbers are never blocked (ADR 0045).
+async fn profile_blocks(
+    r: &Routing<'_>,
+    tenant: TenantId,
+    own: Option<Uuid>,
+    dial_plan: &DialPlanSettings,
+    dialed: &Dialed,
+) -> CoreResult<Option<String>> {
+    let Some(number) = dial_permissions::number_to_check(dial_plan, dialed) else {
+        return Ok(None);
+    };
+    let profile: Option<DialingProfile> = dial_permissions::effective(r.pool, tenant, own).await?;
+    let decision = dial_permissions::check(profile.as_ref(), &number, r.geo);
+    Ok((!decision.allowed).then(|| decision.reason()))
+}
+
+/// The `dialing_blocked` prompt, if it exists.
+fn blocked_prompt(r: &Routing<'_>, settings: &TenantSettings) -> Option<String> {
+    prompts::path(r.sounds, "dialing_blocked", &settings.default_language)
+        .filter(|p| p.is_file())
+        .map(|p| p.display().to_string())
+}
+
+/// Rejects an outbound call that the caller's dialing profile blocks (ADR
+/// 0045): `403 Forbidden`, after the `dialing_blocked` prompt as early media
+/// if the prompt exists. The call record keeps the reason.
+fn blocked_outbound(
+    r: &Routing<'_>,
+    settings: &TenantSettings,
+    caller: &Extension,
+    destination: &str,
+    reason: &str,
+) -> Vec<Action> {
+    let destination = sanitize_value(destination);
+    let reason = sanitize_value(reason);
+    tracing::info!(extension = %caller.number, %destination, %reason, "outbound call blocked by dialing profile");
+    let mut a = vec![
+        set("talkops_direction", "outbound"),
+        set("talkops_destination", destination),
+        set("talkops_blocked", reason),
+    ];
+    if let Some(prompt) = blocked_prompt(r, settings) {
+        a.push(("pre_answer", String::new()));
+        a.push(("playback", prompt));
+    }
+    a.push(("respond", "403 Forbidden".to_owned()));
+    a
 }
 
 fn codec_string(codecs: &[String]) -> String {
@@ -1534,7 +1654,7 @@ async fn plan_transfer(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
             .collect();
         match numbering::resolve(r.pool, tenant, &dest).await? {
             Some(target) => Some(target),
-            None => return transfer_external(r, tenant, &dest).await,
+            None => return transfer_external(r, req, tenant, &dest).await,
         }
     };
     let Some((kind, id)) = target else {
@@ -1550,14 +1670,45 @@ async fn plan_transfer(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
 }
 
 /// Blind transfer to an external number, via the tenant's default number.
+/// The dialing profile of the transferring extension applies; without it,
+/// the tenant's default profile (ADR 0045).
 async fn transfer_external(
     r: &Routing<'_>,
+    req: &CallRequest,
     tenant: TenantId,
     dest: &str,
 ) -> CoreResult<Vec<Action>> {
     let settings = settings::get(r.pool, tenant).await?;
     let dial_plan = settings.dial_plan();
-    let (dialed_e164, raw) = match dial_plan.classify(dest) {
+    let dialed = dial_plan.classify(dest);
+    // The device that answered marks the call (`xfer_mark`); a queue agent
+    // is `cc_agent` (`a-<extension>`, set by mod_callcenter).
+    let transferor_id = req.uuid_var(XFER_VAR).or_else(|| {
+        req.var("cc_agent")
+            .and_then(|a| a.strip_prefix("a-"))
+            .and_then(|id| id.parse().ok())
+    });
+    let transferor = match transferor_id {
+        Some(id) => extensions::get(r.pool, tenant, id).await.ok(),
+        None => None,
+    };
+    let own = transferor.as_ref().and_then(|e| e.dialing_profile_id);
+    if let Some(reason) = profile_blocks(r, tenant, own, &dial_plan, &dialed).await? {
+        tracing::info!(
+            extension = transferor.as_ref().map(|e| e.number.as_str()).unwrap_or("unknown"),
+            destination = %sanitize_value(dest),
+            reason,
+            "blind transfer blocked by dialing profile"
+        );
+        // The transferred call is already answered.
+        let mut a: Vec<Action> = blocked_prompt(r, &settings)
+            .map(|prompt| ("playback", prompt))
+            .into_iter()
+            .collect();
+        a.push(("hangup", "CALL_REJECTED".to_owned()));
+        return Ok(a);
+    }
+    let (dialed_e164, raw) = match dialed {
         Dialed::External(e164) => (Some(e164.clone()), e164),
         Dialed::Service(n) | Dialed::Emergency(n) => (None, n),
         Dialed::Invalid => return Ok(reject("404 Not Found")),
@@ -1759,6 +1910,9 @@ async fn queue(
         a.push(("sleep", "500".to_owned()));
         a.push(("playback", greeting));
     }
+    // The answering agent comes from `cc_agent` (see `transfer_external`),
+    // not from an earlier bridge of the caller.
+    a.push(set(XFER_VAR, ""));
     a.push(("callcenter", q.cc_name()));
     // Back here only if the caller left the queue unanswered.
     if q.voicemail_recipients.is_empty() {
@@ -1912,7 +2066,7 @@ async fn ring_legs(
         let mut endpoints: Vec<String> = extensions::ring_targets(r.pool, ext.id)
             .await?
             .iter()
-            .map(|d| device_endpoint(d, video))
+            .map(|d| marked_endpoint(d, video, ext.id))
             .collect();
         if endpoints.is_empty() {
             continue;
@@ -1921,6 +2075,23 @@ async fn ring_legs(
         legs.push(endpoints);
     }
     Ok(legs)
+}
+
+/// Per-leg variable that runs when a device answers: the calling leg
+/// (`${uuid}`, expanded by the bridge on that leg) learns the answering
+/// extension, so its blind transfer applies this extension's dialing profile
+/// (ADR 0045). FreeSWITCH runs all `api_on_answer*` variables.
+fn xfer_mark(extension: Uuid) -> String {
+    format!("[api_on_answer_talkops_xfer=uuid_setvar ${{uuid}} {XFER_VAR} {extension}]")
+}
+
+/// [`device_endpoint`] with the [`xfer_mark`] of the device's extension.
+fn marked_endpoint(
+    target: &extensions::RingTarget,
+    video: Option<&str>,
+    extension: Uuid,
+) -> String {
+    format!("{}{}", xfer_mark(extension), device_endpoint(target, video))
 }
 
 /// Bridge endpoint of a device. A device with a codec profile gets its codec
@@ -2224,6 +2395,7 @@ mod tests {
             forward_all: None,
             record_calls: "inherit".into(),
             video_enabled: false,
+            dialing_profile_id: None,
         };
         let codecs = AUDIO_VIDEO_CODECS;
         assert_eq!(CallVideo::Off.codecs_for(&ext), None);

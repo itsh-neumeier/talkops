@@ -134,6 +134,18 @@ async fn backup_and_restore(db: PgPool) {
     assert_eq!(status, StatusCode::CREATED);
     sqlx::query("INSERT INTO cdr(tenant_id, call_uuid, direction, caller_number, destination, started_at, ended_at, hangup_cause, blocked_reason) VALUES($1, 'backup-blocked', 'inbound', '+4930123456', '+4930999999', now(), now(), 'CALL_REJECTED', 'phoneblock:12')")
         .bind(talkops_core::tenant::TenantId::DEFAULT).execute(&db).await.unwrap();
+    // Dialing permissions (ADR 0045): an own profile with a rule and an
+    // outbound call it blocked.
+    let (status, profile) = admin
+        .post(
+            "/api/v1/dialing-profiles",
+            json!({"name": "Backup profile", "base_mode": "deny",
+                   "rules": [{"kind": "prefix", "value": "+4989", "action": "allow"}]}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::CREATED);
+    sqlx::query("INSERT INTO cdr(tenant_id, call_uuid, direction, caller_number, destination, started_at, ended_at, hangup_cause, blocked_reason) VALUES($1, 'backup-dialing', 'outbound', '200', '+499001234567', now(), now(), 'CALL_REJECTED', 'dialing:prefix:+49900')")
+        .bind(talkops_core::tenant::TenantId::DEFAULT).execute(&db).await.unwrap();
     // Run a backup through the API and wait for it.
     let (status, _) = admin.post("/api/v1/backups", json!({})).await;
     assert_eq!(status, StatusCode::ACCEPTED);
@@ -195,6 +207,14 @@ async fn backup_and_restore(db: PgPool) {
         .execute(&db)
         .await
         .unwrap();
+    sqlx::query("DELETE FROM dialing_profiles WHERE NOT is_default")
+        .execute(&db)
+        .await
+        .unwrap();
+    sqlx::query("DELETE FROM cdr WHERE call_uuid = 'backup-dialing'")
+        .execute(&db)
+        .await
+        .unwrap();
     sqlx::query("UPDATE cdr SET blocked_reason = NULL WHERE call_uuid = 'backup-blocked'")
         .execute(&db)
         .await
@@ -248,6 +268,21 @@ async fn backup_and_restore(db: PgPool) {
         .await
         .unwrap();
     assert_eq!(number, "+4930123456");
+    let rule: String = sqlx::query_scalar(
+        "SELECT r.value FROM dialing_rules r JOIN dialing_profiles p ON p.id = r.profile_id
+         WHERE p.id = $1",
+    )
+    .bind(uuid::Uuid::parse_str(profile["id"].as_str().unwrap()).unwrap())
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(rule, "+4989", "dialing profiles restored");
+    let reason: String =
+        sqlx::query_scalar("SELECT blocked_reason FROM cdr WHERE call_uuid = 'backup-dialing'")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(reason, "dialing:prefix:+49900");
     let reason: String =
         sqlx::query_scalar("SELECT blocked_reason FROM cdr WHERE call_uuid = 'backup-blocked'")
             .fetch_one(&pool)

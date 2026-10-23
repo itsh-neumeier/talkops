@@ -12,6 +12,7 @@ pub mod cdr;
 pub mod contact_import;
 pub mod crypto;
 pub mod db;
+pub mod dial_permissions;
 pub mod dialing;
 pub mod doors;
 pub mod error;

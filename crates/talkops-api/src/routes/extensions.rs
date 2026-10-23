@@ -418,6 +418,10 @@ pub async fn my_phones(
     Ok(Json(out))
 }
 
+/// Error for a forwarding target that the dialing profile blocks.
+pub const FORWARD_BLOCKED: &str =
+    "the dialing profile of this extension does not allow this forwarding target";
+
 /// Sets DND and unconditional forwarding (admin or the owning user).
 #[utoipa::path(put, path = "/api/v1/extensions/{id}/call-settings", tag = "extensions", params(("id" = Uuid, Path)), request_body = CallSettings, responses((status = 200, body = Extension)))]
 pub async fn update_call_settings(
@@ -437,6 +441,34 @@ pub async fn update_call_settings(
         return Err(ApiError::BadRequest(
             "an extension cannot forward to itself".into(),
         ));
+    }
+    // An external target must be allowed by the dialing profile (ADR 0045);
+    // the dialplan checks it again for each call.
+    if let Some(target) = forward {
+        if extensions::find_by_number(&state.db, auth.tenant, target)
+            .await?
+            .is_none()
+        {
+            let dial_plan = talkops_core::settings::get(&state.db, auth.tenant)
+                .await?
+                .dial_plan();
+            let dialed = dial_plan.classify(target);
+            if let Some(number) =
+                talkops_core::dial_permissions::number_to_check(&dial_plan, &dialed)
+            {
+                let profile = talkops_core::dial_permissions::effective(
+                    &state.db,
+                    auth.tenant,
+                    ext.dialing_profile_id,
+                )
+                .await?;
+                if !talkops_core::dial_permissions::check(profile.as_ref(), &number, &state.geo)
+                    .allowed
+                {
+                    return Err(ApiError::BadRequest(FORWARD_BLOCKED.into()));
+                }
+            }
+        }
     }
     let mut tx = state.db.begin().await?;
     extensions::set_dnd(&mut *tx, auth.tenant, id, input.dnd).await?;

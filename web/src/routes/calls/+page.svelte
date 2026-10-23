@@ -7,7 +7,10 @@
 	import LoadingContent from '#lib/components/LoadingContent.svelte';
 	import PhoneNumber from '#lib/components/PhoneNumber.svelte';
 	import CallBlockStatus from '#lib/components/CallBlockStatus.svelte';
+	import Tabs from '#lib/components/Tabs.svelte';
+	import { mapPageQuery, parseMapState, type CallsView } from '#lib/calls/map.ts';
 	import { onMount } from 'svelte';
+	import { afterNavigate } from '$app/navigation';
 	import { page } from '$app/state';
 	import { syncAddress } from '#lib/list/address.ts';
 	import { ariaSort as ariaSortOf, nextSort } from '#lib/list/sort.ts';
@@ -49,6 +52,9 @@
 	let again = $state(false);
 	let filters = $state<CallFilters>(parseFilters(page.url.searchParams));
 	let phonebook = $state(true);
+	let mapState = $state(parseMapState(page.url.searchParams));
+	/** The map view (Leaflet) loads only when it opens. */
+	const mapView = () => import('#lib/components/CallMapView.svelte');
 	/** Number of the latest list request; older answers are ignored. */
 	let generation = 0;
 
@@ -61,13 +67,31 @@
 		} catch {
 			// Storage blocked: keep the default.
 		}
-		load();
+		if (mapState.view === 'list') load();
 		return () => {
 			clearTimeout(typing);
 			generation++;
 			moreGeneration++;
 		};
 	});
+
+	// A link to this page (map details, browser history) changes the address
+	// without a new component: read view and filters again.
+	afterNavigate(({ type }) => {
+		if (type !== 'link' && type !== 'popstate') return;
+		mapState = parseMapState(page.url.searchParams);
+		filters = parseFilters(page.url.searchParams);
+		if (mapState.view === 'list') load();
+	});
+
+	function setView(view: CallsView) {
+		mapState.view = view;
+		if (view === 'map') {
+			syncAddress('/calls', mapPageQuery(mapState));
+		} else {
+			load();
+		}
+	}
 
 	function savePhonebook() {
 		try {
@@ -132,6 +156,12 @@
 		load();
 	}
 
+	function resetArea() {
+		filters.area = '';
+		filters.place = '';
+		load();
+	}
+
 	function resetAll() {
 		const { sort, order } = filters;
 		filters = { ...emptyFilters(), sort, order };
@@ -141,6 +171,7 @@
 	function quickRange(days: number) {
 		filters.since = daysAgo(days);
 		filters.until = '';
+		filters.range = '';
 		load();
 	}
 
@@ -228,323 +259,383 @@
 			</div>
 		{/snippet}
 	</PageHeader>
-	<ErrorBox {error} />
-	{#if loading && calls !== null}<p
-			role="status"
-			class="text-sm text-slate-500 dark:text-slate-400"
-		>
-			{t('common.loading')}
-		</p>{/if}
-	<div class="card scroll-x" aria-busy={loading || loadingMore}>
-		<table class="table">
-			<thead>
-				<tr>
-					<th aria-sort={ariaSort('time')}>
-						<span class="inline-flex items-center gap-1 whitespace-nowrap">
+	<Tabs
+		label={t('calls.view')}
+		tabs={[
+			{ id: 'list', label: t('calls.view.list') },
+			{ id: 'map', label: t('calls.view.map') }
+		]}
+		value={mapState.view}
+		onchange={setView}
+	/>
+	{#if mapState.view === 'map'}
+		{#await mapView()}
+			<div class="card"><div class="skeleton h-72 rounded-lg" aria-hidden="true"></div></div>
+		{:then m}
+			<m.default
+				bind:range={mapState.range}
+				bind:categories={mapState.categories}
+				{phonebook}
+				onchange={() => syncAddress('/calls', mapPageQuery(mapState))}
+			/>
+		{:catch err}
+			<ErrorBox error={errorMessage(err)} />
+		{/await}
+	{:else}
+		<ErrorBox {error} />
+		{#if filters.area || filters.range}
+			<div class="flex flex-wrap items-center gap-2 text-sm">
+				{#if filters.range}
+					<span class="badge badge-muted"
+						>{t('calls.rangeFilter', { range: t(`callMap.range.${filters.range}`) })}</span
+					>
+				{/if}
+				{#if filters.area}
+					<span class="badge badge-muted"
+						>{t('calls.areaFilter', { place: filters.place || filters.area })}</span
+					>
+					<button class="btn btn-sm" onclick={resetArea}>{t('filter.reset')}</button>
+				{/if}
+			</div>
+		{/if}
+		{#if loading && calls !== null}<p
+				role="status"
+				class="text-sm text-slate-500 dark:text-slate-400"
+			>
+				{t('common.loading')}
+			</p>{/if}
+		<div class="card scroll-x" aria-busy={loading || loadingMore}>
+			<table class="table">
+				<thead>
+					<tr>
+						<th aria-sort={ariaSort('time')}>
+							<span class="inline-flex items-center gap-1 whitespace-nowrap">
+								<SortButton
+									label={t('calls.time')}
+									active={filters.sort === 'time'}
+									order={filters.order}
+									onclick={() => sortBy('time')}
+								/>
+								<ColumnFilter
+									label={t('calls.time')}
+									active={active.time}
+									onreset={() => {
+										filters.since = '';
+										filters.until = '';
+										filters.range = '';
+										load();
+									}}
+								>
+									<div class="mb-3 flex flex-wrap gap-1">
+										<button type="button" class="btn btn-sm" onclick={() => quickRange(0)}
+											>{t('calls.range.today')}</button
+										>
+										<button type="button" class="btn btn-sm" onclick={() => quickRange(6)}
+											>{t('calls.range.week')}</button
+										>
+										<button type="button" class="btn btn-sm" onclick={() => quickRange(29)}
+											>{t('calls.range.month')}</button
+										>
+									</div>
+									<div class="grid grid-cols-2 gap-2">
+										<label
+											>{t('calls.range.since')}
+											<input
+												class="input"
+												type="date"
+												bind:value={filters.since}
+												onchange={() => {
+													filters.range = '';
+													load();
+												}}
+											/>
+										</label>
+										<label
+											>{t('calls.range.until')}
+											<input
+												class="input"
+												type="date"
+												bind:value={filters.until}
+												onchange={() => {
+													filters.range = '';
+													load();
+												}}
+											/>
+										</label>
+									</div>
+								</ColumnFilter>
+							</span>
+						</th>
+						<th>
+							<span class="inline-flex items-center gap-1 whitespace-nowrap">
+								{t('calls.direction')}
+								<ColumnFilter
+									label={t('calls.direction')}
+									active={active.direction}
+									onreset={() => {
+										filters.direction = [];
+										load();
+									}}
+								>
+									<FilterOptions
+										options={DIRECTIONS.map((d) => ({
+											value: d,
+											label: t(`dir.${d}`),
+											icon: arrow[d]
+										}))}
+										selected={filters.direction}
+										onchange={(v) => {
+											filters.direction = v as Direction[];
+											load();
+										}}
+									/>
+								</ColumnFilter>
+							</span>
+						</th>
+						<th>
+							<span class="inline-flex items-center gap-1 whitespace-nowrap">
+								{t('calls.from')}
+								<ColumnFilter
+									label={t('calls.from')}
+									active={active.from}
+									onreset={() => {
+										filters.from = '';
+										load();
+									}}
+								>
+									<label
+										>{t('calls.filterText')}
+										<input
+											class="input"
+											type="search"
+											bind:value={filters.from}
+											oninput={loadSoon}
+											placeholder={t('calls.filterTextPlaceholder')}
+										/>
+									</label>
+								</ColumnFilter>
+							</span>
+						</th>
+						<th>
+							<span class="inline-flex items-center gap-1 whitespace-nowrap">
+								{t('calls.to')}
+								<ColumnFilter
+									label={t('calls.to')}
+									active={active.to}
+									onreset={() => {
+										filters.to = '';
+										load();
+									}}
+								>
+									<label
+										>{t('calls.filterText')}
+										<input
+											class="input"
+											type="search"
+											bind:value={filters.to}
+											oninput={loadSoon}
+											placeholder={t('calls.filterTextPlaceholder')}
+										/>
+									</label>
+									<p class="hint">{t('calls.filterToHint')}</p>
+								</ColumnFilter>
+							</span>
+						</th>
+						<th class="col-opt" aria-sort={ariaSort('duration')}>
 							<SortButton
-								label={t('calls.time')}
-								active={filters.sort === 'time'}
+								label={t('calls.duration')}
+								active={filters.sort === 'duration'}
 								order={filters.order}
-								onclick={() => sortBy('time')}
+								onclick={() => sortBy('duration')}
 							/>
-							<ColumnFilter
-								label={t('calls.time')}
-								active={active.time}
-								onreset={() => {
-									filters.since = '';
-									filters.until = '';
-									load();
-								}}
-							>
-								<div class="mb-3 flex flex-wrap gap-1">
-									<button type="button" class="btn btn-sm" onclick={() => quickRange(0)}
-										>{t('calls.range.today')}</button
-									>
-									<button type="button" class="btn btn-sm" onclick={() => quickRange(6)}
-										>{t('calls.range.week')}</button
-									>
-									<button type="button" class="btn btn-sm" onclick={() => quickRange(29)}
-										>{t('calls.range.month')}</button
-									>
-								</div>
-								<div class="grid grid-cols-2 gap-2">
-									<label
-										>{t('calls.range.since')}
-										<input class="input" type="date" bind:value={filters.since} onchange={load} />
-									</label>
-									<label
-										>{t('calls.range.until')}
-										<input class="input" type="date" bind:value={filters.until} onchange={load} />
-									</label>
-								</div>
-							</ColumnFilter>
-						</span>
-					</th>
-					<th>
-						<span class="inline-flex items-center gap-1 whitespace-nowrap">
-							{t('calls.direction')}
-							<ColumnFilter
-								label={t('calls.direction')}
-								active={active.direction}
-								onreset={() => {
-									filters.direction = [];
-									load();
-								}}
-							>
-								<FilterOptions
-									options={DIRECTIONS.map((d) => ({
-										value: d,
-										label: t(`dir.${d}`),
-										icon: arrow[d]
-									}))}
-									selected={filters.direction}
-									onchange={(v) => {
-										filters.direction = v as Direction[];
+						</th>
+						<th>
+							<span class="inline-flex items-center gap-1 whitespace-nowrap">
+								{t('calls.result')}
+								<ColumnFilter
+									label={t('calls.result')}
+									active={active.result}
+									onreset={() => {
+										filters.result = [];
 										load();
 									}}
-								/>
-							</ColumnFilter>
-						</span>
-					</th>
-					<th>
-						<span class="inline-flex items-center gap-1 whitespace-nowrap">
-							{t('calls.from')}
-							<ColumnFilter
-								label={t('calls.from')}
-								active={active.from}
-								onreset={() => {
-									filters.from = '';
-									load();
-								}}
-							>
-								<label
-									>{t('calls.filterText')}
-									<input
-										class="input"
-										type="search"
-										bind:value={filters.from}
-										oninput={loadSoon}
-										placeholder={t('calls.filterTextPlaceholder')}
+								>
+									<FilterOptions
+										options={RESULTS.map((r) => ({ value: r, label: t(`calls.result.${r}`) }))}
+										selected={filters.result}
+										onchange={(v) => {
+											filters.result = v as Result[];
+											load();
+										}}
 									/>
-								</label>
-							</ColumnFilter>
-						</span>
-					</th>
-					<th>
-						<span class="inline-flex items-center gap-1 whitespace-nowrap">
-							{t('calls.to')}
-							<ColumnFilter
-								label={t('calls.to')}
-								active={active.to}
-								onreset={() => {
-									filters.to = '';
-									load();
-								}}
-							>
-								<label
-									>{t('calls.filterText')}
-									<input
-										class="input"
-										type="search"
-										bind:value={filters.to}
-										oninput={loadSoon}
-										placeholder={t('calls.filterTextPlaceholder')}
-									/>
-								</label>
-								<p class="hint">{t('calls.filterToHint')}</p>
-							</ColumnFilter>
-						</span>
-					</th>
-					<th class="col-opt" aria-sort={ariaSort('duration')}>
-						<SortButton
-							label={t('calls.duration')}
-							active={filters.sort === 'duration'}
-							order={filters.order}
-							onclick={() => sortBy('duration')}
-						/>
-					</th>
-					<th>
-						<span class="inline-flex items-center gap-1 whitespace-nowrap">
-							{t('calls.result')}
-							<ColumnFilter
-								label={t('calls.result')}
-								active={active.result}
-								onreset={() => {
-									filters.result = [];
-									load();
-								}}
-							>
-								<FilterOptions
-									options={RESULTS.map((r) => ({ value: r, label: t(`calls.result.${r}`) }))}
-									selected={filters.result}
-									onchange={(v) => {
-										filters.result = v as Result[];
+								</ColumnFilter>
+							</span>
+						</th>
+						<th class="text-right">
+							<span class="inline-flex items-center gap-1 whitespace-nowrap">
+								<span class="sr-only">{t('rec.recording')}</span>
+								<ColumnFilter
+									label={t('rec.recording')}
+									active={active.recording}
+									onreset={() => {
+										filters.recording = '';
 										load();
 									}}
-								/>
-							</ColumnFilter>
-						</span>
-					</th>
-					<th class="text-right">
-						<span class="inline-flex items-center gap-1 whitespace-nowrap">
-							<span class="sr-only">{t('rec.recording')}</span>
-							<ColumnFilter
-								label={t('rec.recording')}
-								active={active.recording}
-								onreset={() => {
-									filters.recording = '';
-									load();
-								}}
-							>
-								<FilterOptions
-									single
-									options={(['', ...RECORDING_FILTERS] as const).map((r) => ({
-										value: r,
-										label: t(r ? `calls.recording.${r}` : 'common.all')
-									}))}
-									selected={[filters.recording]}
-									onchange={([v]) => {
-										filters.recording = v as RecordingFilter;
-										load();
-									}}
-								/>
-							</ColumnFilter>
-						</span>
-					</th>
-				</tr>
-			</thead>
-			<LoadingContent pending={calls === null && loading}>
-				{#snippet placeholder()}<tbody><SkeletonRows cols={7} /></tbody>{/snippet}
-				<tbody class="content-in">
-					{#each calls ?? [] as c (c.id)}
-						{@const result = callResult(c)}
-						<tr class="row-in">
-							<td class="whitespace-nowrap">{formatDateTime(c.started_at)}</td>
-							<td title={t(`dir.${c.direction}`)}
-								>{arrow[c.direction]}
-								<span class="hidden @xl:inline">{t(`dir.${c.direction}`)}</span></td
-							>
-							<td
-								>{@render party(
-									c.caller,
-									c.caller_number,
-									c.caller_name,
-									c.direction === 'inbound'
-								)}</td
-							>
-							<td>
-								{#if c.direction === 'inbound' && c.called?.extension_id}
-									<div class="flex flex-wrap items-baseline gap-x-1">
-										<span class="whitespace-nowrap"
-											>{t('calls.extensionShort')}&nbsp;<span class="font-mono"
-												>{c.called.number}</span
-											></span
-										>
-										{#if c.via_number}
-											<span class="text-slate-500 dark:text-slate-400">{t('calls.via')}</span>
-											<span class="font-mono whitespace-nowrap">{c.via_number}</span>
-										{/if}
-									</div>
-									{#if c.called.name}<div class="text-xs text-slate-500 dark:text-slate-400">
-											{c.called.name}
-										</div>{/if}
-								{:else}
-									{@render party(c.called, c.destination, '', c.direction === 'outbound')}
-								{/if}
-							</td>
-							<td class="col-opt font-mono">{c.answered_at ? formatDuration(c.billsec) : '—'}</td>
-							<td>
-								{#if result === 'blocked'}<CallBlockStatus call={c} onallowed={markAllowed} />
-								{:else if result === 'answered'}<span class="badge whitespace-nowrap badge-ok"
-										>OK</span
-									>
-								{:else if result === 'busy'}<span
-										class="badge whitespace-nowrap badge-warn"
-										title={c.hangup_cause}>{t('calls.result.busy')}</span
-									>
-								{:else}<span class="badge whitespace-nowrap badge-bad" title={c.hangup_cause}
-										>{t('calls.missed')}</span
-									>{/if}
-							</td>
-							<td class="text-right">
-								{#if c.recording_id}
-									<button
-										class="btn btn-sm whitespace-nowrap"
-										aria-expanded={open?.id === c.recording_id}
-										aria-label={t('rec.recording')}
-										onclick={() => toggleRecording(c)}
-										>▶<span class="hidden @3xl:inline"> {t('rec.recording')}</span></button
-									>
-								{/if}
-							</td>
-						</tr>
-						{#if open && open.id === c.recording_id}
-							<tr>
-								<td colspan="7" class="expand-in space-y-3 bg-slate-50 dark:bg-slate-900/40">
-									<audio
-										class="w-full"
-										controls
-										preload="none"
-										src="/api/v1/recordings/{open.id}/audio"
-									></audio>
-									<TranscriptView
-										url="/recordings/{open.id}/transcript"
-										status={open.transcript_status}
+								>
+									<FilterOptions
+										single
+										options={(['', ...RECORDING_FILTERS] as const).map((r) => ({
+											value: r,
+											label: t(r ? `calls.recording.${r}` : 'common.all')
+										}))}
+										selected={[filters.recording]}
+										onchange={([v]) => {
+											filters.recording = v as RecordingFilter;
+											load();
+										}}
 									/>
-									<div class="flex flex-wrap justify-end gap-1">
-										{#if can('recordings.retranscribe')}
-											<button class="btn btn-sm" onclick={() => (again = true)}
-												>{t('tx.again')}</button
+								</ColumnFilter>
+							</span>
+						</th>
+					</tr>
+				</thead>
+				<LoadingContent pending={calls === null && loading}>
+					{#snippet placeholder()}<tbody><SkeletonRows cols={7} /></tbody>{/snippet}
+					<tbody class="content-in">
+						{#each calls ?? [] as c (c.id)}
+							{@const result = callResult(c)}
+							<tr class="row-in">
+								<td class="whitespace-nowrap">{formatDateTime(c.started_at)}</td>
+								<td title={t(`dir.${c.direction}`)}
+									>{arrow[c.direction]}
+									<span class="hidden @xl:inline">{t(`dir.${c.direction}`)}</span></td
+								>
+								<td
+									>{@render party(
+										c.caller,
+										c.caller_number,
+										c.caller_name,
+										c.direction === 'inbound'
+									)}</td
+								>
+								<td>
+									{#if c.direction === 'inbound' && c.called?.extension_id}
+										<div class="flex flex-wrap items-baseline gap-x-1">
+											<span class="whitespace-nowrap"
+												>{t('calls.extensionShort')}&nbsp;<span class="font-mono"
+													>{c.called.number}</span
+												></span
 											>
-										{/if}
-										<a class="btn btn-sm" href="/api/v1/recordings/{open.id}/audio" download
-											>{t('vm.download')}</a
-										>
-										{#if can('recordings.delete')}
-											<button class="btn btn-sm btn-danger" onclick={() => remove(open!)}
-												>{t('common.delete')}</button
-											>
-										{/if}
-									</div>
-								</td>
-							</tr>
-						{/if}
-					{:else}
-						{#if !error}
-							<tr>
-								<td colspan="7" class="py-8 text-center text-sm text-slate-500 dark:text-slate-400">
-									{anyFilter ? t('calls.noMatches') : t('calls.empty')}
-									{#if anyFilter}
-										<div class="mt-2">
-											<button class="btn btn-sm" onclick={resetAll}>{t('filter.resetAll')}</button>
+											{#if c.via_number}
+												<span class="text-slate-500 dark:text-slate-400">{t('calls.via')}</span>
+												<span class="font-mono whitespace-nowrap">{c.via_number}</span>
+											{/if}
 										</div>
+										{#if c.called.name}<div class="text-xs text-slate-500 dark:text-slate-400">
+												{c.called.name}
+											</div>{/if}
+									{:else}
+										{@render party(c.called, c.destination, '', c.direction === 'outbound')}
+									{/if}
+								</td>
+								<td class="col-opt font-mono">{c.answered_at ? formatDuration(c.billsec) : '—'}</td>
+								<td>
+									{#if result === 'blocked'}<CallBlockStatus call={c} onallowed={markAllowed} />
+									{:else if result === 'answered'}<span class="badge whitespace-nowrap badge-ok"
+											>OK</span
+										>
+									{:else if result === 'busy'}<span
+											class="badge whitespace-nowrap badge-warn"
+											title={c.hangup_cause}>{t('calls.result.busy')}</span
+										>
+									{:else}<span class="badge whitespace-nowrap badge-bad" title={c.hangup_cause}
+											>{t('calls.missed')}</span
+										>{/if}
+								</td>
+								<td class="text-right">
+									{#if c.recording_id}
+										<button
+											class="btn btn-sm whitespace-nowrap"
+											aria-expanded={open?.id === c.recording_id}
+											aria-label={t('rec.recording')}
+											onclick={() => toggleRecording(c)}
+											>▶<span class="hidden @3xl:inline"> {t('rec.recording')}</span></button
+										>
 									{/if}
 								</td>
 							</tr>
+							{#if open && open.id === c.recording_id}
+								<tr>
+									<td colspan="7" class="expand-in space-y-3 bg-slate-50 dark:bg-slate-900/40">
+										<audio
+											class="w-full"
+											controls
+											preload="none"
+											src="/api/v1/recordings/{open.id}/audio"
+										></audio>
+										<TranscriptView
+											url="/recordings/{open.id}/transcript"
+											status={open.transcript_status}
+										/>
+										<div class="flex flex-wrap justify-end gap-1">
+											{#if can('recordings.retranscribe')}
+												<button class="btn btn-sm" onclick={() => (again = true)}
+													>{t('tx.again')}</button
+												>
+											{/if}
+											<a class="btn btn-sm" href="/api/v1/recordings/{open.id}/audio" download
+												>{t('vm.download')}</a
+											>
+											{#if can('recordings.delete')}
+												<button class="btn btn-sm btn-danger" onclick={() => remove(open!)}
+													>{t('common.delete')}</button
+												>
+											{/if}
+										</div>
+									</td>
+								</tr>
+							{/if}
+						{:else}
+							{#if !error}
+								<tr>
+									<td
+										colspan="7"
+										class="py-8 text-center text-sm text-slate-500 dark:text-slate-400"
+									>
+										{anyFilter ? t('calls.noMatches') : t('calls.empty')}
+										{#if anyFilter}
+											<div class="mt-2">
+												<button class="btn btn-sm" onclick={resetAll}>{t('filter.resetAll')}</button
+												>
+											</div>
+										{/if}
+									</td>
+								</tr>
+							{/if}
+						{/each}
+						{#if loadingMore}<SkeletonRows cols={7} rows={2} />{/if}
+					</tbody>
+				</LoadingContent>
+			</table>
+			{#if calls && calls.length > 0}
+				<div
+					class="flex flex-wrap items-center justify-between gap-2 pt-3 text-sm text-slate-500 dark:text-slate-400"
+				>
+					<span>{t('calls.shown', { shown: calls.length, total })}</span>
+					<div class="flex gap-2">
+						{#if anyFilter}
+							<button class="btn btn-sm" onclick={resetAll}>{t('filter.resetAll')}</button>
 						{/if}
-					{/each}
-					{#if loadingMore}<SkeletonRows cols={7} rows={2} />{/if}
-				</tbody>
-			</LoadingContent>
-		</table>
-		{#if calls && calls.length > 0}
-			<div
-				class="flex flex-wrap items-center justify-between gap-2 pt-3 text-sm text-slate-500 dark:text-slate-400"
-			>
-				<span>{t('calls.shown', { shown: calls.length, total })}</span>
-				<div class="flex gap-2">
-					{#if anyFilter}
-						<button class="btn btn-sm" onclick={resetAll}>{t('filter.resetAll')}</button>
-					{/if}
-					{#if calls.length < total}
-						<button class="btn btn-sm" disabled={loadingMore || loading} onclick={more}
-							>{t('calls.more')}</button
-						>
-					{/if}
+						{#if calls.length < total}
+							<button class="btn btn-sm" disabled={loadingMore || loading} onclick={more}
+								>{t('calls.more')}</button
+							>
+						{/if}
+					</div>
 				</div>
-			</div>
-		{/if}
-	</div>
+			{/if}
+		</div>
+	{/if}
 </div>
 
 {#if open}

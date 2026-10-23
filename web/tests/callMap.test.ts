@@ -111,3 +111,37 @@ test('calls fall into the server categories', () => {
 		'blocked'
 	);
 });
+
+test('tile URLs are checked like on the server', async () => {
+	const { tileUrlProblem } = await import('../src/lib/calls/map.ts');
+	assert.equal(tileUrlProblem(''), '');
+	assert.equal(tileUrlProblem('https://tile.openstreetmap.org/{z}/{x}/{y}.png'), '');
+	assert.equal(tileUrlProblem('https://{s}.tile.example.com/{z}/{x}/{y}{r}.png'), '');
+	assert.equal(tileUrlProblem('http://tile.example.com/{z}/{x}/{y}.png'), 'https');
+	assert.equal(tileUrlProblem('https://tile.example.com/{z}/{x}.png'), 'placeholders');
+	assert.equal(tileUrlProblem('https://tile.example.com/{z}/{x}/{y}/{key}.png'), 'invalid');
+	assert.equal(tileUrlProblem("https://t.example.com/{z}/{x}/{y}.png';"), 'invalid');
+});
+
+test('the dashboard lists the areas with the most shown calls', async () => {
+	const { topAreas } = await import('../src/lib/calls/map.ts');
+	const area = (id: string, kind: string, answered: number, outbound: number) => ({
+		id,
+		kind,
+		counts: { answered, missed: 0, outbound, blocked: 0 }
+	});
+	const areas = [
+		area('a', 'area', 1, 0),
+		area('b', 'area', 0, 5),
+		area('n', 'none', 9, 9),
+		area('c', 'area', 3, 0)
+	];
+	assert.deepEqual(
+		topAreas(areas, [...CATEGORIES]).map((a) => a.id),
+		['b', 'c', 'a']
+	);
+	assert.deepEqual(
+		topAreas(areas, ['answered'], 2).map((a) => a.id),
+		['c', 'a']
+	);
+});

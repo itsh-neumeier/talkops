@@ -364,4 +364,8 @@
 			</LoadingContent>
 		</section>
 	</div>
+
+	{#await import('#lib/components/CallMapWidget.svelte') then widget}
+		<widget.default />
+	{/await}
 </div>

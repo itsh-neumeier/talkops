@@ -25,6 +25,7 @@
 	import MailDesign from '#lib/components/MailDesign.svelte';
 	import NotificationSettings from '#lib/components/NotificationSettings.svelte';
 	import FaxSettings from '#lib/components/FaxSettings.svelte';
+	import CallMapSettings from '#lib/components/CallMapSettings.svelte';
 	import SettingsNav, {
 		sections,
 		sectionVisible,
@@ -409,6 +410,7 @@
 				{:else if can('settings.manage') && !settings && !net.settled}
 					<div class="card"><Skeleton lines={6} /></div>
 				{/if}
+				{#if can('settings.manage')}<CallMapSettings />{/if}
 			{:else if section === 'voicemail'}
 				{#if can('voicemail.settings')}<VoicemailControl />{/if}
 			{:else if section === 'email'}

@@ -8,7 +8,7 @@
 - Status: Completed (implementation in PR, waiting for review and hardware test)
 - Branch: `claude/wifi-handset-roaming` (worktree `../talkops-wifi-handset`)
 - Base commit: `c053920` (head of stage 4a, PR #62, not merged)
-- Related commits or PR: Pending (PR against `ccr-74ace6e8-93dh09`)
+- Related commits or PR: https://github.com/itsh-neumeier/talkops/pull/63 (base: PR #62 branch)
 
 ## Goal
 
@@ -61,7 +61,7 @@ the band and the roaming setting. No Wi-Fi credentials.
 - Passed: browser check with the real server and a Python mock console:
   handset section, band check blocks a 2.4 GHz handset, apply, history
   "waiting for handset", phone page number field (390 px, desktop dark).
-- Full workspace test result: see the PR description.
+- Full workspace: 474 passed, 1 ignored, 1 failed (`read_only_fax_directory_rejects_upload_without_queueing`; root environment, known, unrelated).
 - Not run: real AX83H, real UniFi console, Docker images, SIPp/E2E.
 - STE review: project writing rules applied. The full ASD-STE100 standard
   was not available; full language review is pending.

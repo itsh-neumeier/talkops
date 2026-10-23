@@ -126,8 +126,20 @@ when the map view opens. The main bundle does not grow.
 
 The default base map is the shipped country outline file. The page then
 sends no request to another host. An administrator can set a tile URL and
-an attribution text in the system settings (third PR of the feature). A
-tile server receives the IP address of the browser and the map section.
+an attribution text in the settings (`PUT /api/v1/settings/call-map`,
+columns `map_tile_url` and `map_tile_attribution` of `tenant_settings`,
+migration `20261109000001_call_map_tiles.sql`). A separate endpoint keeps
+`PUT /api/v1/settings` from clearing the value. The URL must use `https`
+and the placeholders `{z}`, `{x}` and `{y}`. A tile server receives the IP
+address of the browser and the map section.
+
+The Content Security Policy of the web UI is a `<meta>` tag in
+`index.html` with `img-src 'self' data: blob:`. A header cannot extend
+this policy. With a tile URL, the server therefore adds the tile host
+(`https://host`, or `https://*.host` for `{s}`) to `img-src` when it sends
+`index.html`. It removes `ETag` and `Last-Modified` from this response and
+ignores conditional requests, so a cached page does not keep an old
+policy.
 
 ## Consequences
 

@@ -2995,5 +2995,22 @@ export default {
 	'callMap.anonymous': 'Anonymous (no number)',
 	'callMap.summary': '{calls} calls · {areas} areas · talk time {duration}',
 	'callMap.accuracy':
-		'The map shows the area of the phone number, not the location of the caller. Ported numbers and VoIP numbers can be used outside their area.'
+		'The map shows the area of the phone number, not the location of the caller. Ported numbers and VoIP numbers can be used outside their area.',
+	'callMap.widgetTitle': 'Call origins',
+	'callMap.openMap': 'Open map',
+	'callMap.topAreas': 'Top areas',
+	'callMap.settingsTitle': 'Call map',
+	'callMap.settingsHint':
+		'Without a tile server, the map uses the built-in country outlines and sends no request to another server.',
+	'callMap.tileUrl': 'Tile server URL (optional)',
+	'callMap.tileUrlHint':
+		'For example https://tile.openstreetmap.org/{z}/{x}/{y}.png. Only https. {s} as the first part of the host selects the subdomains a, b and c.',
+	'callMap.tileAttribution': 'Attribution',
+	'callMap.tileAttributionHint':
+		'Required with a tile server, for example © OpenStreetMap contributors.',
+	'callMap.tilePrivacy':
+		'External tiles send the IP address of each browser and the shown map section to the tile server. Obey the usage policy of the tile server (for OpenStreetMap: tile usage policy, no heavy use).',
+	'callMap.tileError.https': 'The URL must start with https://.',
+	'callMap.tileError.placeholders': 'The URL needs the placeholders {z}, {x} and {y}.',
+	'callMap.tileError.invalid': 'The URL contains invalid characters or unknown placeholders.'
 } as const;

@@ -474,6 +474,12 @@ export interface GeoSource {
 	updated: string;
 }
 
+/** Optional tile server of the call map; an empty URL selects the offline map. */
+export interface MapTiles {
+	tile_url: string;
+	attribution: string;
+}
+
 export interface CallMap {
 	range: StatsRange;
 	since: string;

@@ -129,3 +129,31 @@ export function callCategory(c: {
 	if (c.blocked_reason) return 'blocked';
 	return c.answered_at ? 'answered' : 'missed';
 }
+
+/**
+ * Checks a tile URL like the server: `https`, the placeholders `{z}`, `{x}`
+ * and `{y}`, only known placeholders. Returns an error key or `''`.
+ */
+export function tileUrlProblem(
+	url: string | null | undefined
+): '' | 'https' | 'placeholders' | 'invalid' {
+	const value = (url ?? '').trim();
+	if (!value) return '';
+	if (!value.startsWith('https://')) return 'https';
+	if (!['{z}', '{x}', '{y}'].every((p) => value.includes(p))) return 'placeholders';
+	const rest = ['{z}', '{x}', '{y}', '{s}', '{r}'].reduce((v, p) => v.replaceAll(p, ''), value);
+	if (/[{}\s'"<>\;,`^|]/.test(rest) || rest.length > 500) return 'invalid';
+	return '';
+}
+
+/** Top areas with a location for a compact list (dashboard). */
+export function topAreas<T extends { kind: string; counts: CategoryCounts }>(
+	areas: T[],
+	shown: Category[],
+	count = 5
+): T[] {
+	return areas
+		.filter((a) => a.kind === 'area' && shownTotal(a.counts, shown) > 0)
+		.sort((a, b) => shownTotal(b.counts, shown) - shownTotal(a.counts, shown))
+		.slice(0, count);
+}

@@ -42,6 +42,10 @@ try {
     const headers = {};
     if (url.pathname === '/api/v1/auth/me') value = { user: { id: 'admin', username: 'admin', display_name: 'Admin', role: 'admin', enabled: true }, csrf_token: 'fixture' };
     else if (url.pathname === '/api/v1/status') value = { version: 'test', database: { ok: true }, freeswitch: { ok: true } };
+    else if (url.pathname === '/api/v1/stats/calls') value = { range: '1d', buckets: [], total: 0, missed: 0, avg_talk_secs: 0, answer_rate: null, inbound: 0, outbound: 0, internal: 0 };
+    else if (url.pathname === '/api/v1/telephony/status') value = { connected: true, registrations: [], gateways: {}, updated_at: at };
+    else if (url.pathname === '/api/v1/backups') value = { settings: { last_run_at: null } };
+    else if (url.pathname === '/api/v1/setup') value = { needs_setup: false };
     else if (url.pathname === '/api/v1/calls/map') {
       mapRequests.push(url.searchParams);
       value = map(url.searchParams.get('range'));
@@ -113,6 +117,48 @@ try {
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1), 'no sideways scrolling');
 
   assert.deepEqual(foreign, [], 'no request to another host without a tile URL');
+
+  // Dashboard widget: compact map, top areas, link to the map view.
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto(`${base}/`);
+  const widget = page.locator('section[aria-labelledby="dash-call-map"]');
+  await widget.locator('.call-bubble').first().waitFor({ timeout: 20_000 });
+  assert.match(await widget.textContent(), /Top-Ortsnetze.*Bamberg\s*\+49 951\s*3/s);
+  assert.equal(mapRequests.at(-1).get('range'), '1d', 'widget default 24 h');
+  const before = mapRequests.length;
+  await widget.getByRole('tab', { name: '1 Stunde' }).click();
+  await page.waitForFunction(() => document.querySelector('section[aria-labelledby="dash-call-map"] a[href$="range=1h"]'));
+  while (mapRequests.length === before) await page.waitForTimeout(50);
+  assert.equal(mapRequests.at(-1).get('range'), '1h');
+  assert.equal(await widget.getByRole('link', { name: 'Karte öffnen' }).getAttribute('href'), '/calls?view=map&range=1h');
+  assert.deepEqual(foreign, [], 'the widget makes no external request either');
+
+  // With a tile URL the tile layer loads from the tile server. The server
+  // adds the tile host to the page policy; the preview does not, so this
+  // check adds it to the page the same way.
+  const tileRequests = [];
+  const tiles = { tile_url: 'https://{s}.tiles.example.test/{z}/{x}/{y}.png', attribution: '© Example tiles' };
+  await page.route('**/api/v1/settings/call-map', route => route.fulfill({ status: 200, json: tiles }));
+  await page.route('https://*.tiles.example.test/**', route => {
+    tileRequests.push(route.request().url());
+    route.fulfill({ status: 200, contentType: 'image/png', body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64') });
+  });
+  await page.route(`${base}/calls*`, async route => {
+    if (route.request().resourceType() !== 'document') return route.fallback();
+    const res = await route.fetch();
+    const allow = text => text.replace("img-src 'self'", "img-src 'self' https://*.tiles.example.test");
+    // The preview sends the policy as a header, the TalkOps server as a meta tag.
+    const headers = { ...res.headers() };
+    if (headers['content-security-policy']) headers['content-security-policy'] = allow(headers['content-security-policy']);
+    await route.fulfill({ response: res, headers, body: allow(await res.text()) });
+  });
+  await page.goto(`${base}/calls?view=map`);
+  await bubbles.first().waitFor({ timeout: 20_000 });
+  await page.locator('.leaflet-tile-loaded').first().waitFor({ timeout: 20_000 });
+  assert.ok(tileRequests.length > 0, 'tiles requested');
+  assert.ok(tileRequests.every(u => /^https:\/\/[abc]\.tiles\.example\.test\/\d+\/\d+\/\d+\.png$/.test(u)), tileRequests[0]);
+  assert.equal(await page.locator('.call-map-country').count(), 0, 'no outline layer with tiles');
+  assert.match(await page.locator('.leaflet-control-attribution').textContent(), /© Example tiles/);
   assert.deepEqual(errors, []);
   console.log('call map browser checks passed');
 } finally {

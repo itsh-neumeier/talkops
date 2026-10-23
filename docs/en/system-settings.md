@@ -11,7 +11,7 @@ is missing. See [users and roles](users-and-roles.md) before granting access.
 | Section | Permission | Purpose and detailed guide |
 | --- | --- | --- |
 | Telephony | `settings.manage` | Dialing rules, emergency/default number, public IP, SIP addresses and phone time zone; [trunks and numbers](trunks-and-numbers.md). |
-| Call handling | `settings.manage` | Recording by call direction, retention, transcription and hold music; [recording](recording.md), [prompts](prompts.md). |
+| Call handling | `settings.manage` | Recording by call direction, retention, transcription, hold music and the tile server of the call map; [recording](recording.md), [prompts](prompts.md), [call log](call-log.md#map). |
 | Transcription connections | `transcription.settings` in Call handling | Engines, purposes, cloud connections and API keys; [recording](recording.md). |
 | Voicemail | `voicemail.settings` | Default language, voices, speed and system texts; [voicemail](voicemail.md). |
 | E-mail | `voicemail.settings` | SMTP, design and mail text; [mail](mail.md). |
@@ -40,6 +40,34 @@ open form. A saved default can affect many extensions. Phone time-zone changes
 can require a provisioning download; browser time display is a separate concern.
 Recording and cloud transcription settings can change where call data is kept.
 See the media guides for per-purpose controls and access.
+
+## Call map tile server
+
+The call map (ADR 0044) works offline by default. It shows country outlines
+that come with TalkOps and sends no request to another server. An
+administrator can set a tile server for a detailed background map:
+
+1. Open **Settings → Call handling → Call map**.
+2. Enter the **Tile server URL**, for example
+   `https://tile.openstreetmap.org/{z}/{x}/{y}.png`. The URL must start
+   with `https://` and contain `{z}`, `{x}` and `{y}`. `{s}` as the first
+   part of the host selects the subdomains `a`, `b` and `c`. `{r}` adds the
+   suffix for high-resolution screens.
+3. Enter the **Attribution** that the tile provider requires, for example
+   `© OpenStreetMap contributors`.
+4. Select **Save**.
+
+TalkOps then adds the tile host to the Content Security Policy of the web
+UI. The change applies after a reload of the page. The audit log records
+each change. To return to the offline map, clear the URL and save.
+
+External tiles send the IP address of each browser and the shown map
+section to the tile server. Obey the usage policy of the tile server. The
+OpenStreetMap tile servers permit only light use; use an own tile server or
+a commercial provider for regular use.
+
+`GET /api/v1/settings/call-map` returns the setting (all signed-in users).
+`PUT /api/v1/settings/call-map` changes it (`settings.manage`).
 
 ## Create a storage connection
 

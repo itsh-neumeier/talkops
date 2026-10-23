@@ -142,6 +142,14 @@ ihrer Nebenstellen, Benutzer mit `calls.view_all` alle Anrufe. Die Karte
 zählt höchstens 50.000 Anrufe. Bei mehr Anrufen zeigt ein Hinweis, dass nur
 die neuesten gezählt sind.
 
+### Dashboard
+
+Die Dashboard-Karte **Herkunft der Anrufe** zeigt eine kleine Karte des
+letzten Tages (oder der letzten Stunde) und die fünf Ortsnetze mit den
+meisten Anrufen. Sie nutzt dieselben Rechte. Ein Klick auf die Karte, ein
+Ortsnetz oder **Karte öffnen** öffnet die Kartenansicht der Anrufliste mit
+demselben Zeitraum.
+
 ### Genauigkeit
 
 Die Karte zeigt das Ortsnetz der Rufnummer, nicht den Standort des
@@ -168,6 +176,10 @@ fremde Server. Die Karte nennt diese Quellen:
 - Natural Earth, gemeinfrei (Ländergrenzen)
 
 Die Daten lassen sich mit `tools/geo/` aktualisieren (siehe ADR 0044).
+Ein Administrator kann zusätzlich einen Tile-Server für eine detaillierte
+Hintergrundkarte eintragen
+([Systemeinstellungen](systemeinstellungen.md#tile-server-der-anrufkarte)).
+Der Browser lädt die Kartenkacheln dann von diesem Server.
 
 ## Weitere laden
 

@@ -324,3 +324,116 @@ async fn requires_a_login(db: PgPool) {
     .await;
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
 }
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn tile_server_setting_is_validated_audited_and_allowed_by_the_page_policy(db: PgPool) {
+    let web = std::env::temp_dir().join(format!("talkops-web-{}", Uuid::new_v4()));
+    std::fs::create_dir_all(&web).unwrap();
+    std::fs::write(
+        web.join("index.html"),
+        "<html><head><meta http-equiv=\"content-security-policy\" content=\"default-src 'self'; img-src 'self' data: blob:; media-src 'self'\"></head></html>",
+    )
+    .unwrap();
+    let router = talkops_api::app(common::state(db.clone()), Some(&web));
+    let admin = setup_admin(&router).await;
+    // `cached`: the browser has the page from an earlier visit.
+    let page = |path: &'static str, cached: bool| {
+        let router = router.clone();
+        async move {
+            let mut req = axum::http::Request::get(path);
+            if cached {
+                req = req.header("if-modified-since", "Wed, 21 Oct 2099 07:28:00 GMT");
+            }
+            let res = raw(&router, req.body(axum::body::Body::empty()).unwrap()).await;
+            assert_eq!(res.status(), StatusCode::OK, "{path}");
+            body_string(res).await
+        }
+    };
+
+    // Default: offline map, the page policy is unchanged.
+    let (status, tiles) = admin.get("/api/v1/settings/call-map").await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(tiles, json!({"tile_url": "", "attribution": ""}));
+    assert!(
+        page("/calls", false)
+            .await
+            .contains("img-src 'self' data: blob:")
+    );
+
+    for (body, why) in [
+        (
+            json!({"tile_url": "http://tile.example.com/{z}/{x}/{y}.png", "attribution": "x"}),
+            "https only",
+        ),
+        (
+            json!({"tile_url": "https://tile.example.com/{z}/{x}.png", "attribution": "x"}),
+            "placeholders",
+        ),
+        (
+            json!({"tile_url": "https://tile.example.com/{z}/{x}/{y}.png'; script-src *", "attribution": "x"}),
+            "characters",
+        ),
+        (
+            json!({"tile_url": "https://tile.example.com/{z}/{x}/{y}.png", "attribution": ""}),
+            "attribution",
+        ),
+    ] {
+        assert_eq!(
+            admin.put("/api/v1/settings/call-map", body).await.0,
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "{why}"
+        );
+    }
+    let osm = json!({"tile_url": "https://{s}.tile.example.com/{z}/{x}/{y}.png", "attribution": "© OpenStreetMap contributors"});
+    let (status, saved) = admin.put("/api/v1/settings/call-map", osm.clone()).await;
+    assert_eq!(status, StatusCode::OK, "{saved}");
+    assert_eq!(saved, osm);
+    let audits: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM audit_log WHERE entity_type = 'call_map_tiles'")
+            .fetch_one(&db)
+            .await
+            .unwrap();
+    assert_eq!(audits, 1);
+    for path in ["/", "/calls"] {
+        // A cached page must not keep the old policy.
+        let html = page(path, true).await;
+        assert!(
+            html.contains("img-src 'self' https://*.tile.example.com data: blob:"),
+            "{path}: {html}"
+        );
+    }
+
+    // Users read the setting for the map, only settings managers change it.
+    admin
+        .post(
+            "/api/v1/users",
+            json!({"username": "user", "display_name": "User", "password": "user-password", "role": "user"}),
+        )
+        .await;
+    let user = login(&router, "user", "user-password").await.unwrap();
+    assert_eq!(user.get("/api/v1/settings/call-map").await.1, osm);
+    assert_eq!(
+        user.put(
+            "/api/v1/settings/call-map",
+            json!({"tile_url": "", "attribution": ""})
+        )
+        .await
+        .0,
+        StatusCode::FORBIDDEN
+    );
+
+    // Clearing the URL returns to the offline map.
+    let (status, _) = admin
+        .put(
+            "/api/v1/settings/call-map",
+            json!({"tile_url": "", "attribution": ""}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(
+        page("/", false)
+            .await
+            .contains("img-src 'self' data: blob:")
+    );
+    std::fs::remove_dir_all(&web).ok();
+}

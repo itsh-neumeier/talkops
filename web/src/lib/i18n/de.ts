@@ -3033,7 +3033,24 @@ const de: Record<keyof typeof en, string> = {
 	'callMap.anonymous': 'Anonym (ohne Nummer)',
 	'callMap.summary': '{calls} Anrufe · {areas} Ortsnetze · Gesprächszeit {duration}',
 	'callMap.accuracy':
-		'Die Karte zeigt das Ortsnetz der Rufnummer, nicht den Standort der Anruferin oder des Anrufers. Portierte Nummern und VoIP-Nummern können außerhalb ihres Ortsnetzes genutzt werden.'
+		'Die Karte zeigt das Ortsnetz der Rufnummer, nicht den Standort der Anruferin oder des Anrufers. Portierte Nummern und VoIP-Nummern können außerhalb ihres Ortsnetzes genutzt werden.',
+	'callMap.widgetTitle': 'Herkunft der Anrufe',
+	'callMap.openMap': 'Karte öffnen',
+	'callMap.topAreas': 'Top-Ortsnetze',
+	'callMap.settingsTitle': 'Anrufkarte',
+	'callMap.settingsHint':
+		'Ohne Tile-Server nutzt die Karte die eingebauten Ländergrenzen und sendet keine Anfrage an fremde Server.',
+	'callMap.tileUrl': 'Tile-Server-URL (optional)',
+	'callMap.tileUrlHint':
+		'Zum Beispiel https://tile.openstreetmap.org/{z}/{x}/{y}.png. Nur https. {s} als erster Teil des Hosts wählt die Subdomains a, b und c.',
+	'callMap.tileAttribution': 'Quellenangabe',
+	'callMap.tileAttributionHint':
+		'Pflicht bei einem Tile-Server, zum Beispiel © OpenStreetMap-Mitwirkende.',
+	'callMap.tilePrivacy':
+		'Externe Tiles senden die IP-Adresse jedes Browsers und den gezeigten Kartenausschnitt an den Tile-Server. Beachte die Nutzungsrichtlinie des Tile-Servers (bei OpenStreetMap: Tile Usage Policy, keine starke Nutzung).',
+	'callMap.tileError.https': 'Die URL muss mit https:// beginnen.',
+	'callMap.tileError.placeholders': 'Die URL braucht die Platzhalter {z}, {x} und {y}.',
+	'callMap.tileError.invalid': 'Die URL enthält ungültige Zeichen oder unbekannte Platzhalter.'
 };
 
 export default de;

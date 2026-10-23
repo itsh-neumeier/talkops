@@ -2,7 +2,8 @@
 	// Map view of the call log: range switch, category chips (legend), the map,
 	// the details of a bubble and the list of calls without a location.
 	import { onMount } from 'svelte';
-	import { api, type CallMap as CallMapData, type MapArea } from '#lib/api.ts';
+	import { api, type CallMap as CallMapData, type MapArea, type MapTiles } from '#lib/api.ts';
+	import { loadTiles } from '#lib/calls/tiles.ts';
 	import CallMap from '#lib/components/CallMap.svelte';
 	import CallMapPopup from '#lib/components/CallMapPopup.svelte';
 	import CountryFlag from '#lib/components/CountryFlag.svelte';
@@ -42,6 +43,8 @@
 	let loading = $state(true);
 	let error = $state('');
 	let selectedId = $state<string | null>(null);
+	/** Tile server setting; the map waits for it. */
+	let tiles = $state<MapTiles | null>(null);
 	let generation = 0;
 
 	const selected = $derived(data?.areas.find((a) => a.id === selectedId) ?? null);
@@ -72,6 +75,7 @@
 
 	onMount(() => {
 		load();
+		loadTiles().then((v) => (tiles = v));
 		const timer = setInterval(() => {
 			if (range === '1h' && !document.hidden) load();
 		}, REFRESH_MS);
@@ -147,13 +151,19 @@
 			<p class="badge badge-warn">{t('callMap.truncated', { limit: data.limit })}</p>
 		{/if}
 		<div class="relative">
-			<CallMap
-				areas={located}
-				shown={categories}
-				selected={selectedId}
-				onselect={select}
-				label={t('callMap.mapLabel', { range: rangeLabel(range) })}
-			/>
+			{#if tiles}
+				<CallMap
+					tileUrl={tiles.tile_url}
+					tileAttribution={tiles.attribution}
+					areas={located}
+					shown={categories}
+					selected={selectedId}
+					onselect={select}
+					label={t('callMap.mapLabel', { range: rangeLabel(range) })}
+				/>
+			{:else}
+				<div class="skeleton h-72 rounded-lg" aria-hidden="true"></div>
+			{/if}
 			{#if data && !loading && shownCalls === 0}
 				<p
 					class="pointer-events-none absolute inset-x-0 top-4 mx-auto w-fit rounded-md bg-white/90 px-3 py-1.5 text-sm text-slate-600 shadow dark:bg-slate-900/90 dark:text-slate-300"

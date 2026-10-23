@@ -382,8 +382,11 @@ ausstrahlt, und TalkOps kann es dann nicht mehr erreichen.
 
 ## Datenschutz und Löschfrist
 
-- TalkOps liest WLAN-Daten nur während einer aktiven Begehung und nur für
-  die MAC-Adresse des Testgeräts.
+- Während einer aktiven Begehung liest TalkOps WLAN-Daten für die MAC-Adresse
+  des Testgeräts. Wenn ein SSID-Vorschlag ein Band entfernt, liest TalkOps
+  für die Schutzprüfung auch das Band jedes provisionierten WLAN-Handsets.
+  Diese Prüfung erfolgt auch vor Übernehmen und Zurückrollen, außerhalb
+  einer aktiven Begehung.
 - Ortsdaten sind nur die Markierung „neuer Ort“ und optionale Notizen.
   Keine personenbezogenen Daten in Notizen schreiben.
 - Die Begehung zeichnet das Gespräch immer auf. Tester ist normalerweise

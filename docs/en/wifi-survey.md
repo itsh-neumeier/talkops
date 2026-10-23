@@ -368,8 +368,10 @@ reach it to correct it.
 
 ## Privacy and retention
 
-- TalkOps reads Wi-Fi data only during an active survey and only for the
-  MAC address of the survey device.
+- During an active survey, TalkOps reads Wi-Fi data for the MAC address of
+  the survey device. When a proposed SSID change removes a band, TalkOps also
+  reads the band of each provisioned Wi-Fi handset for the protection check.
+  This check also runs before apply and rollback, outside an active survey.
 - Location data is only the "new location" marker and the optional notes.
   Do not write personal data into notes.
 - The survey always records the call. The tester is normally the

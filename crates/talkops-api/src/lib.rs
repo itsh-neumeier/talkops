@@ -84,6 +84,8 @@ pub struct AppState {
     /// Log capture and restarts (settings → system).
     pub diagnostics: Arc<diagnostics::Diagnostics>,
     pub spam: Arc<spam::SpamCheck>,
+    /// Number geolocation for the call map (ADR 0044); empty without data.
+    pub geo: Arc<talkops_core::geo::GeoIndex>,
 }
 
 /// TURN servers handed to browser softphones.
@@ -127,6 +129,7 @@ impl AppState {
             turn: None,
             diagnostics: Arc::default(),
             spam,
+            geo: Arc::default(),
         }
     }
 }
@@ -188,6 +191,12 @@ impl AppState {
 
     pub fn with_fs_peers(mut self, peers: Vec<(std::net::IpAddr, u8)>) -> Self {
         self.fs_peers = Arc::new(peers);
+        self
+    }
+
+    /// Number geolocation data for the call map.
+    pub fn with_geo(mut self, geo: talkops_core::geo::GeoIndex) -> Self {
+        self.geo = Arc::new(geo);
         self
     }
 

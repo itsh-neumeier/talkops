@@ -53,6 +53,14 @@ pub struct Config {
     )]
     pub phones_dir: PathBuf,
 
+    /// Directory with the number geolocation data of the call map (`*.tsv`).
+    #[arg(
+        long,
+        env = "TALKOPS_GEO_DIR",
+        default_value = "/usr/share/talkops/presets/geo"
+    )]
+    pub geo_dir: PathBuf,
+
     /// Address of the outbound Event Socket server FreeSWITCH hands
     /// interactive calls (voicemail) to.
     #[arg(

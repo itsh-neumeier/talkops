@@ -79,7 +79,9 @@ Every queue has its own page with three tabs:
   dialing the same number from another phone picks it up. Yealink BLF keys can
   watch a slot with the value `park+*51`.
 - **Blind transfers** from phones work to internal numbers, park slots and
-  external numbers (via the default number).
+  external numbers (via the default number). The
+  [dialing profile](#dialing-permissions) of the transferring extension
+  applies to external numbers.
 
 ## Call blocking
 
@@ -125,6 +127,104 @@ audit entry. Backups include the whitelist and stored call decisions.
 The API provides `GET` and `POST /api/v1/call-allowlist` and
 `DELETE /api/v1/call-allowlist/{id}`. Each operation requires
 `blocking.allowlist`. Duplicate creation returns the existing entry.
+
+## Dialing permissions
+
+**Call routing → Dialing permissions** controls which numbers extensions can
+call. This area needs the permission `dialing.manage`. Only administrators
+have it by default. See [ADR 0045](../adr/0045-outbound-dialing-permissions.md)
+for the design.
+
+### Dialing profiles
+
+A dialing profile has these parts:
+
+- **Numbers without a rule**: allow or block all numbers.
+- **SIP addresses**: allow or block calls to `user@host` addresses.
+- **Rules**: allow or block a country, an E.164 prefix (`+49900*`) or one
+  number (`+4930123456`). The editor shows countries with their flags.
+
+The most specific rule wins:
+
+1. A rule for the complete number.
+2. Else, the rule with the longest prefix.
+3. Else, the rule for the country of the number.
+4. Else, the setting for numbers without a rule.
+
+If two rules have the same rank, block wins. The order of the rules has
+no effect. A country rule uses the geolocation data in `presets/geo`. If
+TalkOps cannot find the country, a country rule does not apply.
+
+**Emergency numbers are always allowed.** TalkOps does not check the
+emergency numbers of the telephony settings against a profile.
+
+Short service numbers (for example `11833`) are checked in national form
+(`+4911833`).
+
+### Default profile and extensions
+
+1. Select **Make default** on a profile. Extensions without their own
+   profile use the default profile.
+2. To give one extension its own profile, open the extension, select
+   **Edit** and select a **Dialing profile**.
+
+A profile that is the default or that an extension uses cannot be deleted.
+
+### Paths that are checked
+
+| Path | Profile that applies |
+| --- | --- |
+| Call from a phone or the browser softphone | The profile of the extension. |
+| Call to a SIP address | The profile of the extension (setting **SIP addresses**). |
+| Unconditional call forwarding to an external number | The profile of the forwarding extension. |
+| Blind transfer to an external number | The profile of the extension that transfers the call. If TalkOps cannot identify it, the default profile. |
+| Conference participant from the softphone | The profile of the softphone's extension. |
+| Outbound fax | Each enabled extension of the fax owner must allow the number. A user without an extension uses the default profile. |
+
+The forwarding code `*72` and the call settings in the web interface
+refuse a forwarding target that the profile blocks. If the profile changes
+later, a call to the extension rings its devices and does not go to the
+blocked target.
+
+A blocked call gets `403 Forbidden`. If the prompt `dialing_blocked` is
+available, the caller hears it first. The call log shows the call as
+**Blocked** with the reason. The server log has the message
+`outbound call blocked by dialing profile`.
+
+### Profiles after the update
+
+The update creates five profiles that you can change:
+
+| Profile | Numbers without a rule | Rules |
+| --- | --- | --- |
+| Unrestricted | allow | none |
+| Internal only | block (also SIP addresses) | none |
+| National | block | allow the own country code, block premium-rate numbers |
+| National + Europe | block | own country, EU, EEA and Switzerland, block premium-rate numbers |
+| International | allow | block premium-rate numbers |
+
+- An existing installation keeps all calls as before: the default profile
+  is **Unrestricted**.
+- A new installation uses **International**.
+
+**Add premium-rate blocks** in the editor adds the premium-rate rules to a
+profile. The rules block `+49900`, `+49137`, `+49118`, `+4912`, `+4919`,
+the Austrian ranges `+43900`, `+43901`, `+43930`, `+43931`, `+43939`,
+`+43118`, the Swiss ranges `+41900`, `+41901`, `+41906` and the networks
+`+870`, `+881`, `+882`, `+883`. Shared-cost numbers (`+49180`) are not in
+the list. Add a prefix rule to block them.
+
+### Test a number
+
+**Test a number** shows the profile, the rule and the result for a number.
+Enter the number as a phone dials it, for example `0900 1234567`.
+
+The API provides `GET` and `POST /api/v1/dialing-profiles`,
+`PUT` and `DELETE /api/v1/dialing-profiles/{id}`,
+`PUT /api/v1/dialing-profiles/{id}/default`,
+`POST /api/v1/dialing-profiles/test` and
+`PUT /api/v1/extensions/{id}/dialing-profile`. Each change has an audit
+entry. Backups include the profiles and the stored call decisions.
 
 ## Check the result
 

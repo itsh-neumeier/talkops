@@ -106,6 +106,7 @@ fest, wer sich anmelden darf.
 | Anrufsteuerung | Nummern sperren | `blocking.manage` |
 | Anrufsteuerung | Spam-Schutz einstellen | `blocking.settings` |
 | Anrufsteuerung | Exakte lokale Whitelist-Ausnahmen verwalten | `blocking.allowlist` |
+| Anrufsteuerung | Wahlberechtigungen verwalten, kritisch | `dialing.manage` |
 | Trunks | Trunks und Nummern sehen | `trunks.view` |
 | Trunks | Trunks und Nummern verwalten, kritisch | `trunks.manage` |
 | Telefone | Telefone sehen | `phones.view` |

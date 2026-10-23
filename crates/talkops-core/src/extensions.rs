@@ -31,6 +31,9 @@ pub struct Extension {
     /// Video calls (ADR 0025): internal calls with another extension with
     /// video, door stations, trunks with video. Otherwise audio only.
     pub video_enabled: bool,
+    /// Own dialing profile (ADR 0045); none: the tenant's default profile.
+    /// Changed only through its own endpoint.
+    pub dialing_profile_id: Option<Uuid>,
 }
 
 #[derive(Debug, Clone, Deserialize, utoipa::ToSchema)]
@@ -68,7 +71,7 @@ fn yes() -> bool {
     true
 }
 
-const EXT_COLUMNS: &str = "id, number, display_name, user_id, outbound_number_id, hide_caller_id, ring_timeout_secs, enabled, dnd, forward_all, record_calls, video_enabled";
+const EXT_COLUMNS: &str = "id, number, display_name, user_id, outbound_number_id, hide_caller_id, ring_timeout_secs, enabled, dnd, forward_all, record_calls, video_enabled, dialing_profile_id";
 
 pub async fn list<'e>(db: impl PgExecutor<'e>, tenant: TenantId) -> CoreResult<Vec<Extension>> {
     let sql = format!("SELECT {EXT_COLUMNS} FROM extensions WHERE tenant_id = $1 ORDER BY number");

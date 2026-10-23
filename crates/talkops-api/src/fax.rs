@@ -19,6 +19,9 @@ use talkops_core::{
 use talkops_esl::{Headers, outbound::OutboundSession};
 use uuid::Uuid;
 
+/// Result of a fax that the owner's dialing profile blocks (ADR 0045).
+pub const DIALING_BLOCKED: &str = "Dialing permissions do not allow this number";
+
 pub fn directory(s: &AppState, tenant: TenantId, id: Uuid) -> PathBuf {
     s.media.fax.join(tenant.to_string()).join(id.to_string())
 }
@@ -98,6 +101,26 @@ async fn dispatch(s: &AppState) -> anyhow::Result<()> {
             return Ok(());
         }
     };
+    // Dialing profiles of the owner (ADR 0045), checked again at dialing.
+    if let Some(reason) = talkops_core::dial_permissions::user_blocks(
+        &s.db,
+        f.tenant_id,
+        f.owner_id,
+        &f.destination,
+        &s.geo,
+    )
+    .await?
+    {
+        tracing::info!(fax = %f.id, %reason, "fax blocked by dialing profile");
+        sqlx::query("UPDATE faxes SET state='failed',result=$2,updated_at=now() WHERE id=$1")
+            .bind(f.id)
+            .bind(DIALING_BLOCKED)
+            .execute(&mut *tx)
+            .await?;
+        queue_report(&mut tx, &f, "fax_failed", DIALING_BLOCKED).await?;
+        tx.commit().await?;
+        return Ok(());
+    }
     let call = Uuid::new_v4();
     let cfg = fax::settings(&s.db, f.tenant_id).await?;
     let settings = settings::get(&s.db, f.tenant_id).await?;

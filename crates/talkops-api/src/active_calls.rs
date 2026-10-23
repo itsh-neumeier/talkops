@@ -649,6 +649,7 @@ mod tests {
             forward_all: None,
             record_calls: "inherit".into(),
             video_enabled: false,
+            dialing_profile_id: None,
         };
         Directory {
             dial: DialPlanSettings {

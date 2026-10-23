@@ -92,6 +92,7 @@ who can log in.
 | Call routing | Block numbers | `blocking.manage` |
 | Call routing | Spam protection settings | `blocking.settings` |
 | Call routing | Manage exact tenant-wide call whitelist exceptions | `blocking.allowlist` |
+| Call routing | Manage dialing permissions (critical) | `dialing.manage` |
 | Trunks | See trunks and numbers | `trunks.view` |
 | Trunks | Manage trunks and numbers (critical) | `trunks.manage` |
 | Phones | See phones | `phones.view` |

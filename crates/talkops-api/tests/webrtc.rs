@@ -439,7 +439,8 @@ async fn choices_and_dialplan_use_the_selected_outbound_number(db: PgPool) {
             &[
                 ("section", "dialplan"),
                 ("Caller-Context", "internal"),
-                ("Caller-Destination-Number", "+4912345678"),
+                // Not +4912…: new installations block 012 numbers (ADR 0045).
+                ("Caller-Destination-Number", "+4930123456"),
                 (
                     "variable_talkops_tenant_id",
                     "00000000-0000-4000-8000-000000000001",

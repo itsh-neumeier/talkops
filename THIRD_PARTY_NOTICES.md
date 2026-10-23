@@ -52,11 +52,13 @@ The files in `presets/geo/` and `web/static/map/countries.geojson` contain
 data from these sources (ADR 0044). The map in the web UI shows the same
 notices.
 
-- Local network areas of Germany: © Bundesnetzagentur. Source: ONB
-  boundaries and the area code list of the Bundesnetzagentur. Free use,
+- Local network areas of Germany (also the area outlines of the map):
+  © Bundesnetzagentur. Source: ONB boundaries and the area code list of the
+  Bundesnetzagentur. Free use,
   also in software and for third parties, with this copyright notice.
 - Local networks of Austria: Source: RTR-GmbH, RTR Open Data `rnOrtsnetze`.
-- Place coordinates and country data: GeoNames (https://www.geonames.org/),
+- Place coordinates, place labels of the map and country data: GeoNames
+  (https://www.geonames.org/),
   licensed under Creative Commons Attribution 4.0
   (https://creativecommons.org/licenses/by/4.0/). TalkOps uses selected
   coordinates and names.
@@ -66,7 +68,8 @@ notices.
   (https://www.apache.org/licenses/LICENSE-2.0). TalkOps uses prefixes and
   place names from `resources/geocoding/en` and prefixes from
   `resources/carrier/en`, in a changed format.
-- Country outlines and label points: Natural Earth
+- Country outlines, label points, state borders, rivers, lakes and German
+  names of large places (map detail layers): Natural Earth
   (https://www.naturalearthdata.com/), public domain.
 - Map library: Leaflet 1.9.4 (https://leafletjs.com/), Copyright Volodymyr
   Agafonkin and CloudMade, BSD 2-Clause License. The web UI bundles it and

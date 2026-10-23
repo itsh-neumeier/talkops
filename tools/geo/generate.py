@@ -319,7 +319,12 @@ def label_points(raw):
         iso = rec["ISO_A2"] if rec["ISO_A2"] != "-99" else rec["ISO_A2_EH"]
         if iso and iso != "-99":
             points.setdefault(iso, (rec["LABEL_Y"], rec["LABEL_X"]))
-        geom = shape(sr.shape.__geo_interface__).simplify(0.05, preserve_topology=True)
+        geom = shape(sr.shape.__geo_interface__)
+        # Neighbours are simplified one by one; a small tolerance in Europe
+        # keeps the gaps between them invisible at the offline zoom levels.
+        x0, y0, x1, y1 = geom.bounds
+        europe = x1 >= -25 and x0 <= 45 and y1 >= 34 and y0 <= 72
+        geom = geom.simplify(0.005 if europe else 0.05, preserve_topology=True)
         if geom.is_empty:
             continue
         geo = mapping(geom)
@@ -327,16 +332,16 @@ def label_points(raw):
             {
                 "type": "Feature",
                 "properties": {"iso": iso if iso != "-99" else ""},
-                "geometry": round_coords(geo),
+                "geometry": round_coords(geo, 3 if europe else 2),
             }
         )
     return points, features
 
 
-def round_coords(geo):
+def round_coords(geo, digits=2):
     def r(c):
         if isinstance(c, (list, tuple)) and c and isinstance(c[0], (int, float)):
-            return [round(c[0], 2), round(c[1], 2)]
+            return [round(c[0], digits), round(c[1], digits)]
         return [r(x) for x in c]
 
     return {"type": geo["type"], "coordinates": r(geo["coordinates"])}

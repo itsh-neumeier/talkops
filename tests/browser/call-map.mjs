@@ -18,6 +18,11 @@ try {
     const url = new URL(request.url());
     if (url.origin !== new URL(base).origin && !url.protocol.startsWith('data') && !url.protocol.startsWith('blob')) foreign.push(request.url());
   });
+  const mapFiles = [];
+  page.on('request', request => {
+    const url = new URL(request.url());
+    if (url.pathname.startsWith('/map/')) mapFiles.push(url.pathname);
+  });
   const at = '2026-10-23T09:02:00Z';
   const zweig = { name: 'Familie Zweig', number: '101', extension_id: 'e-101', ambiguous: false };
   const baker = { name: 'Bäckerei Bamberg', number: '+4995112345', extension_id: null, contact_id: 'c-1', ambiguous: false };
@@ -102,6 +107,42 @@ try {
   assert.equal(mapRequests.at(-1).get('range'), '1h', 'reload keeps the range');
   assert.equal(await page.getByRole('button', { name: /^Ausgehend/ }).getAttribute('aria-pressed'), 'false');
 
+  // Detail layers: state borders, water, places and local network areas load
+  // by zoom level from the own server; the selected area gets an outline.
+  const zoom = () => page.evaluate(() => Number(document.querySelector('.call-map').dataset.zoom));
+  const zoomTo = async target => {
+    while (await zoom() < target) {
+      const before = await zoom();
+      await page.locator('.leaflet-control-zoom-in').click();
+      await page.waitForFunction(z => Number(document.querySelector('.call-map').dataset.zoom) > z, before);
+    }
+  };
+  await page.getByRole('button', { name: /Bamberg \+49 951/ }).click();
+  await page.locator('.leaflet-cm-onb-pane path').first().waitFor({ timeout: 20_000 });
+  assert.ok(mapFiles.includes('/map/onb.geojson'), 'outline of the selected area');
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !document.querySelector('.leaflet-cm-onb-pane path'));
+  await zoomTo(5);
+  await page.locator('.call-map-place > span').first().waitFor({ timeout: 20_000 });
+  for (const file of ['/map/admin1.geojson', '/map/rivers.geojson', '/map/lakes.geojson', '/map/places-5.json']) {
+    assert.ok(mapFiles.includes(file), `${file} at zoom ${await zoom()}`);
+  }
+  assert.ok(!mapFiles.includes('/map/places-10.json'), 'small places wait for zoom 10');
+  await zoomTo(10);
+  await page.waitForFunction(() => document.querySelectorAll('.call-map-place').length > 5);
+  assert.ok(mapFiles.includes('/map/places-10.json'));
+  assert.equal(await zoom(), 10);
+  await zoomTo(11);
+  assert.equal(await page.locator('.leaflet-control-zoom-in').getAttribute('aria-disabled'), 'true', 'offline maximum zoom 11');
+  // Labels never overlap.
+  const boxes = await page.locator('.call-map-place > span').evaluateAll(els => els.map(e => e.getBoundingClientRect().toJSON()));
+  for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
+    const a = boxes[i], b = boxes[j];
+    assert.ok(a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top, 'labels overlap');
+  }
+  await page.reload();
+  await bubbles.first().waitFor({ timeout: 20_000 });
+
   // The details link opens the list with the area filter.
   await page.locator('.call-bubble').filter({ hasNot: page.locator('.call-bubble-none') }).first().click();
   await page.getByRole('link', { name: 'Alle in der Anrufliste anzeigen' }).click();
@@ -158,6 +199,7 @@ try {
   assert.ok(tileRequests.length > 0, 'tiles requested');
   assert.ok(tileRequests.every(u => /^https:\/\/[abc]\.tiles\.example\.test\/\d+\/\d+\/\d+\.png$/.test(u)), tileRequests[0]);
   assert.equal(await page.locator('.call-map-country').count(), 0, 'no outline layer with tiles');
+  assert.equal(await page.locator('.leaflet-cm-water-pane canvas').count(), 0, 'no offline water with tiles');
   assert.match(await page.locator('.leaflet-control-attribution').textContent(), /© Example tiles/);
   assert.deepEqual(errors, []);
   console.log('call map browser checks passed');

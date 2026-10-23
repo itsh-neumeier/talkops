@@ -6,9 +6,11 @@
 	import type { Map as LeafletMap, LayerGroup } from 'leaflet';
 	import type { MapArea } from '#lib/api.ts';
 	import { bubbleGradient, bubbleSize, shownTotal, type Category } from '#lib/calls/map.ts';
+	import { OFFLINE_MAX_ZOOM } from '#lib/calls/mapLayers.ts';
+	import type { MapDetail } from '#lib/calls/mapDetail.ts';
 	import { theme } from '#lib/theme.svelte.ts';
 	import { motion } from '#lib/motion.ts';
-	import { t } from '#lib/i18n/index.svelte.ts';
+	import { i18n, t } from '#lib/i18n/index.svelte.ts';
 
 	let {
 		areas,
@@ -39,6 +41,8 @@
 	let bubbles: LayerGroup | null = null;
 	let leaflet: typeof import('leaflet') | null = null;
 	let fitted = false;
+	/** State borders, water, places and ONB areas (not on the compact map). */
+	let detail: MapDetail | null = $state(null);
 	let failed = $state(false);
 
 	const ATTRIBUTION = [
@@ -70,7 +74,7 @@
 					center: [50, 10],
 					zoom: compact ? 3 : 4,
 					minZoom: 1,
-					maxZoom: tileUrl ? 18 : 10,
+					maxZoom: tileUrl ? 18 : OFFLINE_MAX_ZOOM,
 					zoomSnap: 0.5,
 					worldCopyJump: true,
 					zoomControl: !compact,
@@ -94,16 +98,30 @@
 						m.remove();
 						return;
 					}
+					m.createPane('cm-land').style.zIndex = '380';
 					L.geoJSON(data, {
+						pane: 'cm-land',
 						interactive: false,
 						style: () => ({
 							className: 'call-map-country',
-							weight: 0.6,
 							fillOpacity: 1
 						})
 					}).addTo(m);
 				}
 				bubbles = L.layerGroup().addTo(m);
+				if (!compact) {
+					const { MapDetail } = await import('#lib/calls/mapDetail.ts');
+					if (disposed) return;
+					detail = new MapDetail(L, m, {
+						tiles: !!tileUrl,
+						dark: theme.dark,
+						locale: i18n.locale
+					});
+				}
+				// The zoom level as data attribute (layout checks and browser tests).
+				const showZoom = () => el && (el.dataset.zoom = String(m.getZoom()));
+				m.on('zoomend', showZoom);
+				showZoom();
 				map = m;
 			} catch {
 				if (!disposed) failed = true;
@@ -111,6 +129,7 @@
 		})();
 		return () => {
 			disposed = true;
+			detail?.dispose();
 			map?.remove();
 			map = null;
 		};
@@ -119,6 +138,20 @@
 	function areaLabel(a: MapArea, count: number): string {
 		return t('callMap.bubbleLabel', { name: a.name, prefix: a.prefix, count });
 	}
+
+	// Detail layers follow the theme and the selected bubble.
+	$effect(() => {
+		const dark = theme.dark;
+		detail?.setTheme(dark);
+	});
+	$effect(() => {
+		const locale = i18n.locale;
+		detail?.setLocale(locale);
+	});
+	$effect(() => {
+		const sel = selected;
+		void detail?.select(sel);
+	});
 
 	// Draws the bubbles again when data, categories, selection or theme change.
 	$effect(() => {

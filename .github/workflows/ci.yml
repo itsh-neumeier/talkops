@@ -81,6 +81,8 @@ jobs:
       - run: cargo test --workspace --locked
         env:
           TALKOPS_TEST_PG_BIN_DIR: /usr/lib/postgresql/17/bin
+          # Shipped call map data (ADR 0044), checked by talkops-core geo tests.
+          TALKOPS_GEO_DIR: ${{ github.workspace }}/presets/geo
 
   web:
     name: Web UI (lint, check, build)
@@ -133,6 +135,7 @@ jobs:
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/audit.mjs
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/fax.mjs
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/call-list.mjs
+          PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/call-map.mjs
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/call-blocking.mjs
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/phonebook.mjs
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/phone-keys.mjs

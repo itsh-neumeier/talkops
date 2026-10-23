@@ -37,6 +37,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use axum::Router;
+use axum::response::IntoResponse;
 use sqlx::PgPool;
 use talkops_core::crypto::SecretBox;
 use talkops_core::presets::PresetCatalog;
@@ -84,6 +85,8 @@ pub struct AppState {
     /// Log capture and restarts (settings → system).
     pub diagnostics: Arc<diagnostics::Diagnostics>,
     pub spam: Arc<spam::SpamCheck>,
+    /// Number geolocation for the call map (ADR 0044); empty without data.
+    pub geo: Arc<talkops_core::geo::GeoIndex>,
 }
 
 /// TURN servers handed to browser softphones.
@@ -127,6 +130,7 @@ impl AppState {
             turn: None,
             diagnostics: Arc::default(),
             spam,
+            geo: Arc::default(),
         }
     }
 }
@@ -188,6 +192,12 @@ impl AppState {
 
     pub fn with_fs_peers(mut self, peers: Vec<(std::net::IpAddr, u8)>) -> Self {
         self.fs_peers = Arc::new(peers);
+        self
+    }
+
+    /// Number geolocation data for the call map.
+    pub fn with_geo(mut self, geo: talkops_core::geo::GeoIndex) -> Self {
+        self.geo = Arc::new(geo);
         self
     }
 
@@ -265,6 +275,7 @@ pub fn api_router() -> (Router<AppState>, utoipa::openapi::OpenApi) {
         .merge(routes::extensions::router())
         .merge(routes::trunks::router())
         .merge(routes::settings::router())
+        .merge(routes::call_map::router())
         .merge(routes::transcription::router())
         .merge(routes::transcription_jobs::router())
         .merge(routes::phones::router())
@@ -300,6 +311,7 @@ pub fn api_router() -> (Router<AppState>, utoipa::openapi::OpenApi) {
 /// Builds the full application router. The web UI is served from `web_dir`
 /// as a single-page app (unknown paths fall back to `index.html`).
 pub fn app(state: AppState, web_dir: Option<&Path>) -> Router {
+    let spa_state = state.clone();
     let (api, openapi) = api_router();
     let openapi = Arc::new(openapi);
     let mut router = Router::new()
@@ -345,10 +357,67 @@ pub fn app(state: AppState, web_dir: Option<&Path>) -> Router {
 
     if let Some(dir) = web_dir.filter(|d| d.join("index.html").is_file()) {
         let spa = ServeDir::new(dir).fallback(ServeFile::new(dir.join("index.html")));
-        router = router.fallback_service(spa);
+        router = router.fallback_service(Router::new().fallback_service(spa).layer(
+            axum::middleware::from_fn_with_state(spa_state, map_tile_csp),
+        ));
     }
 
     with_security_headers(router).layer(TraceLayer::new_for_http())
+}
+
+/// Allows the tile server of the call map (ADR 0044) in the Content
+/// Security Policy of the web UI. The policy is a `<meta>` tag in
+/// `index.html`; a header could only restrict it further. Without a tile
+/// URL the page stays unchanged.
+async fn map_tile_csp(
+    axum::extract::State(state): axum::extract::State<AppState>,
+    mut req: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> axum::response::Response {
+    use axum::http::header;
+    let source = match talkops_core::settings::get_map_tiles(
+        &state.db,
+        talkops_core::tenant::TenantId::DEFAULT,
+    )
+    .await
+    {
+        Ok(tiles) if !tiles.tile_url.is_empty() => {
+            routes::call_map::tile_source(&tiles.tile_url).ok()
+        }
+        _ => None,
+    };
+    let Some(source) = source else {
+        return next.run(req).await;
+    };
+    // A cached page would keep an old policy.
+    req.headers_mut().remove(header::IF_MODIFIED_SINCE);
+    req.headers_mut().remove(header::IF_NONE_MATCH);
+    let res = next.run(req).await;
+    let html = res
+        .headers()
+        .get(header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .is_some_and(|v| v.starts_with("text/html"));
+    if !html {
+        return res;
+    }
+    let (mut parts, body) = res.into_parts();
+    let Ok(bytes) = axum::body::to_bytes(body, 4 << 20).await else {
+        return axum::http::StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    };
+    let page = String::from_utf8_lossy(&bytes).replacen(
+        "img-src 'self'",
+        &format!("img-src 'self' {source}"),
+        1,
+    );
+    parts.headers.remove(header::CONTENT_LENGTH);
+    parts.headers.remove(header::ETAG);
+    parts.headers.remove(header::LAST_MODIFIED);
+    parts.headers.insert(
+        header::CACHE_CONTROL,
+        axum::http::HeaderValue::from_static("no-cache"),
+    );
+    axum::response::Response::from_parts(parts, axum::body::Body::from(page))
 }
 
 /// Browser hardening for every response. The page's own Content Security

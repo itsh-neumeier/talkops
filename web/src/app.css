@@ -346,3 +346,66 @@ dialog.dialog-panel[open] {
 dialog.dialog-panel[open]::backdrop {
 	animation: fade-in var(--dur) var(--ease-out);
 }
+
+/* Call origin map (CallMap.svelte, ADR 0044). Leaflet sets SVG fill and
+   stroke attributes; these rules override them for both themes. */
+.call-map.leaflet-container {
+	background: var(--color-sky-50);
+	font: inherit;
+}
+.dark .call-map.leaflet-container {
+	background: var(--color-slate-950);
+}
+.call-map .call-map-country {
+	fill: var(--color-white);
+	stroke: var(--color-slate-300);
+}
+.dark .call-map .call-map-country {
+	fill: var(--color-slate-800);
+	stroke: var(--color-slate-600);
+}
+.call-map .leaflet-control-attribution {
+	background: rgb(255 255 255 / 0.85);
+	color: var(--color-slate-600);
+	font-size: 0.625rem;
+}
+.dark .call-map .leaflet-control-attribution {
+	background: rgb(15 23 42 / 0.85);
+	color: var(--color-slate-300);
+}
+.dark .call-map .leaflet-control-attribution a {
+	color: var(--color-teal-300);
+}
+.dark .call-map .leaflet-bar a {
+	background: var(--color-slate-800);
+	border-color: var(--color-slate-700);
+	color: var(--color-slate-100);
+}
+.call-bubble {
+	border-radius: 9999px;
+	border: 2px solid rgb(255 255 255 / 0.9);
+	box-shadow: 0 1px 3px rgb(15 23 42 / 0.35);
+	opacity: 0.85;
+	cursor: pointer;
+	transition:
+		opacity var(--dur-fast) var(--ease-out),
+		box-shadow var(--dur-fast) var(--ease-out);
+}
+.dark .call-bubble {
+	border-color: rgb(15 23 42 / 0.9);
+}
+.call-bubble-none {
+	border-style: dashed;
+}
+.call-bubble:hover,
+.call-bubble-selected {
+	opacity: 1;
+	box-shadow:
+		0 0 0 3px var(--color-teal-600),
+		0 1px 3px rgb(15 23 42 / 0.35);
+}
+.call-bubble:focus-visible {
+	opacity: 1;
+	outline: 3px solid var(--color-teal-500);
+	outline-offset: 2px;
+}

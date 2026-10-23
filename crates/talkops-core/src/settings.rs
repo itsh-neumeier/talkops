@@ -163,3 +163,45 @@ pub async fn update<'e>(
         .fetch_one(db)
         .await?)
 }
+
+/// Optional tile server of the call map (ADR 0044). An empty URL selects
+/// the shipped offline base map.
+#[derive(
+    Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, FromRow, utoipa::ToSchema,
+)]
+pub struct MapTiles {
+    /// `https://…/{z}/{x}/{y}.png`; `{s}` as the first host label selects
+    /// the subdomains `a`, `b` and `c`.
+    #[serde(default)]
+    pub tile_url: String,
+    /// Attribution text that the map shows next to the tiles (plain text).
+    #[serde(default)]
+    pub attribution: String,
+}
+
+pub async fn get_map_tiles<'e>(db: impl PgExecutor<'e>, tenant: TenantId) -> CoreResult<MapTiles> {
+    Ok(sqlx::query_as(
+        "SELECT map_tile_url AS tile_url, map_tile_attribution AS attribution
+         FROM tenant_settings WHERE tenant_id = $1",
+    )
+    .bind(tenant)
+    .fetch_one(db)
+    .await?)
+}
+
+pub async fn set_map_tiles<'e>(
+    db: impl PgExecutor<'e>,
+    tenant: TenantId,
+    tiles: &MapTiles,
+) -> CoreResult<MapTiles> {
+    Ok(sqlx::query_as(
+        "UPDATE tenant_settings SET map_tile_url = $2, map_tile_attribution = $3, updated_at = now()
+         WHERE tenant_id = $1
+         RETURNING map_tile_url AS tile_url, map_tile_attribution AS attribution",
+    )
+    .bind(tenant)
+    .bind(&tiles.tile_url)
+    .bind(&tiles.attribution)
+    .fetch_one(db)
+    .await?)
+}

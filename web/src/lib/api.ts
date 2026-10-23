@@ -432,6 +432,69 @@ export interface Call {
 
 export type StatsRange = '1h' | '1d' | '1w' | '1m';
 
+/** Calls of one category group (call origin map). */
+export interface MapCounts {
+	answered: number;
+	missed: number;
+	outbound: number;
+	blocked: number;
+}
+
+/** A bubble of the call origin map, or an entry without a location. */
+export interface MapArea {
+	/** Geo area ID (`DE-951`), `<country>-none` (mobile or no location) or `none`. */
+	id: string;
+	/** `area`: a local network area or place; `none`: no location below the country. */
+	kind: 'area' | 'none';
+	/** ISO country code; `null` when the country is unknown. */
+	country: string | null;
+	name: string;
+	/** Display prefix, e.g. `+49 951`. */
+	prefix: string;
+	/** Bubble position; `null` when the country is unknown. */
+	lat: number | null;
+	lon: number | null;
+	counts: MapCounts;
+	total: number;
+	/** Talk time of all calls in seconds. */
+	billsec: number;
+	/** Reasons of entries without a location. */
+	mobile: number;
+	service: number;
+	unresolved: number;
+	/** Newest calls first, at most 20. */
+	calls: Call[];
+}
+
+export interface GeoSource {
+	file: string;
+	title: string;
+	source: string;
+	license: string;
+	updated: string;
+}
+
+/** Optional tile server of the call map; an empty URL selects the offline map. */
+export interface MapTiles {
+	tile_url: string;
+	attribution: string;
+}
+
+export interface CallMap {
+	range: StatsRange;
+	since: string;
+	until: string;
+	/** More calls than the limit: the oldest calls are not counted. */
+	truncated: boolean;
+	limit: number;
+	counts: MapCounts;
+	total: number;
+	/** Calls without a caller number (counted, not on the map). */
+	anonymous: MapCounts;
+	areas: MapArea[];
+	sources: GeoSource[];
+}
+
 export interface CallStats {
 	range: StatsRange;
 	buckets: { start: string; inbound: number; outbound: number; internal: number; missed: number }[];

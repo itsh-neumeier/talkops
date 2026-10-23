@@ -1,6 +1,7 @@
 // Filter and sort state of the call list, kept in the address bar.
 import { parseOrder, pickList, queryString, type Order } from '../list/sort.ts';
 import { isBlocked } from './blocking.ts';
+import { MAP_RANGES, RANGE_MS, type MapRange } from './map.ts';
 
 export type { Order };
 
@@ -20,6 +21,12 @@ export interface CallFilters {
 	to: string;
 	recording: RecordingFilter;
 	search: string;
+	/** Rolling range from the map (`1h` … `1m`); replaces `since`/`until`. */
+	range: '' | MapRange;
+	/** Map area (`DE-951`, `DE-none`); only calls with a number in it. */
+	area: string;
+	/** Label of the map area filter, for display only. */
+	place: string;
 	sort: SortKey;
 	order: Order;
 }
@@ -40,6 +47,9 @@ export function emptyFilters(): CallFilters {
 		to: '',
 		recording: '',
 		search: '',
+		range: '',
+		area: '',
+		place: '',
 		sort: 'time',
 		order: 'desc'
 	};
@@ -61,6 +71,15 @@ export function parseFilters(params: { get(name: string): string | null }): Call
 	const rec = params.get('recording') ?? '';
 	f.recording = (RECORDING_FILTERS as string[]).includes(rec) ? (rec as RecordingFilter) : '';
 	f.search = params.get('search') ?? '';
+	const range = params.get('range') ?? '';
+	f.range = (MAP_RANGES as string[]).includes(range) ? (range as MapRange) : '';
+	if (f.range) {
+		f.since = '';
+		f.until = '';
+	}
+	const area = params.get('area') ?? '';
+	f.area = /^[A-Za-z0-9-]{1,40}$/.test(area) ? area : '';
+	f.place = f.area ? (params.get('place') ?? '').slice(0, 120) : '';
 	f.sort = params.get('sort') === 'duration' ? 'duration' : 'time';
 	f.order = parseOrder(params.get('order'), 'desc');
 	return f;
@@ -77,6 +96,9 @@ export function pageQuery(f: CallFilters): string {
 	if (f.to.trim()) p.set('to', f.to.trim());
 	if (f.recording) p.set('recording', f.recording);
 	if (f.search.trim()) p.set('search', f.search.trim());
+	if (f.range) p.set('range', f.range);
+	if (f.area) p.set('area', f.area);
+	if (f.area && f.place) p.set('place', f.place);
 	if (f.sort !== 'time') p.set('sort', f.sort);
 	if (f.order !== 'desc') p.set('order', f.order);
 	return queryString(p);
@@ -96,17 +118,24 @@ export function daysAgo(days: number, now = new Date()): string {
 }
 
 /** The query string of the API request for one page of the list. */
-export function apiQuery(f: CallFilters, offset: number, limit: number): string {
+export function apiQuery(
+	f: CallFilters,
+	offset: number,
+	limit: number,
+	now: number = Date.now()
+): string {
 	const p = new URLSearchParams();
-	if (f.since) p.set('since', localDayStart(f.since));
+	if (f.range) p.set('since', new Date(now - RANGE_MS[f.range]).toISOString());
+	else if (f.since) p.set('since', localDayStart(f.since));
 	// The end date is inclusive: up to the start of the next day.
-	if (f.until) p.set('until', localDayStart(f.until, 1));
+	if (f.until && !f.range) p.set('until', localDayStart(f.until, 1));
 	if (f.direction.length) p.set('direction', f.direction.join(','));
 	if (f.result.length) p.set('result', f.result.join(','));
 	if (f.from.trim()) p.set('from', f.from.trim());
 	if (f.to.trim()) p.set('to', f.to.trim());
 	if (f.recording) p.set('recording', f.recording);
 	if (f.search.trim()) p.set('search', f.search.trim());
+	if (f.area) p.set('area', f.area);
 	p.set('sort', f.sort);
 	p.set('order', f.order);
 	p.set('offset', String(offset));
@@ -117,7 +146,8 @@ export function apiQuery(f: CallFilters, offset: number, limit: number): string 
 /** Number of active filters of one column (for the filter mark). */
 export function activeCount(f: CallFilters): Record<string, boolean> {
 	return {
-		time: !!(f.since || f.until),
+		time: !!(f.since || f.until || f.range),
+		area: !!f.area,
 		direction: f.direction.length > 0,
 		from: !!f.from.trim(),
 		to: !!f.to.trim(),

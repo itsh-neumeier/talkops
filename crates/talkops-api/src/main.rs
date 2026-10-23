@@ -183,6 +183,25 @@ async fn main() -> anyhow::Result<()> {
     }
 }
 
+/// Loads the number geolocation data of the call map. Without the directory
+/// the map has no locations; invalid data stops the start.
+fn load_geo(dir: &std::path::Path) -> anyhow::Result<talkops_core::geo::GeoIndex> {
+    if !dir.is_dir() {
+        tracing::warn!(dir = %dir.display(), "no geo data, the call map shows no locations");
+        return Ok(talkops_core::geo::GeoIndex::default());
+    }
+    let started = std::time::Instant::now();
+    let geo = talkops_core::geo::GeoIndex::load_dir(dir)
+        .with_context(|| format!("cannot load geo data from {}", dir.display()))?;
+    tracing::info!(
+        areas = geo.len(),
+        prefixes = geo.prefix_count(),
+        elapsed_ms = started.elapsed().as_millis() as u64,
+        "geo data loaded"
+    );
+    Ok(geo)
+}
+
 async fn serve(config: Config) -> anyhow::Result<()> {
     talkops_core::telemetry::init(config.log_format);
     tracing::info!(version = talkops_core::VERSION, listen = %config.listen, "TalkOps starting");
@@ -221,6 +240,8 @@ async fn serve(config: Config) -> anyhow::Result<()> {
         )
     })?;
 
+    let geo = load_geo(&config.geo_dir)?;
+
     let profile = ProfileSettings {
         sip_ip: config.sip_ip.clone(),
         internal_port: config.sip_port,
@@ -258,6 +279,7 @@ async fn serve(config: Config) -> anyhow::Result<()> {
     .with_backup(backup_cfg)
     .with_setup_token(config.setup_token.as_deref())
     .with_fs_peers(config.fs_peers.clone())
+    .with_geo(geo)
     .with_turn(
         config.turn_urls.clone(),
         config.turn_secret.clone(),

@@ -2999,7 +2999,58 @@ const de: Record<keyof typeof en, string> = {
 	'unifiWrite.err.handset_changed':
 		'Die Handset-Einstellung wurde seit dem Vorschlag geändert. Vorschlag neu öffnen.',
 	'unifiWrite.err.not_wifi_handset':
-		'Das Telefon ist kein provisioniertes WLAN-Handset mit Roaming-Schwelle.'
+		'Das Telefon ist kein provisioniertes WLAN-Handset mit Roaming-Schwelle.',
+	'calls.view': 'Ansicht',
+	'calls.view.list': 'Liste',
+	'calls.view.map': 'Karte',
+	'calls.areaFilter': 'Ortsnetz: {place}',
+	'calls.rangeFilter': 'Letzte {range}',
+	'callMap.range': 'Zeitraum',
+	'callMap.range.1h': '1 Stunde',
+	'callMap.range.1d': '1 Tag',
+	'callMap.range.1w': '1 Woche',
+	'callMap.range.1m': '1 Monat',
+	'callMap.legend': 'Anrufkategorien',
+	'callMap.category.answered': 'Eingehend angenommen',
+	'callMap.category.missed': 'Eingehend verpasst',
+	'callMap.category.outbound': 'Ausgehend',
+	'callMap.category.blocked': 'Blockiert / Spam',
+	'callMap.mapLabel': 'Karte der externen Anrufe, {range}',
+	'callMap.bubbleLabel': '{name} {prefix}: {count} Anrufe',
+	'callMap.loadFailed': 'Die Karte kann nicht geladen werden.',
+	'callMap.empty': 'Keine externen Anrufe in diesem Zeitraum.',
+	'callMap.truncated': 'Mehr als {limit} Anrufe: Die Karte zeigt nur die neuesten {limit}.',
+	'callMap.noLocation': 'Mobil / ohne Ort',
+	'callMap.noLocationReasons': 'Mobil: {mobile} · Service: {service} · Sonstige: {other}',
+	'callMap.duration': 'Gesamtdauer',
+	'callMap.moreCalls': 'Neueste {shown} von {total} Anrufen.',
+	'callMap.showInList': 'Alle in der Anrufliste anzeigen',
+	'callMap.unlocatedTitle': 'Ohne Standort',
+	'callMap.unlocatedHint':
+		'Mobilnummern, Servicenummern und Nummern ohne bekanntes Ortsnetz. Die Karte zeigt sie als eine Blase je Land.',
+	'callMap.unlocatedEmpty': 'Alle Anrufe haben einen Standort.',
+	'callMap.unknownCountry': 'Unbekanntes Land',
+	'callMap.anonymous': 'Anonym (ohne Nummer)',
+	'callMap.summary': '{calls} Anrufe · {areas} Ortsnetze · Gesprächszeit {duration}',
+	'callMap.accuracy':
+		'Die Karte zeigt das Ortsnetz der Rufnummer, nicht den Standort der Anruferin oder des Anrufers. Portierte Nummern und VoIP-Nummern können außerhalb ihres Ortsnetzes genutzt werden.',
+	'callMap.widgetTitle': 'Herkunft der Anrufe',
+	'callMap.openMap': 'Karte öffnen',
+	'callMap.topAreas': 'Top-Ortsnetze',
+	'callMap.settingsTitle': 'Anrufkarte',
+	'callMap.settingsHint':
+		'Ohne Tile-Server nutzt die Karte die eingebauten Ländergrenzen und sendet keine Anfrage an fremde Server.',
+	'callMap.tileUrl': 'Tile-Server-URL (optional)',
+	'callMap.tileUrlHint':
+		'Zum Beispiel https://tile.openstreetmap.org/{z}/{x}/{y}.png. Nur https. {s} als erster Teil des Hosts wählt die Subdomains a, b und c.',
+	'callMap.tileAttribution': 'Quellenangabe',
+	'callMap.tileAttributionHint':
+		'Pflicht bei einem Tile-Server, zum Beispiel © OpenStreetMap-Mitwirkende.',
+	'callMap.tilePrivacy':
+		'Externe Tiles senden die IP-Adresse jedes Browsers und den gezeigten Kartenausschnitt an den Tile-Server. Beachte die Nutzungsrichtlinie des Tile-Servers (bei OpenStreetMap: Tile Usage Policy, keine starke Nutzung).',
+	'callMap.tileError.https': 'Die URL muss mit https:// beginnen.',
+	'callMap.tileError.placeholders': 'Die URL braucht die Platzhalter {z}, {x} und {y}.',
+	'callMap.tileError.invalid': 'Die URL enthält ungültige Zeichen oder unbekannte Platzhalter.'
 };
 
 export default de;

@@ -107,6 +107,80 @@ Suche; die Sortierung bleibt.
 Die Seitenadresse enthält Filter und Sortierung. Neu laden oder ein kopierter
 Link zeigt also dieselbe Liste.
 
+## Karte
+
+Wähle über der Liste den Reiter **Karte**. Die Karte zeigt, woher externe
+Anrufe kommen und wohin sie gehen. Die Seitenadresse enthält Ansicht,
+Zeitraum und Kategorien (zum Beispiel `/calls?view=map&range=1w`). Ein
+kopierter Link öffnet dieselbe Karte.
+
+- **Zeitraum**: 1 Stunde, 1 Tag, 1 Woche oder 1 Monat (30 Tage), jeweils
+  bis jetzt. Bei 1 Stunde aktualisiert sich die Karte alle 30 Sekunden,
+  solange der Browser-Tab sichtbar ist.
+- **Kategorien**: eingehend angenommen (grün), eingehend verpasst (rot; auch
+  besetzt oder abgelehnt), ausgehend (blau; das Ziel bestimmt den Ort) und
+  blockiert / Spam (violett). Ein Klick blendet eine Kategorie aus oder ein.
+  Die Zahl daneben ist die Anzahl im Zeitraum. Interne Anrufe erscheinen
+  nicht auf der Karte.
+- **Blasen**: eine Blase je Ortsnetz oder Ort. Die Fläche wächst mit der
+  Zahl der Anrufe. Die Segmente zeigen die Kategorien. Mobilnummern,
+  Servicenummern (zum Beispiel 0800, 0180) und Nummern ohne bekanntes
+  Ortsnetz bilden je Land eine Blase „Mobil / ohne Ort“ (gestrichelter
+  Rand).
+- **Details**: Klicke auf eine Blase oder wähle sie mit der Tab-Taste und
+  drücke Enter. Das Feld zeigt Ortsnetz, Vorwahl (zum Beispiel
+  `Bamberg · +49 951`), Land, Summen je Kategorie, Gesamtdauer und die 20
+  neuesten Anrufe. **Alle in der Anrufliste anzeigen** öffnet die Liste mit
+  demselben Zeitraum und nur den Anrufen dieses Ortsnetzes. Esc schließt das
+  Feld.
+- **Ohne Standort**: Die Liste unter der Karte zeigt die Blasen ohne Ort je
+  Land mit der Zahl der Mobil-, Service- und sonstigen Nummern. Anrufe ohne
+  Rufnummer (anonym) werden nur gezählt.
+
+Die Karte nutzt dieselben Rechte wie die Liste: Benutzer sehen die Anrufe
+ihrer Nebenstellen, Benutzer mit `calls.view_all` alle Anrufe. Die Karte
+zählt höchstens 50.000 Anrufe. Bei mehr Anrufen zeigt ein Hinweis, dass nur
+die neuesten gezählt sind.
+
+### Dashboard
+
+Die Dashboard-Karte **Herkunft der Anrufe** zeigt eine kleine Karte des
+letzten Tages (oder der letzten Stunde) und die fünf Ortsnetze mit den
+meisten Anrufen. Sie nutzt dieselben Rechte. Ein Klick auf die Karte, ein
+Ortsnetz oder **Karte öffnen** öffnet die Kartenansicht der Anrufliste mit
+demselben Zeitraum.
+
+### Genauigkeit
+
+Die Karte zeigt das Ortsnetz der Rufnummer, nicht den Standort des
+Anrufenden:
+
+- Deutschland, Österreich und Schweiz: das Ortsnetz der Vorwahl.
+- Andere Länder: der Ort aus den libphonenumber-Daten, wenn er bekannt ist,
+  sonst das Land. Für manche Länder (zum Beispiel Frankreich) gibt es keine
+  Ortsdaten.
+- Eine portierte Nummer behält ihre Vorwahl. Eine VoIP-Nummer mit
+  Ortsvorwahl kann an einem anderen Ort genutzt werden. Eine Mobilnummer
+  hat keinen Ort.
+
+### Datenquellen und Datenschutz
+
+Die Karte funktioniert offline. Basiskarte (Ländergrenzen) und alle
+Ortsnetzdaten sind in TalkOps enthalten. Die Seite sendet keine Anfrage an
+fremde Server. Die Karte nennt diese Quellen:
+
+- © Bundesnetzagentur (Ortsnetzbereiche Deutschland)
+- Quelle: RTR-GmbH (Ortsnetze Österreich)
+- GeoNames, CC BY 4.0 (Koordinaten der Orte)
+- libphonenumber, Apache License 2.0 (Rufnummernpräfixe)
+- Natural Earth, gemeinfrei (Ländergrenzen)
+
+Die Daten lassen sich mit `tools/geo/` aktualisieren (siehe ADR 0044).
+Ein Administrator kann zusätzlich einen Tile-Server für eine detaillierte
+Hintergrundkarte eintragen
+([Systemeinstellungen](systemeinstellungen.md#tile-server-der-anrufkarte)).
+Der Browser lädt die Kartenkacheln dann von diesem Server.
+
 ## Weitere laden
 
 Die Liste lädt jeweils 50 Anrufe. Die Zeile unter der Tabelle zeigt die Zahl
@@ -122,6 +196,13 @@ nächsten Anrufe.
 `X-Total-Count` enthält die Zahl aller passenden Anrufe. Jeder Anruf enthält
 zusätzlich die aufgelösten Teilnehmer `caller` und `called` und bei
 eingehenden Anrufen `via_number`.
+Mit `area` (die Kennung einer Kartenblase, zum Beispiel `DE-951`, `DE-none`
+oder `none`) enthält die Liste nur die Anrufe dieses Kartenbereichs.
+
+`GET /api/v1/calls/map?range=1h|1d|1w|1m&categories=answered,missed,outbound,blocked`
+liefert die Kartendaten: je Bereich Position, Name, Vorwahl, Zähler je
+Kategorie, Gesamtdauer und die 20 neuesten Anrufe, dazu die anonymen Zähler
+und die Datenquellen.
 
 ## Ergebnis prüfen
 

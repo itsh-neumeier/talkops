@@ -68,6 +68,7 @@ COPY crates/talkops-provisioning/reference/fusionpbx/licenses.php /usr/share/doc
 
 ENV TALKOPS_LISTEN=0.0.0.0:8080 \
     TALKOPS_WEB_DIR=/usr/share/talkops/web \
+    TALKOPS_GEO_DIR=/usr/share/talkops/presets/geo \
     TALKOPS_LOG_FORMAT=json
 
 USER talkops

@@ -66,6 +66,8 @@ web/                         SvelteKit + TypeScript + Tailwind UI
 docker/                      Dockerfiles; docker/freeswitch/conf = bootstrap config
 presets/trunks/              SIP trunk provider presets (YAML, phase 1)
 presets/phones/              phone model catalog (YAML, phase 2)
+presets/geo/                 number prefix → area data for the call map (ADR 0044)
+tools/geo/                   generator for presets/geo (raw data not in Git)
 docs/                        architecture, ADRs, user docs (docs/de, docs/en)
 ```
 
@@ -80,7 +82,8 @@ DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/postgres cargo test --w
 # Run the server locally (needs Postgres; FreeSWITCH optional)
 TALKOPS_DATABASE_URL=postgres://... TALKOPS_ESL_PASSWORD=dev TALKOPS_XMLCURL_PASSWORD=dev \
   TALKOPS_SECRET_KEY=$(openssl rand -hex 32) TALKOPS_PRESETS_DIR=presets/trunks \
-  TALKOPS_PHONES_DIR=presets/phones TALKOPS_PROVISIONING_DIR=/tmp/talkops-prov \
+  TALKOPS_PHONES_DIR=presets/phones TALKOPS_GEO_DIR=presets/geo \
+  TALKOPS_PROVISIONING_DIR=/tmp/talkops-prov \
   TALKOPS_WEB_DIR=web/build cargo run -p talkops-api -- serve
 
 # Web UI

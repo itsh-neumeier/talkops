@@ -18,9 +18,14 @@ use crate::active_calls::Directory;
 use crate::auth::AuthUser;
 use crate::error::{ApiError, ApiResult};
 use crate::routes::settings::{CallEntry, own_extensions};
+use talkops_core::audit;
+use talkops_core::roles::Permission;
+use talkops_core::settings::{self, MapTiles};
 
 pub fn router() -> OpenApiRouter<AppState> {
-    OpenApiRouter::new().routes(routes!(call_map))
+    OpenApiRouter::new()
+        .routes(routes!(call_map))
+        .routes(routes!(get_map_tiles, update_map_tiles))
 }
 
 /// Calls in the details of one area.
@@ -389,9 +394,166 @@ fn new_area(id: String, place: &Place<'_>) -> MapArea {
     }
 }
 
+/// Placeholders that a tile URL may contain.
+const TILE_PLACEHOLDERS: [&str; 5] = ["{z}", "{x}", "{y}", "{s}", "{r}"];
+
+/// Checks a tile URL and returns the source for the Content Security Policy
+/// (`https://host[:port]`, `https://*.host` for `{s}` subdomains).
+pub fn tile_source(url: &str) -> Result<String, String> {
+    let rest = url
+        .strip_prefix("https://")
+        .ok_or("the tile URL must start with https://")?;
+    if url.len() > 500
+        || url
+            .chars()
+            .any(|c| c.is_whitespace() || c.is_control() || "'\"<>\\;,`^|".contains(c))
+    {
+        return Err("the tile URL contains invalid characters".into());
+    }
+    for p in ["{z}", "{x}", "{y}"] {
+        if !url.contains(p) {
+            return Err(format!(
+                "the tile URL needs the placeholders {{z}}, {{x}} and {{y}} ({p} is missing)"
+            ));
+        }
+    }
+    let mut unknown = url.to_owned();
+    for p in TILE_PLACEHOLDERS {
+        unknown = unknown.replace(p, "");
+    }
+    if unknown.contains(['{', '}']) {
+        return Err("the tile URL has an unknown placeholder".into());
+    }
+    let host = rest.split(['/', '?', '#']).next().unwrap_or_default();
+    let (subdomains, plain) = match host.strip_prefix("{s}.") {
+        Some(h) => (true, h),
+        None => (false, host),
+    };
+    let valid_host = !plain.is_empty()
+        && !plain.contains('@')
+        && plain
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || ".-:[]".contains(c))
+        && url::Url::parse(&format!("https://{plain}/")).is_ok_and(|u| u.host().is_some());
+    if !valid_host {
+        return Err("the tile URL has an invalid host".into());
+    }
+    let sample = url
+        .replace("{s}", "a")
+        .replace("{z}", "1")
+        .replace("{x}", "1")
+        .replace("{y}", "1")
+        .replace("{r}", "");
+    url::Url::parse(&sample).map_err(|_| "the tile URL is not a valid URL".to_owned())?;
+    let host = plain.to_ascii_lowercase();
+    Ok(if subdomains {
+        format!("https://*.{host}")
+    } else {
+        format!("https://{host}")
+    })
+}
+
+fn validate_tiles(input: MapTiles) -> Result<MapTiles, ApiError> {
+    let tiles = MapTiles {
+        tile_url: input.tile_url.trim().to_owned(),
+        attribution: input.attribution.trim().to_owned(),
+    };
+    if !tiles.tile_url.is_empty() {
+        tile_source(&tiles.tile_url).map_err(ApiError::BadRequest)?;
+    }
+    if tiles.attribution.chars().count() > 300 || tiles.attribution.chars().any(char::is_control) {
+        return Err(ApiError::BadRequest(
+            "attribution: at most 300 characters on one line".into(),
+        ));
+    }
+    if !tiles.tile_url.is_empty() && tiles.attribution.is_empty() {
+        return Err(ApiError::BadRequest(
+            "a tile server needs an attribution text".into(),
+        ));
+    }
+    Ok(tiles)
+}
+
+/// Tile server of the call map (any logged-in user; empty: offline map).
+#[utoipa::path(get, path = "/api/v1/settings/call-map", tag = "settings", responses((status = 200, body = MapTiles)))]
+pub async fn get_map_tiles(
+    State(state): State<AppState>,
+    auth: AuthUser,
+) -> ApiResult<Json<MapTiles>> {
+    Ok(Json(settings::get_map_tiles(&state.db, auth.tenant).await?))
+}
+
+/// Sets or clears the tile server of the call map (settings managers).
+/// The browser then loads map tiles from this server.
+#[utoipa::path(put, path = "/api/v1/settings/call-map", tag = "settings", request_body = MapTiles, responses((status = 200, body = MapTiles), (status = 422, description = "Invalid tile URL or attribution")))]
+pub async fn update_map_tiles(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Json(input): Json<MapTiles>,
+) -> ApiResult<Json<MapTiles>> {
+    auth.require_perm(Permission::SettingsManage)?;
+    let tiles = validate_tiles(input)?;
+    let saved = settings::set_map_tiles(&state.db, auth.tenant, &tiles).await?;
+    audit::record(
+        &state.db,
+        &auth.actor(),
+        "update",
+        "call_map_tiles",
+        None,
+        serde_json::to_value(&saved).unwrap_or_default(),
+    )
+    .await?;
+    Ok(Json(saved))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn validates_tile_urls_and_derives_the_csp_source() {
+        assert_eq!(
+            tile_source("https://tile.openstreetmap.org/{z}/{x}/{y}.png").unwrap(),
+            "https://tile.openstreetmap.org"
+        );
+        assert_eq!(
+            tile_source("https://{s}.tile.example.com:8443/osm/{z}/{x}/{y}{r}.png?key=1").unwrap(),
+            "https://*.tile.example.com:8443"
+        );
+        for bad in [
+            "http://tile.example.com/{z}/{x}/{y}.png",
+            "https://tile.example.com/{z}/{x}.png",
+            "https://tile.example.com/{z}/{x}/{y}.png'; script-src *",
+            "https://tile example.com/{z}/{x}/{y}.png",
+            "https://user@tile.example.com/{z}/{x}/{y}.png",
+            "https://{z}/{x}/{y}",
+            "https:///{z}/{x}/{y}",
+            "https://tile.example.com/{z}/{x}/{y}/{token}.png",
+            "javascript:alert(1)//{z}{x}{y}",
+        ] {
+            assert!(tile_source(bad).is_err(), "{bad}");
+        }
+        let ok = validate_tiles(MapTiles {
+            tile_url: " https://tile.openstreetmap.org/{z}/{x}/{y}.png ".into(),
+            attribution: "© OpenStreetMap contributors".into(),
+        })
+        .unwrap();
+        assert_eq!(
+            ok.tile_url,
+            "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+        );
+        assert!(
+            validate_tiles(MapTiles {
+                tile_url: ok.tile_url.clone(),
+                attribution: String::new(),
+            })
+            .is_err()
+        );
+        assert!(
+            validate_tiles(MapTiles::default()).is_ok(),
+            "empty: offline map"
+        );
+    }
 
     #[test]
     fn parses_categories_and_windows() {

@@ -115,6 +115,8 @@ Jede Warteschlange hat eine eigene Seite mit drei Reitern:
   überwachen.
 - **Weitervermitteln** (Blind-Transfer) vom Telefon funktioniert zu internen
   Nummern, Parkplätzen und externen Rufnummern (über die Standardrufnummer).
+  Für externe Nummern gilt das [Wählprofil](#wahlberechtigungen) der
+  weitervermittelnden Nebenstelle.
 
 ## Anrufsperre
 
@@ -134,6 +136,107 @@ Jede Warteschlange hat eine eigene Seite mit drei Reitern:
 - **Nummer testen** zeigt, ob und warum ein Anruf gesperrt würde.
 
 Gesperrte Anrufe stehen im Log mit `inbound call blocked` und dem Grund.
+
+## Wahlberechtigungen
+
+**Anrufsteuerung → Wahlberechtigungen** legt fest, welche Rufnummern
+Nebenstellen anrufen dürfen. Dafür ist das Recht `dialing.manage` nötig.
+Standardmäßig haben es nur Administratoren. Das Konzept beschreibt
+[ADR 0045](../adr/0045-outbound-dialing-permissions.md).
+
+### Wählprofile
+
+Ein Wählprofil besteht aus:
+
+- **Nummern ohne Regel**: alle Nummern erlauben oder sperren.
+- **SIP-Adressen**: Anrufe an `user@host` erlauben oder sperren.
+- **Regeln**: ein Land, ein E.164-Präfix (`+49900*`) oder eine einzelne
+  Nummer (`+4930123456`) erlauben oder sperren. Länder zeigt der Editor
+  mit Flagge.
+
+Die spezifischste Regel gewinnt:
+
+1. Eine Regel für die vollständige Nummer.
+2. Sonst die Regel mit dem längsten Präfix.
+3. Sonst die Regel für das Land der Nummer.
+4. Sonst die Einstellung für Nummern ohne Regel.
+
+Haben zwei Regeln denselben Rang, gewinnt Sperren. Die Reihenfolge der
+Regeln spielt keine Rolle. Länderregeln nutzen die Geodaten in
+`presets/geo`. Findet TalkOps kein Land, greift keine Länderregel.
+
+**Notrufe sind immer erlaubt.** TalkOps prüft die Notrufnummern aus den
+Telefonie-Einstellungen nie gegen ein Profil.
+
+Kurze Servicenummern (z. B. `11833`) prüft TalkOps in nationaler Form
+(`+4911833`).
+
+### Standardprofil und Nebenstellen
+
+1. Bei einem Profil **Als Standard** wählen. Nebenstellen ohne eigenes
+   Profil nutzen das Standardprofil.
+2. Für ein eigenes Profil die Nebenstelle öffnen, **Bearbeiten** wählen und
+   ein **Wählprofil** auswählen.
+
+Ein Profil, das Standard ist oder von einer Nebenstelle genutzt wird, lässt
+sich nicht löschen.
+
+### Geprüfte Wege nach außen
+
+| Weg | Geltendes Profil |
+| --- | --- |
+| Anruf vom Telefon oder Browser-Softphone | Profil der Nebenstelle. |
+| Anruf an eine SIP-Adresse | Profil der Nebenstelle (Einstellung **SIP-Adressen**). |
+| Rufumleitung auf eine externe Nummer | Profil der umleitenden Nebenstelle. |
+| Weitervermitteln (Blind-Transfer) an eine externe Nummer | Profil der Nebenstelle, die weitervermittelt. Kann TalkOps sie nicht erkennen, das Standardprofil. |
+| Konferenzteilnehmer vom Softphone | Profil der Nebenstelle des Softphones. |
+| Fax-Versand | Jede aktive Nebenstelle des Fax-Besitzers muss die Nummer erlauben. Ein Benutzer ohne Nebenstelle nutzt das Standardprofil. |
+
+Der Umleitungscode `*72` und die Anrufeinstellungen in der Weboberfläche
+lehnen ein gesperrtes Umleitungsziel ab. Ändert sich das Profil später,
+klingeln bei einem Anruf die Geräte der Nebenstelle statt des gesperrten
+Ziels.
+
+Ein gesperrter Anruf erhält `403 Forbidden`. Gibt es die Ansage
+`dialing_blocked`, hört der Anrufer sie vorher. Die Anrufliste zeigt den
+Anruf als **Gesperrt** mit dem Grund. Das Server-Log enthält
+`outbound call blocked by dialing profile`.
+
+### Profile nach dem Update
+
+Das Update legt fünf Profile an, die sich ändern lassen:
+
+| Profil | Nummern ohne Regel | Regeln |
+| --- | --- | --- |
+| Unrestricted | erlauben | keine |
+| Internal only | sperren (auch SIP-Adressen) | keine |
+| National | sperren | eigene Landesvorwahl erlauben, Mehrwertnummern sperren |
+| National + Europe | sperren | eigenes Land, EU, EWR und Schweiz, Mehrwertnummern sperren |
+| International | erlauben | Mehrwertnummern sperren |
+
+- Bestehende Installationen telefonieren wie vorher: Standardprofil ist
+  **Unrestricted**.
+- Neue Installationen nutzen **International**.
+
+**Mehrwertnummern sperren** im Editor fügt die Mehrwertregeln einem Profil
+hinzu. Gesperrt werden `+49900`, `+49137`, `+49118`, `+4912`, `+4919`,
+die österreichischen Bereiche `+43900`, `+43901`, `+43930`, `+43931`,
+`+43939`, `+43118`, die Schweizer Bereiche `+41900`, `+41901`, `+41906`
+sowie die Netze `+870`, `+881`, `+882`, `+883`. Shared-Cost-Nummern
+(`+49180`) sind nicht enthalten; dafür eine Präfixregel anlegen.
+
+### Nummer testen
+
+**Nummer testen** zeigt Profil, Regel und Ergebnis für eine Nummer. Die
+Nummer so eingeben, wie ein Telefon sie wählt, z. B. `0900 1234567`.
+
+Die API bietet `GET` und `POST /api/v1/dialing-profiles`,
+`PUT` und `DELETE /api/v1/dialing-profiles/{id}`,
+`PUT /api/v1/dialing-profiles/{id}/default`,
+`POST /api/v1/dialing-profiles/test` und
+`PUT /api/v1/extensions/{id}/dialing-profile`. Jede Änderung erzeugt einen
+Audit-Eintrag. Sicherungen enthalten die Profile und die gespeicherten
+Anrufentscheidungen.
 
 ## Ergebnis prüfen
 

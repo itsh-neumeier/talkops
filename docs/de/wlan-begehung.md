@@ -10,8 +10,9 @@ WLAN-Zustand des Handsets aus UniFi Network. Nach dem Anruf bewertet
 TalkOps jedes Roaming und gibt Empfehlungen.
 
 Die Architekturentscheidungen sind [ADR 0041](../adr/0041-wifi-voice-survey-and-unifi-correlation.md)
-(Begehung, Lesezugriff) und [ADR 0042](../adr/0042-unifi-voice-ssid-write-access.md)
-(Änderungen an der VoIP-SSID).
+(Begehung, Lesezugriff), [ADR 0042](../adr/0042-unifi-voice-ssid-write-access.md)
+(Änderungen an der VoIP-SSID) und [ADR 0043](../adr/0043-wifi-handset-band-and-roaming.md)
+(Roaming-Schwelle der Handsets, Bandschutz).
 
 ## Voraussetzungen
 
@@ -28,7 +29,7 @@ Die Architekturentscheidungen sind [ADR 0041](../adr/0041-wifi-voice-survey-and-
 | `wifi_survey.run` | Begehungen starten und eigene Begehungen lesen. |
 | `wifi_survey.manage` | Alle Begehungen lesen, Schwellen und Löschfrist ändern, Begehungen löschen. |
 | `unifi.manage` | UniFi-Verbindung speichern und testen, VoIP-SSID auswählen, Vorschläge und Änderungsverlauf lesen (sensibel). |
-| `unifi.write` | Schreibzugriff einschalten, Änderungen an der VoIP-SSID anwenden und zurücknehmen (sensibel). |
+| `unifi.write` | Schreibzugriff einschalten, Änderungen an der VoIP-SSID anwenden und zurücknehmen (sensibel). Mit `phones.manage` auch die Roaming-Schwelle des Handsets der Begehung. |
 
 Die Admin-Rolle hat alle Berechtigungen, andere Rollen standardmäßig keine.
 
@@ -294,7 +295,7 @@ der VoIP-SSID und schaltet den Schreibzugriff aus.
 
 ### Änderungsverlauf und Rollback
 
-**Einstellungen → WLAN-Begehung → SSID-Änderungen** listet jede Änderung
+**Einstellungen → WLAN-Begehung → WLAN-Änderungen** listet jede Änderung
 mit Zeit, Benutzer, Einstellungen und Status. Ein Klick auf die Zeit zeigt
 die Werte vor und nach der Änderung.
 
@@ -310,6 +311,63 @@ nur wählen, wenn der Rollback diese Änderungen überschreiben soll.
 Das Audit-Log protokolliert jedes Ein- und Ausschalten des Schreibzugriffs,
 jede Änderung und jeden Rollback mit Einstellungen und Werten, nie mit dem
 Passwort.
+
+## Roaming-Schwelle der Handsets und Bandschutz
+
+Auch das Handset entscheidet, wann es roamt. TalkOps provisioniert die
+Roaming-Schwelle der Yealink AX83H und AX86R und schützt die Handsets vor
+einer Bandänderung an der VoIP-SSID. WLAN-Name und Passwort der Handsets
+provisioniert TalkOps nicht.
+
+### Roaming-Schwelle
+
+Fällt das Signal des aktuellen Access Points unter die Roaming-Schwelle,
+sucht das Handset einen besseren Access Point. Parameter:
+`static.network.wifi.roaming_threshold`, -100 bis -30 dBm, Werkseinstellung
+-70 dBm (Yealink AX83H Wi-Fi Roaming Guide und Administrator's Manual).
+
+- Für alle WLAN-Handsets unter **Einstellungen → Telefone (Provisionierung) →
+  Komfort-Einstellungen → WLAN** setzen, oder für ein Handset auf seiner
+  Telefonseite.
+- Aus einer Begehung: Hat die Begehung einen klebenden Client gefunden
+  (`min_rssi`), schlägt der Diff-Dialog die Schwelle der Begehung plus 5 dB
+  vor, begrenzt auf -75 bis -60 dBm (Standard-Begehung: -80 → -75). Das
+  Handset sucht dann, bevor der Access Point es wegdrückt.
+
+Vorschlag anwenden:
+
+1. Ergebnis der Begehung öffnen und **Änderung vorschlagen** wählen.
+2. Im Abschnitt **Handset** aktuellen und neuen Wert prüfen.
+3. Bestätigen und **Anwenden** wählen. Nötig sind `unifi.write` und
+   `phones.manage`.
+
+TalkOps speichert den Wert nur für dieses Handset und fordert es auf, seine
+Konfiguration abzuholen (`check-sync`). Der Änderungsverlauf zeigt **wartet
+auf Handset**, bis das Handset sie abgeholt hat. Ein nicht erreichbares
+Handset erhält den Wert beim nächsten Provisionierungsintervall. Der Rollback
+stellt den früheren Wert wieder her. Hat jemand den Wert seitdem geändert,
+fragt der Rollback nach.
+
+### Bandschutz
+
+Bevor TalkOps ein Band von der VoIP-SSID entfernt (z. B. 2,4 GHz), liest
+TalkOps das Band jedes provisionierten WLAN-Handsets aus UniFi:
+
+| UniFi meldet | Ergebnis |
+| --- | --- |
+| Verbunden auf einem Band, das bleibt | OK |
+| Mit der VoIP-SSID auf dem Band verbunden, das entfällt | Gesperrt: Das Handset würde die SSID verlieren |
+| Nicht verbunden | Das Handset muss mit Namen bestätigt werden |
+
+Ein Rollback, der ein Band entfernt, nutzt dieselbe Prüfung.
+
+Die Band-Einstellung des Handsets provisioniert TalkOps noch nicht. Yealink
+dokumentiert ihren Parameter nicht. Ein Konfigurationsexport zeigt den Namen
+`static.network.wifi.band.mode`, die Bedeutung der Werte ist aber nicht
+bestätigt. Das Handset auf
+**WLAN-Band: 2.4G & 5G** lassen (es bevorzugt dann 5 GHz). Ein Handset mit
+nur einem Band geht offline, wenn die VoIP-SSID dieses Band nicht mehr
+ausstrahlt, und TalkOps kann es dann nicht mehr erreichen.
 
 ## Grenzen der Messung
 

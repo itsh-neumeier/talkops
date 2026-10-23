@@ -612,10 +612,13 @@ export interface PhoneSettingInfo {
 	vendor?: string;
 	key: string;
 	group: string;
-	kind: 'bool' | 'choice';
+	kind: 'bool' | 'choice' | 'int';
 	values: string[];
 	/** The phone's factory value, if documented. */
 	default: string | null;
+	/** Limits of an `int`. */
+	min?: number | null;
+	max?: number | null;
 	families: string[];
 	param: string;
 }

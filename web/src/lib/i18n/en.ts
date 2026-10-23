@@ -1323,6 +1323,7 @@ export default {
 	'phoneset.group.display': 'Display',
 	'phoneset.group.notifications': 'Notifications',
 	'phoneset.group.audio': 'Audio',
+	'phoneset.group.wifi': 'Wi-Fi',
 	'phoneset.key_tone': 'Key tone',
 	'phoneset.charging_tone': 'Tone when placed in the charger',
 	'phoneset.vibrate': 'Vibrate on calls',
@@ -1337,6 +1338,9 @@ export default {
 	'phoneset.voicemail_popup': 'Notice for new voicemail',
 	'phoneset.noise_filter': 'Noise filter (noise you hear)',
 	'phoneset.acoustic_shield': 'Acoustic shield (background noise while you speak)',
+	'phoneset.wifi_roaming_threshold':
+		'Roaming threshold (the handset searches a better access point below this signal)',
+	'phoneset.range': '{min} to {max}; empty keeps the value above',
 	'phoneset.v.time_format.1': '24 hours',
 	'phoneset.v.time_format.0': '12 hours (AM/PM)',
 	'phoneset.v.acoustic_shield.0': 'Off',
@@ -2807,8 +2811,8 @@ export default {
 		'The client values are not available. The survey then has no signal, channel or data rate. Check the version table in the user guide.',
 	'perm.unifi.write': 'Change the UniFi voice SSID',
 	'perm.unifi.write.hint':
-		'Switch on write access, apply survey recommendations to the voice SSID and roll changes back.',
-	'wifi.tabChanges': 'SSID changes',
+		'Switch on write access, apply survey recommendations to the voice SSID and the roaming threshold of the survey handset (with Manage phones), and roll changes back.',
+	'wifi.tabChanges': 'Wi-Fi changes',
 	'unifiWrite.propose': 'Propose change',
 	'unifiWrite.proposeHint':
 		'TalkOps reads the voice SSID from UniFi and proposes changes for these recommendations. Nothing changes before you confirm.',
@@ -2903,7 +2907,7 @@ export default {
 	'unifiWrite.cap.notPossible': 'not possible',
 	'unifiWrite.cap.note':
 		'The connection test never writes. Only the first change shows if the API key may write.',
-	'unifiWrite.historyTitle': 'Changes to the voice SSID',
+	'unifiWrite.historyTitle': 'Changes to the voice SSID and the handsets',
 	'unifiWrite.historyIntro':
 		'Each change stores the values before and after it. A rollback restores only the changed settings.',
 	'unifiWrite.historyEmpty': 'No changes yet.',
@@ -2934,5 +2938,28 @@ export default {
 	'unifiWrite.col.now': 'Now in UniFi',
 	'unifiWrite.col.restore': 'Rollback writes',
 	'unifiWrite.rollbackAnyway': 'Roll back anyway',
-	'unifiWrite.done': 'Done.'
+	'unifiWrite.done': 'Done.',
+	'unifiWrite.field.wifi_roaming_threshold': 'Roaming threshold',
+	'unifiWrite.handsetTitle': 'Handset: {name}',
+	'unifiWrite.handsetHint':
+		'TalkOps stores the value for this handset and asks it to fetch its configuration. The change history shows “waiting” until the handset fetched it.',
+	'unifiWrite.handsetWaiting':
+		'TalkOps stored the roaming threshold for {name}. The handset gets it with its next configuration fetch.',
+	'unifiWrite.confirmHandset': 'I confirm the change of the handset setting.',
+	'unifiWrite.bandCheck': 'Band check of the Wi-Fi handsets',
+	'unifiWrite.bandNoHandsets': 'No provisioned Wi-Fi handsets.',
+	'unifiWrite.band.ok': 'OK',
+	'unifiWrite.band.blocked': 'uses the removed band',
+	'unifiWrite.band.unknown': 'not reported by UniFi',
+	'unifiWrite.bandConfirm': 'I checked that {name} can use the remaining bands.',
+	'unifiWrite.targetHandset': 'Handset',
+	'unifiWrite.state.waiting': 'waiting for handset',
+	'unifiWrite.err.handset_band':
+		'A Wi-Fi handset is connected on the band that the change removes. It would lose the voice SSID.',
+	'unifiWrite.err.handset_unknown':
+		'UniFi does not report every Wi-Fi handset. Confirm each one by name.',
+	'unifiWrite.err.handset_changed':
+		'The handset setting changed since the proposal. Open the proposal again.',
+	'unifiWrite.err.not_wifi_handset':
+		'The phone is not a provisioned Wi-Fi handset with a roaming threshold.'
 } as const;

@@ -344,7 +344,45 @@ pub async fn record_seen(
     .bind(firmware)
     .execute(pool)
     .await?;
+    crate::unifi_changes::handset_fetched(pool, id).await?;
     Ok(())
+}
+
+/// Sets (`Some`) or removes (`None`) one comfort setting of a phone and
+/// returns the earlier value. The caller checks the value against the
+/// catalog.
+pub async fn set_setting(
+    pool: &PgPool,
+    tenant: TenantId,
+    id: Uuid,
+    key: &str,
+    value: Option<&str>,
+) -> CoreResult<Option<String>> {
+    let mut tx = pool.begin().await?;
+    let old: serde_json::Value = sqlx::query_scalar(
+        "SELECT settings FROM phones WHERE tenant_id = $1 AND id = $2 FOR UPDATE",
+    )
+    .bind(tenant)
+    .bind(id)
+    .fetch_optional(&mut *tx)
+    .await?
+    .ok_or(CoreError::NotFound)?;
+    sqlx::query(
+        "UPDATE phones SET settings = CASE WHEN $4::text IS NULL THEN settings - $3
+             ELSE jsonb_set(settings, ARRAY[$3], to_jsonb($4::text)) END
+         WHERE tenant_id = $1 AND id = $2",
+    )
+    .bind(tenant)
+    .bind(id)
+    .bind(key)
+    .bind(value)
+    .execute(&mut *tx)
+    .await?;
+    tx.commit().await?;
+    Ok(old
+        .get(key)
+        .and_then(serde_json::Value::as_str)
+        .map(str::to_owned))
 }
 
 /// A SIP account placed on a phone, with everything needed for its config.

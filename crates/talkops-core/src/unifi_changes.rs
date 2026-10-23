@@ -1,7 +1,9 @@
-//! History of changes to the UniFi voice SSID (ADR 0042).
+//! History of changes to the UniFi voice SSID (ADR 0042) and to the Wi-Fi
+//! settings of handsets (ADR 0043).
 //!
-//! A row stores only the values of the allowlist fields before and after
-//! the change. It never contains the passphrase or another secret.
+//! An SSID row stores only the values of the allowlist fields before and
+//! after the change. It never contains the passphrase or another secret. A
+//! handset row stores the phone setting values before and after.
 
 use chrono::{DateTime, Utc};
 use serde::Serialize;
@@ -13,6 +15,8 @@ use crate::tenant::TenantId;
 
 pub mod state {
     pub const APPLYING: &str = "applying";
+    /// Handset: stored in TalkOps, not fetched by the handset yet.
+    pub const WAITING: &str = "waiting";
     pub const APPLIED: &str = "applied";
     pub const FAILED: &str = "failed";
     pub const ROLLED_BACK: &str = "rolled_back";
@@ -21,14 +25,18 @@ pub mod state {
 #[derive(Debug, Clone, FromRow, Serialize, utoipa::ToSchema)]
 pub struct WifiChange {
     pub id: Uuid,
-    pub site_id: String,
-    pub wifi_id: String,
+    /// `ssid` (UniFi voice SSID) or `handset` (phone setting).
+    pub target: String,
+    pub site_id: Option<String>,
+    pub wifi_id: Option<String>,
     pub wifi_name: String,
+    pub phone_id: Option<Uuid>,
+    pub phone_name: String,
     /// `apply` or `rollback`.
     pub kind: String,
     pub rollback_of: Option<Uuid>,
     pub survey_id: Option<Uuid>,
-    /// `applying`, `applied`, `failed` or `rolled_back`.
+    /// `applying`, `waiting`, `applied`, `failed` or `rolled_back`.
     pub state: String,
     pub fields: Vec<String>,
     #[schema(value_type = Option<Object>)]
@@ -50,14 +58,21 @@ impl WifiChange {
         self.kind == "apply"
             && self.after.is_some()
             && self.before.is_some()
-            && matches!(self.state.as_str(), state::APPLIED | state::FAILED)
+            && matches!(
+                self.state.as_str(),
+                state::APPLIED | state::FAILED | state::WAITING
+            )
     }
 }
 
 pub struct NewChange<'a> {
-    pub site_id: &'a str,
-    pub wifi_id: &'a str,
+    /// `ssid` or `handset`.
+    pub target: &'a str,
+    pub site_id: Option<&'a str>,
+    pub wifi_id: Option<&'a str>,
     pub wifi_name: &'a str,
+    pub phone_id: Option<Uuid>,
+    pub phone_name: &'a str,
     pub kind: &'a str,
     pub rollback_of: Option<Uuid>,
     pub survey_id: Option<Uuid>,
@@ -66,7 +81,8 @@ pub struct NewChange<'a> {
     pub created_by: Option<Uuid>,
 }
 
-const SELECT: &str = "SELECT c.id, c.site_id, c.wifi_id, c.wifi_name, c.kind, c.rollback_of,
+const SELECT: &str = "SELECT c.id, c.target, c.site_id, c.wifi_id, c.wifi_name, c.phone_id,
+        c.phone_name, c.kind, c.rollback_of,
         c.survey_id, c.state, c.fields, c.before, c.after, c.network_version, c.error,
         c.created_by, u.display_name AS created_by_name, c.created_at, c.finished_at
     FROM unifi_wifi_changes c LEFT JOIN users u ON u.id = c.created_by";
@@ -83,8 +99,10 @@ pub async fn begin(pool: &PgPool, tenant: TenantId, new: &NewChange<'_>) -> Core
     .await?;
     let id = sqlx::query_scalar(
         "INSERT INTO unifi_wifi_changes (tenant_id, site_id, wifi_id, wifi_name, kind,
-             rollback_of, survey_id, state, fields, network_version, created_by)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, 'applying', $8, $9, $10) RETURNING id",
+             rollback_of, survey_id, state, fields, network_version, created_by,
+             target, phone_id, phone_name)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, 'applying', $8, $9, $10, $11, $12, $13)
+         RETURNING id",
     )
     .bind(tenant)
     .bind(new.site_id)
@@ -96,6 +114,9 @@ pub async fn begin(pool: &PgPool, tenant: TenantId, new: &NewChange<'_>) -> Core
     .bind(&new.fields)
     .bind(new.network_version)
     .bind(new.created_by)
+    .bind(new.target)
+    .bind(new.phone_id)
+    .bind(new.phone_name)
     .fetch_one(pool)
     .await
     .map_err(|e| match CoreError::from(e) {
@@ -118,7 +139,7 @@ pub async fn applying(pool: &PgPool, tenant: TenantId) -> CoreResult<bool> {
 
 /// Result of a change.
 pub struct Outcome<'a> {
-    /// `applied` or `failed`.
+    /// `applied`, `waiting` or `failed`.
     pub state: &'a str,
     pub wifi_name: Option<&'a str>,
     pub before: Option<&'a serde_json::Value>,
@@ -145,11 +166,23 @@ pub async fn finish(pool: &PgPool, tenant: TenantId, id: Uuid, o: &Outcome<'_>) 
     Ok(())
 }
 
+/// The handset fetched its configuration: its waiting changes are applied.
+pub async fn handset_fetched(pool: &PgPool, phone: Uuid) -> CoreResult<u64> {
+    Ok(sqlx::query(
+        "UPDATE unifi_wifi_changes SET state = 'applied', finished_at = now()
+         WHERE phone_id = $1 AND state = 'waiting'",
+    )
+    .bind(phone)
+    .execute(pool)
+    .await?
+    .rows_affected())
+}
+
 /// Marks a change as reverted by a successful rollback.
 pub async fn mark_rolled_back(pool: &PgPool, tenant: TenantId, id: Uuid) -> CoreResult<()> {
     sqlx::query(
         "UPDATE unifi_wifi_changes SET state = 'rolled_back'
-         WHERE tenant_id = $1 AND id = $2 AND kind = 'apply' AND state IN ('applied', 'failed')",
+         WHERE tenant_id = $1 AND id = $2 AND kind = 'apply' AND state IN ('applied', 'failed', 'waiting')",
     )
     .bind(tenant)
     .bind(id)

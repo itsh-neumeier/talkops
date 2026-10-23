@@ -448,6 +448,13 @@ confirmation in the diff dialog. The table `unifi_wifi_changes` stores the
 values of the changed fields before and after each change for the rollback.
 See [ADR 0042](adr/0042-unifi-voice-ssid-write-access.md).
 
+The same proposal can set the roaming threshold of the survey handset
+(`static.network.wifi.roaming_threshold`, phone setting of kind `int`). The
+history row waits until the handset fetches its configuration. Before a
+band removal on the voice SSID, TalkOps reads the band of each Wi-Fi handset
+from UniFi and refuses a change that would disconnect one. See
+[ADR 0043](adr/0043-wifi-handset-band-and-roaming.md).
+
 ## Roadmap
 
 
@@ -465,4 +472,5 @@ See [ADR 0042](adr/0042-unifi-voice-ssid-write-access.md).
 | 1.1 | Audio-Clips (Computerstimme, Aufnahme, Upload), Smart Attendant, Warteschlangen wie UniFi Talk, Übersicht mit Statistik, Yealink AX83H/AX86R | ✅ (v1.1.0) |
 | WLAN 1 | WLAN-Begehung: Testanruf an WLAN-Handsets, Messung je Sekunde, Aufnahme, DTMF-Markierungen, UniFi-Abgleich (nur lesend), Roaming-Bewertung, Live-Ansicht, Vergleich (ADR 0041) | ✅ (Test mit echter UniFi-Konsole und Handset offen) |
 | WLAN 2a | Empfehlungen als Änderung an der UniFi-VoIP-SSID über die offizielle Integration API, nur nach Bestätigung, mit Snapshot und Rollback (ADR 0042) | ✅ (Test mit echter 11.0-Konsole offen) |
-| WLAN 2b | Handset-Provisioning (Roaming-Schwelle, VAD, DSCP) | geplant |
+| WLAN 2b | Roaming-Schwelle der Handsets aus der Begehung und Bandschutz vor SSID-Bandänderungen (ADR 0043) | ✅ (Test mit echtem AX83H offen) |
+| WLAN 2c | Band-Parameter, VAD und DSCP der Handsets (nach Bestätigung der Yealink-Parameternamen) | geplant |

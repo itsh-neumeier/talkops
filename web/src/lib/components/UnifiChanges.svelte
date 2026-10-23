@@ -1,6 +1,7 @@
 <script lang="ts">
-	// History of changes to the UniFi voice SSID with rollback (ADR 0042).
-	// A rollback that finds changes made in UniFi since asks again.
+	// History of changes to the UniFi voice SSID (ADR 0042) and to handset
+	// settings (ADR 0043) with rollback. A rollback that finds changes made
+	// since asks again; one that removes a band shows the band check.
 	import { onMount } from 'svelte';
 	import { api, ApiError } from '#lib/api.ts';
 	import EmptyRow from '#lib/components/EmptyRow.svelte';
@@ -13,8 +14,9 @@
 		canRollBack,
 		slotText,
 		writeErrorKey,
-		type FieldKey,
+		type ChangeField,
 		type ForeignField,
+		type HandsetBand,
 		type WifiChange
 	} from '#lib/unifiWrite.ts';
 	import { errorMessage } from '#lib/util.ts';
@@ -27,6 +29,9 @@
 	let target = $state<WifiChange | null>(null);
 	let rollbackOpen = $state(false);
 	let foreign = $state<ForeignField[]>([]);
+	let handsets = $state<HandsetBand[]>([]);
+	let handsetsOk = $state<string[]>([]);
+	let acceptForeign = $state(false);
 	let busy = $state(false);
 	let rollbackError = $state('');
 
@@ -35,13 +40,13 @@
 		off: t('unifiWrite.value.off'),
 		absent: t('unifiWrite.value.absent')
 	});
-	const fieldName = (f: FieldKey) => t(`unifiWrite.field.${f}` as MessageKey);
+	const fieldName = (f: ChangeField) => t(`unifiWrite.field.${f}` as MessageKey);
 	const stateBadge = (s: WifiChange['state']) =>
 		s === 'applied'
 			? 'badge badge-ok'
 			: s === 'failed'
 				? 'badge badge-bad'
-				: s === 'applying'
+				: s === 'applying' || s === 'waiting'
 					? 'badge badge-warn'
 					: 'badge badge-muted';
 
@@ -64,24 +69,35 @@
 	function openRollback(c: WifiChange) {
 		target = c;
 		foreign = [];
+		handsets = [];
+		handsetsOk = [];
+		acceptForeign = false;
 		rollbackError = '';
 		rollbackOpen = true;
 	}
 
-	async function rollback(acceptForeign: boolean) {
+	async function rollback(accept: boolean) {
 		if (!target) return;
 		busy = true;
 		rollbackError = '';
+		acceptForeign = accept;
 		try {
 			await api.post(`/unifi/wifi-changes/${target.id}/rollback`, {
 				confirm: true,
-				accept_foreign_changes: acceptForeign
+				accept_foreign_changes: accept,
+				confirm_unknown_handsets: handsetsOk
 			});
 			rollbackOpen = false;
 			await load();
 		} catch (err) {
 			if (err instanceof ApiError && err.code === 'foreign_change') {
 				foreign = (err.body.fields as ForeignField[]) ?? [];
+			} else if (
+				err instanceof ApiError &&
+				(err.code === 'handset_band' || err.code === 'handset_unknown')
+			) {
+				handsets = (err.body.handsets as HandsetBand[]) ?? [];
+				rollbackError = message(err);
 			} else {
 				rollbackError = message(err);
 			}
@@ -89,6 +105,15 @@
 			busy = false;
 		}
 	}
+
+	function toggleHandset(id: string) {
+		handsetsOk = handsetsOk.includes(id) ? handsetsOk.filter((x) => x !== id) : [...handsetsOk, id];
+	}
+
+	const bandBlocked = $derived(handsets.some((h) => h.state === 'blocked'));
+	const bandOpen = $derived(
+		handsets.some((h) => h.state === 'unknown' && !handsetsOk.includes(h.phone_id))
+	);
 </script>
 
 <div class="space-y-4">
@@ -129,8 +154,17 @@
 								{/if}
 							</td>
 							<td class="col-opt">{c.created_by_name ?? '—'}</td>
-							<td class="col-opt">{c.wifi_name || '—'}</td>
-							<td>{c.fields.map(fieldName).join(', ')}</td>
+							<td class="col-opt">
+								{c.target === 'handset'
+									? `${t('unifiWrite.targetHandset')}: ${c.phone_name || '—'}`
+									: c.wifi_name || '—'}
+							</td>
+							<td>
+								{c.fields.map(fieldName).join(', ')}
+								{#if c.target === 'handset'}
+									<div class="text-xs text-slate-500 dark:text-slate-400">{c.phone_name}</div>
+								{/if}
+							</td>
 							<td>
 								<span class={stateBadge(c.state)}>{t(`unifiWrite.state.${c.state}`)}</span>
 								{#if c.error}
@@ -211,18 +245,57 @@
 					{/each}
 				</ul>
 			{/if}
-			<p class="rounded-lg bg-amber-50 p-2 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-				{t('unifiWrite.warn.disconnect')}
-			</p>
+			{#if handsets.length}
+				<ul class="space-y-1">
+					{#each handsets as h (h.phone_id)}
+						<li class="flex flex-wrap items-center gap-2">
+							<span
+								class="badge {h.state === 'ok'
+									? 'badge-ok'
+									: h.state === 'blocked'
+										? 'badge-bad'
+										: 'badge-warn'}">{t(`unifiWrite.band.${h.state}`)}</span
+							>
+							<span>{h.name}{h.band != null ? ` · ${h.band} GHz` : ''}</span>
+						</li>
+						{#if h.state === 'unknown'}
+							<li>
+								<label class="flex items-start gap-2 pl-1">
+									<input
+										type="checkbox"
+										class="mt-0.5"
+										checked={handsetsOk.includes(h.phone_id)}
+										onchange={() => toggleHandset(h.phone_id)}
+									/>
+									<span>{t('unifiWrite.bandConfirm', { name: h.name })}</span>
+								</label>
+							</li>
+						{/if}
+					{/each}
+				</ul>
+			{/if}
+			{#if target.target === 'handset'}
+				<p class="text-xs text-slate-500 dark:text-slate-400">{t('unifiWrite.handsetHint')}</p>
+			{:else}
+				<p
+					class="rounded-lg bg-amber-50 p-2 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
+				>
+					{t('unifiWrite.warn.disconnect')}
+				</p>
+			{/if}
 			<div class="flex justify-end gap-2">
 				<button class="btn" onclick={() => (rollbackOpen = false)}>{t('common.cancel')}</button>
 				{#if foreign.length}
-					<button class="btn btn-danger" disabled={busy} onclick={() => rollback(true)}
-						>{t('unifiWrite.rollbackAnyway')}</button
+					<button
+						class="btn btn-danger"
+						disabled={busy || bandBlocked || bandOpen}
+						onclick={() => rollback(true)}>{t('unifiWrite.rollbackAnyway')}</button
 					>
 				{:else}
-					<button class="btn btn-primary" disabled={busy} onclick={() => rollback(false)}
-						>{t('unifiWrite.rollbackConfirm')}</button
+					<button
+						class="btn btn-primary"
+						disabled={busy || bandBlocked || bandOpen}
+						onclick={() => rollback(acceptForeign)}>{t('unifiWrite.rollbackConfirm')}</button
 					>
 				{/if}
 			</div>

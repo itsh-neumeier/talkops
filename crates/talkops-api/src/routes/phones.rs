@@ -20,7 +20,7 @@ use talkops_core::tenant::TenantId;
 use talkops_provisioning::catalog::PhoneLayout;
 use talkops_provisioning::keys;
 use talkops_provisioning::yealink::{KeyType, LineKey};
-use talkops_provisioning::{PhoneModel, PhoneSetting};
+use talkops_provisioning::{PhoneModel, PhoneSetting, SettingKind};
 use tokio::io::AsyncWriteExt;
 use utoipa::ToSchema;
 use utoipa_axum::router::OpenApiRouter;
@@ -842,12 +842,15 @@ pub struct PhoneSettingInfo {
     pub key: String,
     /// UI section: `tones`, `cradle`, `calls`, `display`, `notifications`, `audio`.
     pub group: String,
-    /// `bool` (values `0`/`1`) or `choice`.
+    /// `bool` (values `0`/`1`), `choice` or `int` (`min` to `max`).
     pub kind: String,
     /// Allowed values, in display order.
     pub values: Vec<String>,
     /// The phone's factory value, if documented.
     pub default: Option<String>,
+    /// Limits of an `int`.
+    pub min: Option<i32>,
+    pub max: Option<i32>,
     /// Phone families that take it (`desk`, `dect`, `conference`, `wifi`).
     pub families: Vec<String>,
     /// Configuration parameter written to the phone.
@@ -863,7 +866,7 @@ impl From<&PhoneSetting> for PhoneSettingInfo {
                 .and_then(|v| v.as_str().map(str::to_owned))
                 .unwrap_or_default()
         };
-        let values = if s.values.is_empty() {
+        let values = if s.values.is_empty() && s.kind == SettingKind::Bool {
             vec!["1".to_owned(), "0".to_owned()]
         } else {
             s.values.clone()
@@ -874,6 +877,8 @@ impl From<&PhoneSetting> for PhoneSettingInfo {
             kind: name(serde_json::to_value(s.kind)),
             values,
             default: s.default.clone(),
+            min: s.min,
+            max: s.max,
             families: s
                 .families
                 .iter()

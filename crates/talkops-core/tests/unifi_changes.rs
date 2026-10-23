@@ -99,8 +99,11 @@ async fn change_history(pool: PgPool) {
     assert!(!ws::any_active(&pool, T).await.unwrap());
 
     let new = NewChange {
-        site_id: "88f7",
-        wifi_id: WIFI,
+        target: "ssid",
+        site_id: Some("88f7"),
+        wifi_id: Some(WIFI),
+        phone_id: None,
+        phone_name: "",
         wifi_name: "Voice",
         kind: "apply",
         rollback_of: None,
@@ -223,4 +226,105 @@ async fn change_history(pool: PgPool) {
     .await
     .unwrap();
     assert!(ws::any_active(&pool, T).await.unwrap());
+}
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn handset_rows_wait_for_the_fetch(pool: PgPool) {
+    let phone: Uuid = sqlx::query_scalar(
+        "INSERT INTO phones (tenant_id, mac, model, name) VALUES ($1, '249ad8000001', 'ax83h', 'Hall')
+         RETURNING id",
+    )
+    .bind(T)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    // One phone setting changes; the others stay.
+    talkops_core::phones::set_setting(&pool, T, phone, "key_tone", Some("0"))
+        .await
+        .unwrap();
+    let old =
+        talkops_core::phones::set_setting(&pool, T, phone, "wifi_roaming_threshold", Some("-72"))
+            .await
+            .unwrap();
+    assert_eq!(old, None);
+    let old = talkops_core::phones::set_setting(&pool, T, phone, "wifi_roaming_threshold", None)
+        .await
+        .unwrap();
+    assert_eq!(old.as_deref(), Some("-72"));
+    let settings: serde_json::Value =
+        sqlx::query_scalar("SELECT settings FROM phones WHERE id = $1")
+            .bind(phone)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(settings, json!({"key_tone": "0"}));
+    assert!(matches!(
+        talkops_core::phones::set_setting(&pool, T, Uuid::new_v4(), "key_tone", None).await,
+        Err(CoreError::NotFound)
+    ));
+
+    let id = changes::begin(
+        &pool,
+        T,
+        &NewChange {
+            target: "handset",
+            site_id: None,
+            wifi_id: None,
+            wifi_name: "",
+            phone_id: Some(phone),
+            phone_name: "Hall",
+            kind: "apply",
+            rollback_of: None,
+            survey_id: None,
+            fields: vec!["wifi_roaming_threshold".into()],
+            network_version: None,
+            created_by: None,
+        },
+    )
+    .await
+    .unwrap();
+    let before = json!({"wifi_roaming_threshold": {"absent": true}});
+    let after = json!({"wifi_roaming_threshold": {"value": "-72"}});
+    changes::finish(
+        &pool,
+        T,
+        id,
+        &Outcome {
+            state: changes::state::WAITING,
+            wifi_name: None,
+            before: Some(&before),
+            after: Some(&after),
+            error: None,
+        },
+    )
+    .await
+    .unwrap();
+    let c = changes::get(&pool, T, id).await.unwrap();
+    assert_eq!(
+        (c.target.as_str(), c.state.as_str()),
+        ("handset", "waiting")
+    );
+    assert!(c.site_id.is_none() && c.wifi_id.is_none());
+    assert_eq!(c.phone_id, Some(phone));
+    assert!(c.can_roll_back());
+    // A waiting change does not block the next change.
+    assert!(!changes::applying(&pool, T).await.unwrap());
+
+    talkops_core::phones::record_seen(&pool, phone, None, None)
+        .await
+        .unwrap();
+    let c = changes::get(&pool, T, id).await.unwrap();
+    assert_eq!(c.state, "applied");
+    assert!(c.finished_at.is_some());
+    assert_eq!(changes::handset_fetched(&pool, phone).await.unwrap(), 0);
+
+    // An SSID row needs the SSID; a handset row does not.
+    let bad = sqlx::query(
+        "INSERT INTO unifi_wifi_changes (tenant_id, kind, state, fields, target)
+         VALUES ($1, 'apply', 'applied', '{}', 'ssid')",
+    )
+    .bind(T)
+    .execute(&pool)
+    .await;
+    assert!(bad.is_err());
 }

@@ -27,6 +27,7 @@
 
 	function valueLabel(s: PhoneSettingInfo, v: string): string {
 		if (s.kind === 'bool') return v === '1' ? t('phoneset.on') : t('phoneset.off');
+		if (s.kind === 'int') return s.key === 'wifi_roaming_threshold' ? `${v} dBm` : v;
 		if (s.key === 'backlight_time') {
 			const secs = Number(v);
 			if (secs === 0) return t('phoneset.always');
@@ -62,17 +63,34 @@
 			{#each shown.filter((s) => s.group === group) as s (s.key)}
 				<div>
 					<label for="{idPrefix}-{s.key}">{t(`phoneset.${s.key}` as MessageKey)}</label>
-					<select
-						id="{idPrefix}-{s.key}"
-						class="input"
-						value={values[s.key] ?? ''}
-						onchange={(e) => set(s.key, e.currentTarget.value)}
-					>
-						<option value="">{keepLabel(s)}</option>
-						{#each s.values as v (v)}
-							<option value={v}>{valueLabel(s, v)}</option>
-						{/each}
-					</select>
+					{#if s.kind === 'int'}
+						<!-- Empty keeps the inherited value; the hint shows it and the limits. -->
+						<input
+							id="{idPrefix}-{s.key}"
+							class="input"
+							type="number"
+							inputmode="numeric"
+							step="1"
+							min={s.min ?? undefined}
+							max={s.max ?? undefined}
+							placeholder={keepLabel(s)}
+							value={values[s.key] ?? ''}
+							onchange={(e) => set(s.key, e.currentTarget.value.trim())}
+						/>
+						<p class="hint">{t('phoneset.range', { min: s.min ?? '', max: s.max ?? '' })}</p>
+					{:else}
+						<select
+							id="{idPrefix}-{s.key}"
+							class="input"
+							value={values[s.key] ?? ''}
+							onchange={(e) => set(s.key, e.currentTarget.value)}
+						>
+							<option value="">{keepLabel(s)}</option>
+							{#each s.values as v (v)}
+								<option value={v}>{valueLabel(s, v)}</option>
+							{/each}
+						</select>
+					{/if}
 					{#if !family && !allWifiOnly && wifiOnly(s)}
 						<p class="hint">{t('phoneset.onlyWifi')}</p>
 					{/if}

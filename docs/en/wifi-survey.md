@@ -10,8 +10,9 @@ UniFi Network. After the call, TalkOps rates each roam and gives
 recommendations.
 
 The decision records are [ADR 0041](../adr/0041-wifi-voice-survey-and-unifi-correlation.md)
-(survey, read access) and [ADR 0042](../adr/0042-unifi-voice-ssid-write-access.md)
-(changes to the voice SSID).
+(survey, read access), [ADR 0042](../adr/0042-unifi-voice-ssid-write-access.md)
+(changes to the voice SSID) and [ADR 0043](../adr/0043-wifi-handset-band-and-roaming.md)
+(handset roaming threshold, band protection).
 
 ## Requirements
 
@@ -27,7 +28,7 @@ The decision records are [ADR 0041](../adr/0041-wifi-voice-survey-and-unifi-corr
 | `wifi_survey.run` | Start surveys and read own surveys. |
 | `wifi_survey.manage` | Read all surveys, change thresholds and retention, delete surveys. |
 | `unifi.manage` | Store and test the UniFi connection, select the voice SSID, read proposals and the change history (sensitive). |
-| `unifi.write` | Switch on write access, apply changes to the voice SSID and roll them back (sensitive). |
+| `unifi.write` | Switch on write access, apply changes to the voice SSID and roll them back (sensitive). With `phones.manage` also the roaming threshold of the survey handset. |
 
 The admin role has all permissions. Other roles get none by default.
 
@@ -285,7 +286,7 @@ switches write access off.
 
 ### Change history and rollback
 
-**Settings → Wi-Fi survey → SSID changes** lists each change with the time,
+**Settings → Wi-Fi survey → Wi-Fi changes** lists each change with the time,
 the user, the settings and the state. Select the time to see the values
 before and after the change.
 
@@ -300,6 +301,60 @@ the rollback must overwrite these changes.
 
 The audit log records each switch of write access, each change and each
 rollback with the settings and values, never with the password.
+
+## Handset roaming threshold and band protection
+
+The handset also decides when it roams. TalkOps provisions the roaming
+threshold of Yealink AX83H and AX86R handsets and protects the handsets
+against a band change on the voice SSID. TalkOps does not provision the
+Wi-Fi name or password of the handsets.
+
+### Roaming threshold
+
+When the signal of the current access point drops below the roaming
+threshold, the handset searches for a better access point. Parameter:
+`static.network.wifi.roaming_threshold`, -100 to -30 dBm, factory value
+-70 dBm (Yealink AX83H Wi-Fi Roaming Guide and Administrator's Manual).
+
+- Set it for all Wi-Fi handsets under **Settings → Phones (provisioning) →
+  Comfort settings → Wi-Fi**, or for one handset on its phone page.
+- From a survey: if the survey found a sticky client (`min_rssi`), the diff
+  dialog proposes the survey threshold plus 5 dB, limited to -75 to -60 dBm
+  (default survey: -80 → -75). The handset then searches before the access
+  point pushes it away.
+
+To apply the proposal:
+
+1. Open the result of the survey and select **Propose change**.
+2. In the section **Handset**, check the current value and the new value.
+3. Confirm and select **Apply**. You need `unifi.write` and `phones.manage`.
+
+TalkOps stores the value for this handset only and asks the handset to fetch
+its configuration (`check-sync`). The change history shows **waiting for
+handset** until the handset fetches it. A handset that is not reachable gets
+the value at its next provisioning interval. The rollback restores the
+earlier value. If someone changed the value since, the rollback asks again.
+
+### Band protection
+
+Before TalkOps removes a band from the voice SSID (for example 2.4 GHz),
+TalkOps reads the band of each provisioned Wi-Fi handset from UniFi:
+
+| UniFi reports | Result |
+| --- | --- |
+| Connected on a band that stays | OK |
+| Connected to the voice SSID on the band that the change removes | Blocked: the handset would lose the SSID |
+| Not connected | You must confirm the handset by name |
+
+A rollback that removes a band uses the same check.
+
+TalkOps does not provision the band setting of the handset yet. Yealink
+does not document its parameter. A configuration export shows the name
+`static.network.wifi.band.mode`, but the meaning of its values is not
+confirmed. Keep the handset at **Wi-Fi Band:
+2.4G & 5G** (the handset then prefers 5 GHz). A handset that uses only one
+band goes offline if the voice SSID stops this band, and TalkOps cannot
+reach it to correct it.
 
 ## Limits of the measurement
 

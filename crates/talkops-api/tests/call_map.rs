@@ -302,7 +302,7 @@ async fn counts_external_calls_by_area_category_range_and_scope(db: PgPool) {
     assert_eq!(rows[0]["call_uuid"], "bamberg-answered");
 
     // Without geo data, all calls count as unknown country.
-    let empty = talkops_api::app(state(db.clone()), None);
+    let empty = talkops_api::app(common::state(db.clone()), None);
     let user = login(&empty, "user", "user-password").await.unwrap();
     let (_, plain) = user.get("/api/v1/calls/map?range=1w").await;
     assert_eq!(ids(&plain), ["none"]);

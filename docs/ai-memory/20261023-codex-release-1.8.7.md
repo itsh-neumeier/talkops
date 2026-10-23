@@ -98,3 +98,14 @@ push one new tag and verify the workflow, release and all platform/tag manifests
 - Exact-main CI39939922388 and E2E39939922335 are queued. No tag is pushed.
 - Do not push the merged release branch again. Save later task-only records
   through audit/release-1.8.7 after publication.
+
+## Publication started
+
+Exact-main CI39939922388 and E2E39939922335 passed before publication.
+Required fax G.711/T.38 and all end-to-end checks passed. Fresh pre-tag guards
+verified unchanged main, source ancestry, identical candidate/main trees,
+matching metadata, only the unchanged draft61 open, and latest successful gates.
+New annotated v1.8.7 was pushed once on a2478c81877eafce8bd1a40361c84ce097a72fa6.
+Tag object: eb5e83e9c326876b8e02a15b1d806e5a06bd7f3a.
+Release39942397221, tag CI39942397201/E2E39942397244 and FreeSWITCH39942397198
+are running. Artifact verification is pending.

@@ -2961,5 +2961,39 @@ export default {
 	'unifiWrite.err.handset_changed':
 		'The handset setting changed since the proposal. Open the proposal again.',
 	'unifiWrite.err.not_wifi_handset':
-		'The phone is not a provisioned Wi-Fi handset with a roaming threshold.'
+		'The phone is not a provisioned Wi-Fi handset with a roaming threshold.',
+	'calls.view': 'View',
+	'calls.view.list': 'List',
+	'calls.view.map': 'Map',
+	'calls.areaFilter': 'Area: {place}',
+	'calls.rangeFilter': 'Last {range}',
+	'callMap.range': 'Time range',
+	'callMap.range.1h': '1 hour',
+	'callMap.range.1d': '1 day',
+	'callMap.range.1w': '1 week',
+	'callMap.range.1m': '1 month',
+	'callMap.legend': 'Call categories',
+	'callMap.category.answered': 'Inbound answered',
+	'callMap.category.missed': 'Inbound missed',
+	'callMap.category.outbound': 'Outbound',
+	'callMap.category.blocked': 'Blocked / spam',
+	'callMap.mapLabel': 'Map of external calls, {range}',
+	'callMap.bubbleLabel': '{name} {prefix}: {count} calls',
+	'callMap.loadFailed': 'The map cannot be loaded.',
+	'callMap.empty': 'No external calls in this time range.',
+	'callMap.truncated': 'More than {limit} calls: the map shows only the newest {limit}.',
+	'callMap.noLocation': 'Mobile / no location',
+	'callMap.noLocationReasons': 'Mobile: {mobile} · Service: {service} · Other: {other}',
+	'callMap.duration': 'Total talk time',
+	'callMap.moreCalls': 'Newest {shown} of {total} calls.',
+	'callMap.showInList': 'Show all in the call log',
+	'callMap.unlocatedTitle': 'Without location',
+	'callMap.unlocatedHint':
+		'Mobile numbers, service numbers and numbers without a known area. The map shows them as one bubble for each country.',
+	'callMap.unlocatedEmpty': 'All calls have a location.',
+	'callMap.unknownCountry': 'Unknown country',
+	'callMap.anonymous': 'Anonymous (no number)',
+	'callMap.summary': '{calls} calls · {areas} areas · talk time {duration}',
+	'callMap.accuracy':
+		'The map shows the area of the phone number, not the location of the caller. Ported numbers and VoIP numbers can be used outside their area.'
 } as const;

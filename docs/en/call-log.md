@@ -77,6 +77,66 @@ search, but keeps the sort order.
 The page address contains the filters and the sort order. A reload or a
 copied link thus shows the same list.
 
+## Map
+
+Select the tab **Map** above the list to see where external calls come
+from and go to. The page address keeps the view, the time range and the
+categories (for example `/calls?view=map&range=1w`). A copied link opens the
+same map.
+
+- **Time range**: 1 hour, 1 day, 1 week or 1 month (30 days), always up to
+  now. With 1 hour, the map updates every 30 seconds while the browser tab
+  is visible.
+- **Categories**: inbound answered (green), inbound missed (red; also busy
+  or declined), outbound (blue; the destination gives the place) and
+  blocked / spam (violet). Click a category to hide or show it. The number
+  next to it is the count in the time range. Internal calls are not on the
+  map.
+- **Bubbles**: one bubble for each local network area or place. The area
+  of a bubble grows with the number of calls. The segments show the
+  categories. Mobile numbers, service numbers (for example 0800, 0180) and
+  numbers without a known area form one bubble "Mobile / no location" for
+  each country (dashed border).
+- **Details**: click a bubble, or select it with the Tab key and press
+  Enter. The panel shows the area, the prefix (for example
+  `Bamberg · +49 951`), the country, the totals for each category, the
+  total talk time and the 20 newest calls. **Show all in the call log**
+  opens the list with the same time range and only the calls of this area.
+  Esc closes the panel.
+- **Without location**: the list below the map shows the bubbles without a
+  location for each country, with the counts of mobile, service and other
+  numbers. Calls without a caller number (anonymous) are only counted.
+
+The map uses the same access rule as the list: users see the calls of
+their own extensions, users with `calls.view_all` see all calls. The map
+counts at most 50,000 calls. With more calls, a message shows that only the
+newest calls are counted.
+
+### Precision
+
+The map shows the area of the phone number, not the location of the caller:
+
+- Germany, Austria and Switzerland: the local network area of the area code.
+- Other countries: the place from the libphonenumber data when the place is
+  known, else the country. Some countries (for example France) have no
+  place data.
+- A ported number keeps its area code. A VoIP number with an area code can
+  be used in another place. A mobile number has no location.
+
+### Data sources and privacy
+
+The map works offline. The base map (country outlines) and all area data
+come with TalkOps. The page sends no request to another server. The map
+shows these sources:
+
+- © Bundesnetzagentur (local network areas of Germany)
+- Source: RTR-GmbH (local networks of Austria)
+- GeoNames, CC BY 4.0 (place coordinates)
+- libphonenumber, Apache License 2.0 (number prefixes)
+- Natural Earth, public domain (country outlines)
+
+The administrator can update the data with `tools/geo/` (see ADR 0044).
+
 ## Load more
 
 The list loads 50 calls at a time. The line below the table shows the
@@ -92,6 +152,13 @@ number of loaded calls and the number of all matching calls. Click
 The header `X-Total-Count` has the number of all matching calls. Each call
 also has the resolved parties `caller` and `called` and, for inbound calls,
 `via_number`.
+With `area` (a map bubble ID, for example `DE-951`, `DE-none` or `none`),
+the list has only the calls of that map area.
+
+`GET /api/v1/calls/map?range=1h|1d|1w|1m&categories=answered,missed,outbound,blocked`
+returns the map data: for each area the position, name, prefix, counts for
+each category, total talk time and the 20 newest calls, plus the anonymous
+counts and the data sources.
 
 ## Blocked calls and whitelist exceptions
 

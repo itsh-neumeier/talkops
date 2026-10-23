@@ -68,3 +68,6 @@ notices.
   `resources/carrier/en`, in a changed format.
 - Country outlines and label points: Natural Earth
   (https://www.naturalearthdata.com/), public domain.
+- Map library: Leaflet 1.9.4 (https://leafletjs.com/), Copyright Volodymyr
+  Agafonkin and CloudMade, BSD 2-Clause License. The web UI bundles it and
+  loads it only in the map view.

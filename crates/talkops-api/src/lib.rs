@@ -274,6 +274,7 @@ pub fn api_router() -> (Router<AppState>, utoipa::openapi::OpenApi) {
         .merge(routes::extensions::router())
         .merge(routes::trunks::router())
         .merge(routes::settings::router())
+        .merge(routes::call_map::router())
         .merge(routes::transcription::router())
         .merge(routes::transcription_jobs::router())
         .merge(routes::phones::router())

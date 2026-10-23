@@ -116,6 +116,24 @@ pub async fn telephony_status(
     Ok(Json(state.telephony.snapshot().await))
 }
 
+/// Extensions whose calls the user may see; `None`: all calls
+/// (`calls.view_all`).
+pub(crate) async fn own_extensions(
+    state: &AppState,
+    auth: &AuthUser,
+) -> ApiResult<Option<Vec<uuid::Uuid>>> {
+    if auth.can(Permission::CallsViewAll) {
+        return Ok(None);
+    }
+    Ok(Some(
+        extensions::list_for_user(&state.db, auth.tenant, auth.id)
+            .await?
+            .into_iter()
+            .map(|e| e.id)
+            .collect(),
+    ))
+}
+
 /// A call record with its resolved parties.
 #[derive(Serialize, utoipa::ToSchema)]
 pub struct CallEntry {
@@ -135,6 +153,8 @@ pub struct CallEntry {
 
 /// Call log, filtered and sorted. Operators and admins see all calls, users
 /// only their own extensions. `X-Total-Count` has the number of matches.
+/// With `area`, only calls of that call map area (at most 50,000 calls of
+/// the time range are examined; without `since`, the last 30 days).
 #[utoipa::path(get, path = "/api/v1/calls", tag = "settings", params(CdrQuery), responses((status = 200, body = [CallEntry], headers(("X-Total-Count" = i64, description = "Number of matching calls")))))]
 pub async fn list_calls(
     State(state): State<AppState>,
@@ -142,18 +162,28 @@ pub async fn list_calls(
     Query(query): Query<CdrQuery>,
 ) -> ApiResult<([(HeaderName, String); 1], Json<Vec<CallEntry>>)> {
     let directory = Directory::load(&state, auth.tenant).await?;
-    let scope = CdrScope {
-        extensions: if auth.can(Permission::CallsViewAll) {
-            None
-        } else {
-            Some(
-                extensions::list_for_user(&state.db, auth.tenant, auth.id)
-                    .await?
-                    .into_iter()
-                    .map(|e| e.id)
-                    .collect(),
+    let ids = match query
+        .area
+        .as_deref()
+        .map(str::trim)
+        .filter(|a| !a.is_empty())
+    {
+        Some(area) => Some(
+            crate::routes::call_map::area_call_ids(
+                &state,
+                &auth,
+                &directory,
+                area,
+                query.since,
+                query.until,
             )
-        },
+            .await?,
+        ),
+        None => None,
+    };
+    let scope = CdrScope {
+        extensions: own_extensions(&state, &auth).await?,
+        ids,
         from_numbers: query
             .from
             .as_deref()

@@ -38,4 +38,5 @@ pub mod unifi_write;
 pub mod users;
 pub mod voicemail;
 pub mod webrtc;
+pub mod wifi_handset;
 pub mod wifi_survey;

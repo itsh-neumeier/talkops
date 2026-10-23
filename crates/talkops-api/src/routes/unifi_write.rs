@@ -6,6 +6,10 @@
 //! the Network version is 10.6.106 or later, no survey of the tenant is
 //! active and the user confirmed the values in the diff dialog. Audit
 //! entries and stored rows contain only allowlist values, never secrets.
+//!
+//! The proposal also carries the handset part and the band check of
+//! ADR 0043 (`wifi_handset`). A change that removes a band from the voice
+//! SSID passes the band check first.
 
 use axum::Json;
 use axum::extract::{Path, Query, State};
@@ -30,6 +34,7 @@ use uuid::Uuid;
 use crate::AppState;
 use crate::auth::AuthUser;
 use crate::error::ApiError;
+use crate::routes::wifi_handset::{self as handset, HandsetBand, HandsetProposal};
 use crate::routes::wifi_survey::UnifiView;
 
 pub fn router() -> OpenApiRouter<AppState> {
@@ -48,6 +53,9 @@ pub enum Refusal {
     Gate(StatusCode, &'static str, String),
     /// Rollback: fields that changed in UniFi after the TalkOps change.
     Foreign(Vec<ForeignField>),
+    /// Band check: a code (`handset_band`, `handset_unknown`) and the result
+    /// for each Wi-Fi handset.
+    Handsets(&'static str, Vec<HandsetBand>),
 }
 
 impl From<ApiError> for Refusal {
@@ -78,13 +86,26 @@ impl IntoResponse for Refusal {
                 })),
             )
                 .into_response(),
+            Refusal::Handsets(code, handsets) => (
+                StatusCode::CONFLICT,
+                Json(json!({
+                    "error": code,
+                    "message": if code == "handset_band" {
+                        "a Wi-Fi handset is connected on a band that the change removes"
+                    } else {
+                        "confirm each Wi-Fi handset that UniFi does not report"
+                    },
+                    "handsets": handsets,
+                })),
+            )
+                .into_response(),
         }
     }
 }
 
-type Result<T> = std::result::Result<T, Refusal>;
+pub(crate) type Result<T> = std::result::Result<T, Refusal>;
 
-fn gate(code: &'static str) -> Refusal {
+pub(crate) fn gate(code: &'static str) -> Refusal {
     let (status, message) = match code {
         "write_disabled" => (StatusCode::FORBIDDEN, "write access to UniFi is off"),
         "permission" => (StatusCode::FORBIDDEN, "insufficient permissions"),
@@ -117,6 +138,14 @@ fn gate(code: &'static str) -> Refusal {
         "verify_mismatch" => (
             StatusCode::BAD_GATEWAY,
             "UniFi did not apply all values; check the change history",
+        ),
+        "not_wifi_handset" => (
+            StatusCode::CONFLICT,
+            "the phone is not a provisioned Wi-Fi handset with a roaming threshold",
+        ),
+        "handset_changed" => (
+            StatusCode::CONFLICT,
+            "the handset setting changed since the proposal; open the proposal again",
         ),
         _ => (StatusCode::CONFLICT, "the change is not possible"),
     };
@@ -206,7 +235,13 @@ async fn write_state(
     })
 }
 
-async fn audit(state: &AppState, auth: &AuthUser, action: &str, id: Option<Uuid>, data: Value) {
+pub(crate) async fn audit(
+    state: &AppState,
+    auth: &AuthUser,
+    action: &str,
+    id: Option<Uuid>,
+    data: Value,
+) {
     let _ = audit::record(
         &state.db,
         &auth.actor(),
@@ -335,6 +370,10 @@ pub struct ProposalView {
     /// `secret_not_readable`).
     pub not_writable: Option<&'static str>,
     pub write: WriteState,
+    /// Band check of the Wi-Fi handsets, if a proposed change removes a band.
+    pub band_check: Option<Vec<HandsetBand>>,
+    /// Proposed roaming threshold of the survey handset (ADR 0043).
+    pub handset: Option<HandsetProposal>,
 }
 
 #[utoipa::path(get, path = "/api/v1/wifi-surveys/{id}/unifi-proposal", tag = "wifi-survey", params(("id" = Uuid, Path)), responses((status = 200, body = ProposalView)))]
@@ -374,7 +413,20 @@ pub async fn survey_proposal(
             sticky_rssi: survey.thresholds().sticky_rssi,
         },
     );
+    let new_bands = p
+        .changes
+        .iter()
+        .find(|c| c.field == Field::Frequencies)
+        .map(|c| &c.proposed);
+    let removed = handset::removed_bands(b.object().get("broadcastingFrequenciesGHz"), new_bands);
+    let band_check = if removed.is_empty() {
+        None
+    } else {
+        Some(handset::band_check(&state, &auth, &u.client, b.name(), &removed).await?)
+    };
     Ok(Json(ProposalView {
+        band_check,
+        handset: handset::handset_proposal(&state, &auth, &survey, &ids).await?,
         wifi_id,
         wifi_name: b.name().to_owned(),
         changes: serde_json::to_value(&p.changes).unwrap_or_default(),
@@ -386,7 +438,11 @@ pub async fn survey_proposal(
 }
 
 /// Own surveys, or all with `wifi_survey.manage`.
-async fn readable_survey(state: &AppState, auth: &AuthUser, id: Uuid) -> Result<ws::Survey> {
+pub(crate) async fn readable_survey(
+    state: &AppState,
+    auth: &AuthUser,
+    id: Uuid,
+) -> Result<ws::Survey> {
     auth.require_perm(Permission::WifiSurveyRun)?;
     let s = ws::get(&state.db, auth.tenant, id).await?;
     if s.started_by == Some(auth.id) || auth.can(Permission::WifiSurveyManage) {
@@ -432,6 +488,37 @@ pub struct ApplyInput {
     /// The user confirmed the diff dialog.
     #[serde(default)]
     pub confirm: bool,
+    /// Wi-Fi handsets without a UniFi report that the user confirmed for a
+    /// band removal (ADR 0043).
+    #[serde(default)]
+    pub confirm_unknown_handsets: Vec<Uuid>,
+}
+
+/// Band check before a change that removes a band from the SSID `wifi_id`.
+async fn protect_bands(
+    state: &AppState,
+    auth: &AuthUser,
+    u: &Unifi,
+    site_id: &str,
+    wifi_id: &str,
+    fields: &[(Field, Slot)],
+    confirmed: &[Uuid],
+) -> Result<()> {
+    let Some((_, slot)) = fields.iter().find(|(f, _)| *f == Field::Frequencies) else {
+        return Ok(());
+    };
+    let b = u
+        .client
+        .wifi_broadcast(site_id, wifi_id)
+        .await
+        .map_err(unifi_error)?;
+    let removed =
+        handset::removed_bands(b.object().get("broadcastingFrequenciesGHz"), slot.value());
+    if removed.is_empty() {
+        return Ok(());
+    }
+    let list = handset::band_check(state, auth, &u.client, b.name(), &removed).await?;
+    handset::check_bands(&list, confirmed)
 }
 
 /// Applies confirmed changes to the voice SSID.
@@ -472,11 +559,21 @@ pub async fn apply_change(
         return Err(gate("ssid_not_voice"));
     }
     let u = connect(&state, &auth).await?;
+    protect_bands(
+        &state,
+        &auth,
+        &u,
+        &u.site_id,
+        &input.wifi_id,
+        &fields,
+        &input.confirm_unknown_handsets,
+    )
+    .await?;
     let id = begin(
         &state,
         &auth,
         &u,
-        &input.wifi_id,
+        (&u.site_id, &input.wifi_id),
         None,
         input.survey_id,
         &fields,
@@ -520,7 +617,7 @@ async fn begin(
     state: &AppState,
     auth: &AuthUser,
     u: &Unifi,
-    wifi_id: &str,
+    (site_id, wifi_id): (&str, &str),
     rollback_of: Option<Uuid>,
     survey_id: Option<Uuid>,
     fields: &[(Field, Slot)],
@@ -529,9 +626,12 @@ async fn begin(
         &state.db,
         auth.tenant,
         &NewChange {
-            site_id: &u.site_id,
-            wifi_id,
+            target: "ssid",
+            site_id: Some(site_id),
+            wifi_id: Some(wifi_id),
             wifi_name: u.conn.voice_wifi_name.as_deref().unwrap_or_default(),
+            phone_id: None,
+            phone_name: "",
             kind: if rollback_of.is_some() {
                 "rollback"
             } else {
@@ -615,7 +715,11 @@ pub struct ForeignField {
     pub before: Option<Slot>,
 }
 
-fn foreign(after: &Snapshot, before: Option<&Snapshot>, current: &Snapshot) -> Vec<ForeignField> {
+pub(crate) fn foreign(
+    after: &Snapshot,
+    before: Option<&Snapshot>,
+    current: &Snapshot,
+) -> Vec<ForeignField> {
     after
         .iter()
         .filter_map(|(k, a)| {
@@ -637,6 +741,10 @@ pub struct RollbackInput {
     /// Roll back also when another person changed the fields since.
     #[serde(default)]
     pub accept_foreign_changes: bool,
+    /// Wi-Fi handsets without a UniFi report that the user confirmed for a
+    /// rollback that removes a band (ADR 0043).
+    #[serde(default)]
+    pub confirm_unknown_handsets: Vec<Uuid>,
 }
 
 /// Restores the values before a change, for the changed fields only.
@@ -655,6 +763,13 @@ pub async fn rollback_change(
     if !change.can_roll_back() {
         return Err(gate("not_revertible"));
     }
+    if change.target == "handset" {
+        return handset::rollback_handset(&state, &auth, &change, input.accept_foreign_changes)
+            .await;
+    }
+    let (Some(site_id), Some(wifi_id)) = (change.site_id.clone(), change.wifi_id.clone()) else {
+        return Err(gate("not_revertible"));
+    };
     let before = allowlist::from_json(change.before.as_ref().unwrap_or(&Value::Null));
     let after = allowlist::from_json(change.after.as_ref().unwrap_or(&Value::Null));
     if before.is_empty() || before.len() != change.fields.len() {
@@ -673,7 +788,7 @@ pub async fn rollback_change(
     if !input.accept_foreign_changes {
         let current = u
             .client
-            .wifi_broadcast(&change.site_id, &change.wifi_id)
+            .wifi_broadcast(&site_id, &wifi_id)
             .await
             .map_err(unifi_error)?;
         let fields: Vec<Field> = after.keys().filter_map(|k| Field::from_key(k)).collect();
@@ -683,11 +798,21 @@ pub async fn rollback_change(
         }
     }
     let restore = write::rollback_changes(&before);
+    protect_bands(
+        &state,
+        &auth,
+        &u,
+        &site_id,
+        &wifi_id,
+        &restore,
+        &input.confirm_unknown_handsets,
+    )
+    .await?;
     let new_id = begin(
         &state,
         &auth,
         &u,
-        &change.wifi_id,
+        (&site_id, &wifi_id),
         Some(change.id),
         change.survey_id,
         &restore,
@@ -701,7 +826,7 @@ pub async fn rollback_change(
     let result = u
         .client
         .writer()
-        .apply(&change.site_id, &change.wifi_id, &restore, &guard)
+        .apply(&site_id, &wifi_id, &restore, &guard)
         .await;
     let row = finish(&state, &auth, new_id, &result).await?;
     if result.is_ok() {

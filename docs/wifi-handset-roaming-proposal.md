@@ -1,12 +1,26 @@
 # Wi-Fi survey stage 4b: handset roaming threshold and band protection: proposal for user review
 
-Status: Draft for user review. No implementation yet.
+Status: Accepted by the user on 2026-10-23 ("ein PR auf Basis 62"), with
+the recommended answers to Q1 to Q4 and Q5 = one PR on top of PR #62.
+Implemented in the same PR.
 Date: 2026-10-23 (Europe/Berlin).
 Base: branch of stage 4a (PR #62, commit `c053920`). Stage 4b needs the
 diff dialog and the change history of stage 4a.
 ADR draft: [ADR 0043](adr/0043-wifi-handset-band-and-roaming.md).
 Scope set by the user: only the band and the roaming setting of the
 handsets. No Wi-Fi credentials (SSID, password).
+
+## Implementation notes
+
+- Migration `20261108000002_wifi_handset_changes.sql`.
+- Apply: `POST /api/v1/wifi-handset-changes`. Rollback of a handset row
+  uses the existing route `POST /api/v1/unifi/wifi-changes/{id}/rollback`.
+- The handset change does not need the UniFi write switch (it changes only
+  TalkOps data), but it needs `unifi.write` and `phones.manage`.
+- The survey gate is tenant-wide (any armed, calling or running survey),
+  like the SSID gate.
+- The phone settings UI shows the Wi-Fi group under **Phones
+  (provisioning) → Comfort settings** and on the phone page.
 
 ## Goal
 

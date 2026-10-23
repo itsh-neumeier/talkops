@@ -1,6 +1,7 @@
 # 0043 - Wi-Fi handset roaming threshold and band protection
 
-- Status: Proposed (draft for user review, 2026-10-23).
+- Status: Accepted by the user on 2026-10-23 ("ein PR auf Basis 62"; open
+  questions answered with the recommended options).
 - Extends: ADR 0041 and ADR 0042. Also uses ADR 0029.
 - Proposal: [Wi-Fi handset band and roaming proposal](../wifi-handset-roaming-proposal.md).
 
@@ -84,5 +85,10 @@ TalkOps cannot then correct the handset. A person must reset it on site.
   handset needs a manual decision.
 - Negative: `check-sync` reaches only registered handsets. A handset that
   misses it receives the value at its next provisioning interval.
+- Implementation notes: the handset change is blocked while any survey of
+  the tenant is armed, calling or running (the same gate as the SSID). The
+  handset part needs `unifi.write` and `phones.manage`; it does not need the
+  UniFi write switch, because it changes only TalkOps data. A handset row
+  stays `waiting` until the phone fetches its configuration.
 - Follow-up: hardware test (stage 0), the band parameter, and VAD/DSCP when
   their AX parameter names are confirmed.

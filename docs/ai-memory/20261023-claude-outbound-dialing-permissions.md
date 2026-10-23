@@ -8,7 +8,7 @@
 - Status: Completed
 - Branch: `claude/confident-ride-y5zf5z`
 - Base commit: `efe4b79` (origin/main, release 1.8.8)
-- Related commits or PR: Pending
+- Related commits or PR: https://github.com/itsh-neumeier/talkops/pull/69
 
 ## Goal
 

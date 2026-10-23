@@ -8,7 +8,7 @@
 - Status: In progress
 - Branch: codex/release-1.8.7
 - Base commit: c093fa8dddd40a14823d9e6ed41922e0e38efc74
-- Related PR: Pending
+- Related PR: https://github.com/itsh-neumeier/talkops/pull/64
 
 ## Goal
 
@@ -46,9 +46,15 @@ It is not a ready handoff and is excluded. No other agreed handoff is pending.
 
 - Source PR62 and PR63 final CI/E2E passed. Source local root-only readonly fax
   test failed because root bypasses 0555. CI runs unprivileged and is green.
-- Local and combined candidate checks: pending.
+- Local: cargo fmt, web lint/check (zero errors/warnings), 45 tests/build passed.
+  Installed locked dependencies reused; CI performs clean npm ci.
+- Local: 13 docs tests; 75 pages/660 links; four Compose variants; provisioning
+  hash and derivative checks passed. Metadata changed only seven workspace and npm
+  root versions. 53 migration IDs unique/ordered, 51 released SQL files unchanged.
+  All 2,598 EN/DE keys/placeholders match. ADR IDs/index links are valid.
 - Full Linux/container/SIPp/browser checks will use CI. Linux Docker is unavailable locally.
-- CodeRabbit CLI unavailable. Manual integration review in progress.
+- CodeRabbit CLI unavailable. Manual integration review completed: permissions, confirmation, allowlist-only
+  writes, secrets, rollback conflicts, survey gates, handset bands and API/UI contracts.
 - STE: repository clarity rules applied. Full standard unavailable; full review pending.
 
 ## Dependencies and open work
@@ -73,3 +79,22 @@ push one new tag and verify the workflow, release and all platform/tag manifests
 - docs/ai-memory/20261023-claude-wifi-handset-roaming.md
 - docs/ai-memory/20261022-codex-release-1.8.6.md
 - docs/release-workflow.md
+
+## Merged checkpoint
+
+- Final candidate: b310b63c1a934cd44a0371d0dc091f374094f5a5.
+- Corrected EN/DE privacy text: band protection reads known handset bands outside
+  an active survey. Docs tests and Wiki check passed again. Earlier fd71fc2 runs
+  were superseded by this correction; cancelled runs are not final gates.
+- PR63 retargeted from the PR62 branch to main after integration. All source
+  heads unchanged. PR64 and both sources are merged.
+- All 16 final candidate checks passed. PR CI39937648080/E2E39937648166;
+  push CI39937638952/E2E39937638882. Rust 475 passed, one existing ignored.
+  Web 45 tests, 16 existing browser suites, docs 13 tests, image/version smoke,
+  storage, DB/LDAP, recovery, fax G.711/T.38, SIPp/browser softphone passed.
+  Server and worker smoke output showed 1.8.7.
+- Main: a2478c81877eafce8bd1a40361c84ce097a72fa6. Its tree equals the final
+  candidate. Both source heads are ancestors. Source PRs closed at 10:33:13Z.
+- Exact-main CI39939922388 and E2E39939922335 are queued. No tag is pushed.
+- Do not push the merged release branch again. Save later task-only records
+  through audit/release-1.8.7 after publication.

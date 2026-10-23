@@ -91,3 +91,13 @@ manifests for amd64/arm64, version/revision labels and 1.8/latest tags.
 - Exact-main CI39992089713 and E2E39992089729 are running. No tag pushed.
 - Do not push the merged integration branch again. Archive later task-only records
   under audit/release-1.8.8 after publication.
+
+## Publication started
+
+Exact-main CI39992089713 and E2E39992089729 passed before publication.
+Fresh guards verified unchanged main, all source ancestors, identical candidate
+and main trees, matching versions, only unchanged draft61 open and latest green gates.
+New annotated v1.8.8 was pushed once on efe4b79dd637119e130d7ff392d7dada98c014ae.
+Tag object: 990e043bafc7d7a0843107bec5db120ac60bab02.
+Release39995083021, tag CI39995082896/E2E39995083008 and FreeSWITCH39995082739
+are running. GitHub release and artifact verification are pending.

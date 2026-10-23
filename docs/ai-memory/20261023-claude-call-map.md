@@ -10,7 +10,7 @@
   claude/affectionate-lamport-v5iw3a-map-view (PR 2, stacked on PR 1),
   claude/affectionate-lamport-v5iw3a-map-widget (PR 3, stacked on PR 2)
 - Base commit: a2478c8 (origin/main, TalkOps 1.8.7)
-- Related commits or PR: [itsh-neumeier/talkops#65](https://github.com/itsh-neumeier/talkops/pull/65) (PR 1), [itsh-neumeier/talkops#66](https://github.com/itsh-neumeier/talkops/pull/66) (PR 2); PR 3 pending
+- Related commits or PR: [itsh-neumeier/talkops#65](https://github.com/itsh-neumeier/talkops/pull/65) (PR 1), [itsh-neumeier/talkops#66](https://github.com/itsh-neumeier/talkops/pull/66) (PR 2), [itsh-neumeier/talkops#67](https://github.com/itsh-neumeier/talkops/pull/67) (PR 3)
 
 ## Goal
 
@@ -29,7 +29,7 @@ prompt "Anrufkarte". Three PRs, one after the other:
 
 - PR 1: implemented, tested, pushed, PR #65 open.
 - PR 2: implemented, tested, pushed, PR #66 open.
-- PR 3: implemented and tested locally (see Changes, PR 3).
+- PR 3: implemented, tested, pushed, PR #67 open.
 
 ## Changes
 

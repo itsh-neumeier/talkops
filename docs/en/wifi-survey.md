@@ -349,7 +349,9 @@ TalkOps reads the band of each provisioned Wi-Fi handset from UniFi:
 A rollback that removes a band uses the same check.
 
 TalkOps does not provision the band setting of the handset yet. Yealink
-documents no provisioning parameter for it. Keep the handset at **Wi-Fi Band:
+does not document its parameter. A configuration export shows the name
+`static.network.wifi.band.mode`, but the meaning of its values is not
+confirmed. Keep the handset at **Wi-Fi Band:
 2.4G & 5G** (the handset then prefers 5 GHz). A handset that uses only one
 band goes offline if the voice SSID stops this band, and TalkOps cannot
 reach it to correct it.

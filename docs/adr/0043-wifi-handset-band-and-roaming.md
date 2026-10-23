@@ -25,7 +25,10 @@ Official Yealink documentation has these facts:
   **Network > Wi-Fi > Roaming Signal Threshold**).
 - The handset prefers 5 GHz in dual-band mode (AX83H Wi-Fi Roaming Guide).
 - The Administrator's Manual of the AX83H lists no provisioning parameter
-  for the Wi-Fi band. The handset menu has a "Wi-Fi Band" item. Other
+  for the Wi-Fi band. The handset menu has a "Wi-Fi Band" item. A
+  configuration export of an AX83H (2026-10-23) contains
+  `static.network.wifi.band.mode = 1`; the meaning of the values is not
+  confirmed. Other
   roaming parameters (`roam_lossrate_threshold`, `roam_aggressive.enable`)
   are documented only for the MP66W, not for the AX series.
 

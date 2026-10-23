@@ -362,7 +362,9 @@ TalkOps das Band jedes provisionierten WLAN-Handsets aus UniFi:
 Ein Rollback, der ein Band entfernt, nutzt dieselbe Prüfung.
 
 Die Band-Einstellung des Handsets provisioniert TalkOps noch nicht. Yealink
-dokumentiert dafür keinen Provisionierungs-Parameter. Das Handset auf
+dokumentiert ihren Parameter nicht. Ein Konfigurationsexport zeigt den Namen
+`static.network.wifi.band.mode`, die Bedeutung der Werte ist aber nicht
+bestätigt. Das Handset auf
 **WLAN-Band: 2.4G & 5G** lassen (es bevorzugt dann 5 GHz). Ein Handset mit
 nur einem Band geht offline, wenn die VoIP-SSID dieses Band nicht mehr
 ausstrahlt, und TalkOps kann es dann nicht mehr erreichen.

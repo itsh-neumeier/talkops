@@ -38,7 +38,7 @@ access point side (UniFi voice SSID). Stage 4b adds the handset side:
 | --- | --- | --- |
 | Roaming threshold | AX83H Wi-Fi Roaming Guide; AX83H Administrator's Manual (Wi-Fi section) | `static.network.wifi.roaming_threshold`, integer -100 to -30, default -70. Web UI: **Network > Wi-Fi > Roaming Signal Threshold**. |
 | 5 GHz preference | AX83H Wi-Fi Roaming Guide | "Prioritize 5GHz connection when operating in dual-band mode." |
-| Band parameter | AX83H Administrator's Manual | Not documented. The handset menu has "Wi-Fi Band (2.4G & 5G)". |
+| Band parameter | AX83H Administrator's Manual; configuration export of an AX83H (2026-10-23) | Not documented. The export shows `static.network.wifi.band.mode = 1` for a setting other than the factory value. The meaning of each value is not confirmed. |
 | `roam_lossrate_threshold`, `roam_aggressive.enable`, `wireless.channel_enable` | Yealink Wi-Fi Roaming Guide for MP66W | Documented only for the MP66W. Not used for AX handsets. |
 | Recommended signal at the handset | Yealink AX83H access point guidance | -67 dBm or better from the access point. |
 
@@ -180,9 +180,10 @@ and refuses an SSID band change that leaves a handset without a common band.
 
 ## Stage 0 on real hardware (open points)
 
-1. In the web UI of an AX83H, set **Wi-Fi Band** to each value, export the
-   configuration (**Settings > Configuration > Export**), and send the lines
-   that change (without passwords). This confirms the band parameter.
+1. Done in part (2026-10-23): a configuration export of an AX83H contains
+   `static.network.wifi.band.mode = 1`. An export lists only values that
+   differ from the factory value. Open: which band setting the value `1`
+   is, and the values of the other band settings.
 2. Check if `static.network.wifi.roaming_threshold` takes effect after
    `check-sync` without a reboot.
 3. Note the firmware version of the handset.

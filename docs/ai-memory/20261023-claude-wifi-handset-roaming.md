@@ -70,8 +70,14 @@ the band and the roaming setting. No Wi-Fi credentials.
 
 - Depends on PR #62 (stage 4a). Merge PR #62 first.
 - Migration ID: `20261108000002` (after `20261108000001` of PR #62).
-- Stage 0: band parameter name from an AX83H configuration export; effect of
-  the threshold after `check-sync` without reboot; firmware version.
+- Stage 0, band: an AX83H export (2026-10-23, user upload, not committed:
+  it contains the provisioning event key) shows
+  `static.network.wifi.band.mode = 1` (not the factory value). Open: which
+  band setting `1` is and the other values. Do not provision the band
+  before the mapping is confirmed: a wrong value can strand handsets.
+- Stage 0, other: effect of the threshold after `check-sync` without
+  reboot; firmware version. The export has no
+  `static.network.wifi.roaming_threshold` line, so the handset uses -70.
 
 ## Next action
 

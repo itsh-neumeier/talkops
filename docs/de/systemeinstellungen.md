@@ -12,7 +12,7 @@ bedeutet nicht, dass ein Dienst fehlt. Prüfe vor Rechtevergabe
 | Bereich | Berechtigung | Zweck und Anleitung |
 | --- | --- | --- |
 | Telefonie | `settings.manage` | Wahlregeln, Notruf-/Standardnummer, öffentliche IP, SIP-Adressen und Telefonzeitzone; [Trunks und Rufnummern](trunks-und-rufnummern.md). |
-| Anrufbehandlung | `settings.manage` | Aufzeichnung nach Richtung, Aufbewahrung, Transkription und Wartemusik; [Aufzeichnung](aufzeichnung.md), [Ansagen](ansagen.md). |
+| Anrufbehandlung | `settings.manage` | Aufzeichnung nach Richtung, Aufbewahrung, Transkription, Wartemusik und Tile-Server der Anrufkarte; [Aufzeichnung](aufzeichnung.md), [Ansagen](ansagen.md), [Anrufliste](anrufliste.md#karte). |
 | Transkriptionsverbindungen | `transcription.settings` unter Anrufbehandlung | Engines, Zwecke, Cloud-Verbindungen und API-Schlüssel; [Aufzeichnung](aufzeichnung.md). |
 | Voicemail | `voicemail.settings` | Standardsprache, Stimmen, Tempo und Systemtexte; [Voicemail](voicemail.md). |
 | E-Mail | `voicemail.settings` | SMTP, Design und Mailtexte; [E-Mail](e-mail.md). |
@@ -43,6 +43,37 @@ betreffen. Eine Telefonzeitzonenänderung kann einen Provisionierungsabruf
 benötigen; die Zeitanzeige im Browser ist davon getrennt.
 Aufzeichnung und Cloud-Transkription können den Speicherort von Gesprächsdaten
 ändern. Die Medienanleitungen erklären Zwecke und Zugriffe.
+
+## Tile-Server der Anrufkarte
+
+Die Anrufkarte (ADR 0044) arbeitet standardmäßig offline. Sie zeigt die
+mitgelieferten Ländergrenzen und sendet keine Anfrage an fremde Server. Ein
+Administrator kann einen Tile-Server für eine detaillierte Hintergrundkarte
+eintragen:
+
+1. Öffne **Einstellungen → Anrufbehandlung → Anrufkarte**.
+2. Trage die **Tile-Server-URL** ein, zum Beispiel
+   `https://tile.openstreetmap.org/{z}/{x}/{y}.png`. Die URL muss mit
+   `https://` beginnen und `{z}`, `{x}` und `{y}` enthalten. `{s}` als erster
+   Teil des Hosts wählt die Subdomains `a`, `b` und `c`. `{r}` ergänzt die
+   Endung für hochauflösende Bildschirme.
+3. Trage die **Quellenangabe** ein, die der Anbieter verlangt, zum Beispiel
+   `© OpenStreetMap-Mitwirkende`.
+4. Wähle **Speichern**.
+
+TalkOps erlaubt dann den Tile-Host in der Content Security Policy der
+Weboberfläche. Die Änderung gilt nach dem Neuladen der Seite. Das
+Audit-Log zeichnet jede Änderung auf. Für die Offline-Karte leere die URL
+und speichere.
+
+Externe Tiles senden die IP-Adresse jedes Browsers und den gezeigten
+Kartenausschnitt an den Tile-Server. Beachte die Nutzungsrichtlinie des
+Tile-Servers. Die OpenStreetMap-Tile-Server erlauben nur geringe Nutzung;
+nutze für regelmäßigen Betrieb einen eigenen Tile-Server oder einen
+kommerziellen Anbieter.
+
+`GET /api/v1/settings/call-map` liefert die Einstellung (alle angemeldeten
+Benutzer). `PUT /api/v1/settings/call-map` ändert sie (`settings.manage`).
 
 ## Speicherverbindung erstellen
 

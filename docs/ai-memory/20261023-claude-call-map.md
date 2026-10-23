@@ -5,11 +5,12 @@
 - Task ID: 20261023-claude-call-map
 - Date: 2026-10-23, Europe/Berlin
 - Tool: Claude Code
-- Status: In progress (PR 1 and PR 2 of 3 completed)
+- Status: Completed (3 PRs open; the release manager integrates them)
 - Branch: claude/affectionate-lamport-v5iw3a (PR 1),
-  claude/affectionate-lamport-v5iw3a-map-view (PR 2, stacked on PR 1)
+  claude/affectionate-lamport-v5iw3a-map-view (PR 2, stacked on PR 1),
+  claude/affectionate-lamport-v5iw3a-map-widget (PR 3, stacked on PR 2)
 - Base commit: a2478c8 (origin/main, TalkOps 1.8.7)
-- Related commits or PR: [itsh-neumeier/talkops#65](https://github.com/itsh-neumeier/talkops/pull/65) (PR 1); PR 2 pending
+- Related commits or PR: [itsh-neumeier/talkops#65](https://github.com/itsh-neumeier/talkops/pull/65) (PR 1), [itsh-neumeier/talkops#66](https://github.com/itsh-neumeier/talkops/pull/66) (PR 2); PR 3 pending
 
 ## Goal
 
@@ -27,7 +28,8 @@ prompt "Anrufkarte". Three PRs, one after the other:
 ## Result
 
 - PR 1: implemented, tested, pushed, PR #65 open.
-- PR 2: implemented and tested locally (see Changes, PR 2).
+- PR 2: implemented, tested, pushed, PR #66 open.
+- PR 3: implemented and tested locally (see Changes, PR 3).
 
 ## Changes
 
@@ -66,6 +68,24 @@ prompt "Anrufkarte". Three PRs, one after the other:
 - Tests: `web/tests/callMap.test.ts`, `tests/browser/call-map.mjs` (in CI).
 - Docs: `docs/en/call-log.md`, `docs/de/anrufliste.md` (section Map/Karte, API).
 
+### PR 3
+
+- `migrations/20261109000001_call_map_tiles.sql`: `tenant_settings.map_tile_url`,
+  `map_tile_attribution` (checks: `https://`, length).
+- `crates/talkops-core/src/settings.rs`: `MapTiles`, `get_map_tiles`, `set_map_tiles`.
+- `crates/talkops-api/src/routes/call_map.rs`: `GET/PUT /api/v1/settings/call-map`
+  (PUT: `settings.manage`, audit `call_map_tiles`), `tile_source()` validation.
+- `crates/talkops-api/src/lib.rs`: `map_tile_csp` middleware adds the tile host
+  to `img-src` of the CSP meta tag in `index.html`.
+- Web: `CallMapWidget.svelte` (dashboard, lazy, 1 h / 1 day, top 5),
+  `CallMapSettings.svelte` (settings → call handling), `#lib/calls/tiles.ts`,
+  `tileUrlProblem`, `topAreas` in `map.ts`, tile layer in `CallMap.svelte`.
+- Tests: Rust `tile_server_setting_is_validated_audited_and_allowed_by_the_page_policy`,
+  unit test `validates_tile_urls_and_derives_the_csp_source`, web unit tests,
+  browser checks for the widget and the tile layer in `call-map.mjs`.
+- Docs: `docs/en/system-settings.md`, `docs/de/systemeinstellungen.md`,
+  call log docs (dashboard, tiles), ADR 0044 (tile setting and CSP).
+
 ## Decisions
 
 - Data sources: BNetzA ONB GIS (2026-08-10) and area code list (DE), RTR
@@ -87,6 +107,13 @@ prompt "Anrufkarte". Three PRs, one after the other:
 - The popup link uses a rolling `range` and an `area` ID. The API resolves
   `area` to call IDs (same window limit) and filters the list with them.
 - Validation errors return 422, as everywhere in the API.
+- The tile setting has its own endpoint, so `PUT /api/v1/settings` cannot
+  clear it. It is in the settings section "Call handling" (`settings.manage`),
+  because the section "System" needs `diagnostics.manage`.
+- The CSP is a meta tag; the server patches `index.html` because a header
+  cannot extend the policy. Conditional requests are ignored for this
+  response so a cached page does not keep the old policy.
+- A tile server needs an attribution text.
 
 ## Checks
 
@@ -99,6 +126,10 @@ prompt "Anrufkarte". Three PRs, one after the other:
 - PR 2 bundle (uncompressed, measured in Chromium): `/calls` list view +13.5 KB JS,
   +2.4 KB CSS; dashboard +7 KB JS (i18n). The map view loads +179 KB JS and +15 KB CSS
   lazily, plus the 0.48 MB base map.
+- PR 3 passed: clippy, `cargo test -p talkops-api --test call_map`, `--lib call_map`,
+  web lint/check/test/build, browser tests `call-map` (widget, tile layer), `call-list`,
+  `layout`, `call-presentation`, `motion`, `active-calls`, `call-blocking`,
+  `settings-system`, `roles`.
 - Measured: data 2.7 MB, 19,584 areas, 81,687 prefixes; load 78 ms (release), 260 ms (debug).
 - STE review: manual review against `docs/documentation-style.md`; the full
   ASD-STE100 standard was not available.
@@ -106,11 +137,12 @@ prompt "Anrufkarte". Three PRs, one after the other:
 ## Dependencies and open work
 
 - No migration in PR 1.
-- Open: PR 3 (dashboard widget, tile URL).
+- Migration in PR 3: `20261109000001_call_map_tiles.sql`.
+- Merge order: #65, then PR 2, then PR 3 (stacked branches).
 
 ## Next action
 
-Continue with PR 3.
+Release manager: review and integrate the three PRs in order.
 
 ## References
 

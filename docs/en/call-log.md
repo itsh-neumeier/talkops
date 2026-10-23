@@ -112,6 +112,13 @@ their own extensions, users with `calls.view_all` see all calls. The map
 counts at most 50,000 calls. With more calls, a message shows that only the
 newest calls are counted.
 
+### Dashboard
+
+The dashboard card **Call origins** shows a small map of the last day (or
+the last hour) and the five areas with the most calls. It uses the same
+access rule. Click the map, an area or **Open map** to open the map view of
+the call log with the same range.
+
 ### Precision
 
 The map shows the area of the phone number, not the location of the caller:
@@ -136,6 +143,9 @@ shows these sources:
 - Natural Earth, public domain (country outlines)
 
 The administrator can update the data with `tools/geo/` (see ADR 0044).
+An administrator can also set a tile server for a detailed background map
+([system settings](system-settings.md#call-map-tile-server)). The browser
+then loads map tiles from that server.
 
 ## Load more
 

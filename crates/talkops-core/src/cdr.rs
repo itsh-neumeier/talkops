@@ -115,6 +115,10 @@ pub struct CdrQuery {
     pub sort: Option<String>,
     /// `desc` (default) or `asc`.
     pub order: Option<String>,
+    /// Call map area (`DE-951`, `DE-none`, `none`): only calls whose
+    /// external number is in this area. The API resolves it; the SQL
+    /// filters of this module ignore it.
+    pub area: Option<String>,
 }
 
 /// Restrictions that the API adds to a [`CdrQuery`]; not request parameters.
@@ -127,6 +131,8 @@ pub struct CdrScope {
     pub from_numbers: Vec<String>,
     /// External numbers whose phone book name matches `to`.
     pub to_numbers: Vec<String>,
+    /// Only these call records (map area filter). `None`: no restriction.
+    pub ids: Option<Vec<Uuid>>,
 }
 
 /// Hangup causes shown as "busy or declined" instead of "missed".
@@ -168,6 +174,11 @@ fn push_filters(
             .push(") OR cdr.dest_extension_id = ANY(")
             .push_bind(own.clone())
             .push("))");
+    }
+    if let Some(ids) = &scope.ids {
+        b.push(" AND cdr.id = ANY(")
+            .push_bind(ids.clone())
+            .push(")");
     }
     if let Some(s) = pattern(q.search.as_deref()) {
         b.push(" AND (cdr.caller_number ILIKE '%' || ")
@@ -294,6 +305,38 @@ pub async fn list_scoped<'e>(
     q: &CdrQuery,
     scope: &CdrScope,
 ) -> CoreResult<Vec<Cdr>> {
+    select(db, tenant, q, scope, q.limit.unwrap_or(100).clamp(1, 500)).await
+}
+
+/// Most call records that [`list_window`] returns at a time.
+pub const WINDOW_LIMIT: i64 = 50_000;
+
+/// Call records of a time window for an aggregation (call map), newest
+/// first, at most `limit` (up to [`WINDOW_LIMIT`]). The query filters work
+/// as in [`list_scoped`]; `offset`, `sort` and `order` are ignored.
+pub async fn list_window<'e>(
+    db: impl PgExecutor<'e>,
+    tenant: TenantId,
+    q: &CdrQuery,
+    scope: &CdrScope,
+    limit: i64,
+) -> CoreResult<Vec<Cdr>> {
+    let q = CdrQuery {
+        offset: None,
+        sort: None,
+        order: None,
+        ..q.clone()
+    };
+    select(db, tenant, &q, scope, limit.clamp(1, WINDOW_LIMIT)).await
+}
+
+async fn select<'e>(
+    db: impl PgExecutor<'e>,
+    tenant: TenantId,
+    q: &CdrQuery,
+    scope: &CdrScope,
+    limit: i64,
+) -> CoreResult<Vec<Cdr>> {
     let mut b = QueryBuilder::new(format!(
         "SELECT {}, (SELECT r.id FROM recordings r WHERE r.call_uuid = cdr.call_uuid) AS recording_id
          FROM cdr",
@@ -316,7 +359,7 @@ pub async fn list_scoped<'e>(
         _ => b.push(format!(" ORDER BY cdr.started_at {dir}, cdr.id")),
     };
     b.push(" LIMIT ")
-        .push_bind(q.limit.unwrap_or(100).clamp(1, 500))
+        .push_bind(limit)
         .push(" OFFSET ")
         .push_bind(q.offset.unwrap_or(0).max(0));
     Ok(b.build_query_as().fetch_all(db).await?)

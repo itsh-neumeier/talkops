@@ -6,6 +6,36 @@ All notable changes to TalkOps. The format follows
 
 ## [Unreleased]
 
+## [1.8.7] – 2026-10-23
+
+### Added
+
+- Apply Wi-Fi survey recommendations to the selected UniFi voice SSID after
+  a confirmed preview. Keep allowlist snapshots, an audit trail and rollback.
+  Write access is off by default. It needs UniFi Network 10.6.106 or later and
+  the new sensitive permission `unifi.write`.
+- Set the survey handset's roaming threshold for Yealink AX83H/AX86R. Store
+  the confirmed setting, send check-sync and show waiting until the phone
+  fetches its configuration. Support rollback to the earlier setting.
+- Check Wi-Fi handset bands before an SSID change removes a band. Refuse a
+  change that would disconnect a reported handset. Require named confirmation
+  for handsets that UniFi does not report.
+
+### Upgrade notes
+
+- Back up and apply migrations 20261108000001 and 20261108000002 in order.
+  Keep server and worker versions together and reload the UI.
+- UniFi writes need a selected voice SSID, the write switch, a valid connection
+  test and explicit confirmation. A write can disconnect SSID clients briefly.
+  TalkOps blocks changes during active surveys. Handset changes also need
+  `phones.manage`; they do not need the UniFi write switch.
+- Real UniFi console and AX handset acceptance remains pending. Confirm PUT
+  behavior, API-key rights, disconnect time and threshold activation with the
+  installed Network/firmware versions. Handset band provisioning and Wi-Fi
+  credentials are outside this release.
+- The live Wiki remains its separately published snapshot. This release updates
+  repository guide sources; it does not republish the Wiki.
+
 ## [1.8.6] – 2026-10-22
 
 ### Added

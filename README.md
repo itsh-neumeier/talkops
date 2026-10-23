@@ -42,14 +42,14 @@ and CPU according to the selected model.
 ## Quick start: new instance
 
 For an existing backup, read [recovery](docs/en/backup.md) before generating new
-credentials. These commands select the published 1.8.6 configuration and images.
+credentials. These commands select the published 1.8.7 configuration and images.
 Use the same Git release and image version together.
 
 ```sh
 mkdir talkops && cd talkops
-curl -fLO https://raw.githubusercontent.com/itsh-neumeier/talkops/v1.8.6/docker-compose.yml
-curl -fL -o .env https://raw.githubusercontent.com/itsh-neumeier/talkops/v1.8.6/.env.example
-sed -i 's/^TALKOPS_VERSION=.*/TALKOPS_VERSION=1.8.6/' .env
+curl -fLO https://raw.githubusercontent.com/itsh-neumeier/talkops/v1.8.7/docker-compose.yml
+curl -fL -o .env https://raw.githubusercontent.com/itsh-neumeier/talkops/v1.8.7/.env.example
+sed -i 's/^TALKOPS_VERSION=.*/TALKOPS_VERSION=1.8.7/' .env
 sed -i "s/^POSTGRES_PASSWORD=$/POSTGRES_PASSWORD=$(openssl rand -hex 16)/" .env
 sed -i "s/^TALKOPS_SECRET_KEY=$/TALKOPS_SECRET_KEY=$(openssl rand -hex 32)/" .env
 sed -i "s/^TALKOPS_ESL_PASSWORD=$/TALKOPS_ESL_PASSWORD=$(openssl rand -hex 16)/" .env

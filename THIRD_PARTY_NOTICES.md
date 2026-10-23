@@ -45,3 +45,26 @@ time and does not execute either PHP file.
 The independently authored `groundwire/groundwire/directory.json.jinja` file
 implements the public web contacts format. It uses the TalkOps project license.
 It is not a derivative of a FusionPBX template.
+
+# Call origin map data
+
+The files in `presets/geo/` and `web/static/map/countries.geojson` contain
+data from these sources (ADR 0044). The map in the web UI shows the same
+notices.
+
+- Local network areas of Germany: © Bundesnetzagentur. Source: ONB
+  boundaries and the area code list of the Bundesnetzagentur. Free use,
+  also in software and for third parties, with this copyright notice.
+- Local networks of Austria: Source: RTR-GmbH, RTR Open Data `rnOrtsnetze`.
+- Place coordinates and country data: GeoNames (https://www.geonames.org/),
+  licensed under Creative Commons Attribution 4.0
+  (https://creativecommons.org/licenses/by/4.0/). TalkOps uses selected
+  coordinates and names.
+- Number prefixes of other countries and mobile ranges: libphonenumber
+  (https://github.com/google/libphonenumber), Copyright The Libphonenumber
+  Authors, licensed under the Apache License, Version 2.0
+  (https://www.apache.org/licenses/LICENSE-2.0). TalkOps uses prefixes and
+  place names from `resources/geocoding/en` and prefixes from
+  `resources/carrier/en`, in a changed format.
+- Country outlines and label points: Natural Earth
+  (https://www.naturalearthdata.com/), public domain.

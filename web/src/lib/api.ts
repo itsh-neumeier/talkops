@@ -122,6 +122,7 @@ export type Permission =
 	| 'blocking.manage'
 	| 'blocking.allowlist'
 	| 'blocking.settings'
+	| 'dialing.manage'
 	| 'trunks.view'
 	| 'trunks.manage'
 	| 'phones.view'
@@ -214,6 +215,8 @@ export interface Extension {
 	record_calls: 'inherit' | 'always' | 'never';
 	/** Internal video calls (both sides need it). */
 	video_enabled: boolean;
+	/** Own dialing profile (ADR 0045); null: the default profile. */
+	dialing_profile_id?: string | null;
 }
 
 export type DeviceKind =

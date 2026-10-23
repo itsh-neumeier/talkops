@@ -5,6 +5,7 @@
 	import Tabs from '#lib/components/Tabs.svelte';
 	import Attendants from '#lib/components/routing/Attendants.svelte';
 	import CallBlocking from '#lib/components/routing/CallBlocking.svelte';
+	import DialingProfiles from '#lib/components/routing/DialingProfiles.svelte';
 	import Queues from '#lib/components/routing/Queues.svelte';
 	import RingGroups from '#lib/components/routing/RingGroups.svelte';
 	import TimeConditions from '#lib/components/routing/TimeConditions.svelte';
@@ -18,13 +19,16 @@
 		{ id: 'schedules', key: 'routing.schedules' },
 		{ id: 'menus', key: 'routing.menus' },
 		{ id: 'queues', key: 'routing.queues' },
-		{ id: 'blocking', key: 'routing.blocking' }
+		{ id: 'blocking', key: 'routing.blocking' },
+		{ id: 'dialing', key: 'routing.dialing' }
 	];
 	const tabs = $derived(
 		allTabs.filter((x) =>
 			x.id === 'blocking'
 				? can('blocking.manage') || can('blocking.allowlist')
-				: can('routing.view')
+				: x.id === 'dialing'
+					? can('dialing.manage')
+					: can('routing.view')
 		)
 	);
 	let tab = $state('groups');
@@ -71,6 +75,7 @@
 		{:else if tab === 'schedules'}<TimeConditions />
 		{:else if tab === 'menus'}<Attendants />
 		{:else if tab === 'blocking'}<CallBlocking />
+		{:else if tab === 'dialing'}<DialingProfiles />
 		{:else}<Queues />{/if}
 	{/if}
 </div>

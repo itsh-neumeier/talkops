@@ -134,8 +134,10 @@ export function callCategory(c: {
  * Checks a tile URL like the server: `https`, the placeholders `{z}`, `{x}`
  * and `{y}`, only known placeholders. Returns an error key or `''`.
  */
-export function tileUrlProblem(url: string): '' | 'https' | 'placeholders' | 'invalid' {
-	const value = url.trim();
+export function tileUrlProblem(
+	url: string | null | undefined
+): '' | 'https' | 'placeholders' | 'invalid' {
+	const value = (url ?? '').trim();
 	if (!value) return '';
 	if (!value.startsWith('https://')) return 'https';
 	if (!['{z}', '{x}', '{y}'].every((p) => value.includes(p))) return 'placeholders';

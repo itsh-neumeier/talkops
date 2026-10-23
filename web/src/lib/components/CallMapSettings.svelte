@@ -17,7 +17,8 @@
 
 	onMount(async () => {
 		try {
-			tiles = await api.get<MapTiles>('/settings/call-map');
+			const v = await api.get<Partial<MapTiles>>('/settings/call-map');
+			tiles = { tile_url: v?.tile_url ?? '', attribution: v?.attribution ?? '' };
 		} catch (err) {
 			error = errorMessage(err);
 		}

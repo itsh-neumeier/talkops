@@ -1,0 +1,45 @@
+# TalkOps call origin data, format 1
+# title: Switzerland, area codes
+# source: BAKOM/OFCOM, E.164 numbering plan of Switzerland (area codes 021 to 091); coordinates of the main place from GeoNames cities15000
+# license: Area codes: official numbering plan (facts). Coordinates: GeoNames, CC BY 4.0 (https://www.geonames.org/)
+# updated: 2026-10-23
+# maintained: by hand
+A	CH-21	CH	area	46.5160	6.6328	41 21	Lausanne
+P	4121	CH-21
+A	CH-22	CH	area	46.2022	6.1457	41 22	Genève
+P	4122	CH-22
+A	CH-24	CH	area	46.7785	6.6411	41 24	Yverdon-les-Bains / Aigle
+P	4124	CH-24
+A	CH-26	CH	area	46.8024	7.1513	41 26	Fribourg
+P	4126	CH-26
+A	CH-27	CH	area	46.2274	7.3556	41 27	Sion
+P	4127	CH-27
+A	CH-31	CH	area	46.9481	7.4474	41 31	Bern
+P	4131	CH-31
+A	CH-32	CH	area	47.1371	7.2461	41 32	Biel/Bienne / Neuchâtel / Solothurn
+P	4132	CH-32
+A	CH-33	CH	area	46.7512	7.6217	41 33	Thun
+P	4133	CH-33
+A	CH-34	CH	area	47.0590	7.6279	41 34	Burgdorf / Langnau i.E.
+P	4134	CH-34
+A	CH-41	CH	area	47.0505	8.3064	41 41	Luzern
+P	4141	CH-41
+A	CH-44	CH	area	47.3667	8.5500	41 44	Zürich
+P	4143	CH-44
+P	4144	CH-44
+A	CH-52	CH	area	47.5056	8.7241	41 52	Winterthur
+P	4152	CH-52
+A	CH-55	CH	area	47.2256	8.8223	41 55	Rapperswil
+P	4155	CH-55
+A	CH-56	CH	area	47.4733	8.3059	41 56	Baden
+P	4156	CH-56
+A	CH-61	CH	area	47.5584	7.5733	41 61	Basel
+P	4161	CH-61
+A	CH-62	CH	area	47.3500	7.9033	41 62	Olten
+P	4162	CH-62
+A	CH-71	CH	area	47.4239	9.3748	41 71	St. Gallen
+P	4171	CH-71
+A	CH-81	CH	area	46.8499	9.5329	41 81	Chur
+P	4181	CH-81
+A	CH-91	CH	area	46.1928	9.0170	41 91	Bellinzona / Lugano
+P	4191	CH-91

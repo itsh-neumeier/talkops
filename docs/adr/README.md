@@ -47,6 +47,7 @@ nächste freie Nummer; überholte ADRs werden nicht gelöscht, sondern auf
 | [0040](0040-fax-over-sip-and-mail-input.md) | Fax over SIP and mailbox input | Accepted |
 | [0041](0041-wifi-voice-survey-and-unifi-correlation.md) | Wi-Fi voice survey and read-only UniFi correlation | Accepted |
 | [0042](0042-unifi-voice-ssid-write-access.md) | Changes to the UniFi voice SSID through the official API | Accepted |
+| [0043](0043-wifi-handset-band-and-roaming.md) | Wi-Fi handset roaming threshold and band protection | Proposed |
 
 
 Vorlage: [`template.md`](template.md)

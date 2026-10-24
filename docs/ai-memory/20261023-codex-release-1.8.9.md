@@ -8,7 +8,7 @@
 - Status: In progress
 - Branch: codex/release-1.8.9
 - Base: efe4b79dd637119e130d7ff392d7dada98c014ae
-- Related PR: Pending
+- Related PR: https://github.com/itsh-neumeier/talkops/pull/71
 
 ## Goal and result
 
@@ -38,10 +38,16 @@ it is excluded and preserved.
 
 ## Checks
 
-- Source CI/E2E: all green. Combined candidate checks: pending.
-- Local: clean web installation/checks in progress. Full Linux/Rust/services,
+- Source and all 16 final candidate checks passed.
+- Local cargo fmt, clean npm ci, lint/check (zero errors/warnings), 68 tests/build
+  passed. Docs: 13 tests, 75 pages/670 links. Four Compose variants, provisioning
+  hashes/generators, version-only metadata, 55 unique ordered migrations (54 released
+  SQL files unchanged), 2,701 matching EN/DE keys/placeholders and ADR links passed.
+- Not run locally: full Linux/Rust/services,
   images and SIPp/browser stack use CI; no local Linux Docker daemon.
-- Manual integration review in progress. CodeRabbit CLI unavailable.
+- Manual integration review completed: rule/emergency checks, tenant/assignment
+  permissions/audit, fax/transfer contracts, XML marks, outbound block reasons,
+  lazy map layers and safe labels. CodeRabbit CLI unavailable.
 - STE clarity rules applied; full standard unavailable, full language review pending.
 
 ## Dependencies and open work
@@ -68,3 +74,17 @@ version/revision labels and 1.8/latest tags. Archive the final audit separately.
 - docs/ai-memory/20261023-codex-release-1.8.8.md
 - docs/adr/0045-outbound-dialing-permissions.md
 - docs/release-workflow.md
+
+## Merged checkpoint
+
+- Final candidate: 10de3668584099104145a92676d75e96f32d7fc2.
+- PR CI40029374266/E2E40029374212 and push CI40029313616/E2E40029313634 all passed.
+  Rust: 507 passed, one existing ignored model test. Web: 68 tests/17 browser suites.
+  DB/LDAP, recovery, image/storage/version smoke, G.711/T.38 fax and SIPp/softphone passed.
+  Server and worker displayed 1.8.9.
+- Resume on 2026-10-24: scope, main and source heads unchanged. Integration PR71
+  and both sources merged. Source PRs closed at 2026-10-24T05:13:04Z.
+- Main: 9f693914a9103c5f23ea35f65ca0220e6e1f5b28. Its tree equals the candidate;
+  both source heads are ancestors. Exact-main CI40065384349/E2E40065384379 running.
+- No tag pushed. Do not push the merged integration branch again. Archive later
+  task-only changes through audit/release-1.8.9 after publication.

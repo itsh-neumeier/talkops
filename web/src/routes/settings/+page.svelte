@@ -48,6 +48,17 @@
 	const tabParam = page.url.searchParams.get('tab');
 	let systemTab = $state<SystemTab>(isSystemTab(tabParam) ? tabParam : 'status');
 
+	// A link to another section (search result, browser history) while the
+	// page is open switches the section in place.
+	$effect(() => {
+		const wanted = page.url.searchParams.get('section');
+		const allowed = sections.filter((s) => sectionVisible(s));
+		const next = allowed.find((s) => s.id === wanted)?.id;
+		if (next && next !== section) section = next;
+		const tab = page.url.searchParams.get('tab');
+		if (isSystemTab(tab) && tab !== systemTab) systemTab = tab;
+	});
+
 	function syncUrl() {
 		const query = new URLSearchParams({ section });
 		if (section === 'system') query.set('tab', systemTab);

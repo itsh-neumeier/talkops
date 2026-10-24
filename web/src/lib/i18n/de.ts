@@ -715,6 +715,9 @@ const de: Record<keyof typeof en, string> = {
 	'settings.externalIp': 'Öffentliche IP für Trunks',
 	'settings.externalIpHint':
 		'Leer, eine IP-Adresse oder stun:host. Eine Änderung startet das Trunk-Profil neu.',
+	'settings.search.label': 'Einstellungen durchsuchen',
+	'settings.search.placeholder': 'Einstellungen durchsuchen',
+	'settings.search.none': 'Keine Einstellung gefunden.',
 	'settings.setup': 'Einrichtung',
 	'settings.section.telephony': 'Telefonie',
 	'settings.section.calls': 'Anrufbehandlung',

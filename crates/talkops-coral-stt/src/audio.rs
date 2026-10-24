@@ -46,8 +46,10 @@ pub fn decode_wav(bytes: &[u8]) -> Result<(Vec<f32>, u32), AudioError> {
 /// Little-endian PCM16 to `f32`.
 pub fn pcm16(bytes: &[u8]) -> Vec<f32> {
     bytes
-        .chunks_exact(2)
-        .map(|b| f32::from(i16::from_le_bytes([b[0], b[1]])) / 32768.0)
+        .as_chunks::<2>()
+        .0
+        .iter()
+        .map(|b| f32::from(i16::from_le_bytes(*b)) / 32768.0)
         .collect()
 }
 

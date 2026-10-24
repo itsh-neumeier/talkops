@@ -106,6 +106,32 @@ Vorlagen haben keinen Datei- oder Netzwerkzugriff und sind an Mandant und
 Modell gebunden. Für eine Wiederherstellung eine ältere Version wählen und
 erneut aktivieren. Eine Aktivierung sendet nicht automatisch Resync.
 
+## Netzwerkdaten der Telefone anzeigen
+
+Mit einer Verbindung zur Ubiquiti Networks API (siehe
+[WLAN-Begehung](wlan-begehung.md#ubiquiti-networks-api-verbinden)) kann die
+Telefonliste den Netzwerkzustand jedes provisionierten Telefons zeigen:
+
+1. **Einstellungen → WLAN-Begehung → Ubiquiti Networks API** öffnen.
+2. Unter **Telefone** die Option **Netzwerkdaten bei Telefonen anzeigen**
+   auswählen. Die Einstellung braucht die Berechtigung `unifi.manage`.
+
+Die Telefonliste hat dann die Spalte **Netzwerk**. Ein WLAN-Telefon zeigt
+Signal in dBm, Access Point, Band, Kanal und SSID. Ein Telefon am Kabel zeigt
+Switch, Port und Verbindungsgeschwindigkeit. „nicht verbunden“ bedeutet, dass
+die Konsole die MAC-Adresse des Telefons nicht meldet. Auf schmalen
+Bildschirmen ist die Spalte wie die anderen optionalen Spalten ausgeblendet.
+
+Die Seite jedes Telefons zeigt die Karte **Netzwerk** mit weiteren Werten:
+IP-Adresse, Netzwerk und VLAN, Verbindungsdauer, gesendete und empfangene
+Daten, Datenrate und den Qualitätswert von UniFi.
+
+TalkOps liest alle Clients mit einer Anfrage und ordnet sie über die
+MAC-Adresse den Telefonen zu. TalkOps verwendet eine Antwort 15 Sekunden lang
+wieder und liest alle 30 Sekunden neu, solange eine Telefonseite offen ist.
+TalkOps liest nur und ändert die Konsole nie. Benutzer mit `phones.view`
+sehen die Daten.
+
 ## Resync ohne Download untersuchen
 
 Resync sendet SIP NOTIFY. Das Ergebnis bestätigt noch keinen Konfigurationsabruf.

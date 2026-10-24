@@ -29,6 +29,8 @@ pub struct UnifiConnection {
     pub voice_wifi_name: Option<String>,
     /// "Allow write access" (ADR 0042); off by default.
     pub write_enabled: bool,
+    /// "Show network data on phones"; off by default.
+    pub phone_network: bool,
 }
 
 impl UnifiConnection {
@@ -104,7 +106,7 @@ pub fn check_api_key(key: &str) -> CoreResult<()> {
 }
 
 const COLUMNS: &str = "url, site, cert_sha256, version, capabilities, last_check_at, last_error,
-    voice_wifi_id, voice_wifi_name, write_enabled";
+    voice_wifi_id, voice_wifi_name, write_enabled, phone_network";
 
 pub async fn get(pool: &PgPool, tenant: TenantId) -> CoreResult<Option<UnifiConnection>> {
     let sql = format!("SELECT {COLUMNS} FROM unifi_connections WHERE tenant_id = $1");
@@ -203,6 +205,24 @@ pub async fn set_voice_wifi(
         .bind(wifi.map(|w| w.0))
         .bind(wifi.map(|w| w.1))
         .bind(write_enabled)
+        .fetch_optional(pool)
+        .await?
+        .ok_or(CoreError::NotFound)
+}
+
+/// Switches the network data of the phone list on or off.
+pub async fn set_phone_network(
+    pool: &PgPool,
+    tenant: TenantId,
+    enabled: bool,
+) -> CoreResult<UnifiConnection> {
+    let sql = format!(
+        "UPDATE unifi_connections SET phone_network = $2, updated_at = now()
+         WHERE tenant_id = $1 RETURNING {COLUMNS}"
+    );
+    sqlx::query_as(&sql)
+        .bind(tenant)
+        .bind(enabled)
         .fetch_optional(pool)
         .await?
         .ok_or(CoreError::NotFound)

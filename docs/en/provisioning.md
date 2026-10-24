@@ -100,6 +100,31 @@ output limits. Templates have no filesystem or network access. A template is
 scoped to its tenant and model. To restore an old version, select its revision
 and activate it again. Changing a template does not send a resync automatically.
 
+## Show network data of the phones
+
+With a connection to the Ubiquiti Networks API (see
+[Wi-Fi survey](wifi-survey.md#connect-the-ubiquiti-networks-api)), the phone
+list can show the network state of each provisioned phone:
+
+1. Open **Settings → Wi-Fi survey → Ubiquiti Networks API**.
+2. Under **Phones**, select **Show network data on phones**. The setting
+   needs the permission `unifi.manage`.
+
+The phone list then has the column **Network**. A Wi-Fi phone shows the
+signal in dBm, the access point, the band, the channel and the SSID. A wired
+phone shows the switch, the port and the link speed. "not connected" means
+that the console does not report the MAC address of the phone. On narrow
+screens, the column is hidden like the other optional columns.
+
+The page of each phone shows the card **Network** with more values: IP
+address, network and VLAN, connection time, data sent and received, data
+rate and the UniFi experience value.
+
+TalkOps reads all clients with one request and matches them to the phones by
+MAC address. TalkOps uses an answer again for 15 seconds and reads again each
+30 seconds while a phone page is open. TalkOps only reads and never changes
+the console. Users with `phones.view` see the data.
+
 ## Diagnose a resync that does not download
 
 Resync sends a SIP NOTIFY. The notification result does not prove that the

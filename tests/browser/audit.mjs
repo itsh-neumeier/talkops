@@ -69,7 +69,7 @@ try {
   q = a.queries.at(-1);
   assert.equal(q.get('sort'), 'user');
   assert.equal(q.get('order'), 'asc');
-  await a.page.getByLabel('Suche').fill('ext-1');
+  await a.page.getByRole('searchbox', { name: 'Suchen', exact: true }).fill('ext-1');
   await a.page.waitForTimeout(500);
   assert.equal(a.queries.at(-1).get('search'), 'ext-1');
   const csv = await a.page.getByRole('link', { name: /CSV/ }).getAttribute('href');

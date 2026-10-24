@@ -144,6 +144,47 @@ services:
       - sounds:/var/lib/talkops/sounds
       - models:/var/lib/talkops/models
 
+  # Optional speech recognition on a Google Coral Edge TPU in this server
+  # (ADR 0046). Enable with COMPOSE_PROFILES=coral, then add the connection
+  # "Coral (this server)" in Settings > Calls > Transcription. The service
+  # listens on 127.0.0.1 only: audio does not leave the server. Put the
+  # compiled models into the models volume (models/coral/{de,en,langid}).
+  coral-stt:
+    image: ghcr.io/itsh-neumeier/talkops-coral-stt:${TALKOPS_VERSION:-latest}
+    profiles: ["coral"]
+    restart: unless-stopped
+    network_mode: host
+    <<: *hardened
+    read_only: true
+    tmpfs:
+      - /tmp
+    environment:
+      TALKOPS_CORAL_LISTEN: 127.0.0.1:${TALKOPS_CORAL_PORT:-8095}
+      TALKOPS_CORAL_API_KEY: ${TALKOPS_CORAL_API_KEY:-}
+      TALKOPS_CORAL_QUEUE: ${TALKOPS_CORAL_QUEUE:-16}
+      TALKOPS_CORAL_SESSIONS_PER_TPU: ${TALKOPS_CORAL_SESSIONS_PER_TPU:-4}
+      TALKOPS_LOG_FORMAT: ${TALKOPS_LOG_FORMAT:-json}
+      RUST_LOG: ${RUST_LOG:-info}
+      TZ: ${TZ:-Europe/Berlin}
+    # USB Accelerator: the stick enumerates again after the firmware load,
+    # with a new device number. Bind the whole USB tree and allow all USB
+    # devices (character major 189), so the new node works without a
+    # container restart. The group must own the device on the host
+    # (plugdev, GID 46 on Debian, set by the libedgetpu udev rule).
+    volumes:
+      - models:/var/lib/talkops/models:ro
+      - /dev/bus/usb:/dev/bus/usb
+    device_cgroup_rules:
+      - "c 189:* rmw"
+    group_add:
+      - "${TALKOPS_CORAL_GID:-46}"
+    # M.2 / Mini PCIe card (gasket/apex driver): add the device and the GID
+    # of the host group "apex" instead of or in addition to USB, e.g.:
+    # devices:
+    #   - /dev/apex_0:/dev/apex_0
+    # group_add:
+    #   - "998"
+
   # Optional TURN relay for the browser softphone (media over one port, e.g.
   # from outside without VPN or through strict firewalls). Enable with
   # COMPOSE_PROFILES=turn and set TALKOPS_TURN_URLS, TALKOPS_TURN_SECRET and

@@ -32,7 +32,7 @@
 		/** Optional tile server (`https://…/{z}/{x}/{y}.png`); empty: offline base map. */
 		tileUrl?: string;
 		tileAttribution?: string;
-		/** Small map without zoom buttons (dashboard). */
+		/** Small map without mouse wheel zoom (dashboard). */
 		compact?: boolean;
 	} = $props();
 
@@ -41,7 +41,7 @@
 	let bubbles: LayerGroup | null = null;
 	let leaflet: typeof import('leaflet') | null = null;
 	let fitted = false;
-	/** State borders, water, places and ONB areas (not on the compact map). */
+	/** State borders, water, places and ONB areas. */
 	let detail: MapDetail | null = $state(null);
 	let failed = $state(false);
 
@@ -77,7 +77,9 @@
 					maxZoom: tileUrl ? 18 : OFFLINE_MAX_ZOOM,
 					zoomSnap: 0.5,
 					worldCopyJump: true,
-					zoomControl: !compact,
+					zoomControl: true,
+					// The dashboard card does not catch the page scroll.
+					scrollWheelZoom: !compact,
 					zoomAnimation: animate,
 					fadeAnimation: animate,
 					markerZoomAnimation: animate
@@ -109,15 +111,13 @@
 					}).addTo(m);
 				}
 				bubbles = L.layerGroup().addTo(m);
-				if (!compact) {
-					const { MapDetail } = await import('#lib/calls/mapDetail.ts');
-					if (disposed) return;
-					detail = new MapDetail(L, m, {
-						tiles: !!tileUrl,
-						dark: theme.dark,
-						locale: i18n.locale
-					});
-				}
+				const { MapDetail } = await import('#lib/calls/mapDetail.ts');
+				if (disposed) return;
+				detail = new MapDetail(L, m, {
+					tiles: !!tileUrl,
+					dark: theme.dark,
+					locale: i18n.locale
+				});
 				// The zoom level as data attribute (layout checks and browser tests).
 				const showZoom = () => el && (el.dataset.zoom = String(m.getZoom()));
 				m.on('zoomend', showZoom);
@@ -204,7 +204,7 @@
 			if (onselect) marker.on('click', () => onselect(a));
 			marker.addTo(bubbles);
 		}
-		if (!fitted && order.length && !compact) {
+		if (!fitted && order.length) {
 			fitted = true;
 			const bounds = L.latLngBounds(order.map(({ a }) => [a.lat!, a.lon!] as [number, number]));
 			m.fitBounds(bounds.pad(0.3), { maxZoom: 7, animate: false });

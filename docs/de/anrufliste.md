@@ -166,9 +166,12 @@ Ortsnetzbereiche und Blasen liegen dann über den Kacheln.
 
 Die Dashboard-Karte **Herkunft der Anrufe** zeigt eine kleine Karte des
 letzten Tages (oder der letzten Stunde) und die fünf Ortsnetze mit den
-meisten Anrufen. Sie nutzt dieselben Rechte. Ein Klick auf die Karte, ein
-Ortsnetz oder **Karte öffnen** öffnet die Kartenansicht der Anrufliste mit
-demselben Zeitraum.
+meisten Anrufen. Sie nutzt dieselben Rechte. Die Karte zoomt auf die Blasen
+und zeigt dieselben Details wie die Kartenansicht (Bundesländer, Gewässer,
+Orte, Ortsnetzbereiche). Zoome mit den Schaltflächen **+** und **−**; das
+Mausrad scrollt die Seite. Ein Klick auf eine Blase, ein Ortsnetz oder
+**Karte öffnen** öffnet die Kartenansicht der Anrufliste mit demselben
+Zeitraum.
 
 ### Genauigkeit
 

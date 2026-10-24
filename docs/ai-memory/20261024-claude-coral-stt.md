@@ -8,7 +8,7 @@
 - Status: Blocked at the Phase 0 gate. Measurements on Edge TPU hardware are pending.
 - Branch: claude/lucid-wright-lhtgr1
 - Base commit: 8f32ec7778ec7a147c09ac98c97c5f1a434e22cc (origin/main, release 1.8.10)
-- Related commits or PR: Pending (draft PR)
+- Related commits or PR: [PR 81](https://github.com/itsh-neumeier/talkops/pull/81) (draft)
 
 ## Goal
 

@@ -88,3 +88,13 @@ version/revision labels and 1.8/latest tags. Archive the final audit separately.
   both source heads are ancestors. Exact-main CI40065384349/E2E40065384379 running.
 - No tag pushed. Do not push the merged integration branch again. Archive later
   task-only changes through audit/release-1.8.9 after publication.
+
+## Publication started
+
+Exact-main CI40065384349 and E2E40065384379 passed before publication.
+Fresh guards verified unchanged main, both source ancestors, identical candidate
+and main trees, matching versions, only unchanged draft61 open and latest green gates.
+New annotated v1.8.9 was pushed once on 9f693914a9103c5f23ea35f65ca0220e6e1f5b28.
+Tag object: 5eab050fbc90607a1fd8159e44248b5ba26353c1.
+Release40066670895, tag CI40066670888/E2E40066670889 and FreeSWITCH40066670977
+are running. GitHub release and artifact verification pending.

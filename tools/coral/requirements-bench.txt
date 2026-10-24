@@ -1,0 +1,5 @@
+# Benchmark host (with the Coral device). Python 3.10-3.12 is safest: the
+# Edge TPU runtime packages lag behind new Python versions. Install
+# libedgetpu1-std (USB) or the gasket driver (PCIe) on the host first.
+numpy>=1.26,<3
+ai-edge-litert>=1.2,<2

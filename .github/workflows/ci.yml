@@ -35,6 +35,13 @@ jobs:
         run: sudo apt-get update -qq && sudo apt-get install -y python3-pil python3-reportlab poppler-utils fonts-dejavu-core
       - run: python3 -m unittest discover -s tests/fax -v
 
+  coral-tools:
+    name: Coral benchmark tools
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m unittest discover -s tools/coral/tests -v
+
   rust:
     name: Rust (fmt, clippy, test)
     runs-on: ubuntu-24.04

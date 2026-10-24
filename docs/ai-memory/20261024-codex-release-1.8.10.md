@@ -5,8 +5,8 @@
 - Task ID: 20261024-codex-release-1.8.10
 - Date: 2026-10-24, Europe/Berlin
 - Tool: Codex
-- Status: In progress
-- Branch: codex/release-1.8.10
+- Status: Completed
+- Branch: codex/release-1.8.10 (merged and removed)
 - Base: 9f693914a9103c5f23ea35f65ca0220e6e1f5b28
 - Related PR: https://github.com/itsh-neumeier/talkops/pull/79
 
@@ -70,9 +70,8 @@ deployment or Wiki publication is claimed. Preserve draft/unmerged branches.
 
 ## Next action
 
-Validate final candidate, merge, verify exact-main CI/E2E, push unused v1.8.10
-once and verify workflow, stable release, all three amd64/arm64 manifests,
-version/revision labels and 1.8/latest. Save the final audit separately.
+None for this release. The final record is archived under audit/release-1.8.10.
+Draft PR61, real-console acceptance and Wiki publication remain separate work.
 
 ## References
 
@@ -85,27 +84,45 @@ version/revision labels and 1.8/latest. Save the final audit separately.
 - docs/ai-memory/20261024-claude-side-panel.md
 - docs/ai-memory/20261023-codex-release-1.8.9.md
 - docs/release-workflow.md
+## Integration and publication
 
-## Merged checkpoint
+- Final candidate: 2735b53deeba235671f46c93b19d4a8f500afc8f. All 16 final checks passed.
+  PR CI 40085342807/E2E 40085342817; push CI 40085303591/E2E 40085303608.
+- Integration PR79 and all seven sources merged. PR74/78 were retargeted to main
+  after integration. Source heads stayed unchanged. Every source head is an ancestor.
+- Exact target: 8f32ec7778ec7a147c09ac98c97c5f1a434e22cc. Its tree equals the final candidate.
+  Exact-main CI 40086734382 and E2E 40086734353 passed before tagging.
+- Rust: 511 passed, one existing ignored model test. Web: 83 tests, 22 browser
+  suites. Docs: 13 tests. DB/LDAP, recovery, image/storage/version smoke,
+  G.711/T.38 received fax PDFs and SIPp/browser softphone passed.
+  Server and worker displayed 1.8.10. No final gate was waived.
+- New annotated v1.8.10 pushed once on the exact target. Tag object:
+  c996d8c33f3ee5385d5026fbf404c67059c3f532. No published tag moved.
+- Release workflow 40087924900 passed. Stable release published at
+  10/24/2026 11:05:24. Additional tag CI 40087924877,
+  E2E 40087924889 and FreeSWITCH 40087924926 passed.
+- Release: https://github.com/itsh-neumeier/talkops/releases/tag/v1.8.10
 
-- Final candidate: 2735b53deeba235671f46c93b19d4a8f500afc8f.
-- PR CI40085342807/E2E40085342817 and push CI40085303591/E2E40085303608 all passed.
-  Rust: 511 passed, one existing ignored model test. Web: 83 tests/22 browser suites.
-  Audit regression and all new browser suites passed. DB/LDAP, recovery, image/storage
-  smoke, G.711/T.38 fax and SIPp/softphone passed. Server/worker displayed 1.8.10.
-- PR74/#78 retargeted to main after integration. Integration79 and all seven sources
-  merged; source heads unchanged before merge. Source PRs closed at 10:38:47/48Z.
-- Main: 8f32ec7778ec7a147c09ac98c97c5f1a434e22cc. Its tree equals the candidate;
-  all seven source heads are ancestors. Exact-main CI40086734382/E2E40086734353 running.
-- No tag pushed. Do not push the merged release branch again. Archive later task-only
-  changes under audit/release-1.8.10 after publication.
+## Registry verification
 
-## Publication checkpoint
+Docker buildx imagetools verified all three versioned manifests and six configs.
+Every OCI version label equals v1.8.10; revision labels equal the exact target.
+Tags 1.8/latest have the same platform digests as 1.8.10.
 
-- Exact-main CI40086734382 and E2E40086734353 completed successfully.
-- Pushed new annotated tag v1.8.10 once. Tag object:
-  c996d8c33f3ee5385d5026fbf404c67059c3f532.
-  Peeled target: 8f32ec7778ec7a147c09ac98c97c5f1a434e22cc.
-- Release40087924900 builds all six image variants. Publication and registry
-  verification remain pending. Additional tag CI40087924877, E2E40087924889
-  and FreeSWITCH40087924926 are running. No competing release created.
+| Image | Platform | Digest |
+| --- | --- | --- |
+| talkops-server | amd64 | sha256:8e0c2a2d692032acfcca1c4bf69fc0bdf4d0825858c69bea9be3a2640a2dadc0 |
+| talkops-server | arm64 | sha256:2756ef807ce234a4bf06ddb0d5ef88ef940dc10d05d4f4cc96a32045775b5ea7 |
+| talkops-media-worker | amd64 | sha256:53f66c8a0856f2765c8b8de212aa8c839ed8820ede12c4af4a52bc206d7a16d2 |
+| talkops-media-worker | arm64 | sha256:a5137b471f8b5b9b47b5d8b54c65fcbae2c3f7d9b87643dc7c920ba04c23c7f8 |
+| talkops-freeswitch | amd64 | sha256:7032ec627a88d1613dcf70c3e28133889878fe498189015d661132e63ba8e3c1 |
+| talkops-freeswitch | arm64 | sha256:d0005b2f315e783fc5143f453018e32a56d3842013ca4550417c399b4e4ec72f |
+
+## Cleanup and audit
+
+Removed the seven unchanged merged source branches and codex/release-1.8.10
+with atomic expected-head guards. Preserve draft PR61 at its recorded head,
+closed unmerged PR36 branch claude/vigilant-tesla-ef0027 and development-prompt
+branch claude/charming-bell-fh6q3y. Foreign worktrees and primary files untouched.
+Only this task record differs from the released target in the separate audit.
+Do not push the merged integration branch again. This audit changes no product code.

@@ -8,7 +8,7 @@
 - Status: In progress
 - Branch: codex/release-1.8.10
 - Base: 9f693914a9103c5f23ea35f65ca0220e6e1f5b28
-- Related PR: Pending
+- Related PR: https://github.com/itsh-neumeier/talkops/pull/79
 
 ## Goal and result
 
@@ -45,8 +45,15 @@ it is excluded and preserved. None of the selected source heads was in main.
 ## Checks
 
 - Six sources have 16 green checks. PR76 has two failed web jobs; the cause is
-  corrected in integration. All final candidate/combined checks still pending.
-- Manual integration review and local clean web/browser checks in progress.
+  corrected in integration. All 16 final candidate checks passed.
+- Local fmt, clean npm ci, lint/check (zero errors/warnings), 83 tests/build passed.
+  Docs: 13 tests, 75 pages/672 links. Four Compose variants, provisioning checks,
+  version-only metadata, 56 unique ordered migrations (55 released files unchanged),
+  2,770 matching EN/DE keys/placeholders, ADR links and 22 suite registrations passed.
+- Local hidden preview launch rejected by automatic approval review (blocked by policy).
+  No local browser suite ran. Final CI supplied all 22 browser-suite results.
+- Manual review completed: default-off read-only network requests, permissions/tenant
+  cache/audit, API/UI contracts, panel actions, search visibility and chart/list/map coexistence.
 - Full Linux/Rust/services, images and SIPp stack use CI; no local Linux Docker daemon.
 - CodeRabbit CLI unavailable. STE clarity rules applied; full standard unavailable,
   full language review pending.
@@ -78,3 +85,17 @@ version/revision labels and 1.8/latest. Save the final audit separately.
 - docs/ai-memory/20261024-claude-side-panel.md
 - docs/ai-memory/20261023-codex-release-1.8.9.md
 - docs/release-workflow.md
+
+## Merged checkpoint
+
+- Final candidate: 2735b53deeba235671f46c93b19d4a8f500afc8f.
+- PR CI40085342807/E2E40085342817 and push CI40085303591/E2E40085303608 all passed.
+  Rust: 511 passed, one existing ignored model test. Web: 83 tests/22 browser suites.
+  Audit regression and all new browser suites passed. DB/LDAP, recovery, image/storage
+  smoke, G.711/T.38 fax and SIPp/softphone passed. Server/worker displayed 1.8.10.
+- PR74/#78 retargeted to main after integration. Integration79 and all seven sources
+  merged; source heads unchanged before merge. Source PRs closed at 10:38:47/48Z.
+- Main: 8f32ec7778ec7a147c09ac98c97c5f1a434e22cc. Its tree equals the candidate;
+  all seven source heads are ancestors. Exact-main CI40086734382/E2E40086734353 running.
+- No tag pushed. Do not push the merged release branch again. Archive later task-only
+  changes under audit/release-1.8.10 after publication.

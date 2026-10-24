@@ -13,6 +13,8 @@
 	--header-h: 3.5rem;
 	/* Width of the side panel on wide screens (SidePanel.svelte). */
 	--side-panel-w: 26rem;
+	/* Height of the fixed footer (AppFooter.svelte). */
+	--footer-h: 2rem;
 	--scrollbar-thumb: var(--color-slate-300);
 	--scrollbar-thumb-hover: var(--color-slate-400);
 	--surface-page: var(--color-slate-50);

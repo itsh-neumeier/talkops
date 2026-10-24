@@ -68,6 +68,13 @@ tablets and desktops.
 - Show `SkeletonRows.svelte` while a list loads. Show `EmptyRow.svelte`
   when a loaded list has no entries.
 
+## Footer
+
+The root layout shows `AppFooter.svelte` for signed-in users. It is fixed at
+the bottom with the height `--footer-h` (`app.css`). Fixed or sticky
+elements at the bottom must stay above it, for example with
+`bottom-[calc(var(--footer-h)+1rem)]`. Do not add a separate page footer.
+
 ## Side panel
 
 List pages for phones, extensions and users show details in a side panel,

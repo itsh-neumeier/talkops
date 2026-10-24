@@ -6,6 +6,42 @@ All notable changes to TalkOps. The format follows
 
 ## [Unreleased]
 
+## [1.8.10] – 2026-10-24
+
+### Added
+
+- Show phone, extension and user details in side panels beside the list.
+  Add common actions and a searchable phone reassignment dialog. Keep full
+  settings pages and existing links available.
+- Add optional phone network data from the Ubiquiti Networks API. Show Wi-Fi
+  signal, access point, band and channel, or wired switch, port and link speed.
+  The switch is off by default; TalkOps reads the console only when enabled.
+- Add a permission-filtered settings search with keyboard controls, translated
+  labels and synonyms, direct navigation and a highlighted target card.
+- Add dashboard KPI trends, sparklines and answer-rate rings. Improve charts
+  with tooltips, series toggles and smooth areas for week/month views.
+
+### Changed
+
+- Name the connection "Ubiquiti Networks API" in the UI and guides. Keep API
+  paths, permissions, tables and identifiers unchanged.
+- Show three dashboard call entries with expand controls. Keep ringing calls visible.
+- Show map detail layers and zoom controls in the dashboard call-origins card.
+  Keep mouse-wheel page scrolling and offline defaults.
+- Keep all 22 browser suites after integration. Make the audit search test
+  distinguish its searchbox from the new settings-search combobox.
+
+### Upgrade notes
+
+- Back up and apply migration 20261111000001_unifi_phone_network. Keep server
+  and worker versions together and reload the UI.
+- To show phone network data, enable the new switch in the Ubiquiti Networks API
+  settings. It needs unifi.manage; reading phone data needs phones.view.
+  The answer is cached for 15 seconds; phone details refresh every 30 seconds.
+- Real-console acceptance of phone network data is pending. Mock-console tests
+  and browser checks do not certify a specific console or firmware version.
+- This release updates repository guide sources. It does not republish the Wiki.
+
 ## [1.8.9] – 2026-10-23
 
 ### Added

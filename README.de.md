@@ -45,14 +45,14 @@ Modell zusätzlichen Arbeitsspeicher und CPU.
 
 Lies bei einem vorhandenen Backup zuerst die [Wiederherstellung](docs/de/datensicherung.md),
 bevor du neue Zugangsdaten erzeugst. Diese Befehle wählen Konfiguration und
-Images des veröffentlichten Stands 1.8.9. Nutze Git-Release und Image-Version
+Images des veröffentlichten Stands 1.8.10. Nutze Git-Release und Image-Version
 immer passend zueinander.
 
 ```sh
 mkdir talkops && cd talkops
-curl -fLO https://raw.githubusercontent.com/itsh-neumeier/talkops/v1.8.9/docker-compose.yml
-curl -fL -o .env https://raw.githubusercontent.com/itsh-neumeier/talkops/v1.8.9/.env.example
-sed -i 's/^TALKOPS_VERSION=.*/TALKOPS_VERSION=1.8.9/' .env
+curl -fLO https://raw.githubusercontent.com/itsh-neumeier/talkops/v1.8.10/docker-compose.yml
+curl -fL -o .env https://raw.githubusercontent.com/itsh-neumeier/talkops/v1.8.10/.env.example
+sed -i 's/^TALKOPS_VERSION=.*/TALKOPS_VERSION=1.8.10/' .env
 sed -i "s/^POSTGRES_PASSWORD=$/POSTGRES_PASSWORD=$(openssl rand -hex 16)/" .env
 sed -i "s/^TALKOPS_SECRET_KEY=$/TALKOPS_SECRET_KEY=$(openssl rand -hex 32)/" .env
 sed -i "s/^TALKOPS_ESL_PASSWORD=$/TALKOPS_ESL_PASSWORD=$(openssl rand -hex 16)/" .env

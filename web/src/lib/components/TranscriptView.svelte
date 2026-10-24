@@ -27,6 +27,8 @@
 
 	const time = (s: number) =>
 		`${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+	/** Lines name their language only when Coral detected it (ADR 0046). */
+	const detected = $derived(transcript?.segments.some((s) => s.language) ?? false);
 </script>
 
 <div class="text-sm">
@@ -54,7 +56,12 @@
 							>{t(seg.speaker === 'caller' ? 'rec.speaker.caller' : 'rec.speaker.called')}</span
 						>
 					{/if}
-					<span>{seg.text}</span>
+					<span
+						>{seg.text}{#if seg.language && seg.language !== transcript.language}<span
+								class="badge badge-muted ml-1 align-middle uppercase"
+								data-testid="segment-language">{seg.language}</span
+							>{/if}</span
+					>
 				</li>
 			{/each}
 		</ul>
@@ -65,6 +72,16 @@
 				>{/if}
 			{t('rec.transcriptHint')}
 			{#if transcript.engine}<span class="font-mono">({transcript.engine})</span>{/if}
+			{#if detected}<span data-testid="transcript-language"
+					>· {t('rec.language', { language: transcript.language.toUpperCase() })}</span
+				>{/if}
 		</p>
+		{#if transcript.fallback_from}
+			<p class="hint mt-1" data-testid="transcript-fallback">
+				<span class="badge badge-warn mr-1">{t('stt.fallback')}</span>{t('rec.fallback', {
+					engine: transcript.fallback_from
+				})}
+			</p>
+		{/if}
 	{/if}
 </div>

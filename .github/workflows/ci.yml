@@ -139,6 +139,7 @@ jobs:
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/dashboard-charts.mjs
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/layout.mjs
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/transcription-settings.mjs
+          PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/coral-transcription.mjs
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/roles.mjs
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/settings-system.mjs
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/phone-network.mjs

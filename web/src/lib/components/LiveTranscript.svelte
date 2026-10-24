@@ -39,7 +39,9 @@
 				const key = `${segment.speaker}:${segment.start}:${segment.end}`;
 				// Streamed text grows while times stay the same.
 				const old = previous.get(key);
-				return old ? { ...old, text: segment.text } : { ...segment, key, animate: !first };
+				return old
+					? { ...old, text: segment.text, language: segment.language }
+					: { ...segment, key, animate: !first };
 			});
 			preview = result;
 			first = false;
@@ -92,6 +94,12 @@
 	{#if error}<p role="alert" class="mb-3 text-sm text-red-600 dark:text-red-400">
 			{t('dash.live.error')}
 		</p>{/if}
+	{#if preview?.fallback_from && !error}<p
+			class="mb-3 text-sm text-amber-800 dark:text-amber-300"
+			data-testid="live-fallback"
+		>
+			{t('dash.live.fallback')}
+		</p>{/if}
 	<p class="mb-3 text-xs text-slate-500 dark:text-slate-400" role="status">
 		{ended || stopped
 			? t('dash.live.ended')
@@ -111,7 +119,12 @@
 							? call.called.name || call.called.number
 							: call.caller.name || call.caller.number}</span
 					>
-					<time>{time(row.start)}</time>
+					<span
+						>{#if row.language}<span
+								class="badge badge-muted mr-1 uppercase"
+								data-testid="live-language">{row.language}</span
+							>{/if}<time>{time(row.start)}</time></span
+					>
 				</div>
 				<p class="break-words text-sm"><TypedText text={row.text} animate={row.animate} /></p>
 			</li>

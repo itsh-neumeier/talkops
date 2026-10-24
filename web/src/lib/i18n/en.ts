@@ -2660,15 +2660,15 @@ export default {
 	'perm.wifi_survey.manage': 'Manage Wi-Fi surveys',
 	'perm.wifi_survey.manage.hint':
 		'Read all surveys, change thresholds and retention, delete surveys.',
-	'perm.unifi.manage': 'Manage UniFi connection',
+	'perm.unifi.manage': 'Manage the Ubiquiti Networks API connection',
 	'perm.unifi.manage.hint':
-		'Store the UniFi API key, test the connection, select the voice SSID and read change proposals and the change history.',
+		'Store the Ubiquiti Networks API key, test the connection, select the voice SSID and read change proposals and the change history.',
 	'wifi.title': 'Wi-Fi survey',
 	'wifi.intro':
-		'Walk the site with a Wi-Fi handset. TalkOps measures the voice stream each second, records the call and rates each roam with data from UniFi.',
+		'Walk the site with a Wi-Fi handset. TalkOps measures the voice stream each second, records the call and rates each roam with data from the Ubiquiti Networks API.',
 	'wifi.tabSurveys': 'Surveys',
 	'wifi.tabSettings': 'Settings',
-	'wifi.tabUnifi': 'UniFi',
+	'wifi.tabUnifi': 'Ubiquiti Networks API',
 	'wifi.start': 'Start survey',
 	'wifi.startShort': 'Wi-Fi survey',
 	'wifi.startNow': 'Start',
@@ -2706,17 +2706,19 @@ export default {
 	'wifi.rating.bad': 'Bad',
 	'wifi.device': 'Wi-Fi device',
 	'wifi.mac': 'MAC address',
-	'wifi.noMac': 'none (device is not on a provisioned phone; no UniFi data)',
-	'wifi.unifiConnected': 'UniFi: connected to {ap} · {band} · channel {channel} · {rssi} dBm',
+	'wifi.noMac':
+		'none (device is not on a provisioned phone; no data from the Ubiquiti Networks API)',
+	'wifi.unifiConnected':
+		'Ubiquiti Networks API: connected to {ap} · {band} · channel {channel} · {rssi} dBm',
 	'wifi.unifiState.not_configured':
-		'UniFi is not connected. The survey measures the voice stream only, without access point data.',
+		'The Ubiquiti Networks API is not connected. The survey measures the voice stream only, without access point data.',
 	'wifi.unifiState.no_mac':
 		'The device has no MAC address. The survey measures the voice stream only.',
 	'wifi.unifiState.not_found':
-		'UniFi does not see the handset at the moment. Check that it is connected to the Wi-Fi.',
+		'The Ubiquiti Networks API does not report the handset at the moment. Check that it is connected to the Wi-Fi.',
 	'wifi.unifiState.error':
-		'UniFi cannot be read. Check the connection under Settings → Wi-Fi survey → UniFi.',
-	'wifi.unifiState.connected': 'UniFi: connected',
+		'The Ubiquiti Networks API cannot be read. Check the connection under Settings → Wi-Fi survey → Ubiquiti Networks API.',
+	'wifi.unifiState.connected': 'Ubiquiti Networks API: connected',
 	'wifi.mode': 'Start',
 	'wifi.modeOriginate': 'TalkOps calls the handset now',
 	'wifi.modeSelfDial': 'I dial *39 from the handset (within 10 minutes)',
@@ -2760,7 +2762,7 @@ export default {
 	'wifi.soundAlert': 'Sound on red',
 	'wifi.events': 'Events',
 	'wifi.noEvents': 'No events yet.',
-	'wifi.radioError': 'UniFi: {error}',
+	'wifi.radioError': 'Ubiquiti Networks API: {error}',
 	'wifi.chartLabel': 'Timeline of RSSI, access points, loss, roams and markers',
 	'wifi.errorPeriod': 'Loss period (FreeSWITCH)',
 	'wifi.legend.rssi': 'RSSI (dBm)',
@@ -2802,7 +2804,8 @@ export default {
 		'The handset lost packets from TalkOps (up to {loss_pct} %) while the uplink was clean. Check the transmit power and interference on the access point channel.',
 	'wifi.rec.band_5ghz':
 		'Loss occurred on 2.4 GHz. Use 5 GHz for the voice SSID or enable band steering.',
-	'wifi.rec.connect_unifi': 'Connect UniFi to see access points, signal and roams in the result.',
+	'wifi.rec.connect_unifi':
+		'Connect the Ubiquiti Networks API to see access points, signal and roams in the result.',
 	'wifi.rec.voice_ssid':
 		'General checks for the voice SSID: DTIM 1 to 2, minimum data rate at least 12 Mbit/s, WMM on, DSCP EF (46) for RTP on the handset.',
 	'wifi.recordingHint':
@@ -2810,7 +2813,7 @@ export default {
 	'wifi.roamTable': 'Roams',
 	'wifi.play': 'Play',
 	'wifi.noRoams': 'No roams.',
-	'wifi.noRadio': 'No UniFi data: roams cannot be detected.',
+	'wifi.noRadio': 'No data from the Ubiquiti Networks API: roams cannot be detected.',
 	'wifi.flag.band_change': 'band change',
 	'wifi.flag.pingpong': 'ping-pong',
 	'wifi.flag.sticky_before': 'sticky before',
@@ -2822,7 +2825,7 @@ export default {
 	'wifi.pattern.weak_coverage': 'Weak coverage',
 	'wifi.pattern.vad_suspected': 'Silence suppression (VAD)',
 	'wifi.stickyHint':
-		'UniFi does not report the signal of other access points for a client. "Sticky client" shows that a better access point was probably available.',
+		'The Ubiquiti Networks API does not report the signal of other access points for a client. "Sticky client" shows that a better access point was probably available.',
 	'wifi.aps': 'Access points',
 	'wifi.noMarkers': 'No markers.',
 	'wifi.reanalyse': 'Analyse again',
@@ -2845,7 +2848,7 @@ export default {
 		'Survey data, location markers and the survey recording are deleted after this period.',
 	'wifi.settings.reanalyseHint':
 		'New thresholds apply to new surveys. "Analyse again" on a survey applies them to old surveys.',
-	'wifi.unifi.title': 'UniFi Network connection',
+	'wifi.unifi.title': 'Ubiquiti Networks API',
 	'wifi.unifi.intro':
 		'TalkOps reads the access point, band, channel, signal and data rate of the survey handset. Without "Allow write access", TalkOps only reads and never changes the UniFi configuration.',
 	'wifi.unifi.url': 'Console address',
@@ -2861,7 +2864,7 @@ export default {
 	'wifi.unifi.certHint':
 		'UniFi consoles usually have a self-signed certificate. TalkOps then accepts exactly this certificate.',
 	'wifi.unifi.test': 'Test connection',
-	'wifi.unifi.confirmDelete': 'Remove the UniFi connection and its API key?',
+	'wifi.unifi.confirmDelete': 'Remove the Ubiquiti Networks API connection and its API key?',
 	'wifi.unifi.status': 'Connection state',
 	'wifi.unifi.lastCheck': 'Last test',
 	'wifi.unifi.version': 'Network version',
@@ -2872,7 +2875,7 @@ export default {
 	'wifi.unifi.unavailable': 'not available',
 	'wifi.unifi.noClassic':
 		'The client values are not available. The survey then has no signal, channel or data rate. Check the version table in the user guide.',
-	'perm.unifi.write': 'Change the UniFi voice SSID',
+	'perm.unifi.write': 'Change the voice SSID through the Ubiquiti Networks API',
 	'perm.unifi.write.hint':
 		'Switch on write access, apply survey recommendations to the voice SSID and the roaming threshold of the survey handset (with Manage phones), and roll changes back.',
 	'wifi.tabChanges': 'Wi-Fi changes',
@@ -2911,7 +2914,7 @@ export default {
 	'unifiWrite.hint.fast_roaming_80211r':
 		'Fast roaming (802.11r) is off. Switch it on in UniFi if all handsets support it. Some older clients cannot connect with 802.11r.',
 	'unifiWrite.hint.fast_roaming_80211k':
-		'802.11k (neighbor reports) has no setting in the UniFi API. Check it in UniFi.',
+		'802.11k (neighbor reports) has no setting in the Ubiquiti Networks API. Check it in UniFi.',
 	'unifiWrite.hint.min_data_rate':
 		'Minimum data rate: a higher rate can shorten roams, but affects all clients. Check it in UniFi.',
 	'unifiWrite.hint.tx_power':
@@ -2930,11 +2933,13 @@ export default {
 	'unifiWrite.newSurvey': 'Start a new survey for comparison',
 	'unifiWrite.openHistory': 'Change history',
 	'unifiWrite.err.write_disabled':
-		'Write access to UniFi is off. Switch it on under Wi-Fi survey → UniFi.',
-	'unifiWrite.err.permission': 'You do not have the permission “Change the UniFi voice SSID”.',
+		'Write access through the Ubiquiti Networks API is off. Switch it on under Wi-Fi survey → Ubiquiti Networks API.',
+	'unifiWrite.err.permission':
+		'You do not have the permission “Change the voice SSID through the Ubiquiti Networks API”.',
 	'unifiWrite.err.version_unsupported':
 		'Writes need UniFi Network 10.6.106 or later. Run the connection test.',
-	'unifiWrite.err.no_voice_ssid': 'Select the voice SSID under Wi-Fi survey → UniFi.',
+	'unifiWrite.err.no_voice_ssid':
+		'Select the voice SSID under Wi-Fi survey → Ubiquiti Networks API.',
 	'unifiWrite.err.survey_active':
 		'A Wi-Fi survey is active. TalkOps does not write during a survey.',
 	'unifiWrite.err.change_in_progress': 'Another change is in progress.',
@@ -2947,7 +2952,7 @@ export default {
 		'UniFi did not return the SSID password. A full update would remove it, so TalkOps does not write.',
 	'unifiWrite.err.not_revertible': 'This change cannot be rolled back.',
 	'unifiWrite.err.unifi_forbidden':
-		'The UniFi API key may read but not write. Use a key of an administrator with write rights.',
+		'The Ubiquiti Networks API key may read but not write. Use a key of an administrator with write rights.',
 	'unifiWrite.err.verify_mismatch': 'UniFi did not apply all values. Check the change history.',
 	'unifiWrite.voiceTitle': 'Voice SSID and write access',
 	'unifiWrite.voiceIntro':
@@ -2959,7 +2964,7 @@ export default {
 	'unifiWrite.central': 'managed centrally',
 	'unifiWrite.writeSwitch': 'Allow write access',
 	'unifiWrite.writeHint':
-		'TalkOps then changes only the listed settings of this SSID through the official UniFi Network API, and only after a confirmation. Each change disconnects the clients of the SSID for a short time.',
+		'TalkOps then changes only the listed settings of this SSID through the Ubiquiti Networks API, and only after a confirmation. Each change disconnects the clients of the SSID for a short time.',
 	'unifiWrite.writeVersion': 'Writes need UniFi Network {min} or later. This console: {version}.',
 	'unifiWrite.cap.wifiBroadcasts': 'SSID list (wifi/broadcasts)',
 	'unifiWrite.cap.voiceWifi': 'Voice SSID',
@@ -3013,14 +3018,14 @@ export default {
 	'unifiWrite.bandNoHandsets': 'No provisioned Wi-Fi handsets.',
 	'unifiWrite.band.ok': 'OK',
 	'unifiWrite.band.blocked': 'uses the removed band',
-	'unifiWrite.band.unknown': 'not reported by UniFi',
+	'unifiWrite.band.unknown': 'not reported by the Ubiquiti Networks API',
 	'unifiWrite.bandConfirm': 'I checked that {name} can use the remaining bands.',
 	'unifiWrite.targetHandset': 'Handset',
 	'unifiWrite.state.waiting': 'waiting for handset',
 	'unifiWrite.err.handset_band':
 		'A Wi-Fi handset is connected on the band that the change removes. It would lose the voice SSID.',
 	'unifiWrite.err.handset_unknown':
-		'UniFi does not report every Wi-Fi handset. Confirm each one by name.',
+		'The Ubiquiti Networks API does not report every Wi-Fi handset. Confirm each one by name.',
 	'unifiWrite.err.handset_changed':
 		'The handset setting changed since the proposal. Open the proposal again.',
 	'unifiWrite.err.not_wifi_handset':

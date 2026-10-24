@@ -19,6 +19,11 @@ TalkOps images do not contain these tools.
 | `bench_live.py` | Live preview: N calls, segment latency, backlog, CPU | `requirements-bench.txt` |
 | `gate_report.py` | Gate evaluation and result tables in the report | Python only |
 | `probe/` | Rust check of the safe `edgefirst-tflite` delegate path | Rust, TFLite C library |
+
+The service `coral-stt` (`crates/talkops-coral-stt`) uses the same front
+end, windows and CTC decoding as these tools. Its test
+`cargo test -p talkops-coral-stt --test tflite -- --ignored` runs real
+models on the CPU or the TPU (see the test header).
 | `coraltools/` | Shared modules | see the module comments |
 | `tests/` | Unit tests | Python (numpy for some tests) |
 
@@ -76,6 +81,21 @@ done
 
 `onnx2tf` can need extra packages (`onnx_graphsurgeon`, `sng4onnx`,
 `onnxsim`); its error message names them. Record `pip freeze` with the models.
+
+For production, also compile the three models in one compiler call
+(co-compilation), so one TPU caches the parameters of all of them. Then
+copy each `*_edgetpu.tflite` with its `model.json` into the models volume
+of `coral-stt` (`models/coral/{de,en,langid}/model_edgetpu.tflite`):
+
+```sh
+mkdir -p ~/coral-work/cocompiled && cd ~/coral-work/cocompiled
+for m in de en langid; do cp ../models/$m/model.tflite $m.tflite; done
+edgetpu_compiler -s de.tflite en.tflite langid.tflite
+for m in de en langid; do cp ${m}_edgetpu.tflite ../models/$m/model_edgetpu.tflite; done
+```
+
+The compiler names each output after its input (`de_edgetpu.tflite`); the
+inputs need different names.
 
 ### 4. Measure
 

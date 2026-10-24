@@ -1,11 +1,14 @@
 # Coral Edge TPU speech recognition: Phase 0 benchmark
 
-- Status: **Tools ready. Measurements pending. Gate not evaluated.**
+- Status: **Tools ready. Measurements pending. Gate not evaluated.** On
+  2026-10-24 the user decided to implement Phases 2 to 7 before the
+  measurements and to correct the result afterwards if the gate fails
+  (see section 8).
 - Date: 2026-10-24
 - Scope: Phase 0 (feasibility gate) of the task "Coral Edge TPU speech
   recognition for German and English". Phases 2 to 7 (service
-  `coral-stt`, integration, fallback, UI, deployment, documentation) start
-  only after the gate passes.
+  `coral-stt`, integration, fallback, UI, deployment, documentation) are
+  implemented ([ADR 0046](../adr/0046-coral-edge-tpu-speech-recognition.md)).
 - Tools: [`tools/coral/`](../../tools/coral/README.md)
 - Related: [ADR 0012](../adr/0012-aufzeichnung-und-transkription.md),
   [ADR 0019](../adr/0019-transkription-in-zwei-durchgaengen-und-ki-api.md),
@@ -227,12 +230,30 @@ Pending.
 
 ## 8. Decision
 
-Pending. The decision needs the measured values from section 7.
+Gate result: pending. The decision needs the measured values from section 7.
 
-If the gate passes, the next phase builds the `coral-stt` service
-(`crates/talkops-coral-stt`, image `ghcr.io/itsh-neumeier/talkops-coral-stt`)
-with the OpenAI-compatible subset of the task, a new ADR that supplements
-ADR 0024, and the connection kind `coral`.
+The user decided to implement the service and the integration before the
+measurements (2026-10-24). Thus these parts exist now and need only the
+hardware values to confirm or tune:
+
+- service `coral-stt` (`crates/talkops-coral-stt`, image
+  `ghcr.io/itsh-neumeier/talkops-coral-stt`), ADR 0046;
+- the connection kind `coral`, the local fallback and the UI.
+
+If the gate fails, use the alternatives in section 9. The local fallback
+keeps TalkOps working in all cases.
+
+The service uses the same front end, window and CTC rules as the tools
+(`features.rs`, `ctc.rs`, `turns.rs` are ports of the Python modules).
+Compile the German, English and language ID models in one
+`edgetpu_compiler` call (co-compilation), so the TPU can cache the
+parameters of all three models together.
+
+Runtime libraries of the image: TensorFlow Lite C v2.19.1 (built from the
+pinned commit `f4247ebb6f9e7421f38c3f01a9a5d5cd54bd24fd`, XNNPACK off) and
+libedgetpu 16.0 for TF 2.19.1 (feranick community build for trixie,
+SHA-256 pinned). A CPU test with this TensorFlow Lite library and small
+int8 test models passed through `edgefirst-tflite` (2026-10-24).
 
 ## 9. Alternatives if the gate fails
 

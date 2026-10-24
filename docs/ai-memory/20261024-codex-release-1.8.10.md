@@ -99,3 +99,13 @@ version/revision labels and 1.8/latest. Save the final audit separately.
   all seven source heads are ancestors. Exact-main CI40086734382/E2E40086734353 running.
 - No tag pushed. Do not push the merged release branch again. Archive later task-only
   changes under audit/release-1.8.10 after publication.
+
+## Publication checkpoint
+
+- Exact-main CI40086734382 and E2E40086734353 completed successfully.
+- Pushed new annotated tag v1.8.10 once. Tag object:
+  c996d8c33f3ee5385d5026fbf404c67059c3f532.
+  Peeled target: 8f32ec7778ec7a147c09ac98c97c5f1a434e22cc.
+- Release40087924900 builds all six image variants. Publication and registry
+  verification remain pending. Additional tag CI40087924877, E2E40087924889
+  and FreeSWITCH40087924926 are running. No competing release created.

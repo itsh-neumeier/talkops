@@ -16,6 +16,21 @@ hour, day, week or month (days in the time zone from the settings), calls in
 progress, recent calls and the system status (services, registered devices,
 trunks, last backup). It refreshes every 10 seconds.
 
+### Figures and chart
+
+- Each figure shows the change against the period of the same length before,
+  for example the day before for **1 day**. A green arrow is good; for
+  missed calls, a lower value is good. **new** means that the period before
+  had no value.
+- **Calls** and **Missed** show a small curve of the selected period. The
+  answer rate shows a ring.
+- The chart shows stacked bars for **1 hour** and **1 day**, and smooth areas
+  for **1 week** and **1 month**.
+- Move the pointer over the chart, touch it, or select it and use the arrow
+  keys: a tooltip shows the values of the time slot.
+- The legend shows the total of each series. Select a series in the legend
+  to hide or show it.
+
 ## Enable
 
 Set a long random token in `.env` (or the Portainer stack environment) and

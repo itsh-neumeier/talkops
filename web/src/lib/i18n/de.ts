@@ -2281,6 +2281,8 @@ const de: Record<keyof typeof en, string> = {
 	'dash.range.1d': '1 Tag',
 	'dash.range.1w': '1 Woche',
 	'dash.range.1m': '1 Monat',
+	'dash.kpi.vsPrevious': 'im Vergleich zum Vorzeitraum',
+	'dash.kpi.new': 'neu',
 	'dash.kpi.active': 'Aktive Gespräche',
 	'dash.kpi.calls': 'Anrufe',
 	'dash.kpi.missed': 'Verpasst',

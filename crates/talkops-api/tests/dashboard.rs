@@ -47,11 +47,17 @@ async fn call_statistics(db: PgPool) {
     assert_eq!(s["missed"], 1);
     assert_eq!(s["answer_rate"], 66.7);
     assert_eq!(s["avg_talk_secs"], 70);
+    // The hour before: the internal call 90 minutes ago.
+    assert_eq!(s["previous"]["total"], 1);
+    assert_eq!(s["previous"]["internal"], 1);
+    assert_eq!(s["previous"]["avg_talk_secs"], 30);
+    assert_eq!(s["previous"]["answer_rate"], json!(null));
 
     let (_, s) = admin.get("/api/v1/stats/calls").await;
     assert_eq!(s["range"], "1d");
     assert_eq!(s["buckets"].as_array().unwrap().len(), 24);
     assert_eq!(s["total"], 5);
+    assert_eq!(s["previous"]["total"], 0);
     let (_, s) = admin.get("/api/v1/stats/calls?range=1w").await;
     assert_eq!(s["buckets"].as_array().unwrap().len(), 7);
     assert_eq!(s["total"], 6);

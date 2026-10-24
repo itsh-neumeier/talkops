@@ -69,6 +69,10 @@
 			);
 		}, t('common.saved'));
 	};
+	const setPhoneNetwork = (enabled: boolean) =>
+		run(async () => {
+			apply(await api.put<View>('/unifi/phone-network', { enabled }));
+		}, t('common.saved'));
 	const test = () =>
 		run(async () => {
 			apply(await api.post<View>('/unifi/connection/test'));
@@ -245,6 +249,25 @@
 	{/if}
 
 	{#if view?.connection}
+		<section class="card space-y-2 p-4">
+			<h2>{t('wifi.unifi.phonesTitle')}</h2>
+			<label class="flex items-start gap-2">
+				<input
+					type="checkbox"
+					class="mt-0.5"
+					checked={view.connection.phone_network}
+					disabled={busy}
+					onchange={(e) => setPhoneNetwork(e.currentTarget.checked)}
+				/>
+				<span>
+					<span class="font-medium">{t('wifi.unifi.phoneNetwork')}</span>
+					<span class="block text-xs text-slate-500 dark:text-slate-400"
+						>{t('wifi.unifi.phoneNetworkHint')}</span
+					>
+				</span>
+			</label>
+		</section>
+
 		<form class="card space-y-3 p-4" onsubmit={saveVoice}>
 			<h2>{t('unifiWrite.voiceTitle')}</h2>
 			<p class="text-sm text-slate-500 dark:text-slate-400">{t('unifiWrite.voiceIntro')}</p>

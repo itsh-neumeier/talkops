@@ -170,6 +170,9 @@ before the work started:
   With a tile server, the tiles supply the detail; the offline layers
   (countries, borders, water, places) are not loaded. The local network
   areas and the bubbles stay on top of the tiles.
+- The dashboard card uses the same detail layers. It zooms to its bubbles
+  (at most zoom 7) and has zoom buttons; the mouse wheel scrolls the page
+  (follow-up of 2026-10-24).
 - Streets and places with fewer than 1,000 inhabitants are not part of the
   offline map. Detail at street level needs vector tiles and a different
   map library; the optional tile server covers this need.

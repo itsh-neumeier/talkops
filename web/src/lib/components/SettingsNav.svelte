@@ -89,6 +89,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { t } from '#lib/i18n/index.svelte.ts';
+	import SettingsSearch from './SettingsSearch.svelte';
 
 	let {
 		section = null,
@@ -122,45 +123,51 @@
 	});
 </script>
 
-<nav
-	bind:this={strip}
-	class="scroll-x -mx-1 flex gap-1 px-1 pb-1 lg:sticky lg:top-[calc(var(--header-h)+1rem)] lg:w-56 lg:shrink-0 lg:flex-col lg:overflow-visible lg:bg-none lg:pb-0"
-	aria-label={t('nav.settings')}
+<div
+	data-settings-nav
+	class="flex min-w-0 flex-col gap-2 lg:sticky lg:top-[calc(var(--header-h)+1rem)] lg:w-56 lg:shrink-0"
 >
-	{#each visible as s (s.id)}
-		{#if onsection}
-			<button
-				type="button"
-				class="nav-item"
-				aria-current={section === s.id ? 'page' : undefined}
-				onclick={() => onsection(s.id)}
-				><span aria-hidden="true" class="w-5 text-center">{s.icon}</span>
-				{t(`settings.section.${s.id}`)}</button
-			>
-		{:else}
-			<a href="/settings?section={s.id}" class="nav-item"
-				><span aria-hidden="true" class="w-5 text-center">{s.icon}</span>
-				{t(`settings.section.${s.id}`)}</a
-			>
-		{/if}
-	{/each}
-	{#each personal as p (p.href)}
-		{@const on = path === p.href || path.startsWith(p.href + '/')}
-		<a href={p.href} class="nav-item" aria-current={on ? 'page' : undefined}
-			><span aria-hidden="true" class="w-5 text-center">{p.icon}</span> {t(p.key)}</a
-		>
-	{/each}
-	{#if pages.length}
-		<p
-			class="hidden px-3 pt-3 pb-1 text-xs font-semibold tracking-wide text-slate-500 uppercase lg:block dark:text-slate-400"
-		>
-			{t('settings.setup')}
-		</p>
-		{#each pages as p (p.href)}
+	<SettingsSearch />
+	<nav
+		bind:this={strip}
+		class="scroll-x -mx-1 flex gap-1 px-1 pb-1 lg:flex-col lg:overflow-visible lg:bg-none lg:pb-0"
+		aria-label={t('nav.settings')}
+	>
+		{#each visible as s (s.id)}
+			{#if onsection}
+				<button
+					type="button"
+					class="nav-item"
+					aria-current={section === s.id ? 'page' : undefined}
+					onclick={() => onsection(s.id)}
+					><span aria-hidden="true" class="w-5 text-center">{s.icon}</span>
+					{t(`settings.section.${s.id}`)}</button
+				>
+			{:else}
+				<a href="/settings?section={s.id}" class="nav-item"
+					><span aria-hidden="true" class="w-5 text-center">{s.icon}</span>
+					{t(`settings.section.${s.id}`)}</a
+				>
+			{/if}
+		{/each}
+		{#each personal as p (p.href)}
 			{@const on = path === p.href || path.startsWith(p.href + '/')}
 			<a href={p.href} class="nav-item" aria-current={on ? 'page' : undefined}
 				><span aria-hidden="true" class="w-5 text-center">{p.icon}</span> {t(p.key)}</a
 			>
 		{/each}
-	{/if}
-</nav>
+		{#if pages.length}
+			<p
+				class="hidden px-3 pt-3 pb-1 text-xs font-semibold tracking-wide text-slate-500 uppercase lg:block dark:text-slate-400"
+			>
+				{t('settings.setup')}
+			</p>
+			{#each pages as p (p.href)}
+				{@const on = path === p.href || path.startsWith(p.href + '/')}
+				<a href={p.href} class="nav-item" aria-current={on ? 'page' : undefined}
+					><span aria-hidden="true" class="w-5 text-center">{p.icon}</span> {t(p.key)}</a
+				>
+			{/each}
+		{/if}
+	</nav>
+</div>

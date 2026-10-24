@@ -28,6 +28,13 @@ Emergency numbers, their prefixes and reserved service numbers are excluded.
 The form reports conflicts. Existing short numbers can remain after an update.
 Use [first steps](first-steps.md) for the current dialing rules.
 
+## Extension side panel
+
+Select an extension in the list to open its side panel: **Overview** (user,
+outgoing number, state with DND and forwarding), **Devices** (with a link to
+a provisioned phone) and **Settings** (**Open all settings**, **Edit** and
+**Delete**). The full extension page keeps all editors.
+
 ## Add a manual SIP device
 
 1. Select **Add device** on the extension or **My phones**.

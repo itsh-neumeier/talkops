@@ -6,6 +6,7 @@
 	import { configurationDiff } from '#lib/provisioning.ts';
 	import type { PhoneProvisioning } from '#lib/api.ts';
 	import PageHeader from '#lib/components/PageHeader.svelte';
+	import PhoneNetworkCard from '#lib/components/PhoneNetworkCard.svelte';
 	import PhoneSettingsEditor from '#lib/components/PhoneSettingsEditor.svelte';
 	import PhoneKeyEditor from '#lib/components/PhoneKeyEditor.svelte';
 	import PhoneGraphic from '#lib/components/PhoneGraphic.svelte';
@@ -343,6 +344,7 @@
 	<ErrorBox {error} />
 	{#if message}<p class="text-sm text-emerald-700 dark:text-emerald-400">{message}</p>{/if}
 	{#if phone}
+		<PhoneNetworkCard phoneId={phone.id} />
 		{#if phone.provisioning_files?.length}
 			<section class="card space-y-3">
 				<h2>{t('vendor.files')}</h2>

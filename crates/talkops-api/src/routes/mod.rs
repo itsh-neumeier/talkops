@@ -22,6 +22,7 @@ pub mod metrics;
 pub mod notifications;
 pub mod oidc;
 pub mod phone_clone;
+pub mod phone_network;
 pub mod phones;
 pub mod provisioning;
 pub mod provisioning_admin;

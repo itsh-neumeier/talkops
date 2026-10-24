@@ -63,6 +63,15 @@ Older records without a stored number do not show **via**. Time and duration
 are on the right. Missed inbound calls are red and show **Missed**.
 Select **All calls** to open the [call log](call-log.md).
 
+## Short lists on the dashboard
+
+The cards **Calls in progress** and **Recent calls** show three entries.
+Below the list, **Show N more** shows all entries. **Show less** collapses the
+list again. **Recent calls** shows up to eight calls; **All calls** opens the
+call log. A ringing call always stays visible, also in a collapsed list. The
+browser keeps the open state of each card. In a private window, the lists
+start collapsed.
+
 ## Live transcript
 
 Select **Live transcript** for an answered, recorded call with transcription

@@ -112,6 +112,38 @@ pub struct Station {
     pub rx_rate_kbps: Option<i32>,
 }
 
+/// Network state of one connected client (Wi-Fi or wired).
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct NetClient {
+    /// MAC (lowercase, with colons).
+    pub mac: String,
+    pub wired: bool,
+    pub ip: Option<String>,
+    /// Name of the UniFi network (LAN) of the client.
+    pub network: Option<String>,
+    pub vlan: Option<i32>,
+    /// Wi-Fi: access point MAC (lowercase, with colons).
+    pub ap_mac: Option<String>,
+    pub essid: Option<String>,
+    /// Wi-Fi: `ng` (2.4 GHz), `na` (5 GHz), `6e` (6 GHz).
+    pub radio: Option<String>,
+    pub channel: Option<i32>,
+    /// Wi-Fi: signal in dBm.
+    pub rssi: Option<i32>,
+    pub tx_rate_kbps: Option<i32>,
+    pub rx_rate_kbps: Option<i32>,
+    /// Wired: MAC of the switch (lowercase, with colons) and its port.
+    pub sw_mac: Option<String>,
+    pub sw_port: Option<i32>,
+    /// Wired: link speed in Mbit/s.
+    pub wired_rate_mbps: Option<i32>,
+    /// UniFi experience value, 0 to 100.
+    pub satisfaction: Option<i32>,
+    pub uptime_secs: Option<i64>,
+    pub tx_bytes: Option<i64>,
+    pub rx_bytes: Option<i64>,
+}
+
 /// Result of a connection test.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct Capabilities {
@@ -569,6 +601,13 @@ impl Client {
         Ok(parse_station(&v, &mac))
     }
 
+    /// Network state of all connected clients (classic `stat/sta`), for the
+    /// network column of the phone list.
+    pub async fn clients(&self) -> Result<Vec<NetClient>, UnifiError> {
+        let v = self.get(&self.classic("stat/sta")).await?;
+        parse_clients(&v).ok_or(UnifiError::Invalid)
+    }
+
     /// Tests the connection: version, site and the classic client endpoint.
     /// `probe_mac` is a client MAC to read, if known.
     pub async fn probe(
@@ -663,6 +702,56 @@ pub fn parse_station(v: &Value, mac: &str) -> Option<Station> {
     })
 }
 
+/// Reads all clients from a classic `stat/sta` answer; `None` if the
+/// answer has no client list.
+pub fn parse_clients(v: &Value) -> Option<Vec<NetClient>> {
+    let data = v.get("data")?.as_array()?;
+    Some(
+        data.iter()
+            .filter_map(|s| {
+                let mac = s.get("mac").and_then(Value::as_str).and_then(colon_mac)?;
+                let text = |k: &str| {
+                    s.get(k)
+                        .and_then(Value::as_str)
+                        .filter(|t| !t.is_empty())
+                        .map(str::to_owned)
+                };
+                let int = |k: &str| {
+                    s.get(k)
+                        .and_then(Value::as_i64)
+                        .and_then(|n| i32::try_from(n).ok())
+                };
+                let big = |k: &str| s.get(k).and_then(Value::as_i64).filter(|n| *n >= 0);
+                let wired = s.get("is_wired").and_then(Value::as_bool).unwrap_or(false);
+                let wifi = |k: &str| if wired { None } else { text(k) };
+                Some(NetClient {
+                    wired,
+                    ip: text("ip"),
+                    network: text("network"),
+                    vlan: int("vlan"),
+                    ap_mac: wifi("ap_mac").as_deref().and_then(colon_mac),
+                    essid: wifi("essid"),
+                    radio: wifi("radio"),
+                    channel: int("channel").filter(|_| !wired),
+                    rssi: int("signal")
+                        .or_else(|| int("rssi").filter(|r| *r < 0))
+                        .filter(|_| !wired),
+                    tx_rate_kbps: int("tx_rate").filter(|_| !wired),
+                    rx_rate_kbps: int("rx_rate").filter(|_| !wired),
+                    sw_mac: text("sw_mac").as_deref().and_then(colon_mac),
+                    sw_port: int("sw_port"),
+                    wired_rate_mbps: int("wired_rate_mbps").filter(|_| wired),
+                    satisfaction: int("satisfaction").filter(|n| (0..=100).contains(n)),
+                    uptime_secs: big("uptime"),
+                    tx_bytes: big("tx_bytes"),
+                    rx_bytes: big("rx_bytes"),
+                    mac,
+                })
+            })
+            .collect(),
+    )
+}
+
 /// The SHA-256 fingerprint of the certificate at `url` (hex). Sends no key.
 pub async fn probe_certificate(url: &str) -> Result<String, UnifiError> {
     let seen = Arc::new(Mutex::new(None));
@@ -734,6 +823,36 @@ mod tests {
         let old = json!({"data": [{"mac": "80:5e:c0:00:00:01", "ap_mac": "f4:92:bf:00:00:02", "rssi": 40}]});
         assert_eq!(parse_station(&old, "80:5e:c0:00:00:01").unwrap().rssi, None);
         assert!(parse_station(&v, "80:5e:c0:00:00:09").is_none());
+    }
+
+    #[test]
+    fn parses_wifi_and_wired_clients() {
+        let v = json!({"data": [
+            {"mac": "80:5E:C0:00:00:01", "ap_mac": "f4:92:bf:00:00:02", "essid": "Voice",
+             "radio": "na", "channel": 36, "signal": -58, "tx_rate": 144444, "rx_rate": 130000,
+             "ip": "10.0.20.31", "network": "Voice", "vlan": 20, "satisfaction": 97,
+             "uptime": 3600, "tx_bytes": 1024, "rx_bytes": 2048, "is_wired": false},
+            {"mac": "80:5e:c0:00:00:02", "is_wired": true, "sw_mac": "D0:21:F9:00:00:09",
+             "sw_port": 7, "wired_rate_mbps": 1000, "ip": "10.0.20.32", "channel": 6,
+             "satisfaction": 140},
+            {"hostname": "no mac"}
+        ]});
+        let c = parse_clients(&v).unwrap();
+        assert_eq!(c.len(), 2);
+        assert_eq!(c[0].mac, "80:5e:c0:00:00:01");
+        assert!(!c[0].wired);
+        assert_eq!(c[0].rssi, Some(-58));
+        assert_eq!(c[0].vlan, Some(20));
+        assert_eq!(c[0].uptime_secs, Some(3600));
+        assert_eq!(c[0].wired_rate_mbps, None);
+        assert!(c[1].wired);
+        assert_eq!(c[1].sw_mac.as_deref(), Some("d0:21:f9:00:00:09"));
+        assert_eq!(c[1].sw_port, Some(7));
+        assert_eq!(c[1].wired_rate_mbps, Some(1000));
+        // Wi-Fi values of a wired client and values out of range are dropped.
+        assert_eq!(c[1].channel, None);
+        assert_eq!(c[1].satisfaction, None);
+        assert!(parse_clients(&json!({"meta": {}})).is_none());
     }
 
     #[test]

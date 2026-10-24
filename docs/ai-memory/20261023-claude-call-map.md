@@ -5,7 +5,8 @@
 - Task ID: 20261023-claude-call-map
 - Date: 2026-10-23, Europe/Berlin
 - Tool: Claude Code
-- Status: Completed (4 PRs open; the release manager integrates them)
+- Status: Completed. PR 1 to 4 released (1.8.8, 1.8.9); follow-up for the
+  dashboard card open (see PR 5)
 - Branch: claude/affectionate-lamport-v5iw3a (PR 1),
   claude/affectionate-lamport-v5iw3a-map-view (PR 2, stacked on PR 1),
   claude/affectionate-lamport-v5iw3a-map-widget (PR 3, stacked on PR 2),
@@ -103,6 +104,18 @@ prompt "Anrufkarte". Three PRs, one after the other:
   labels without overlap, max zoom 11, no offline water with tiles).
 - Docs: ADR 0044 addendum, call log EN/DE "Zoom and orientation",
   `tools/geo/README.md`, `THIRD_PARTY_NOTICES.md`.
+
+### PR 5 (follow-up, 2026-10-24)
+
+- The user reported that the dashboard card "Herkunft der Anrufe" had no map
+  details. `CallMap.svelte` now loads `MapDetail` for the compact map too,
+  fits the bubbles (max zoom 7), shows zoom buttons and keeps the mouse
+  wheel for page scrolling (`scrollWheelZoom: false`).
+- Branch `claude/affectionate-lamport-v5iw3a`, restarted from `origin/main`
+  (1.8.9) after the merge of PR 1.
+- Tests: widget part of `tests/browser/call-map.mjs` checks zoom >= 5,
+  place labels, state borders and zoom buttons.
+- Docs: call log EN/DE "Dashboard", ADR 0044 addendum.
 
 ## Decisions
 

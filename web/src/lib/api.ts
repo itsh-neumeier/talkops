@@ -510,6 +510,17 @@ export interface CallStats {
 	blocked: number;
 	answer_rate: number | null;
 	avg_talk_secs: number;
+	/** Totals of the period of the same length before. */
+	previous?: {
+		total: number;
+		inbound: number;
+		outbound: number;
+		internal: number;
+		missed: number;
+		blocked: number;
+		answer_rate: number | null;
+		avg_talk_secs: number;
+	};
 }
 
 export interface ActiveCall {

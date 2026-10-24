@@ -19,8 +19,8 @@ Die Architekturentscheidungen sind [ADR 0041](../adr/0041-wifi-voice-survey-and-
 - Eine Nebenstelle mit einem Gerät der Art **WLAN-Handset** (z. B. Yealink
   AX83H oder AX86R).
 - Für Access-Point-Daten: Das Gerät ist ein Konto auf einem provisionierten
-  Telefon (TalkOps nutzt dessen MAC-Adresse), und eine UniFi-Verbindung ist
-  eingerichtet (siehe unten). Ohne UniFi misst die Begehung nur den
+  Telefon (TalkOps nutzt dessen MAC-Adresse), und eine Verbindung zur Ubiquiti Networks API ist
+  eingerichtet (siehe unten). Ohne die Ubiquiti Networks API misst die Begehung nur den
   Sprachstrom.
 - Berechtigungen unter **Einstellungen → Benutzer → Rollen**:
 
@@ -28,7 +28,7 @@ Die Architekturentscheidungen sind [ADR 0041](../adr/0041-wifi-voice-survey-and-
 | --- | --- |
 | `wifi_survey.run` | Begehungen starten und eigene Begehungen lesen. |
 | `wifi_survey.manage` | Alle Begehungen lesen, Schwellen und Löschfrist ändern, Begehungen löschen. |
-| `unifi.manage` | UniFi-Verbindung speichern und testen, VoIP-SSID auswählen, Vorschläge und Änderungsverlauf lesen (sensibel). |
+| `unifi.manage` | Verbindung zur Ubiquiti Networks API speichern und testen, VoIP-SSID auswählen, Vorschläge und Änderungsverlauf lesen (sensibel). |
 | `unifi.write` | Schreibzugriff einschalten, Änderungen an der VoIP-SSID anwenden und zurücknehmen (sensibel). Mit `phones.manage` auch die Roaming-Schwelle des Handsets der Begehung. |
 
 Die Admin-Rolle hat alle Berechtigungen, andere Rollen standardmäßig keine.
@@ -41,11 +41,15 @@ Die Admin-Rolle hat alle Berechtigungen, andere Rollen standardmäßig keine.
 3. Prüfen, dass Roaming aktiv ist und das Handset die Sprach-SSID nutzt.
 4. Empfohlen: DSCP EF (46) für RTP am Handset einstellen.
 
-## UniFi verbinden
+## Ubiquiti Networks API verbinden
+
+TalkOps nennt die Verbindung zur Anwendung UniFi Network einer UniFi-Konsole
+„Ubiquiti Networks API“. Menüpfade in UniFi Network behalten ihre
+UniFi-Namen.
 
 1. In UniFi Network unter **Einstellungen → Control Plane → Integrations**
    einen API-Schlüssel erstellen.
-2. In TalkOps **Einstellungen → WLAN-Begehung → UniFi** öffnen.
+2. In TalkOps **Einstellungen → WLAN-Begehung → Ubiquiti Networks API** öffnen.
 3. Adresse der Konsole (z. B. `https://192.168.1.1`) und Site-Name
    (meist `default`) eintragen.
 4. API-Schlüssel eintragen.
@@ -213,7 +217,7 @@ rein lesendes Werkzeug.
   Fast Roaming, Protected Management Frames (PMF), Handoff-Vorschläge
   (minimaler RSSI), Frequenzbänder, U-APSD, Multicast zu Unicast,
   ARP-Proxy und die DTIM-Periode je Band.
-- TalkOps schreibt nur über die offizielle UniFi Network API mit
+- TalkOps schreibt nur über die Ubiquiti Networks API (die offizielle UniFi Network API) mit
   `PUT /proxy/network/integration/v1/sites/{siteId}/wifi/broadcasts/{id}`.
   Über die klassische API schreibt TalkOps nie. Funkeinstellungen der
   Access Points ändert TalkOps nicht.
@@ -252,13 +256,13 @@ rein lesendes Werkzeug.
 
 Der Verbindungstest schreibt nicht. Erst die erste Änderung zeigt, ob der
 API-Schlüssel schreiben darf. Ein nur lesender Schlüssel führt zur Meldung
-„Der UniFi-API-Schlüssel darf lesen, aber nicht schreiben“. Dann den
+„Der Schlüssel der Ubiquiti Networks API darf lesen, aber nicht schreiben“. Dann den
 Schlüssel mit einem Administratorkonto erstellen, das die WLAN-Einstellungen
 der Site ändern darf.
 
 ### Schreibzugriff einschalten
 
-1. **Einstellungen → WLAN-Begehung → UniFi** öffnen.
+1. **Einstellungen → WLAN-Begehung → Ubiquiti Networks API** öffnen.
 2. **Verbindung testen** wählen. Bei Network 10.6.106 oder neuer zeigt der
    Status **Schreiben laut Version: möglich**.
 3. Unter **VoIP-SSID und Schreibzugriff** **SSIDs lesen** wählen.

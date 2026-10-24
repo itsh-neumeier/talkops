@@ -64,6 +64,16 @@ funktionieren gleich. Die erste Zeile zeigt außerdem die eigene Rufnummer:
 Zeitpunkt und Dauer. Verpasste eingehende Anrufe sind rot und zeigen
 **Verpasst**. **Alle Anrufe** öffnet die [Anrufliste](anrufliste.md).
 
+## Kurze Listen im Dashboard
+
+Die Karten **Laufende Gespräche** und **Letzte Anrufe** zeigen drei Einträge.
+Unter der Liste zeigt **N weitere anzeigen** alle Einträge. **Weniger
+anzeigen** klappt die Liste wieder ein. **Letzte Anrufe** zeigt bis zu acht
+Anrufe; **Alle Anrufe** öffnet die Anrufliste. Ein klingelnder Anruf bleibt
+immer sichtbar, auch in einer eingeklappten Liste. Der Browser merkt sich für
+jede Karte, ob sie aufgeklappt ist. In einem privaten Fenster starten die
+Listen eingeklappt.
+
 ## Live-Transkript
 
 **Live-Transkript** öffnet die Vorschau bei angenommenen, aufgezeichneten

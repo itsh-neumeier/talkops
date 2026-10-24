@@ -29,6 +29,20 @@ Anrufsteuerung, Leitungen, Rufnummern, Telefone, Türsprechstellen und
 Änderungsprotokoll. **Meine Telefone** zeigt eigene zugewiesene Nebenstellen.
 Die zugehörigen Kapitel stehen im [Index](index.md).
 
+## Einstellungen durchsuchen
+
+Das Feld **Einstellungen durchsuchen** steht über der Einstellungsnavigation.
+Ein Wort eingeben, zum Beispiel `Wartemusik`, `LDAP` oder `Vorwahl`. Die Suche
+findet Bereiche, Karten darin und Einrichtungsseiten. Sie findet auch
+Feldnamen und gängige Synonyme auf Deutsch und Englisch. Umlaute und ihre
+Schreibweise mit `e` sind gleich, zum Beispiel findet `Uebersicht` die
+`Übersicht`.
+
+- Einen Treffer auswählen oder die Pfeiltasten und **Enter** verwenden.
+  TalkOps öffnet die Seite und markiert die Karte kurz.
+- **/** oder **Strg+K** springt in das Suchfeld. **Esc** leert es.
+- Die Suche zeigt nur Einstellungen, die die eigene Rolle erlaubt.
+
 ## Einstellung ändern
 
 1. Öffne den passenden Bereich und notiere den bisherigen Wert.

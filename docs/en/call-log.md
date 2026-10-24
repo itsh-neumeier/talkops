@@ -135,8 +135,11 @@ network areas and the bubbles then show on top of the tiles.
 
 The dashboard card **Call origins** shows a small map of the last day (or
 the last hour) and the five areas with the most calls. It uses the same
-access rule. Click the map, an area or **Open map** to open the map view of
-the call log with the same range.
+access rule. The card zooms to the bubbles and shows the same detail
+layers as the map view (state borders, water, places, local network areas).
+Use the **+** and **−** buttons to zoom; the mouse wheel scrolls the page.
+Click a bubble, an area or **Open map** to open the map view of the call log
+with the same range.
 
 ### Precision
 

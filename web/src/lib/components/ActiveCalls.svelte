@@ -5,6 +5,8 @@
 	import { t, formatDuration, type MessageKey } from '#lib/i18n/index.svelte.ts';
 	import CallSummary from './CallSummary.svelte';
 	import LiveTranscript from './LiveTranscript.svelte';
+	import ExpandToggle from './ExpandToggle.svelte';
+	import { readOpen, visibleItems, writeOpen } from '#lib/collapse.ts';
 	let {
 		calls,
 		now,
@@ -12,6 +14,10 @@
 		error = false
 	}: { calls: ActiveCall[]; now: number; loading?: boolean; error?: boolean } = $props();
 	let selected = $state<ActiveCall | null>(null);
+	const OPEN_KEY = 'talkops.dash.active.open';
+	let open = $state(readOpen(OPEN_KEY));
+	// A ringing call stays visible in the collapsed list.
+	const shown = $derived(visibleItems(calls, open, undefined, (c) => c.state === 'ringing'));
 	const duration = (call: ActiveCall) => {
 		const start = call.answered_at ?? call.started_at;
 		return start ? formatDuration(Math.max(0, Math.floor((now - Date.parse(start)) / 1000))) : '—';
@@ -29,8 +35,8 @@
 			{#if calls.length === 0 && !error}
 				<p class="text-sm text-slate-500">{t('dash.noActive')}</p>
 			{:else}
-				<ul class="divide-y divide-slate-100 dark:divide-slate-800">
-					{#each calls as call (call.uuid)}
+				<ul id="dash-active-list" class="divide-y divide-slate-100 dark:divide-slate-800">
+					{#each shown as call (call.uuid)}
 						<li class="flex items-start justify-between gap-3 py-3 text-sm">
 							<div class="min-w-0 space-y-1 text-left">
 								<CallSummary direction={call.direction} caller={call.caller} called={call.called} />
@@ -67,6 +73,12 @@
 						</li>
 					{/each}
 				</ul>
+				<ExpandToggle
+					bind:open
+					hidden={calls.length - shown.length}
+					controls="dash-active-list"
+					ontoggle={(value) => writeOpen(OPEN_KEY, value)}
+				/>
 			{/if}
 		</div>
 	</LoadingContent>

@@ -17,6 +17,14 @@ Jeder Benutzer hat genau eine **Rolle**. Die Rolle bestimmt die
 Berechtigungen. Unter **Einstellungen → Benutzer → Rollen** siehst und
 änderst du die Rollen.
 
+## Seitenpanel eines Benutzers
+
+Einen Benutzernamen in der Liste auswählen, um das Seitenpanel zu öffnen:
+**Übersicht** (Rolle, Anmeldung über, letzte Anmeldung, 2FA), **Nebenstellen**
+des Benutzers und **Einstellungen** mit **Bearbeiten**, **Passwort setzen**,
+**2FA zurücksetzen** und **Löschen**. Die Aktionen nutzen dieselben Dialoge
+wie die Liste.
+
 ## Eingebaute Rollen
 
 | Rolle | Berechtigungen nach dem Update |

@@ -377,6 +377,9 @@ Akzeptanzkriterien / Einschränkungen:
 
 ## Prompt C: TalkOps with Coral on the same server (first step)
 
+The copy-ready version in the standard format is
+[coral-stt-same-server-prompt.md](coral-stt-same-server-prompt.md).
+
 ```text
 Du arbeitest als Entwicklungsassistent an TalkOps. Claude Code und Codex
 arbeiten parallel; ein separater Release-Chat übernimmt Integration, Merges

@@ -12,6 +12,8 @@
 	import { can } from '#lib/session.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
 	import { loadTargets } from '#lib/destinations.svelte.ts';
+	import ExtensionInspector from '#lib/components/ExtensionInspector.svelte';
+	import { panelParam, rowClick, setPanelParam } from '#lib/panel.ts';
 
 	let extensions = $state<Extension[]>([]);
 	let users = $state<User[]>([]);
@@ -34,11 +36,19 @@
 	}
 	onMount(load);
 
+	// Side panel of one extension (`?panel=<id>`).
+	let panel = $state<string | null>(panelParam());
+	const panelExtension = $derived(extensions.find((e) => e.id === panel));
+	function openPanel(id: string | null) {
+		panel = id;
+		setPanelParam(id);
+	}
+
 	const userName = (id: string | null) => users.find((u) => u.id === id)?.display_name ?? '—';
 	const numberOf = (id: string | null) => numbers.find((n) => n.id === id)?.e164;
 </script>
 
-<div class="space-y-4">
+<div class="space-y-4 {panel ? 'lg:pr-[26rem]' : ''}">
 	<PageHeader title={t('nav.extensions')}>
 		{#snippet actions()}
 			{#if can('extensions.manage')}<button class="btn btn-primary" onclick={() => (open = true)}
@@ -59,12 +69,22 @@
 			</thead>
 			<tbody>
 				{#each extensions as ext (ext.id)}
-					<tr>
+					<tr
+						class="cursor-pointer {panel === ext.id ? 'bg-teal-50 dark:bg-teal-950/40' : ''}"
+						onclick={(e) => rowClick(e, () => openPanel(ext.id))}
+					>
 						<td class="font-mono"
-							><a class="hover:underline" href="/extensions/{ext.id}">{ext.number}</a></td
+							><a
+								class="hover:underline"
+								href="/extensions/{ext.id}"
+								data-panel-link
+								aria-current={panel === ext.id ? 'true' : undefined}>{ext.number}</a
+							></td
 						>
 						<td>
-							<a class="hover:underline" href="/extensions/{ext.id}">{ext.display_name}</a>
+							<a class="hover:underline" href="/extensions/{ext.id}" data-panel-link
+								>{ext.display_name}</a
+							>
 							{#if !ext.enabled}<span class="badge badge-muted">{t('common.disabled')}</span>{/if}
 							{#if ext.hide_caller_id}<span class="badge badge-warn">CLIR</span>{/if}
 						</td>
@@ -92,3 +112,13 @@
 		oncancel={() => (open = false)}
 	/>
 </Modal>
+
+{#if panelExtension}
+	<ExtensionInspector
+		extension={panelExtension}
+		{users}
+		{numbers}
+		onchanged={load}
+		onclose={() => openPanel(null)}
+	/>
+{/if}

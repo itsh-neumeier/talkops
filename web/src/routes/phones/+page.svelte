@@ -27,6 +27,8 @@
 	import { copy, errorMessage } from '#lib/util.ts';
 	import { assignExtension } from '#lib/phoneAssign.ts';
 	import PhoneNetworkCell from '#lib/components/PhoneNetworkCell.svelte';
+	import PhoneInspector from '#lib/components/PhoneInspector.svelte';
+	import { panelParam, rowClick, setPanelParam } from '#lib/panel.ts';
 	import { REFRESH_MS, byPhone, type PhoneNetworkView } from '#lib/phoneNetwork.ts';
 
 	let phones = $state<PhoneListItem[]>([]);
@@ -76,6 +78,13 @@
 		}
 	}
 	onMount(load);
+
+	// Side panel of one phone (`?panel=<id>`).
+	let panel = $state<string | null>(panelParam());
+	function openPanel(id: string | null) {
+		panel = id;
+		setPanelParam(id);
+	}
 
 	// Network data from the Ubiquiti Networks API, if switched on.
 	let network = $state<PhoneNetworkView | null>(null);
@@ -167,7 +176,7 @@
 	}
 </script>
 
-<div class="space-y-4">
+<div class="space-y-4 {panel ? 'lg:pr-[26rem]' : ''}">
 	<PageHeader title={t('nav.phones')}>
 		{#snippet actions()}
 			{#if can('phones.manage')}
@@ -250,8 +259,18 @@
 				</thead>
 				<tbody>
 					{#each filtered as p (p.id)}
-						<tr>
-							<td><a class="font-medium hover:underline" href="/phones/{p.id}">{p.name}</a></td>
+						<tr
+							class="cursor-pointer {panel === p.id ? 'bg-teal-50 dark:bg-teal-950/40' : ''}"
+							onclick={(e) => rowClick(e, () => openPanel(p.id))}
+						>
+							<td
+								><a
+									class="font-medium hover:underline"
+									href="/phones/{p.id}"
+									data-panel-link
+									aria-current={panel === p.id ? 'true' : undefined}>{p.name}</a
+								></td
+							>
 							<td class="text-sm">
 								{#each p.extensions as e, i (i)}<span class="whitespace-nowrap"
 										><span class="font-mono">{e.number}</span> {e.display_name}</span
@@ -465,3 +484,14 @@
 	{models}
 	{extensions}
 />
+
+{#if panel && phones.some((p) => p.id === panel)}
+	<PhoneInspector
+		phoneId={panel}
+		{models}
+		{extensions}
+		network={showNetwork}
+		onchanged={load}
+		onclose={() => openPanel(null)}
+	/>
+{/if}

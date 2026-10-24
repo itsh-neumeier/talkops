@@ -9,6 +9,13 @@ You need: An administrator account to edit roles; user administration requires u
 Each user has one **role**. The role gives the permissions. Open
 **Settings → Users → Roles** to see and change the roles.
 
+## User side panel
+
+Select a user name in the list to open the side panel: **Overview** (role,
+sign-in source, last login, 2FA), **Extensions** of the user and
+**Settings** with **Edit**, **Set password**, **Reset 2FA** and **Delete**.
+The actions use the same dialogs as the list.
+
 ## Built-in roles
 
 | Role | Permissions after the update |

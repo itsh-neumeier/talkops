@@ -30,6 +30,14 @@ Notrufnummern, deren Präfixe und reservierte Servicenummern sind ausgeschlossen
 Das Formular meldet Konflikte. Bestehende kurze Nummern können nach Updates
 erhalten bleiben. Die [ersten Schritte](erste-schritte.md) erklären Wahlregeln.
 
+## Seitenpanel einer Nebenstelle
+
+Eine Nebenstelle in der Liste auswählen, um ihr Seitenpanel zu öffnen:
+**Übersicht** (Benutzer, ausgehende Rufnummer, Status mit Nicht stören und
+Umleitung), **Geräte** (mit Link zum provisionierten Telefon) und
+**Einstellungen** (**Alle Einstellungen öffnen**, **Bearbeiten** und
+**Löschen**). Die Seite der Nebenstelle behält alle Editoren.
+
 ## Manuelles SIP-Gerät hinzufügen
 
 1. Wähle **Gerät hinzufügen** an der Nebenstelle oder unter **Meine Telefone**.

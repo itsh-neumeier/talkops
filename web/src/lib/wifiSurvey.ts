@@ -224,6 +224,8 @@ export interface UnifiConnection {
 	voice_wifi_id: string | null;
 	voice_wifi_name: string | null;
 	write_enabled: boolean;
+	/** "Show network data on phones". */
+	phone_network: boolean;
 }
 
 export interface PairComparison {

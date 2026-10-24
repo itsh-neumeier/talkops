@@ -26,6 +26,8 @@
 	import { can } from '#lib/session.svelte.ts';
 	import { copy, errorMessage } from '#lib/util.ts';
 	import { assignExtension } from '#lib/phoneAssign.ts';
+	import PhoneNetworkCell from '#lib/components/PhoneNetworkCell.svelte';
+	import { REFRESH_MS, byPhone, type PhoneNetworkView } from '#lib/phoneNetwork.ts';
 
 	let phones = $state<PhoneListItem[]>([]);
 	let extensions = $state<Extension[]>([]);
@@ -74,6 +76,21 @@
 		}
 	}
 	onMount(load);
+
+	// Network data from the Ubiquiti Networks API, if switched on.
+	let network = $state<PhoneNetworkView | null>(null);
+	const showNetwork = $derived(network?.state === 'ok' || network?.state === 'error');
+	const networkByPhone = $derived(byPhone(network));
+	async function loadNetwork() {
+		network = await api.get<PhoneNetworkView>('/phones/network').catch(() => network);
+	}
+	onMount(() => {
+		void loadNetwork();
+		const timer = setInterval(() => {
+			if (showNetwork && !document.hidden) void loadNetwork();
+		}, REFRESH_MS);
+		return () => clearInterval(timer);
+	});
 
 	async function add(e: SubmitEvent) {
 		e.preventDefault();
@@ -159,6 +176,9 @@
 		{/snippet}
 	</PageHeader>
 	<ErrorBox {error} />
+	{#if network?.state === 'error'}
+		<p class="text-sm text-amber-700 dark:text-amber-400">{t('phones.network.errorShort')}</p>
+	{/if}
 
 	<div class="card scroll-x">
 		{#if phones.length === 0 && net.settled}
@@ -170,7 +190,9 @@
 						><th>{t('common.name')}</th><th>{t('phones.extensions')}</th><th>{t('phones.model')}</th
 						><th class="col-opt-lg">{t('phones.mac')}</th><th class="col-opt"
 							>{t('phones.lastSeen')}</th
-						><th class="col-opt-lg">{t('phones.firmware')}</th></tr
+						><th class="col-opt-lg">{t('phones.firmware')}</th>{#if showNetwork}<th class="col-opt"
+								>{t('phones.network.column')}</th
+							>{/if}</tr
 					>
 					<tr class="filters">
 						<th
@@ -223,6 +245,7 @@
 								bind:value={filter.firmware}
 							/></th
 						>
+						{#if showNetwork}<th class="col-opt"></th>{/if}
 					</tr>
 				</thead>
 				<tbody>
@@ -248,10 +271,15 @@
 							<td class="col-opt-lg font-mono text-xs">{p.mac}</td>
 							<td class="col-opt text-sm">{seen(p)}{p.last_ip ? ` · ${p.last_ip}` : ''}</td>
 							<td class="col-opt-lg font-mono text-xs">{p.last_firmware ?? '—'}</td>
+							{#if showNetwork}<td class="col-opt" data-testid="phone-network-cell"
+									><PhoneNetworkCell data={networkByPhone.get(p.id)} /></td
+								>{/if}
 						</tr>
 					{:else}
-						{#if !net.settled}<SkeletonRows cols={6} />{:else if filtering}<EmptyRow
-								cols={6}
+						{#if !net.settled}<SkeletonRows
+								cols={showNetwork ? 7 : 6}
+							/>{:else if filtering}<EmptyRow
+								cols={showNetwork ? 7 : 6}
 								text={t('common.noMatches')}
 							/>{/if}
 					{/each}

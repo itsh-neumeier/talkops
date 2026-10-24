@@ -400,6 +400,24 @@ async fn unifi_key_is_encrypted_and_kept(pool: PgPool) {
     let c = unifi::get(&pool, T).await.unwrap().unwrap();
     assert_eq!(c.version.as_deref(), Some("9.4.19"));
     assert_eq!(c.capabilities["classic"], true);
+    // The phone network data is off by default and stays on after a save.
+    assert!(!c.phone_network);
+    assert!(
+        unifi::set_phone_network(&pool, T, true)
+            .await
+            .unwrap()
+            .phone_network
+    );
+    assert!(
+        unifi::save(&pool, T, &sb, &input)
+            .await
+            .unwrap()
+            .phone_network
+    );
     unifi::delete(&pool, T).await.unwrap();
+    assert!(matches!(
+        unifi::set_phone_network(&pool, T, true).await,
+        Err(CoreError::NotFound)
+    ));
     assert!(unifi::get(&pool, T).await.unwrap().is_none());
 }

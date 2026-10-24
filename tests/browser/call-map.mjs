@@ -165,6 +165,11 @@ try {
   const widget = page.locator('section[aria-labelledby="dash-call-map"]');
   await widget.locator('.call-bubble').first().waitFor({ timeout: 20_000 });
   assert.match(await widget.textContent(), /Top-Ortsnetze.*Bamberg\s*\+49 951\s*3/s);
+  // The widget zooms to the bubbles and shows the same detail layers.
+  await widget.locator('.call-map-place > span').first().waitFor({ timeout: 20_000 });
+  assert.ok(await widget.evaluate(el => Number(el.querySelector('.call-map').dataset.zoom)) >= 5, 'widget zooms in');
+  assert.ok(await widget.locator('.leaflet-cm-admin-pane canvas').count() > 0, 'state borders in the widget');
+  assert.equal(await widget.locator('.leaflet-control-zoom-in').count(), 1, 'zoom buttons in the widget');
   assert.equal(mapRequests.at(-1).get('range'), '1d', 'widget default 24 h');
   const before = mapRequests.length;
   await widget.getByRole('tab', { name: '1 Stunde' }).click();

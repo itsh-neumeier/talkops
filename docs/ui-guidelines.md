@@ -75,8 +75,10 @@ like the inspector of UniFi Talk.
 
 - Use `SidePanel.svelte` with icon tabs (`panelIcons.ts`), usually
   **Overview**, a content tab and **Settings**. Wide screens keep the list
-  visible: add `lg:pr-[26rem]` to the page while the panel is open. Narrow
-  screens show the panel in full.
+  visible: the root layout keeps the panel width free while the panel is
+  open (`.app-body:has(.side-panel)` in `app.css`). Do not add a padding to
+  the page itself, because the page is inside the centred content column.
+  Narrow screens show the panel in full.
 - Keep the open entry in `?panel=<id>` with `#lib/panel.ts`. A row click and
   the name link (`data-panel-link`) open the panel; Ctrl/Cmd-click still
   opens the full page in a new tab.

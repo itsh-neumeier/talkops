@@ -137,7 +137,7 @@
 	}
 </script>
 
-<div class="space-y-4 {panel && tab === 'users' ? 'lg:pr-[26rem]' : ''}">
+<div class="space-y-4">
 	<PageHeader title={t('nav.users')}>
 		{#snippet actions()}
 			{#if can('users.manage') && tab === 'users'}<button class="btn btn-primary" onclick={create}

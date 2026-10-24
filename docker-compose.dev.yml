@@ -27,3 +27,14 @@ services:
       dockerfile: docker/media-worker/Dockerfile
     environment:
       TALKOPS_LOG_FORMAT: pretty
+
+  # Only with COMPOSE_PROFILES=coral. Without a TPU, set
+  # TALKOPS_CORAL_BACKEND=mock for fake models.
+  coral-stt:
+    image: talkops-coral-stt:dev
+    build:
+      context: .
+      dockerfile: docker/coral-stt/Dockerfile
+    environment:
+      TALKOPS_LOG_FORMAT: pretty
+      TALKOPS_CORAL_BACKEND: ${TALKOPS_CORAL_BACKEND:-tpu}

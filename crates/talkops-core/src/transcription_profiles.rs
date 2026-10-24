@@ -80,6 +80,7 @@ impl Purpose {
             realtime: false,
             price_per_minute: None,
             list_price: None,
+            provider_kind: None,
         }
     }
 }
@@ -128,6 +129,11 @@ pub struct Profile {
     /// The known list price of the cloud model (read-only).
     #[serde(default)]
     pub list_price: Option<f64>,
+    /// The kind of the connection: `openai`, `compatible` or `coral`
+    /// (read-only). For `coral`, `local_model` is the local fallback.
+    #[serde(default)]
+    #[sqlx(skip)]
+    pub provider_kind: Option<String>,
 }
 
 /// The engine that runs a transcription.
@@ -140,6 +146,12 @@ pub enum Engine {
         realtime: bool,
         /// Price per audio minute, if known.
         price: Option<f64>,
+        /// The coral-stt service on this server (ADR 0046): no usage, and
+        /// `fallback` runs when it is not available.
+        coral: bool,
+        /// The local model that replaces an unavailable Coral connection.
+        /// The live preview always falls back to `base`.
+        fallback: Option<TranscriptionQuality>,
     },
 }
 
@@ -163,6 +175,7 @@ fn finish(row: Row) -> Profile {
         (Some(kind), "cloud") => list_price(kind, &profile.model),
         _ => None,
     };
+    profile.provider_kind = row.kind;
     profile
 }
 
@@ -286,12 +299,26 @@ pub async fn engine(
 
 fn to_engine(p: &Profile) -> Option<Engine> {
     match (p.engine.as_str(), p.provider_id) {
-        ("cloud", Some(provider_id)) => Some(Engine::Cloud {
-            provider_id,
-            model: p.model.clone(),
-            realtime: p.realtime,
-            price: p.price_per_minute.or(p.list_price),
-        }),
+        ("cloud", Some(provider_id)) => {
+            let coral = p.provider_kind.as_deref() == Some("coral");
+            let fallback = if p.purpose == Purpose::Live.as_str() {
+                TranscriptionQuality::Base
+            } else {
+                TranscriptionQuality::parse(&p.local_model).unwrap_or(TranscriptionQuality::Fast)
+            };
+            Some(Engine::Cloud {
+                provider_id,
+                model: p.model.clone(),
+                realtime: p.realtime,
+                price: if coral {
+                    None
+                } else {
+                    p.price_per_minute.or(p.list_price)
+                },
+                coral,
+                fallback: coral.then_some(fallback),
+            })
+        }
         ("local", _) => Some(Engine::Local(
             TranscriptionQuality::parse(&p.local_model).unwrap_or(TranscriptionQuality::Fast),
         )),
@@ -441,7 +468,9 @@ mod tests {
                 provider_id: Uuid::nil(),
                 model: "gpt-transcribe".into(),
                 realtime: false,
-                price: Some(0.0045)
+                price: Some(0.0045),
+                coral: false,
+                fallback: None,
             })
         );
         p.price_per_minute = Some(0.0);
@@ -449,6 +478,36 @@ mod tests {
             to_engine(&p),
             Some(Engine::Cloud {
                 price: Some(0.0),
+                ..
+            })
+        ));
+        // A Coral connection: no price, the local model is the fallback.
+        p.provider_kind = Some("coral".into());
+        p.model = "coral-auto".into();
+        p.local_model = "accurate".into();
+        assert_eq!(
+            to_engine(&p),
+            Some(Engine::Cloud {
+                provider_id: Uuid::nil(),
+                model: "coral-auto".into(),
+                realtime: false,
+                price: None,
+                coral: true,
+                fallback: Some(TranscriptionQuality::Accurate),
+            })
+        );
+        let mut live = profile(Purpose::Live);
+        live.engine = "cloud".into();
+        live.provider_id = Some(Uuid::nil());
+        live.model = "coral-auto".into();
+        live.realtime = true;
+        live.local_model = "fast".into();
+        live.provider_kind = Some("coral".into());
+        assert!(matches!(
+            to_engine(&live),
+            Some(Engine::Cloud {
+                coral: true,
+                fallback: Some(TranscriptionQuality::Base),
                 ..
             })
         ));

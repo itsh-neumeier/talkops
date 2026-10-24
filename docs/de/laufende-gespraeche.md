@@ -97,6 +97,17 @@ liest jeder Schritt höchstens acht Sekunden Audio. Pro Mandant sind vier Vorsch
 möglich. Das Popup behält die letzten 200 Textabschnitte. Das endgültige
 Transkript bleibt für vollständige Texte und Suche zuständig.
 
+### Live-Vorschau mit Coral
+
+Mit einer Coral-Edge-TPU im Server kann die *Live-Vorschau*
+**Coral (dieser Server)** mit Streaming nutzen
+([Coral Edge TPU](aufzeichnung.md#coral-edge-tpu-dieser-server)). Der Text
+erscheint während des Sprechens, Audio verlässt den Server nicht. Jede Zeile
+zeigt die erkannte Sprache (`DE` oder `EN`). Ist Coral nicht verfügbar, zeigt
+das Popup *Coral ist gerade nicht verfügbar; lokales Whisper erstellt die
+Vorschau*, und das lokale Modell `base` arbeitet in 8-Sekunden-Stücken
+weiter. Nach 30 Sekunden versucht TalkOps Coral erneut. Das ist kein Fehler.
+
 Bei einem Transfer zu einem anderen Gesprächspartner das Popup neu öffnen.
 Die bisherige Vorschau stoppt, damit ihre Sprechernamen nicht dem neuen
 Gesprächspartner zugeordnet werden.
@@ -111,7 +122,8 @@ gemeinsam aktualisieren und zuvor die Migrationen ausführen.
 
 Siehe [Aufzeichnung](aufzeichnung.md) und
 Implementierung ([ADR 0022](../adr/0022-active-call-identities-and-live-previews.md),
-[ADR 0024](../adr/0024-transcription-engines-per-purpose.md)).
+[ADR 0024](../adr/0024-transcription-engines-per-purpose.md),
+[ADR 0046](../adr/0046-coral-edge-tpu-speech-recognition.md)).
 
 ## Ergebnis prüfen
 

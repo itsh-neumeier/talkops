@@ -1680,6 +1680,35 @@ export default {
 	'stt.provider.groq': 'Groq',
 	'stt.provider.mistral': 'Mistral (Voxtral)',
 	'stt.provider.custom': 'Own server (OpenAI-compatible, e.g. Speaches, LocalAI)',
+	'stt.engineConnection': 'Connection (Coral or cloud)',
+	'stt.provider.coral': 'Coral (this server)',
+	'stt.coralHint':
+		'The coral-stt service on this server (Compose profile coral). Loopback addresses only; audio does not leave the server, no costs.',
+	'stt.coralBadge': 'Coral',
+	'stt.fallback': 'Local fallback',
+	'stt.fallbackHint':
+		'If Coral is not reachable, overloaded or fails, this local model transcribes. TalkOps tries Coral again after 30 s.',
+	'stt.fallbackLive':
+		'If Coral is not reachable, overloaded or the stream breaks, local Whisper Base takes over in 8-second parts. TalkOps tries Coral again after 30 s.',
+	'stt.coralRealtime': 'Stream live (Coral Realtime)',
+	'stt.coralRealtimeHint':
+		'Text appears while people speak. Without streaming, TalkOps sends 8-second parts to Coral.',
+	'stt.hybrid': 'Apply hybrid',
+	'stt.hybridHint':
+		'Coral gives the live preview and the first pass; local Whisper replaces the text in the second pass.',
+	'stt.hybridApplied': 'Hybrid setup applied. Click “Save engines” to keep it.',
+	'stt.coralStatus': 'Coral status',
+	'stt.coralState.ok': 'ready',
+	'stt.coralState.degraded': 'degraded',
+	'stt.coralState.unavailable': 'not available',
+	'stt.coralTpu': '{id} ({kind}): {state}, load {load} %, models: {models}',
+	'stt.coralQueue': 'Queue {length}/{capacity}, live sessions {sessions}/{max}',
+	'stt.coralNoTpu': 'No Edge TPU found. Check devices/group_add in the Compose profile coral.',
+	'stt.languages': 'Detected language',
+	'rec.fallback': 'Fallback: local model because {engine} was not available',
+	'rec.language': 'Language: {language}',
+	'dash.live.fallback':
+		'Coral is not available now; local Whisper makes the preview. Next attempt in 30 s.',
 	'stt.url': 'API URL',
 	'stt.urlHint': 'Base URL including the version, without /audio/transcriptions.',
 	'stt.model': 'Model',

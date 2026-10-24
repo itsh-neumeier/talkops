@@ -92,6 +92,17 @@ Text is provisional and can lag behind speech. Without streaming, each job
 reads at most eight seconds. Each tenant can have four previews. The popup keeps the last 200
 segments. Use the final transcript for complete text and search.
 
+### Live preview with Coral
+
+With a Coral Edge TPU in the server, the *Live preview* can use
+**Coral (this server)** with streaming
+([Coral Edge TPU](recording.md#coral-edge-tpu-this-server)). The text appears
+while people speak, and audio does not leave the server. Each line shows the
+detected language (`DE` or `EN`). If Coral is not available, the popup shows
+*Coral is not available now; local Whisper makes the preview* and the local
+`base` model continues in 8-second parts. After 30 seconds TalkOps tries
+Coral again. This is no error.
+
 If the call is transferred to another party, reopen the popup. The old
 preview stops so that its speaker names do not identify the new party.
 
@@ -105,7 +116,8 @@ worker together. Run migrations before use.
 
 See [recording settings](recording.md) and
 implementation ([ADR 0022](../adr/0022-active-call-identities-and-live-previews.md),
-[ADR 0024](../adr/0024-transcription-engines-per-purpose.md)).
+[ADR 0024](../adr/0024-transcription-engines-per-purpose.md),
+[ADR 0046](../adr/0046-coral-edge-tpu-speech-recognition.md)).
 
 ## Check the result
 

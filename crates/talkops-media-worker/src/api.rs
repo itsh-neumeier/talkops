@@ -12,8 +12,13 @@
 //! options (`prompt`, `response_format`) get only file, model and language. Requests run through curl like
 //! the model downloads; the key is passed on stdin, never on the command
 //! line.
+//!
+//! A Coral connection (ADR 0046) gets the model `coral-auto` and the tenant
+//! language as the preferred one; its answers name the detected language
+//! of each segment, which the lines keep.
 
 use std::path::Path;
+use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 use anyhow::{Context, bail};
@@ -33,15 +38,24 @@ const MAX_UTTERANCE_SECS: f32 = 30.0;
 /// Per request.
 const TIMEOUT_SECS: &str = "900";
 
+/// The lines of a transcription and what the server reported.
+#[derive(Debug)]
+pub struct Transcription {
+    pub segments: Vec<Segment>,
+    /// Seconds of audio the provider accepted (for the usage estimate).
+    pub seconds: f64,
+    /// The language with the most speech (Coral only).
+    pub language: Option<String>,
+}
+
 /// Transcribes a WAV file with the API. Stereo files are split into
-/// `caller` and `called`, as with local Whisper. Also returns the seconds
-/// of audio the provider accepted (for the usage estimate).
+/// `caller` and `called`, as with local Whisper.
 pub async fn transcribe(
     cfg: &ApiConfig,
     wav: &Path,
     language: &str,
     vocabulary: &str,
-) -> anyhow::Result<(Vec<Segment>, f64)> {
+) -> anyhow::Result<Transcription> {
     let work = tempdir()?;
     let channels = {
         let (wav, dir) = (wav.to_owned(), work.path.clone());
@@ -56,6 +70,7 @@ pub async fn transcribe(
         minimal: AtomicBool::new(false),
         no_words: AtomicBool::new(false),
         sent: AtomicUsize::new(0),
+        languages: Mutex::new(Vec::new()),
     };
     let mut parties = Vec::new();
     for (i, (speaker, _, samples)) in channels.into_iter().enumerate() {
@@ -66,10 +81,69 @@ pub async fn transcribe(
         };
         parties.push((speaker, words, samples));
     }
-    Ok((
-        to_lines(&parties),
-        request.sent.load(Ordering::Relaxed) as f64 / f64::from(SAMPLE_RATE),
-    ))
+    let mut segments = to_lines(&parties);
+    let mut language = None;
+    if cfg.is_coral() {
+        let spans = request.languages.into_inner().unwrap_or_default();
+        let speakers: Vec<&str> = parties.iter().map(|p| p.0).collect();
+        label_languages(&mut segments, &speakers, &spans);
+        language = main_language(&spans);
+    }
+    Ok(Transcription {
+        segments,
+        seconds: request.sent.load(Ordering::Relaxed) as f64 / f64::from(SAMPLE_RATE),
+        language,
+    })
+}
+
+/// Detected language of a time span of one channel: (channel, start, end, language).
+type LanguageSpan = (usize, f32, f32, String);
+
+/// `de`, `de-DE`, `german` -> `de` (OpenAI names languages in English).
+pub fn normalize_language(language: &str) -> String {
+    let l = language.trim().to_ascii_lowercase();
+    match l.as_str() {
+        "german" | "deutsch" => "de".into(),
+        "english" => "en".into(),
+        _ => l.split(['-', '_']).next().unwrap_or_default().to_owned(),
+    }
+}
+
+/// Gives each line the language of the span of its channel that overlaps
+/// it most.
+fn label_languages(segments: &mut [Segment], speakers: &[&str], spans: &[LanguageSpan]) {
+    for seg in segments.iter_mut() {
+        let Some(channel) = speakers.iter().position(|s| *s == seg.speaker) else {
+            continue;
+        };
+        seg.language = spans
+            .iter()
+            .filter(|s| s.0 == channel)
+            .map(|s| {
+                (
+                    s.1.max(seg.start),
+                    s.2.min(seg.end.max(seg.start + 0.01)),
+                    &s.3,
+                )
+            })
+            .filter(|(from, to, _)| to > from)
+            .max_by(|a, b| (a.1 - a.0).total_cmp(&(b.1 - b.0)))
+            .map(|(_, _, l)| l.clone());
+    }
+}
+
+/// The language with the most speech.
+fn main_language(spans: &[LanguageSpan]) -> Option<String> {
+    let mut by: Vec<(&str, f32)> = Vec::new();
+    for (_, start, end, lang) in spans {
+        match by.iter_mut().find(|(l, _)| *l == lang) {
+            Some(e) => e.1 += end - start,
+            None => by.push((lang, end - start)),
+        }
+    }
+    by.into_iter()
+        .max_by(|a, b| a.1.total_cmp(&b.1))
+        .map(|(l, _)| l.to_owned())
 }
 
 struct Request<'a> {
@@ -83,6 +157,8 @@ struct Request<'a> {
     no_words: AtomicBool,
     /// Samples the server accepted.
     sent: AtomicUsize,
+    /// Languages the server detected (Coral).
+    languages: Mutex<Vec<LanguageSpan>>,
 }
 
 /// Which form fields a request carries.
@@ -103,6 +179,9 @@ enum Form {
 struct Answer {
     #[serde(default)]
     text: String,
+    /// The detected language (Coral: `de`; OpenAI: `german`).
+    #[serde(default)]
+    language: Option<String>,
     segments: Option<Vec<ApiSegment>>,
     /// With `timestamp_granularities[]=word`; without punctuation.
     #[serde(default)]
@@ -114,6 +193,9 @@ struct ApiSegment {
     start: f32,
     end: f32,
     text: String,
+    /// Coral names the language of each segment.
+    #[serde(default)]
+    language: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -157,6 +239,37 @@ enum Outcome {
 }
 
 impl Request<'_> {
+    /// Records the detected languages of one answer.
+    fn note_languages(
+        &self,
+        channel: usize,
+        offset: f32,
+        samples: usize,
+        segs: &[ApiSegment],
+        language: Option<&str>,
+    ) {
+        let Ok(mut spans) = self.languages.lock() else {
+            return;
+        };
+        let before = spans.len();
+        for seg in segs {
+            if let Some(lang) = &seg.language {
+                spans.push((
+                    channel,
+                    offset + seg.start,
+                    offset + seg.end,
+                    normalize_language(lang),
+                ));
+            }
+        }
+        if spans.len() == before
+            && let Some(lang) = language
+        {
+            let end = offset + samples as f32 / SAMPLE_RATE as f32;
+            spans.push((channel, offset, end, normalize_language(lang)));
+        }
+    }
+
     /// With timestamps, in chunks. `None` if the model has none.
     async fn timed(&self, samples: &[f32], channel: usize) -> anyhow::Result<Option<Vec<Word>>> {
         let chunk = MAX_CHUNK_SECS * SAMPLE_RATE as usize;
@@ -190,6 +303,13 @@ impl Request<'_> {
                 // Accepted, but without timestamps.
                 return Ok(None);
             };
+            self.note_languages(
+                channel,
+                offset,
+                part.len(),
+                &segs,
+                answer.language.as_deref(),
+            );
             out.extend(timed_words(segs, &answer.words, offset));
         }
         Ok(Some(out))
@@ -221,6 +341,9 @@ impl Request<'_> {
                 }
             }
             let answer = answer.context("no answer from transcription API")?;
+            if let (Some(lang), Ok(mut spans)) = (&answer.language, self.languages.lock()) {
+                spans.push((channel, start, end, normalize_language(lang)));
+            }
             out.push(Word {
                 start,
                 end,
@@ -355,6 +478,34 @@ pub fn speech_regions(samples: &[f32]) -> Vec<(f32, f32)> {
 mod tests {
     use super::*;
 
+    #[test]
+    fn coral_languages_label_the_lines() {
+        assert_eq!(normalize_language("German"), "de");
+        assert_eq!(normalize_language("en-US"), "en");
+        let line = |speaker: &str, start: f32, end: f32| Segment {
+            start,
+            end,
+            speaker: speaker.into(),
+            text: "x".into(),
+            language: None,
+        };
+        let mut lines = vec![
+            line("caller", 0.0, 2.0),
+            line("called", 1.0, 3.0),
+            line("caller", 5.0, 6.0),
+        ];
+        let spans = vec![
+            (0, 0.0, 2.5, "de".to_owned()),
+            (1, 0.5, 3.5, "en".to_owned()),
+            (0, 4.8, 6.5, "en".to_owned()),
+        ];
+        label_languages(&mut lines, &["caller", "called"], &spans);
+        let langs: Vec<Option<&str>> = lines.iter().map(|l| l.language.as_deref()).collect();
+        assert_eq!(langs, [Some("de"), Some("en"), Some("en")]);
+        assert_eq!(main_language(&spans).as_deref(), Some("en"));
+        assert_eq!(main_language(&[]), None);
+    }
+
     #[tokio::test]
     async fn cloud_line_timing_and_usage_survive_timestamp_fallback() {
         use tokio::io::AsyncReadExt;
@@ -380,6 +531,7 @@ mod tests {
             let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
             let cfg = ApiConfig {
                 name: "test".into(),
+                kind: "compatible".into(),
                 url: format!("http://{}/v1", listener.local_addr().unwrap()),
                 model: "whisper-1".into(),
                 key: None,
@@ -444,13 +596,15 @@ mod tests {
                     socket.write_all(response.as_bytes()).await.unwrap();
                 }
             });
-            let (lines, seconds) = tokio::time::timeout(
+            let done = tokio::time::timeout(
                 std::time::Duration::from_secs(20),
                 transcribe(&cfg, &wav, "de", ""),
             )
             .await
             .unwrap()
             .unwrap();
+            let (lines, seconds) = (done.segments, done.seconds);
+            assert_eq!(done.language, None, "only Coral reports a language");
             server.await.unwrap();
             assert_eq!(seconds, 8.0);
             assert_eq!(

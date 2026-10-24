@@ -46,7 +46,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        image: [talkops-server, talkops-media-worker, talkops-freeswitch]
+        image: [talkops-server, talkops-media-worker, talkops-freeswitch, talkops-coral-stt]
         arch: [amd64, arm64]
         include:
           - arch: amd64
@@ -62,6 +62,9 @@ jobs:
           - image: talkops-freeswitch
             context: docker/freeswitch
             dockerfile: docker/freeswitch/Dockerfile
+          - image: talkops-coral-stt
+            context: .
+            dockerfile: docker/coral-stt/Dockerfile
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
@@ -103,7 +106,7 @@ jobs:
       packages: write
     strategy:
       matrix:
-        image: [talkops-server, talkops-media-worker, talkops-freeswitch]
+        image: [talkops-server, talkops-media-worker, talkops-freeswitch, talkops-coral-stt]
     steps:
       - uses: actions/download-artifact@v4
         with:

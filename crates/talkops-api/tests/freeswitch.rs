@@ -1350,6 +1350,7 @@ async fn call_recording(db: PgPool) {
         end: 1.0,
         speaker: speaker.into(),
         text: text.into(),
+        language: None,
     };
     recordings::save_transcript(
         &db,

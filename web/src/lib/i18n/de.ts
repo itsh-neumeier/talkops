@@ -1698,6 +1698,35 @@ const de: Record<keyof typeof en, string> = {
 	'stt.provider.groq': 'Groq',
 	'stt.provider.mistral': 'Mistral (Voxtral)',
 	'stt.provider.custom': 'Eigener Server (OpenAI-kompatibel, z. B. Speaches, LocalAI)',
+	'stt.engineConnection': 'Verbindung (Coral oder Cloud)',
+	'stt.provider.coral': 'Coral (dieser Server)',
+	'stt.coralHint':
+		'Der Dienst coral-stt auf diesem Server (Compose-Profil coral). Nur Loopback-Adressen; Audio verlässt den Server nicht, keine Kosten.',
+	'stt.coralBadge': 'Coral',
+	'stt.fallback': 'Lokales Fallback',
+	'stt.fallbackHint':
+		'Ist Coral nicht erreichbar, überlastet oder bricht ab, transkribiert dieses lokale Modell. Nach 30 s versucht TalkOps Coral erneut.',
+	'stt.fallbackLive':
+		'Ist Coral nicht erreichbar, überlastet oder bricht der Stream ab, übernimmt lokales Whisper Base in 8-Sekunden-Stücken. Nach 30 s versucht TalkOps Coral erneut.',
+	'stt.coralRealtime': 'Live streamen (Coral Realtime)',
+	'stt.coralRealtimeHint':
+		'Text erscheint, während gesprochen wird. Ohne Streaming sendet TalkOps 8-Sekunden-Stücke an Coral.',
+	'stt.hybrid': 'Hybrid übernehmen',
+	'stt.hybridHint':
+		'Coral liefert die Live-Vorschau und den ersten Durchgang; lokales Whisper ersetzt den Text im zweiten Durchgang.',
+	'stt.hybridApplied': 'Hybrid-Einstellung übernommen. Mit „Engines speichern“ sichern.',
+	'stt.coralStatus': 'Coral-Status',
+	'stt.coralState.ok': 'bereit',
+	'stt.coralState.degraded': 'eingeschränkt',
+	'stt.coralState.unavailable': 'nicht verfügbar',
+	'stt.coralTpu': '{id} ({kind}): {state}, Last {load} %, Modelle: {models}',
+	'stt.coralQueue': 'Warteschlange {length}/{capacity}, Live-Sitzungen {sessions}/{max}',
+	'stt.coralNoTpu': 'Keine Edge TPU gefunden. Prüfe devices/group_add im Compose-Profil coral.',
+	'stt.languages': 'Erkannte Sprache',
+	'rec.fallback': 'Fallback: lokales Modell, weil {engine} nicht verfügbar war',
+	'rec.language': 'Sprache: {language}',
+	'dash.live.fallback':
+		'Coral ist gerade nicht verfügbar; lokales Whisper erstellt die Vorschau. Neuer Versuch in 30 s.',
 	'stt.url': 'API-URL',
 	'stt.urlHint': 'Basis-URL mit Version, ohne /audio/transcriptions.',
 	'stt.model': 'Modell',

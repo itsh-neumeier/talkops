@@ -170,13 +170,17 @@ pub enum Source {
     Voicemail(Uuid),
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct Segment {
     pub start: f32,
     pub end: f32,
     /// `caller`, `called` or empty (mono recordings, voicemail).
     pub speaker: String,
     pub text: String,
+    /// The language the engine detected for this line (`de`, `en`), if it
+    /// reports one (Coral, ADR 0046).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub language: Option<String>,
 }
 
 #[derive(Debug, Clone, FromRow, Serialize, utoipa::ToSchema)]
@@ -190,6 +194,9 @@ pub struct Transcript {
     pub segments: sqlx::types::Json<Vec<Segment>>,
     /// e.g. `whisper:large-v3-turbo-q5_0` or `api:whisper-1`.
     pub engine: String,
+    /// The selected engine that was not available, when a local fallback
+    /// made this transcript (e.g. `Coral/coral-auto`).
+    pub fallback_from: Option<String>,
     /// False while a more accurate second pass is still to come.
     #[sqlx(rename = "final")]
     #[serde(rename = "final")]
@@ -197,8 +204,8 @@ pub struct Transcript {
     pub created_at: DateTime<Utc>,
 }
 
-const T_COLUMNS: &str =
-    "id, recording_id, voicemail_id, language, text, segments, engine, final, created_at";
+const T_COLUMNS: &str = "id, recording_id, voicemail_id, language, text, segments, engine, \
+                         fallback_from, final, created_at";
 
 /// How a transcript was made.
 #[derive(Debug, Clone, Copy)]
@@ -206,6 +213,8 @@ pub struct TranscriptMeta<'a> {
     pub engine: &'a str,
     /// False if a second, more accurate pass follows.
     pub is_final: bool,
+    /// The unavailable engine that the local fallback replaced.
+    pub fallback_from: Option<&'a str>,
 }
 
 impl Default for TranscriptMeta<'_> {
@@ -213,6 +222,7 @@ impl Default for TranscriptMeta<'_> {
         Self {
             engine: "",
             is_final: true,
+            fallback_from: None,
         }
     }
 }
@@ -246,8 +256,8 @@ pub async fn save_transcript(
         .await?;
     let sql = format!(
         "INSERT INTO transcripts (tenant_id, recording_id, voicemail_id, language, text, segments,
-                                  engine, final)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING {T_COLUMNS}"
+                                  engine, final, fallback_from)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING {T_COLUMNS}"
     );
     let t: Transcript = sqlx::query_as(&sql)
         .bind(tenant)
@@ -258,6 +268,7 @@ pub async fn save_transcript(
         .bind(sqlx::types::Json(segments))
         .bind(meta.engine)
         .bind(meta.is_final)
+        .bind(meta.fallback_from)
         .fetch_one(&mut *tx)
         .await?;
     set_status(&mut tx, source, "done").await?;

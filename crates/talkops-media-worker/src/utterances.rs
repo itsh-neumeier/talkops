@@ -129,6 +129,7 @@ fn finish(line: &[&Word], start: Option<f32>, speaker: &str) -> Option<Segment> 
         end: last.end.max(start),
         speaker: speaker.to_owned(),
         text,
+        language: None,
     })
 }
 
@@ -315,6 +316,7 @@ mod tests {
             end,
             speaker: speaker.into(),
             text: text.into(),
+            language: None,
         };
         let out = merge(vec![
             seg(7.0, 9.0, "caller", "Das ist rein gegangen."),

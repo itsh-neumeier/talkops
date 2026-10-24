@@ -68,6 +68,7 @@ presets/trunks/              SIP trunk provider presets (YAML, phase 1)
 presets/phones/              phone model catalog (YAML, phase 2)
 presets/geo/                 number prefix → area data for the call map (ADR 0044)
 tools/geo/                   generator for presets/geo (raw data not in Git)
+tools/coral/                 offline Coral Edge TPU speech benchmark tools (Phase 0)
 docs/                        architecture, ADRs, user docs (docs/de, docs/en)
 ```
 

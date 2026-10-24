@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Call } from '#lib/api.ts';
 	import { allowNumber, blockSource, isBlocked } from '#lib/calls/blocking.ts';
+	import { reasonParts } from '#lib/dialing.ts';
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import { can } from '#lib/session.svelte.ts';
 	import AllowNumberDialog from './AllowNumberDialog.svelte';
@@ -8,6 +9,17 @@
 		$props();
 	let open = $state(false);
 	const source = $derived(blockSource(call.blocked_reason ?? ''));
+
+	/** Text of an outbound call blocked by a dialing profile (ADR 0045). */
+	function dialingText(reason: string): string {
+		const parts = reasonParts(reason);
+		if (!parts) return t('block.source.dialing');
+		if (!('value' in parts))
+			return t(parts.kind === 'sip' ? 'dialing.reason.sip' : 'dialing.reason.base');
+		return t('dialing.reason.rule', {
+			rule: `${t(`dialing.kind.${parts.kind}`)} ${parts.value}`
+		});
+	}
 </script>
 
 {#if isBlocked(call)}
@@ -31,11 +43,13 @@
 					? t('block.match', { pattern: call.blocked_reason!.slice(5) })
 					: source === 'phoneblock'
 						? t('block.votes', { count: call.blocked_reason!.slice(11) })
-						: t(`block.source.${source}`)}
+						: source === 'dialing'
+							? dialingText(call.blocked_reason!)
+							: t(`block.source.${source}`)}
 			</p>
 			<p class="break-all font-mono">{call.hangup_cause}</p>
 		</details>
-		{#if can('blocking.allowlist') && source !== 'anonymous' && allowNumber(call.caller_number)}
+		{#if call.direction === 'inbound' && can('blocking.allowlist') && source !== 'anonymous' && allowNumber(call.caller_number)}
 			{#if call.allowlisted}<span class="badge badge-ok" role="status">{t('block.allowed')}</span>
 			{:else}<button class="btn btn-sm max-w-full text-left" onclick={() => (open = true)}
 					>{t('block.allowAdd')}</button

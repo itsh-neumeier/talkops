@@ -142,6 +142,26 @@ ihrer Nebenstellen, Benutzer mit `calls.view_all` alle Anrufe. Die Karte
 zählt höchstens 50.000 Anrufe. Bei mehr Anrufen zeigt ein Hinweis, dass nur
 die neuesten gezählt sind.
 
+### Zoom und Orientierung
+
+Vergrößere mit der Schaltfläche **+**, dem Mausrad oder der Taste **+**. Die
+Offline-Karte zeigt je Stufe mehr Details:
+
+| Zoomstufe | Inhalt |
+| --- | --- |
+| bis 4 | Länder |
+| 5 | Grenzen der Bundesländer, Kantone und Provinzen, große Flüsse und Seen, Städte ab 500.000 Einwohnern |
+| 7 | Alle Flüsse und Seen der Kartendaten, Orte ab 50.000 Einwohnern |
+| 8 | Ortsnetzbereiche in Deutschland (dünne Linien), Orte ab 10.000 Einwohnern |
+| 10 bis 11 | Orte ab 1.000 Einwohnern in Deutschland, Österreich und der Schweiz |
+
+Überlappende Ortsnamen werden ausgeblendet; größere Orte haben Vorrang. Eine
+gewählte deutsche Blase zeigt die Fläche ihres Ortsnetzbereichs. Die
+Offline-Karte hat keine Straßen. Für Straßendetails kann ein Administrator
+einen Tile-Server eintragen
+([Systemeinstellungen](systemeinstellungen.md#tile-server-der-anrufkarte));
+Ortsnetzbereiche und Blasen liegen dann über den Kacheln.
+
 ### Dashboard
 
 Die Dashboard-Karte **Herkunft der Anrufe** zeigt eine kleine Karte des
@@ -165,15 +185,15 @@ Anrufenden:
 
 ### Datenquellen und Datenschutz
 
-Die Karte funktioniert offline. Basiskarte (Ländergrenzen) und alle
-Ortsnetzdaten sind in TalkOps enthalten. Die Seite sendet keine Anfrage an
+Die Karte funktioniert offline. Basiskarte (Länder, Bundesländer, Gewässer,
+Orte, Ortsnetzbereiche) und alle Ortsnetzdaten sind in TalkOps enthalten. Die Seite sendet keine Anfrage an
 fremde Server. Die Karte nennt diese Quellen:
 
 - © Bundesnetzagentur (Ortsnetzbereiche Deutschland)
 - Quelle: RTR-GmbH (Ortsnetze Österreich)
-- GeoNames, CC BY 4.0 (Koordinaten der Orte)
+- GeoNames, CC BY 4.0 (Koordinaten und Namen der Orte)
 - libphonenumber, Apache License 2.0 (Rufnummernpräfixe)
-- Natural Earth, gemeinfrei (Ländergrenzen)
+- Natural Earth, gemeinfrei (Länder, Bundesländer, Flüsse, Seen)
 
 Die Daten lassen sich mit `tools/geo/` aktualisieren (siehe ADR 0044).
 Ein Administrator kann zusätzlich einen Tile-Server für eine detaillierte

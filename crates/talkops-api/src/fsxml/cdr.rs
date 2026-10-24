@@ -63,8 +63,11 @@ pub fn parse(xml: &str) -> Result<Option<(TenantId, Cdr, Option<String>)>, Strin
         duration_secs: num("duration"),
         billsec: num("billsec"),
         hangup_cause: var("hangup_cause").unwrap_or_default(),
-        blocked_reason: var("talkops_blocked").filter(|reason| {
-            direction == Direction::Inbound && talkops_core::blocking::valid_block_reason(reason)
+        blocked_reason: var("talkops_blocked").filter(|reason| match direction {
+            Direction::Inbound => talkops_core::blocking::valid_block_reason(reason),
+            // Dialing profiles (ADR 0045).
+            Direction::Outbound => talkops_core::dial_permissions::valid_block_reason(reason),
+            _ => false,
         }),
         recording_id: None,
     };
@@ -203,6 +206,9 @@ mod tests {
             ("inbound", "list:101"),
             ("outbound", "phoneblock:12"),
             ("internal", "anonymous"),
+            ("inbound", "dialing:base"),
+            ("outbound", "dialing:prefix:%2B49900*"),
+            ("internal", "dialing:sip"),
         ] {
             let xml = SAMPLE
                 .replace(
@@ -216,5 +222,25 @@ mod tests {
             assert!(parse(&xml).unwrap().unwrap().1.blocked_reason.is_none());
         }
         assert!(parse(SAMPLE).unwrap().unwrap().1.blocked_reason.is_none());
+    }
+
+    #[test]
+    fn outbound_calls_keep_the_dialing_profile_reason() {
+        for reason in [
+            "dialing:base",
+            "dialing:sip",
+            "dialing:prefix:%2B49900",
+            "dialing:country:AT",
+        ] {
+            let xml = SAMPLE.replace(
+                "</variables>",
+                &format!("<talkops_blocked>{reason}</talkops_blocked></variables>"),
+            );
+            let (_, cdr, _) = parse(&xml).unwrap().unwrap();
+            assert_eq!(
+                cdr.blocked_reason.as_deref(),
+                Some(percent_decode(reason).as_str())
+            );
+        }
     }
 }

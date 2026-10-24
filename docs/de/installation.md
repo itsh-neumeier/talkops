@@ -32,9 +32,9 @@ dort nicht vollständig funktioniert.
 
 ```sh
 mkdir talkops && cd talkops
-curl -fLO https://raw.githubusercontent.com/itsh-neumeier/talkops/v1.8.8/docker-compose.yml
-curl -fL -o .env https://raw.githubusercontent.com/itsh-neumeier/talkops/v1.8.8/.env.example
-sed -i 's/^TALKOPS_VERSION=.*/TALKOPS_VERSION=1.8.8/' .env
+curl -fLO https://raw.githubusercontent.com/itsh-neumeier/talkops/v1.8.9/docker-compose.yml
+curl -fL -o .env https://raw.githubusercontent.com/itsh-neumeier/talkops/v1.8.9/.env.example
+sed -i 's/^TALKOPS_VERSION=.*/TALKOPS_VERSION=1.8.9/' .env
 ```
 
 In `.env` die Pflichtwerte setzen, z. B.:
@@ -50,7 +50,7 @@ sed -i "s/^TALKOPS_XMLCURL_PASSWORD=$/TALKOPS_XMLCURL_PASSWORD=$(openssl rand -h
 > Trunk-Zugangsdaten. Sichern Sie den Wert getrennt von der Datenbank – ohne
 > ihn sind die Zugangsdaten nach einem Restore nicht mehr lesbar.
 
-Dateien und Images nutzen den veröffentlichten Stand 1.8.8. Wähle für spätere
+Dateien und Images nutzen den veröffentlichten Stand 1.8.9. Wähle für spätere
 Releases passende Konfiguration und Image-Version gemeinsam. `latest` ist ein
 beweglicher stabiler Image-Tag und legt die Konfigurationsdateien nicht fest.
 Schütze `.env` nach Erzeugung der Geheimnisse mit `chmod 600 .env`.

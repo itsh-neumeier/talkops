@@ -300,6 +300,7 @@ pub fn api_router() -> (Router<AppState>, utoipa::openapi::OpenApi) {
         .merge(routes::recovery::router())
         .merge(routes::diagnostics::router())
         .merge(routes::blocking::router())
+        .merge(routes::dialing::router())
         .merge(routes::dashboard::router())
         .merge(routes::live_transcripts::router())
         .merge(routes::audio::router())

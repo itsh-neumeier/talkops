@@ -25,13 +25,21 @@ map `web/static/map/countries.geojson` (ADR 0044).
    /tmp/talkops-geo-venv/bin/python -I tools/geo/generate.py /tmp/talkops-geo-raw
    ```
 
-4. Run the data test:
+4. Generate the detail layers of the offline map (state borders, rivers,
+   lakes, places, German local network areas):
+
+   ```sh
+   /tmp/talkops-geo-venv/bin/python -I tools/geo/basemap.py /tmp/talkops-geo-raw
+   ```
+
+5. Run the data test:
 
    ```sh
    cargo test -p talkops-core --lib geo
    ```
 
-5. Examine the diff of `presets/geo/` and the warnings of the script.
+6. Examine the diff of `presets/geo/`, `web/static/map/` and the warnings
+   of the scripts.
 
 ## Sources
 
@@ -68,3 +76,20 @@ network areas. Find the current link on the BNetzA page "Ortsnetzbereiche,
 - Prefixes are made shorter where possible: ten sibling prefixes with the
   same area become their parent prefix, and a prefix with the same area as
   its nearest shorter prefix is left out.
+
+## Rules of the map layers (`basemap.py`)
+
+| File | Content | First zoom level |
+| --- | --- | --- |
+| `countries.geojson` | Country areas (Natural Earth 1:50m; Europe less simplified) | always |
+| `admin1.geojson` | State and province borders (Natural Earth 1:10m) | 5 |
+| `rivers.geojson`, `lakes.geojson` | Water (Natural Earth 1:10m and Europe supplement); property `z` | 5 (large), 7 (all) |
+| `places-5.json` | Places with 500,000 or more inhabitants | 5 |
+| `places-7.json` | 50,000 or more | 7 |
+| `places-8.json` | 10,000 or more (other countries: 15,000 or more) | 8 |
+| `places-10.json` | 1,000 or more, only DE, AT, CH and LI | 10 |
+| `onb.geojson` | German local network areas (BNetzA, simplified to 250 m) | 8 |
+
+Places come from GeoNames `cities1000`. German names of large places come
+from Natural Earth populated places (`name_de`). Each place is
+`[name, lat, lon, population, German name if different]`.

@@ -112,6 +112,25 @@ their own extensions, users with `calls.view_all` see all calls. The map
 counts at most 50,000 calls. With more calls, a message shows that only the
 newest calls are counted.
 
+### Zoom and orientation
+
+Zoom in with the **+** button, the mouse wheel or the **+** key. The offline
+map shows more detail at each step:
+
+| Zoom level | Content |
+| --- | --- |
+| up to 4 | Countries |
+| 5 | State and province borders, large rivers and lakes, cities with 500,000 or more inhabitants |
+| 7 | All rivers and lakes of the map data, places with 50,000 or more inhabitants |
+| 8 | Local network areas of Germany (thin lines), places with 10,000 or more inhabitants |
+| 10 to 11 | Places with 1,000 or more inhabitants in Germany, Austria and Switzerland |
+
+Place names that overlap are hidden; larger places come first. A selected
+German bubble shows the outline of its local network area. The offline map
+has no streets. For street detail, an administrator can set a tile server
+([system settings](system-settings.md#call-map-tile-server)); the local
+network areas and the bubbles then show on top of the tiles.
+
 ### Dashboard
 
 The dashboard card **Call origins** shows a small map of the last day (or
@@ -132,15 +151,15 @@ The map shows the area of the phone number, not the location of the caller:
 
 ### Data sources and privacy
 
-The map works offline. The base map (country outlines) and all area data
-come with TalkOps. The page sends no request to another server. The map
+The map works offline. The base map (countries, state borders, water,
+places, local network areas) and all area data come with TalkOps. The page sends no request to another server. The map
 shows these sources:
 
 - © Bundesnetzagentur (local network areas of Germany)
 - Source: RTR-GmbH (local networks of Austria)
-- GeoNames, CC BY 4.0 (place coordinates)
+- GeoNames, CC BY 4.0 (place coordinates and place names)
 - libphonenumber, Apache License 2.0 (number prefixes)
-- Natural Earth, public domain (country outlines)
+- Natural Earth, public domain (countries, state borders, rivers, lakes)
 
 The administrator can update the data with `tools/geo/` (see ADR 0044).
 An administrator can also set a tile server for a detailed background map

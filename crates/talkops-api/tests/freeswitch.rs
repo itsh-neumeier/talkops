@@ -65,7 +65,16 @@ async fn fixture(router: &axum::Router) -> Fixture {
     }
 }
 
+/// Dialplan actions; the blind-transfer marks of device legs (ADR 0045)
+/// are left out, see [`raw_actions`] and `dialing_profiles_mark_transfers`.
 fn actions(xml: &str) -> Vec<(String, String)> {
+    raw_actions(xml)
+        .into_iter()
+        .map(|(app, data)| (app, without_xfer_marks(&data)))
+        .collect()
+}
+
+fn raw_actions(xml: &str) -> Vec<(String, String)> {
     let doc = roxmltree::Document::parse(xml).unwrap();
     doc.descendants()
         .filter(|n| n.has_tag_name("action"))
@@ -76,6 +85,17 @@ fn actions(xml: &str) -> Vec<(String, String)> {
             )
         })
         .collect()
+}
+
+const XFER_MARK: &str = "[api_on_answer_talkops_xfer=";
+
+fn without_xfer_marks(data: &str) -> String {
+    let mut out = data.to_owned();
+    while let Some(start) = out.find(XFER_MARK) {
+        let end = start + out[start..].find(']').unwrap() + 1;
+        out.replace_range(start..end, "");
+    }
+    out
 }
 
 /// Bridge string ringing both devices of extension 20 plus its pickup group.

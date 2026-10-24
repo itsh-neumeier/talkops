@@ -8,6 +8,7 @@ pub mod blocking;
 pub mod call_map;
 pub mod dashboard;
 pub mod diagnostics;
+pub mod dialing;
 pub mod doors;
 pub mod extensions;
 pub mod fax;

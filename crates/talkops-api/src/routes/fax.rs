@@ -218,6 +218,18 @@ async fn submit(
         return Err(ApiError::Forbidden);
     }
     fax::route_for_document(&s.db, &f).await?;
+    if talkops_core::dial_permissions::user_blocks(
+        &s.db,
+        a.tenant,
+        f.owner_id,
+        &f.destination,
+        &s.geo,
+    )
+    .await?
+    .is_some()
+    {
+        return Err(ApiError::BadRequest(crate::fax::DIALING_BLOCKED.into()));
+    }
     let changed=sqlx::query("UPDATE faxes SET state='queued',updated_at=now() WHERE tenant_id=$1 AND id=$2 AND state='draft'").bind(a.tenant).bind(id).execute(&s.db).await?.rows_affected();
     if changed != 1 {
         return Err(ApiError::Conflict("fax is not a prepared draft".into()));

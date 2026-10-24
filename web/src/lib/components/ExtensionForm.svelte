@@ -7,6 +7,8 @@
 	import { describe } from '#lib/destinations.svelte.ts';
 	import { ringsExtension, saveNumber } from '#lib/numbers.ts';
 	import { can } from '#lib/session.svelte.ts';
+	import type { DialingProfile } from '#lib/dialing.ts';
+	import { onMount } from 'svelte';
 
 	let {
 		extension = null,
@@ -38,6 +40,20 @@
 		forward_all: extension?.forward_all ?? null
 	});
 	let error = $state('');
+
+	// Dialing profile (ADR 0045): saved through its own endpoint.
+	let profiles = $state<DialingProfile[]>([]);
+	// svelte-ignore state_referenced_locally
+	let dialingProfile = $state(extension?.dialing_profile_id ?? '');
+	const defaultProfile = $derived(profiles.find((p) => p.is_default));
+	onMount(async () => {
+		if (!can('dialing.manage')) return;
+		try {
+			profiles = await api.get<DialingProfile[]>('/dialing-profiles');
+		} catch {
+			// The select stays hidden.
+		}
+	});
 
 	/** Incoming numbers that ring this extension, as edited. */
 	// svelte-ignore state_referenced_locally
@@ -105,6 +121,14 @@
 				? await api.put<Extension>(`/extensions/${extension.id}`, body)
 				: await api.post<Extension>('/extensions', body);
 			if (can('extensions.manage')) await applyNumbers(saved.id);
+			const profile = dialingProfile || null;
+			if (profiles.length && profile !== (saved.dialing_profile_id ?? null)) {
+				const assigned = await api.put<Extension>(`/extensions/${saved.id}/dialing-profile`, {
+					profile_id: profile
+				});
+				onsaved(assigned);
+				return;
+			}
 			onsaved(saved);
 		} catch (err) {
 			error = errorMessage(err);
@@ -144,6 +168,16 @@
 			{#each numbers as n (n.id)}<option value={n.id}>{n.e164} {n.label}</option>{/each}
 		</select>
 	</div>
+	{#if profiles.length}
+		<div>
+			<label for="e-dialing">{t('ext.dialingProfile')}</label>
+			<select id="e-dialing" class="input" bind:value={dialingProfile}>
+				<option value="">{t('ext.dialingDefault', { name: defaultProfile?.name ?? '—' })}</option>
+				{#each profiles as p (p.id)}<option value={p.id}>{p.name}</option>{/each}
+			</select>
+			<p class="hint">{t('ext.dialingHint')}</p>
+		</div>
+	{/if}
 	{#if can('extensions.manage') && numbers.length}
 		<fieldset class="space-y-1">
 			<legend class="text-sm font-medium">{t('ext.incomingNumbers')}</legend>

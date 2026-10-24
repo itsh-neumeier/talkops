@@ -358,11 +358,12 @@ dialog.dialog-panel[open]::backdrop {
 }
 .call-map .call-map-country {
 	fill: var(--color-white);
-	stroke: var(--color-slate-300);
+	stroke: var(--color-slate-400);
+	stroke-width: 1.2px;
 }
 .dark .call-map .call-map-country {
 	fill: var(--color-slate-800);
-	stroke: var(--color-slate-600);
+	stroke: var(--color-slate-500);
 }
 .call-map .leaflet-control-attribution {
 	background: rgb(255 255 255 / 0.85);
@@ -408,4 +409,44 @@ dialog.dialog-panel[open]::backdrop {
 	opacity: 1;
 	outline: 3px solid var(--color-teal-500);
 	outline-offset: 2px;
+}
+/* Place labels of the offline map (mapDetail.ts). */
+.call-map-place {
+	pointer-events: none;
+}
+.call-map-place > span {
+	position: absolute;
+	transform: translate(-50%, -100%);
+	white-space: nowrap;
+	font-size: 0.6875rem;
+	line-height: 1;
+	color: var(--color-slate-600);
+	text-shadow:
+		0 0 2px var(--color-white),
+		0 0 3px var(--color-white);
+}
+.call-map-place > span::after {
+	content: '';
+	position: absolute;
+	left: 50%;
+	top: calc(100% + 1px);
+	width: 3px;
+	height: 3px;
+	margin-left: -1.5px;
+	border-radius: 9999px;
+	background: var(--color-slate-500);
+}
+.call-map-place-major > span {
+	font-size: 0.8125rem;
+	font-weight: 600;
+	color: var(--color-slate-700);
+}
+.dark .call-map-place > span {
+	color: var(--color-slate-300);
+	text-shadow:
+		0 0 2px var(--color-slate-950),
+		0 0 3px var(--color-slate-950);
+}
+.dark .call-map-place-major > span {
+	color: var(--color-slate-100);
 }

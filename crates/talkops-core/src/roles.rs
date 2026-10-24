@@ -81,6 +81,7 @@ permissions! {
     BlockingManage = "blocking.manage", "routing", false;
     BlockingAllowlist = "blocking.allowlist", "routing", false;
     BlockingSettings = "blocking.settings", "routing", false;
+    DialingManage = "dialing.manage", "routing", true;
     TrunksView = "trunks.view", "trunks", false;
     TrunksManage = "trunks.manage", "trunks", true;
     PhonesView = "phones.view", "phones", false;

@@ -5,12 +5,13 @@
 - Task ID: 20261023-claude-call-map
 - Date: 2026-10-23, Europe/Berlin
 - Tool: Claude Code
-- Status: Completed (3 PRs open; the release manager integrates them)
+- Status: Completed (4 PRs open; the release manager integrates them)
 - Branch: claude/affectionate-lamport-v5iw3a (PR 1),
   claude/affectionate-lamport-v5iw3a-map-view (PR 2, stacked on PR 1),
-  claude/affectionate-lamport-v5iw3a-map-widget (PR 3, stacked on PR 2)
+  claude/affectionate-lamport-v5iw3a-map-widget (PR 3, stacked on PR 2),
+  claude/affectionate-lamport-v5iw3a-map-detail (PR 4, stacked on PR 3)
 - Base commit: a2478c8 (origin/main, TalkOps 1.8.7)
-- Related commits or PR: [itsh-neumeier/talkops#65](https://github.com/itsh-neumeier/talkops/pull/65) (PR 1), [itsh-neumeier/talkops#66](https://github.com/itsh-neumeier/talkops/pull/66) (PR 2), [itsh-neumeier/talkops#67](https://github.com/itsh-neumeier/talkops/pull/67) (PR 3)
+- Related commits or PR: [itsh-neumeier/talkops#65](https://github.com/itsh-neumeier/talkops/pull/65) (PR 1), [itsh-neumeier/talkops#66](https://github.com/itsh-neumeier/talkops/pull/66) (PR 2), [itsh-neumeier/talkops#67](https://github.com/itsh-neumeier/talkops/pull/67) (PR 3); PR 4 pending
 
 ## Goal
 
@@ -30,6 +31,8 @@ prompt "Anrufkarte". Three PRs, one after the other:
 - PR 1: implemented, tested, pushed, PR #65 open.
 - PR 2: implemented, tested, pushed, PR #66 open.
 - PR 3: implemented, tested, pushed, PR #67 open.
+- PR 4 (user request after a review of the map, specification confirmed in
+  an interview): detail layers of the offline map. Implemented and tested.
 
 ## Changes
 
@@ -86,6 +89,21 @@ prompt "Anrufkarte". Three PRs, one after the other:
 - Docs: `docs/en/system-settings.md`, `docs/de/systemeinstellungen.md`,
   call log docs (dashboard, tiles), ADR 0044 (tile setting and CSP).
 
+### PR 4
+
+- `tools/geo/basemap.py`: `admin1.geojson`, `rivers.geojson`, `lakes.geojson`,
+  `places-{5,7,8,10}.json`, `onb.geojson` in `web/static/map/` (7.6 MB, 1.9 MB gzip).
+  `fetch.sh` downloads Natural Earth 10m layers and GeoNames `cities1000`.
+- `tools/geo/generate.py`: countries in Europe simplified with 0.005° (no gaps).
+- `web/src/lib/calls/mapLayers.ts` (zoom rules, label placement, colors),
+  `web/src/lib/calls/mapDetail.ts` (lazy layers, labels, ONB outline),
+  `CallMap.svelte` (panes, offline max zoom 11, `data-zoom`), `app.css` (labels).
+- Tests: `web/tests/callMapLayers.test.ts`; `tests/browser/call-map.mjs`
+  (files by zoom, no external requests, outline of the selected area,
+  labels without overlap, max zoom 11, no offline water with tiles).
+- Docs: ADR 0044 addendum, call log EN/DE "Zoom and orientation",
+  `tools/geo/README.md`, `THIRD_PARTY_NOTICES.md`.
+
 ## Decisions
 
 - Data sources: BNetzA ONB GIS (2026-08-10) and area code list (DE), RTR
@@ -114,6 +132,11 @@ prompt "Anrufkarte". Three PRs, one after the other:
   cannot extend the policy. Conditional requests are ignored for this
   response so a cached page does not keep the old policy.
 - A tile server needs an attribution text.
+- PR 4 (interview 2026-10-23): Natural Earth + GeoNames layers, no vector
+  tiles; DE local network area outlines from zoom 8 and for the selected
+  bubble; DACH places from 1,000 inhabitants, other countries from 15,000;
+  world street detail only through the optional tile server.
+- Place labels use the German Natural Earth name in the German UI.
 
 ## Checks
 
@@ -130,6 +153,8 @@ prompt "Anrufkarte". Three PRs, one after the other:
   web lint/check/test/build, browser tests `call-map` (widget, tile layer), `call-list`,
   `layout`, `call-presentation`, `motion`, `active-calls`, `call-blocking`,
   `settings-system`, `roles`.
+- PR 4 passed: `npm run lint/check/test` (62 tests), all 17 browser tests of
+  `ci.yml` against `vite preview`; manual screenshots light/dark at zoom 6 to 11.
 - Measured: data 2.7 MB, 19,584 areas, 81,687 prefixes; load 78 ms (release), 260 ms (debug).
 - STE review: manual review against `docs/documentation-style.md`; the full
   ASD-STE100 standard was not available.
@@ -138,7 +163,7 @@ prompt "Anrufkarte". Three PRs, one after the other:
 
 - No migration in PR 1.
 - Migration in PR 3: `20261109000001_call_map_tiles.sql`.
-- Merge order: #65, then PR 2, then PR 3 (stacked branches).
+- Merge order: #65, #66, #67, then PR 4 (stacked branches).
 
 ## Next action
 

@@ -2696,15 +2696,15 @@ const de: Record<keyof typeof en, string> = {
 	'perm.wifi_survey.manage': 'WLAN-Begehungen verwalten',
 	'perm.wifi_survey.manage.hint':
 		'Alle Begehungen lesen, Schwellen und Löschfrist ändern, Begehungen löschen.',
-	'perm.unifi.manage': 'UniFi-Verbindung verwalten',
+	'perm.unifi.manage': 'Verbindung zur Ubiquiti Networks API verwalten',
 	'perm.unifi.manage.hint':
-		'UniFi-API-Schlüssel speichern, Verbindung testen, VoIP-SSID auswählen und Änderungsvorschläge sowie den Änderungsverlauf lesen.',
+		'Schlüssel der Ubiquiti Networks API speichern, Verbindung testen, VoIP-SSID auswählen und Änderungsvorschläge sowie den Änderungsverlauf lesen.',
 	'wifi.title': 'WLAN-Begehung',
 	'wifi.intro':
-		'Mit einem WLAN-Handset das Gelände abgehen. TalkOps misst den Sprachstrom jede Sekunde, zeichnet das Gespräch auf und bewertet jedes Roaming mit Daten aus UniFi.',
+		'Mit einem WLAN-Handset das Gelände abgehen. TalkOps misst den Sprachstrom jede Sekunde, zeichnet das Gespräch auf und bewertet jedes Roaming mit Daten aus der Ubiquiti Networks API.',
 	'wifi.tabSurveys': 'Begehungen',
 	'wifi.tabSettings': 'Einstellungen',
-	'wifi.tabUnifi': 'UniFi',
+	'wifi.tabUnifi': 'Ubiquiti Networks API',
 	'wifi.start': 'Begehung starten',
 	'wifi.startShort': 'WLAN-Begehung',
 	'wifi.startNow': 'Starten',
@@ -2742,17 +2742,19 @@ const de: Record<keyof typeof en, string> = {
 	'wifi.rating.bad': 'Schlecht',
 	'wifi.device': 'WLAN-Gerät',
 	'wifi.mac': 'MAC-Adresse',
-	'wifi.noMac': 'keine (Gerät ist keinem provisionierten Telefon zugeordnet; keine UniFi-Daten)',
-	'wifi.unifiConnected': 'UniFi: verbunden mit {ap} · {band} · Kanal {channel} · {rssi} dBm',
+	'wifi.noMac':
+		'keine (Gerät ist keinem provisionierten Telefon zugeordnet; keine Daten der Ubiquiti Networks API)',
+	'wifi.unifiConnected':
+		'Ubiquiti Networks API: verbunden mit {ap} · {band} · Kanal {channel} · {rssi} dBm',
 	'wifi.unifiState.not_configured':
-		'UniFi ist nicht verbunden. Die Begehung misst nur den Sprachstrom, ohne Access-Point-Daten.',
+		'Die Ubiquiti Networks API ist nicht verbunden. Die Begehung misst nur den Sprachstrom, ohne Access-Point-Daten.',
 	'wifi.unifiState.no_mac':
 		'Das Gerät hat keine MAC-Adresse. Die Begehung misst nur den Sprachstrom.',
 	'wifi.unifiState.not_found':
-		'UniFi sieht das Handset gerade nicht. Prüfen, ob es mit dem WLAN verbunden ist.',
+		'Die Ubiquiti Networks API meldet das Handset gerade nicht. Prüfen, ob es mit dem WLAN verbunden ist.',
 	'wifi.unifiState.error':
-		'UniFi kann nicht gelesen werden. Verbindung unter Einstellungen → WLAN-Begehung → UniFi prüfen.',
-	'wifi.unifiState.connected': 'UniFi: verbunden',
+		'Die Ubiquiti Networks API kann nicht gelesen werden. Verbindung unter Einstellungen → WLAN-Begehung → Ubiquiti Networks API prüfen.',
+	'wifi.unifiState.connected': 'Ubiquiti Networks API: verbunden',
 	'wifi.mode': 'Start',
 	'wifi.modeOriginate': 'TalkOps ruft das Handset jetzt an',
 	'wifi.modeSelfDial': 'Ich wähle *39 am Handset (innerhalb von 10 Minuten)',
@@ -2796,7 +2798,7 @@ const de: Record<keyof typeof en, string> = {
 	'wifi.soundAlert': 'Ton bei Rot',
 	'wifi.events': 'Ereignisse',
 	'wifi.noEvents': 'Noch keine Ereignisse.',
-	'wifi.radioError': 'UniFi: {error}',
+	'wifi.radioError': 'Ubiquiti Networks API: {error}',
 	'wifi.chartLabel': 'Zeitleiste mit RSSI, Access Points, Verlust, Roamings und Markierungen',
 	'wifi.errorPeriod': 'Verlustphase (FreeSWITCH)',
 	'wifi.legend.rssi': 'RSSI (dBm)',
@@ -2839,7 +2841,7 @@ const de: Record<keyof typeof en, string> = {
 	'wifi.rec.band_5ghz':
 		'Verluste traten auf 2,4 GHz auf. 5 GHz für die Sprach-SSID nutzen oder Band Steering aktivieren.',
 	'wifi.rec.connect_unifi':
-		'UniFi verbinden, um Access Points, Signal und Roamings im Ergebnis zu sehen.',
+		'Ubiquiti Networks API verbinden, um Access Points, Signal und Roamings im Ergebnis zu sehen.',
 	'wifi.rec.voice_ssid':
 		'Allgemeine Prüfung der Sprach-SSID: DTIM 1 bis 2, Mindest-Datenrate mind. 12 Mbit/s, WMM an, DSCP EF (46) für RTP am Handset.',
 	'wifi.recordingHint':
@@ -2847,7 +2849,7 @@ const de: Record<keyof typeof en, string> = {
 	'wifi.roamTable': 'Roamings',
 	'wifi.play': 'Abspielen',
 	'wifi.noRoams': 'Keine Roamings.',
-	'wifi.noRadio': 'Keine UniFi-Daten: Roamings können nicht erkannt werden.',
+	'wifi.noRadio': 'Keine Daten der Ubiquiti Networks API: Roamings können nicht erkannt werden.',
 	'wifi.flag.band_change': 'Bandwechsel',
 	'wifi.flag.pingpong': 'Pingpong',
 	'wifi.flag.sticky_before': 'vorher klebend',
@@ -2859,7 +2861,7 @@ const de: Record<keyof typeof en, string> = {
 	'wifi.pattern.weak_coverage': 'Schwache Abdeckung',
 	'wifi.pattern.vad_suspected': 'Stilleunterdrückung (VAD)',
 	'wifi.stickyHint':
-		'UniFi meldet für einen Client nicht das Signal anderer Access Points. „Sticky Client“ zeigt, dass wahrscheinlich ein besserer Access Point verfügbar war.',
+		'Die Ubiquiti Networks API meldet für einen Client nicht das Signal anderer Access Points. „Sticky Client“ zeigt, dass wahrscheinlich ein besserer Access Point verfügbar war.',
 	'wifi.aps': 'Access Points',
 	'wifi.noMarkers': 'Keine Markierungen.',
 	'wifi.reanalyse': 'Neu auswerten',
@@ -2882,7 +2884,7 @@ const de: Record<keyof typeof en, string> = {
 		'Begehungsdaten, Ortsmarkierungen und die Aufnahme werden nach dieser Frist gelöscht.',
 	'wifi.settings.reanalyseHint':
 		'Neue Schwellen gelten für neue Begehungen. „Neu auswerten“ an einer Begehung wendet sie auf alte Begehungen an.',
-	'wifi.unifi.title': 'UniFi-Network-Verbindung',
+	'wifi.unifi.title': 'Ubiquiti Networks API',
 	'wifi.unifi.intro':
 		'TalkOps liest Access Point, Band, Kanal, Signal und Datenrate des Test-Handsets. Ohne „Schreibzugriff erlauben“ liest TalkOps nur und ändert die UniFi-Konfiguration nie.',
 	'wifi.unifi.url': 'Adresse der Konsole',
@@ -2898,7 +2900,7 @@ const de: Record<keyof typeof en, string> = {
 	'wifi.unifi.certHint':
 		'UniFi-Konsolen haben meist ein selbstsigniertes Zertifikat. TalkOps akzeptiert dann genau dieses Zertifikat.',
 	'wifi.unifi.test': 'Verbindung testen',
-	'wifi.unifi.confirmDelete': 'UniFi-Verbindung und API-Schlüssel entfernen?',
+	'wifi.unifi.confirmDelete': 'Verbindung zur Ubiquiti Networks API und API-Schlüssel entfernen?',
 	'wifi.unifi.status': 'Verbindungsstatus',
 	'wifi.unifi.lastCheck': 'Letzter Test',
 	'wifi.unifi.version': 'Network-Version',
@@ -2909,7 +2911,7 @@ const de: Record<keyof typeof en, string> = {
 	'wifi.unifi.unavailable': 'nicht verfügbar',
 	'wifi.unifi.noClassic':
 		'Die Client-Werte sind nicht verfügbar. Die Begehung hat dann kein Signal, keinen Kanal und keine Datenrate. Versionstabelle in der Anleitung prüfen.',
-	'perm.unifi.write': 'UniFi-VoIP-SSID ändern',
+	'perm.unifi.write': 'VoIP-SSID über die Ubiquiti Networks API ändern',
 	'perm.unifi.write.hint':
 		'Schreibzugriff einschalten, Empfehlungen der Begehung auf die VoIP-SSID und die Roaming-Schwelle des Handsets anwenden (mit „Telefone verwalten“) und Änderungen zurücknehmen.',
 	'wifi.tabChanges': 'WLAN-Änderungen',
@@ -2947,7 +2949,7 @@ const de: Record<keyof typeof en, string> = {
 	'unifiWrite.hint.fast_roaming_80211r':
 		'Fast Roaming (802.11r) ist aus. In UniFi einschalten, wenn alle Handsets es unterstützen. Manche älteren Clients können sich mit 802.11r nicht verbinden.',
 	'unifiWrite.hint.fast_roaming_80211k':
-		'802.11k (Nachbarberichte) hat keine Einstellung in der UniFi-API. In UniFi prüfen.',
+		'802.11k (Nachbarberichte) hat keine Einstellung in der Ubiquiti Networks API. In UniFi prüfen.',
 	'unifiWrite.hint.min_data_rate':
 		'Minimale Datenrate: Eine höhere Rate kann das Roaming beschleunigen, betrifft aber alle Clients. In UniFi prüfen.',
 	'unifiWrite.hint.tx_power':
@@ -2967,11 +2969,13 @@ const de: Record<keyof typeof en, string> = {
 	'unifiWrite.newSurvey': 'Neue Begehung zum Vergleich starten',
 	'unifiWrite.openHistory': 'Änderungsverlauf',
 	'unifiWrite.err.write_disabled':
-		'Der Schreibzugriff auf UniFi ist aus. Unter WLAN-Begehung → UniFi einschalten.',
-	'unifiWrite.err.permission': 'Die Berechtigung „UniFi-VoIP-SSID ändern“ fehlt.',
+		'Der Schreibzugriff über die Ubiquiti Networks API ist aus. Unter WLAN-Begehung → Ubiquiti Networks API einschalten.',
+	'unifiWrite.err.permission':
+		'Die Berechtigung „VoIP-SSID über die Ubiquiti Networks API ändern“ fehlt.',
 	'unifiWrite.err.version_unsupported':
 		'Schreiben braucht UniFi Network 10.6.106 oder neuer. Verbindungstest ausführen.',
-	'unifiWrite.err.no_voice_ssid': 'VoIP-SSID unter WLAN-Begehung → UniFi auswählen.',
+	'unifiWrite.err.no_voice_ssid':
+		'VoIP-SSID unter WLAN-Begehung → Ubiquiti Networks API auswählen.',
 	'unifiWrite.err.survey_active':
 		'Eine WLAN-Begehung läuft. Während einer Begehung schreibt TalkOps nicht.',
 	'unifiWrite.err.change_in_progress': 'Eine andere Änderung läuft gerade.',
@@ -2984,7 +2988,7 @@ const de: Record<keyof typeof en, string> = {
 		'UniFi liefert das SSID-Passwort nicht. Ein vollständiges Update würde es entfernen, darum schreibt TalkOps nicht.',
 	'unifiWrite.err.not_revertible': 'Diese Änderung kann nicht zurückgenommen werden.',
 	'unifiWrite.err.unifi_forbidden':
-		'Der UniFi-API-Schlüssel darf lesen, aber nicht schreiben. Schlüssel eines Administrators mit Schreibrechten verwenden.',
+		'Der Schlüssel der Ubiquiti Networks API darf lesen, aber nicht schreiben. Schlüssel eines Administrators mit Schreibrechten verwenden.',
 	'unifiWrite.err.verify_mismatch':
 		'UniFi hat nicht alle Werte übernommen. Änderungsverlauf prüfen.',
 	'unifiWrite.voiceTitle': 'VoIP-SSID und Schreibzugriff',
@@ -2997,7 +3001,7 @@ const de: Record<keyof typeof en, string> = {
 	'unifiWrite.central': 'zentral verwaltet',
 	'unifiWrite.writeSwitch': 'Schreibzugriff erlauben',
 	'unifiWrite.writeHint':
-		'TalkOps ändert dann nur die genannten Einstellungen dieser SSID über die offizielle UniFi Network API und nur nach Bestätigung. Jede Änderung trennt die Clients der SSID kurz.',
+		'TalkOps ändert dann nur die genannten Einstellungen dieser SSID über die Ubiquiti Networks API und nur nach Bestätigung. Jede Änderung trennt die Clients der SSID kurz.',
 	'unifiWrite.writeVersion':
 		'Schreiben braucht UniFi Network {min} oder neuer. Diese Konsole: {version}.',
 	'unifiWrite.cap.wifiBroadcasts': 'SSID-Liste (wifi/broadcasts)',
@@ -3052,14 +3056,14 @@ const de: Record<keyof typeof en, string> = {
 	'unifiWrite.bandNoHandsets': 'Keine provisionierten WLAN-Handsets.',
 	'unifiWrite.band.ok': 'OK',
 	'unifiWrite.band.blocked': 'nutzt das entfernte Band',
-	'unifiWrite.band.unknown': 'von UniFi nicht gemeldet',
+	'unifiWrite.band.unknown': 'von der Ubiquiti Networks API nicht gemeldet',
 	'unifiWrite.bandConfirm': 'Ich habe geprüft, dass {name} die verbleibenden Bänder nutzen kann.',
 	'unifiWrite.targetHandset': 'Handset',
 	'unifiWrite.state.waiting': 'wartet auf Handset',
 	'unifiWrite.err.handset_band':
 		'Ein WLAN-Handset ist auf dem Band verbunden, das die Änderung entfernt. Es würde die VoIP-SSID verlieren.',
 	'unifiWrite.err.handset_unknown':
-		'UniFi meldet nicht jedes WLAN-Handset. Jedes einzeln mit Namen bestätigen.',
+		'Die Ubiquiti Networks API meldet nicht jedes WLAN-Handset. Jedes einzeln mit Namen bestätigen.',
 	'unifiWrite.err.handset_changed':
 		'Die Handset-Einstellung wurde seit dem Vorschlag geändert. Vorschlag neu öffnen.',
 	'unifiWrite.err.not_wifi_handset':

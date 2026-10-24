@@ -19,15 +19,15 @@ The decision records are [ADR 0041](../adr/0041-wifi-voice-survey-and-unifi-corr
 - An extension with a device of kind **Wi-Fi handset** (for example Yealink
   AX83H or AX86R).
 - For access point data: the device is an account on a provisioned phone
-  (TalkOps uses the phone MAC address), and a UniFi connection (see below).
-  Without UniFi, the survey measures the voice stream only.
+  (TalkOps uses the phone MAC address), and a connection to the Ubiquiti Networks API (see below).
+  Without the Ubiquiti Networks API, the survey measures the voice stream only.
 - Permissions under **Settings → Users → Roles**:
 
 | Permission | Function |
 | --- | --- |
 | `wifi_survey.run` | Start surveys and read own surveys. |
 | `wifi_survey.manage` | Read all surveys, change thresholds and retention, delete surveys. |
-| `unifi.manage` | Store and test the UniFi connection, select the voice SSID, read proposals and the change history (sensitive). |
+| `unifi.manage` | Store and test the Ubiquiti Networks API connection, select the voice SSID, read proposals and the change history (sensitive). |
 | `unifi.write` | Switch on write access, apply changes to the voice SSID and roll them back (sensitive). With `phones.manage` also the roaming threshold of the survey handset. |
 
 The admin role has all permissions. Other roles get none by default.
@@ -41,11 +41,15 @@ The admin role has all permissions. Other roles get none by default.
 3. Make sure that roaming is on and the handset uses the voice SSID.
 4. Recommended: set DSCP EF (46) for RTP on the handset.
 
-## Connect UniFi
+## Connect the Ubiquiti Networks API
+
+TalkOps uses the name "Ubiquiti Networks API" for its connection to the
+UniFi Network application of a UniFi console. Menu paths in UniFi Network
+keep their UniFi names.
 
 1. In UniFi Network, open **Settings → Control Plane → Integrations** and
    create an API key.
-2. In TalkOps, open **Settings → Wi-Fi survey → UniFi**.
+2. In TalkOps, open **Settings → Wi-Fi survey → Ubiquiti Networks API**.
 3. Enter the console address, for example `https://192.168.1.1`, and the
    site name (usually `default`).
 4. Enter the API key.
@@ -212,7 +216,7 @@ tool.
   roaming, protected management frames (PMF), handoff suggestions (minimum
   RSSI), bands, U-APSD, multicast to unicast, ARP proxy and the DTIM period
   for each band.
-- TalkOps writes only through the official UniFi Network API with
+- TalkOps writes only through the Ubiquiti Networks API (the official UniFi Network API) with
   `PUT /proxy/network/integration/v1/sites/{siteId}/wifi/broadcasts/{id}`.
   TalkOps sends no write request to the classic API. TalkOps does not
   change access point radio settings.
@@ -244,13 +248,13 @@ tool.
 ### API key rights
 
 The connection test does not write. The first change shows if the API key
-may write. A key that may only read causes the error "The UniFi API key may
+may write. A key that may only read causes the error "The Ubiquiti Networks API key may
 read but not write". Then create the key with an administrator account that
 may change the Wi-Fi settings of the site.
 
 ### Switch on write access
 
-1. Open **Settings → Wi-Fi survey → UniFi**.
+1. Open **Settings → Wi-Fi survey → Ubiquiti Networks API**.
 2. Select **Test connection**. The state shows **Writes by version:
    possible** for Network 10.6.106 or later.
 3. Under **Voice SSID and write access**, select **Read SSIDs**.

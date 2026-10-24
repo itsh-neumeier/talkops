@@ -6,6 +6,8 @@
 use std::collections::HashMap;
 use std::time::Instant;
 
+use talkops_core::system_load::memory;
+
 /// Clock ticks per second of `/proc/<pid>/stat` (USER_HZ, 100 on Linux).
 const TICKS: f32 = 100.0;
 
@@ -30,33 +32,8 @@ pub(crate) fn parse_rss(status: &str) -> u64 {
         .map_or(0, |kb| kb * 1024)
 }
 
-/// `MemTotal` and `MemAvailable` of `/proc/meminfo` in bytes.
-pub(crate) fn parse_meminfo(info: &str) -> (u64, u64) {
-    let value = |key: &str| {
-        info.lines()
-            .find_map(|l| l.strip_prefix(key))
-            .and_then(|v| v.split_whitespace().next()?.parse::<u64>().ok())
-            .map_or(0, |kb| kb * 1024)
-    };
-    (value("MemTotal:"), value("MemAvailable:"))
-}
-
 fn read(path: &str) -> Option<String> {
     std::fs::read_to_string(path).ok()
-}
-
-/// Memory use and limit: the container's cgroup when it has a limit,
-/// else the host.
-fn memory() -> (u64, u64) {
-    let (total, available) = read("/proc/meminfo")
-        .map(|s| parse_meminfo(&s))
-        .unwrap_or_default();
-    let limit = read("/sys/fs/cgroup/memory.max").and_then(|s| s.trim().parse::<u64>().ok());
-    let current = read("/sys/fs/cgroup/memory.current").and_then(|s| s.trim().parse::<u64>().ok());
-    match (limit, current) {
-        (Some(limit), Some(current)) if limit < total || total == 0 => (current, limit),
-        _ => (total.saturating_sub(available), total),
-    }
 }
 
 /// One measurement of the process tree.
@@ -165,10 +142,6 @@ mod tests {
         assert_eq!(
             parse_rss("Name:\twhisper\nVmRSS:\t  2048 kB\nThreads:\t9\n"),
             2048 * 1024
-        );
-        assert_eq!(
-            parse_meminfo("MemTotal:  8000 kB\nMemFree: 100 kB\nMemAvailable: 6000 kB\n"),
-            (8000 * 1024, 6000 * 1024)
         );
     }
 

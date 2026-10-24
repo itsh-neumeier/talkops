@@ -125,7 +125,7 @@
 
 <div
 	data-settings-nav
-	class="flex min-w-0 flex-col gap-2 lg:sticky lg:top-[calc(var(--header-h)+1rem)] lg:w-56 lg:shrink-0"
+	class="flex min-w-0 flex-col gap-2 lg:sticky lg:z-10 lg:top-[calc(var(--header-h)+1rem)] lg:w-56 lg:shrink-0"
 >
 	<SettingsSearch />
 	<nav

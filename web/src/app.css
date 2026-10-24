@@ -11,6 +11,10 @@
 	color-scheme: light;
 	/* Height of the sticky top bar; the side menu sits below it. */
 	--header-h: 3.5rem;
+	/* Width of the side panel on wide screens (SidePanel.svelte). */
+	--side-panel-w: 26rem;
+	/* Height of the fixed footer (AppFooter.svelte). */
+	--footer-h: 2rem;
 	--scrollbar-thumb: var(--color-slate-300);
 	--scrollbar-thumb-hover: var(--color-slate-400);
 	--surface-page: var(--color-slate-50);
@@ -461,4 +465,15 @@ dialog.dialog-panel[open]::backdrop {
 }
 .dark .call-map-place-major > span {
 	color: var(--color-slate-100);
+}
+
+/*
+ * While a side panel is open on a wide screen, the app body keeps its
+ * width free. The centred content then moves left only as far as
+ * necessary; on very wide screens it keeps its full width.
+ */
+@media (width >= 64rem) {
+	.app-body:has(.side-panel) {
+		padding-right: var(--side-panel-w);
+	}
 }

@@ -176,7 +176,7 @@
 	}
 </script>
 
-<div class="space-y-4 {panel ? 'lg:pr-[26rem]' : ''}">
+<div class="space-y-4">
 	<PageHeader title={t('nav.phones')}>
 		{#snippet actions()}
 			{#if can('phones.manage')}

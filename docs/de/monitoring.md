@@ -32,6 +32,24 @@ Geräte, Trunks, letzte Datensicherung). Sie aktualisiert sich alle 10 Sekunden.
 - Die Legende zeigt die Summe jeder Reihe. Eine Reihe in der Legende
   auswählen, um sie aus- oder einzublenden.
 
+### Fußzeile mit der Systemlast
+
+Die Fußzeile am unteren Rand jeder Seite zeigt das Copyright und die
+TalkOps-Version. Benutzer mit `diagnostics.manage` sehen zusätzlich die
+Systemlast:
+
+- **CPU**: CPU-Auslastung aller Kerne in Prozent.
+- **Last**: durchschnittliche Last über 1, 5 und 15 Minuten. Schmale
+  Bildschirme zeigen sie nicht.
+- **RAM**: Speicherbelegung in Prozent. Der Zeiger zeigt die Werte in Bytes.
+  Hat der Container ein Speicherlimit, bezieht sich der Wert auf das Limit.
+- **Laufzeit**: Laufzeit des Hosts. Nur breite Bildschirme zeigen sie.
+
+Ein Wert ist ab 80 % gelb und ab 95 % rot (bei der Last: je CPU-Kern).
+Die Fußzeile liest die Werte alle 15 Sekunden über `GET /api/v1/system/load`,
+solange die Seite sichtbar ist. In einem Container beziehen sich CPU und Last
+auf den Host.
+
 ## Aktivieren
 
 Ein langes Zufallstoken in der `.env` (bzw. der Stack-Umgebung in Portainer)

@@ -68,6 +68,13 @@ tablets and desktops.
 - Show `SkeletonRows.svelte` while a list loads. Show `EmptyRow.svelte`
   when a loaded list has no entries.
 
+## Footer
+
+The root layout shows `AppFooter.svelte` for signed-in users. It is fixed at
+the bottom with the height `--footer-h` (`app.css`). Fixed or sticky
+elements at the bottom must stay above it, for example with
+`bottom-[calc(var(--footer-h)+1rem)]`. Do not add a separate page footer.
+
 ## Side panel
 
 List pages for phones, extensions and users show details in a side panel,
@@ -75,8 +82,10 @@ like the inspector of UniFi Talk.
 
 - Use `SidePanel.svelte` with icon tabs (`panelIcons.ts`), usually
   **Overview**, a content tab and **Settings**. Wide screens keep the list
-  visible: add `lg:pr-[26rem]` to the page while the panel is open. Narrow
-  screens show the panel in full.
+  visible: the root layout keeps the panel width free while the panel is
+  open (`.app-body:has(.side-panel)` in `app.css`). Do not add a padding to
+  the page itself, because the page is inside the centred content column.
+  Narrow screens show the panel in full.
 - Keep the open entry in `?panel=<id>` with `#lib/panel.ts`. A row click and
   the name link (`data-panel-link`) open the panel; Ctrl/Cmd-click still
   opens the full page in a new tab.

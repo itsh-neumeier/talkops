@@ -27,6 +27,9 @@ implementation. Write development prompts in the standard format.
 - Two prompts in `docs/proposals/coral-transcription-dev-prompts.md`:
   Prompt A for the new project `itsh-neumeier/coralapi-server` (Rust, MIT),
   Prompt B for the TalkOps integration (connection kind `coral`).
+- Follow-up: the user selected Prompt C as the first step. Prompt C puts a
+  `coral-stt` service into TalkOps on the same server (own crate and image,
+  loopback only, Compose profile `coral`). It uses the same API contract.
 
 ## Changes
 
@@ -47,6 +50,8 @@ implementation. Write development prompts in the standard format.
   `vision`, `shared`. API key per client and optional TLS.
 - Rust runtime by user choice. Python is permitted for offline model
   conversion tools. `unsafe` only in the FFI crate.
+- Prompt C: TalkOps forbids `unsafe`. The prompt asks for a safe wrapper
+  crate, or an ADR and user approval before a narrow FFI exception.
 
 ## Checks
 
@@ -60,7 +65,7 @@ implementation. Write development prompts in the standard format.
 
 ## Next action
 
-Start Prompt A, phase 0, in a new chat in the new repository.
+Start Prompt C, phase 0, in a new TalkOps chat. Prompts A and B stay for later.
 
 ## References
 

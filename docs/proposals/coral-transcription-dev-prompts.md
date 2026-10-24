@@ -43,6 +43,11 @@ German, because it is a chat prompt for the user.
 
 ## Order of work
 
+Update 2026-10-24: the user selected Prompt C as the first step. Prompt C
+puts Coral speech recognition into TalkOps on the same server. Prompts A and
+B stay for later. Prompt C uses the same API contract, so the CoralAPI-Server
+can replace the TalkOps service later without a change in the media worker.
+
 1. Prompt A (CoralAPI-Server), phase 0. Stop if the gate fails.
 2. Prompt A, phases 1–3 (STT API). Prompt B can start in parallel against a
    test double of the API contract below.
@@ -366,6 +371,199 @@ Akzeptanzkriterien / Einschränkungen:
 - Alle CI-Prüfungen aus `.github/workflows/ci.yml` grün; Prüfungen mit
   echter Coral-Hardware sind im PR als nicht ausgeführt bzw. manuell
   gekennzeichnet.
+```
+
+---
+
+## Prompt C: TalkOps with Coral on the same server (first step)
+
+```text
+Du arbeitest als Entwicklungsassistent an TalkOps. Claude Code und Codex
+arbeiten parallel; ein separater Release-Chat übernimmt Integration, Merges
+in den Zielbranch, Release-Versionen, Tags und Veröffentlichung.
+
+Lies `AGENTS.md`, `CLAUDE.md` und `docs/release-workflow.md` und befolge die
+gemeinsamen Projektregeln. Lies weitere Dokumentation passend zur Aufgabe.
+
+Lies `docs/ai-memory/README.md` und die für deine Aufgabe relevanten
+Zusammenfassungen. Prüfe ihre Angaben am aktuellen Code- und PR-Stand.
+Schreibe neue technische Dokumentation und Aufgaben-Zusammenfassungen in
+englischem ASD-STE100 gemäß `docs/documentation-style.md`.
+
+Prüfe zuerst Remotes, Branch, Arbeitsbaum und vorhandene Änderungen. Nutze
+für diese Aufgabe einen eigenen Git-Worktree und Feature-Branch:
+`codex/<aufgabe>` für Codex oder `claude/<aufgabe>` für Claude Code. Verwende
+einen bereits passenden, exklusiv für diese Aufgabe vorgesehenen Worktree
+weiter; andernfalls lege einen neuen an. Starte vom vereinbarten Basis-Commit
+oder, wenn keiner vorgegeben ist, vom aktuellen verifizierten Remote-Zielbranch.
+Übernimm keine uncommitteten Änderungen aus anderen Worktrees und überschreibe
+keine fremden Arbeitsstände.
+
+Setze die folgende Aufgabe vollständig um. Triff gewöhnliche technische
+Entscheidungen selbst und frage nur bei fehlenden Informationen, die das
+Ergebnis wesentlich verändern. Halte die Änderungen auf die Aufgabe begrenzt,
+ergänze passende Tests und Dokumentation und führe die relevanten Prüfungen aus.
+Unterscheide erfolgreiche, fehlgeschlagene und nicht ausgeführte Prüfungen.
+
+Führe eine eigene Aufgaben-Zusammenfassung in `docs/ai-memory/` nach der
+Vorlage `TEMPLATE.md`. Aktualisiere sie nach wichtigen Entscheidungen,
+an sinnvollen Zwischenständen und vor Abschluss oder Übergabe. Halte Ziel,
+Ergebnis, Entscheidungen, Dateien, Prüfungen, Abhängigkeiten, offene Punkte
+und den nächsten Schritt fest. Committe sie mit den Aufgabenänderungen und
+verlinke sie in der PR. So können andere Modelle und Chats fortsetzen.
+
+Committe die fertigen Änderungen mit Conventional Commits, pushe deinen
+Feature-Branch und erstelle eine PR gegen den verifizierten Zielbranch.
+Commit, Push und PR-Erstellung für diese Aufgabe sind hiermit autorisiert.
+Übergebe dem Release-Chat über die PR: Ziel, Quellbranch und Head-Commit,
+Änderungen, Testergebnisse, Abhängigkeiten, Migrations-IDs, Upgrade-Hinweise und
+vorgeschlagene englische Release Notes. Markiere die PR erst als bereit, wenn
+die Aufgabe abgeschlossen ist; bei offenen Problemen bleibt sie ein Entwurf.
+Wenn GitHub-Zugriff fehlt, bewahre die Arbeit lokal und benenne genau, welcher
+Schritt offen ist.
+
+Release-Versionen, Release-Tags, Veröffentlichung und Merges in den Zielbranch
+bleiben beim Release-Chat. Berichte zum Abschluss knapp das Ergebnis, den
+Prüfstatus, die PR-URL und mögliche Blocker. Sende anderen Chats nur Nachrichten,
+wenn ich das ausdrücklich beauftrage.
+
+Aufgabe:
+Ermögliche in TalkOps Spracherkennung für Deutsch und Englisch auf einer
+Google-Coral-Edge-TPU (USB Accelerator oder M.2/Mini-PCIe), die im selben
+Server wie TalkOps steckt. Primär für die Live-Transkription, zusätzlich für
+Aufnahmen und Voicemails. Betrieb als Hybrid: Coral liefert die schnelle
+Live-Vorschau und den ersten Durchgang, lokales Whisper ersetzt den Text im
+zweiten Durchgang (ADR 0019).
+
+Lies vorher `docs/proposals/coral-transcription-dev-prompts.md`
+(Interview-Ergebnis, Machbarkeit und API-Vertrag), ADR 0012, 0019, 0022 und
+0024, `crates/talkops-core/src/transcription_api.rs`,
+`crates/talkops-core/src/transcription_profiles.rs`,
+`crates/talkops-media-worker/src/{main.rs,live.rs,realtime.rs,api.rs,transcribe.rs}`,
+`web/src/lib/components/TranscriptionSettings.svelte`, `docker-compose.yml`
+und `docker/`.
+
+Architektur (gleicher Server):
+- Neuer Dienst `coral-stt` als eigenes Crate im Workspace
+  (`crates/talkops-coral-stt`) und eigenes Image
+  `ghcr.io/itsh-neumeier/talkops-coral-stt`. So bleiben Edge-TPU-
+  Bibliotheken und Modelle aus dem Media-Worker heraus, und ein Absturz der
+  TPU-Laufzeit trifft den Worker nicht.
+- Der Dienst bietet nur lokal (Standard `127.0.0.1:8095`, konfigurierbar)
+  die OpenAI-kompatible Teilmenge aus dem API-Vertrag an: `/health`,
+  `/v1/models`, `/v1/audio/transcriptions`, `/v1/realtime?intent=transcription`.
+  Der spätere eigenständige CoralAPI-Server soll ihn ohne Änderung am
+  Worker ersetzen können. Kein Frigate, kein virtueller TPU, keine
+  Netzwerkfreigabe in dieser Aufgabe.
+- Rust. `unsafe` ist im Projekt verboten. Nutze für die TFLite-C-API und
+  libedgetpu einen gepflegten sicheren Wrapper-Crate, falls einer reicht.
+  Sonst schlage per neuer ADR eine eng begrenzte Ausnahme für ein einzelnes
+  FFI-Crate vor (SAFETY-Kommentare, `#![deny(unsafe_op_in_unsafe_fn)]`,
+  alle anderen Crates bleiben `#![forbid(unsafe_code)]`) und warte auf meine
+  Zustimmung, bevor du `unsafe` einführst.
+- Werkzeuge zur Modellkonvertierung und für Benchmarks dürfen Python sein
+  (`tools/coral/`), laufen nur offline und sind nicht Teil der Images.
+
+Phase 0 – Machbarkeits-Gate (zuerst, Ergebnis als Bericht in
+`docs/research/coral-stt-benchmark.md`, eigener Commit, PR bleibt Entwurf):
+- Wähle Kandidatenmodelle für DE und EN, die sich vollständig int8 als
+  TFLite quantisieren und mit `edgetpu_compiler` kompilieren lassen
+  (CTC-Modelle mit festen Fenstern, z. B. Conformer-CTC, Citrinet,
+  wav2vec2-CTC klein), plus einen Sprach-ID-Klassifikator DE/EN. Prüfe die
+  Lizenzen (Kompatibilität mit AGPL-3.0, Weitergabe kompilierter Modelle)
+  und dokumentiere die Quellen.
+- Miss: Anteil der Ops auf der TPU, Wortfehlerrate auf Telefonaudio (8 kHz),
+  Echtzeitfaktor und Latenz pro Fenster auf USB und M.2, CPU-Last des Hosts,
+  Vergleich mit whisper.cpp `base` auf derselben CPU.
+- Gate: mindestens 2 Kanäle (ein Gespräch) in Echtzeit auf einer TPU,
+  Live-Latenz pro Segment unter etwa 1,5 s, CPU-Last deutlich unter
+  whisper.cpp `base`, Text als Live-Vorschau lesbar. Ohne Hardware im
+  Container: baue Werkzeuge und Bericht-Gerüst, kennzeichne die Messungen
+  als offen und frage mich nach den Messwerten von meiner Hardware.
+- Ist das Gate nicht erfüllt, stoppe nach dem Bericht und schlage
+  Alternativen vor (z. B. Coral nur für VAD/Sprach-ID).
+
+Phase 1 – Dienst `coral-stt`:
+- Geräteerkennung (USB inkl. Umnummerierung nach dem Firmware-Laden, PCIe
+  über `/dev/apex_*`), mehrere TPUs, Gesundheitsstatus, Neustart einer
+  hängenden TPU-Sitzung.
+- Datei-API mit `verbose_json` (Segmente mit Zeiten, erkannte Sprache).
+- Realtime-WebSocket kompatibel zu `realtime.rs` (session.update,
+  input_audio_buffer.append/commit, delta/completed/failed, error),
+  PCM16 24 kHz, `turn_detection: null`, Zusatzfeld `language` in
+  `completed`. Feste überlappende Fenster, Deltas so früh wie möglich.
+- Automatische Sprachwahl DE/EN pro Kanal aus `transcription.languages`.
+- Lastgrenze und Warteschlange; Überlast als HTTP 503 mit `Retry-After`
+  bzw. Realtime-`error` mit `code: "overloaded"`.
+- Modelle liegen im Volume `models` (wie Whisper); Download beim ersten
+  Start mit Prüfsumme, oder Vorbefüllung im Image – entscheide und begründe.
+- Bindung nur an Loopback; kein API-Key nötig, aber optional unterstützt.
+- Metriken/Status über `/health` (TPU-Anzahl, Art, Last, geladenes Modell).
+
+Phase 2 – Integration in TalkOps:
+1. Neue ADR (ergänzt 0024): Coral auf demselben Server, Hybrid-Betrieb,
+   eigener Dienst, Fallback, späterer Wechsel auf einen externen Server.
+2. Migration: `transcription_providers.kind` um `coral` erweitern
+   (vorhandene Migrationen nicht ändern). Vorbelegte URL
+   `http://127.0.0.1:8095/v1`, Key optional (verschlüsselt nach ADR 0008).
+   Keine Kosten: keine Preisliste; entscheide und begründe, ob Nutzung in
+   `transcription_usage` mit Preis 0 oder gar nicht erscheint. Kein Cloud-
+   Datenschutzhinweis, denn Audio verlässt den Server nicht.
+3. API (`routes/transcription.rs`): Verbindung anlegen und testen; der Test
+   ruft `/health` und `/v1/models` und zeigt TPUs, Last und Modelle.
+   utoipa-Annotation, Rollenprüfung, Audit-Eintrag ohne Secrets.
+4. Media-Worker: Datei-Transkription über `/v1/audio/transcriptions`;
+   Live über den vorhandenen Realtime-Client mit
+   `transcription.languages` (Tenant-Sprache zuerst, dann die andere) und
+   Übernahme von `language`. Der Realtime-Client muss für `coral`
+   `ws://` (aus `http://`) erlauben, ohne OpenAI-Verbindungen zu schwächen.
+5. Fallback: Ist `coral-stt` nicht erreichbar, meldet Überlast oder bricht
+   der Stream ab, nutzt live lokales Whisper `base` im Teile-Modus und
+   Aufnahmen/Voicemails das lokale Profil. `transcripts.engine` hält das
+   tatsächlich genutzte Modell fest. Live-Vorschau und Transkript-Ansicht
+   zeigen den Fallback. Neuer Versuch nach dem 30-s-Backoff aus ADR 0024.
+6. Erkannte Sprache pro Transkript bzw. Segment speichern, falls noch kein
+   Feld existiert (prüfen, ggf. Migration), und in der UI anzeigen.
+7. UI (`TranscriptionSettings.svelte`): Verbindungsart „Coral (dieser
+   Server)“ mit vorbelegter URL, Test-Button mit TPU-Status, Coral-Modelle
+   in der Profilauswahl, Knopf „Hybrid übernehmen“ (`live` = Coral Realtime,
+   `recording`/`voicemail` = Coral, `*_refine` = lokales Whisper). Alle
+   Texte über `t()` in `en.ts` und `de.ts`; `docs/ui-guidelines.md`.
+
+Phase 3 – Deployment und Doku:
+- `docker/coral-stt/Dockerfile` auf Debian 13 „trixie“, UID/GID 10001,
+  libedgetpu (Standard-Taktrate; Hinweis auf die Max-Variante und Wärme).
+  CI baut und veröffentlicht das Image wie die anderen Images.
+- `docker-compose.yml`: Dienst `coral-stt` hinter dem Profil `coral`
+  (standardmäßig aus), nur `image:`, kein `build:`, `network_mode: host`
+  mit Bindung an 127.0.0.1, gehärtet wie die anderen Dienste, Volume
+  `models`, `devices:`/`group_add:` mit Beispielen für USB
+  (`/dev/bus/usb`) und PCIe (`/dev/apex_0`). `docker-compose.dev.yml` baut
+  das Image aus dem Quellcode. `.env.example` ergänzen.
+- Doku in `docs/en/` und `docs/de/` (Aufzeichnung, laufende Gespräche):
+  Einrichtung, Host-Vorbereitung (udev-Regel für USB, gasket-DKMS für
+  M.2/PCIe auf Debian trixie, Proxmox-/LXC-Durchreichung), Erwartung an die
+  Qualität (Hybrid), Fehlersuche. `docs/architecture.md` ergänzen.
+
+Tests:
+- `#[sqlx::test]` für alle neuen oder geänderten Queries.
+- `coral-stt` mit einem CPU-/Mock-Backend, damit CI ohne Hardware läuft;
+  Tests für Fenster, Sprachwahl, Realtime-Ereignisse und Überlast.
+- Worker-Tests gegen einen Test-Double nach dem API-Vertrag (HTTP und
+  WebSocket), inkl. aller Fallback-Pfade.
+- Browser-Test der Einstellungen analog
+  `tests/browser/transcription-settings.mjs`.
+- Hardware-Prüfungen (USB und M.2) sind manuell und im PR gesondert
+  ausgewiesen.
+
+Akzeptanzkriterien / Einschränkungen:
+- Phase 0 ist ein hartes Gate.
+- Ohne Profil `coral` und ohne Coral-Verbindung ändert sich am bisherigen
+  Verhalten nichts; lokal bleibt der Standard, `coral` ist ausdrücklich
+  auszuwählen.
+- Audio verlässt den Server nicht; der Dienst lauscht nur auf Loopback.
+- Keine Secrets in Logs oder Audit-Einträgen.
+- Alle CI-Prüfungen aus `.github/workflows/ci.yml` grün.
 ```
 
 ## Sources

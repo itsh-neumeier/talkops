@@ -2225,6 +2225,8 @@ export default {
 	'dash.state.talking': 'Talking',
 	'dash.state.held': 'On hold',
 	'dash.state.system': 'Menu, voicemail or queue',
+	'dash.showMore': 'Show {count} more',
+	'dash.showLess': 'Show less',
 	'dash.recent': 'Recent calls',
 	'dash.allCalls': 'All calls',
 	'dash.noRecent': 'No calls yet.',

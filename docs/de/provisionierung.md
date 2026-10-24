@@ -106,6 +106,26 @@ Vorlagen haben keinen Datei- oder Netzwerkzugriff und sind an Mandant und
 Modell gebunden. Für eine Wiederherstellung eine ältere Version wählen und
 erneut aktivieren. Eine Aktivierung sendet nicht automatisch Resync.
 
+## Seitenpanel eines Telefons
+
+Ein Telefon in der Liste auswählen, um sein Seitenpanel zu öffnen. Auf
+breiten Bildschirmen bleibt die Liste sichtbar; auf einem Smartphone nutzt
+das Panel den ganzen Bildschirm.
+
+- **Übersicht**: Nebenstellen, Modell, MAC-Adresse, letzter Kontakt,
+  IP-Adresse und Firmware.
+- **Netzwerk**: die Netzwerkdaten des Telefons, wenn die Einstellung an ist
+  (siehe unten).
+- **Einstellungen**: **Allgemein** mit **Alle Einstellungen öffnen** (Tasten,
+  Einstellungen, Telefonbuch und Provisionierung) und **Verwalten**: **Neu
+  zuweisen**, **Resync**, **Neustarten** und **Löschen**.
+
+**Neu zuweisen** öffnet einen Dialog mit einem Suchfeld für die Nebenstelle.
+Sind alle Konten des Telefons belegt, ersetzt die neue Nebenstelle die
+bisherige. Standardmäßig sendet TalkOps danach einen Resync, damit das
+Telefon die neue Nebenstelle anmeldet. Die Adresse `/phones?panel=<id>` öffnet
+das Panel direkt.
+
 ## Netzwerkdaten der Telefone anzeigen
 
 Mit einer Verbindung zur Ubiquiti Networks API (siehe

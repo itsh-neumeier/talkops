@@ -1,4 +1,6 @@
 <script lang="ts">
+	import UserInspector from '#lib/components/UserInspector.svelte';
+	import { panelParam, rowClick, setPanelParam } from '#lib/panel.ts';
 	import EmptyRow from '#lib/components/EmptyRow.svelte';
 	import PageHeader from '#lib/components/PageHeader.svelte';
 	import SkeletonRows from '#lib/components/SkeletonRows.svelte';
@@ -27,6 +29,18 @@
 	let newPassword = $state('');
 	/** Roles this user may give: admins all, others no administrator role. */
 	const choices = $derived(roles.filter((r) => isAdmin() || r.builtin !== 'admin'));
+
+	// Side panel of one user (`?panel=<id>`).
+	let panel = $state<string | null>(panelParam());
+	const panelUser = $derived(users.find((u) => u.id === panel));
+	function openPanel(id: string | null) {
+		panel = id;
+		setPanelParam(id);
+	}
+	const roleLabel = (user: User) => {
+		const own = roleOf(user, roles);
+		return own ? roleName(own) : t(`roles.${user.role}`);
+	};
 
 	async function load() {
 		try {
@@ -94,6 +108,7 @@
 		if (!confirm(t('common.confirmDelete', { name: user.username }))) return;
 		try {
 			await api.del(`/users/${user.id}`);
+			if (panel === user.id) openPanel(null);
 			await load();
 		} catch (err) {
 			error = errorMessage(err);
@@ -122,7 +137,7 @@
 	}
 </script>
 
-<div class="space-y-4">
+<div class="space-y-4 {panel && tab === 'users' ? 'lg:pr-[26rem]' : ''}">
 	<PageHeader title={t('nav.users')}>
 		{#snippet actions()}
 			{#if can('users.manage') && tab === 'users'}<button class="btn btn-primary" onclick={create}
@@ -156,8 +171,19 @@
 				</thead>
 				<tbody>
 					{#each users as user (user.id)}
-						<tr>
-							<td class="font-mono">{user.username}</td>
+						<tr
+							class="cursor-pointer {panel === user.id ? 'bg-teal-50 dark:bg-teal-950/40' : ''}"
+							onclick={(e) => rowClick(e, () => openPanel(user.id))}
+						>
+							<td class="font-mono"
+								><button
+									type="button"
+									class="hover:underline"
+									data-panel-link
+									aria-current={panel === user.id ? 'true' : undefined}
+									onclick={() => openPanel(user.id)}>{user.username}</button
+								></td
+							>
 							<td>
 								{user.display_name}
 								{#if !user.enabled}<span class="badge badge-muted">{t('common.disabled')}</span
@@ -264,3 +290,18 @@
 		</div>
 	</form>
 </Modal>
+
+{#if panelUser && tab === 'users'}
+	<UserInspector
+		user={panelUser}
+		role={roleLabel(panelUser)}
+		onedit={() => edit(panelUser)}
+		onpassword={() => {
+			pwUser = panelUser;
+			pwOpen = true;
+		}}
+		onresettotp={() => resetTotp(panelUser)}
+		onremove={() => remove(panelUser)}
+		onclose={() => openPanel(null)}
+	/>
+{/if}

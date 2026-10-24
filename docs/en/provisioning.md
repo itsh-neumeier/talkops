@@ -100,6 +100,24 @@ output limits. Templates have no filesystem or network access. A template is
 scoped to its tenant and model. To restore an old version, select its revision
 and activate it again. Changing a template does not send a resync automatically.
 
+## Phone side panel
+
+Select a phone in the list to open its side panel. The list stays visible on
+wide screens; on a phone, the panel uses the full screen.
+
+- **Overview**: extensions, model, MAC address, last contact, IP address and
+  firmware.
+- **Network**: the network data of the phone, if the setting is on (see
+  below).
+- **Settings**: **General** with **Open all settings** (keys, settings,
+  phone book and provisioning), and **Manage**: **Reassign**, **Resync**,
+  **Reboot** and **Delete**.
+
+**Reassign** opens a dialog with a search field for the extension. When all
+accounts of the phone are in use, the new extension replaces the current
+one. By default, TalkOps then sends a resync, so the phone signs in the new
+extension. The address `/phones?panel=<id>` opens the panel directly.
+
 ## Show network data of the phones
 
 With a connection to the Ubiquiti Networks API (see

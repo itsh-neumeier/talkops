@@ -68,6 +68,25 @@ tablets and desktops.
 - Show `SkeletonRows.svelte` while a list loads. Show `EmptyRow.svelte`
   when a loaded list has no entries.
 
+## Side panel
+
+List pages for phones, extensions and users show details in a side panel,
+like the inspector of UniFi Talk.
+
+- Use `SidePanel.svelte` with icon tabs (`panelIcons.ts`), usually
+  **Overview**, a content tab and **Settings**. Wide screens keep the list
+  visible: add `lg:pr-[26rem]` to the page while the panel is open. Narrow
+  screens show the panel in full.
+- Keep the open entry in `?panel=<id>` with `#lib/panel.ts`. A row click and
+  the name link (`data-panel-link`) open the panel; Ctrl/Cmd-click still
+  opens the full page in a new tab.
+- In **Settings**, use `Collapsible.svelte` groups **General** and
+  **Manage**. Each action is a `PanelAction.svelte` with an info hint; a
+  delete action uses `danger`.
+- Keep detailed editors on the full page. The panel links to it with
+  **Open all settings**.
+- Use `Combobox.svelte` for a select with many options that needs a search.
+
 ## Sort and filter lists
 
 The call list, the phone book and the transcription history use the same

@@ -22,6 +22,8 @@
 	import CallBlockStatus from '#lib/components/CallBlockStatus.svelte';
 	import { isBlocked } from '#lib/calls/blocking.ts';
 	import GettingStarted from '#lib/components/GettingStarted.svelte';
+	import ExpandToggle from '#lib/components/ExpandToggle.svelte';
+	import { readOpen, visibleItems, writeOpen } from '#lib/collapse.ts';
 	import { formatDateTime, formatDuration, t, type MessageKey } from '#lib/i18n/index.svelte.ts';
 	import { can, isAdmin } from '#lib/session.svelte.ts';
 
@@ -38,6 +40,9 @@
 	let stats = $state<CallStats | null>(null);
 	let active = $state<ActiveCall[]>([]);
 	let recent = $state<Call[]>([]);
+	const RECENT_KEY = 'talkops.dash.recent.open';
+	let recentOpen = $state(readOpen(RECENT_KEY));
+	const recentShown = $derived(visibleItems(recent, recentOpen));
 	let recentLoading = $state(true);
 	let activeLoading = $state(true);
 	let recentError = $state(false);
@@ -316,8 +321,8 @@
 					{#if recent.length === 0 && !recentError}
 						<p class="text-sm text-slate-500">{t('dash.noRecent')}</p>
 					{:else}
-						<ul class="divide-y divide-slate-100 dark:divide-slate-800">
-							{#each recent as c (c.id)}
+						<ul id="dash-recent-list" class="divide-y divide-slate-100 dark:divide-slate-800">
+							{#each recentShown as c (c.id)}
 								<li class="flex items-start justify-between gap-3 py-3 text-sm">
 									<div class="flex min-w-0 items-start gap-2">
 										<svg
@@ -359,6 +364,12 @@
 								</li>
 							{/each}
 						</ul>
+						<ExpandToggle
+							bind:open={recentOpen}
+							hidden={recent.length - recentShown.length}
+							controls="dash-recent-list"
+							ontoggle={(value) => writeOpen(RECENT_KEY, value)}
+						/>
 					{/if}
 				</div>
 			</LoadingContent>

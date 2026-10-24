@@ -2324,6 +2324,8 @@ const de: Record<keyof typeof en, string> = {
 	'dash.state.talking': 'Im Gespräch',
 	'dash.state.held': 'Gehalten',
 	'dash.state.system': 'Menü, Voicemail oder Warteschlange',
+	'dash.showMore': '{count} weitere anzeigen',
+	'dash.showLess': 'Weniger anzeigen',
 	'dash.recent': 'Letzte Anrufe',
 	'dash.allCalls': 'Alle Anrufe',
 	'dash.noRecent': 'Noch keine Anrufe.',

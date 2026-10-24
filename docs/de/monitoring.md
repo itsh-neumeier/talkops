@@ -17,6 +17,21 @@ letzten Monat (Tage in der Zeitzone aus den Einstellungen), laufende
 Gespräche, die letzten Anrufe und den Systemstatus (Dienste, registrierte
 Geräte, Trunks, letzte Datensicherung). Sie aktualisiert sich alle 10 Sekunden.
 
+### Kennzahlen und Diagramm
+
+- Jede Kennzahl zeigt die Änderung gegenüber dem gleich langen Zeitraum
+  davor, zum Beispiel dem Vortag bei **1 Tag**. Ein grüner Pfeil ist gut; bei
+  verpassten Anrufen ist ein kleinerer Wert gut. **neu** bedeutet, dass der
+  Zeitraum davor keinen Wert hatte.
+- **Anrufe** und **Verpasst** zeigen eine kleine Kurve des gewählten
+  Zeitraums. Die Annahmequote zeigt einen Ring.
+- Das Diagramm zeigt gestapelte Balken für **1 Std.** und **1 Tag** und
+  geglättete Flächen für **1 Woche** und **1 Monat**.
+- Den Zeiger über das Diagramm bewegen, es antippen oder auswählen und die
+  Pfeiltasten verwenden: Ein Tooltip zeigt die Werte des Zeitabschnitts.
+- Die Legende zeigt die Summe jeder Reihe. Eine Reihe in der Legende
+  auswählen, um sie aus- oder einzublenden.
+
 ## Aktivieren
 
 Ein langes Zufallstoken in der `.env` (bzw. der Stack-Umgebung in Portainer)

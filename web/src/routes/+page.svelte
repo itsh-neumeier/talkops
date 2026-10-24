@@ -22,6 +22,8 @@
 	import CallBlockStatus from '#lib/components/CallBlockStatus.svelte';
 	import { isBlocked } from '#lib/calls/blocking.ts';
 	import GettingStarted from '#lib/components/GettingStarted.svelte';
+	import KpiTile from '#lib/components/KpiTile.svelte';
+	import { trend } from '#lib/charts.ts';
 	import { formatDateTime, formatDuration, t, type MessageKey } from '#lib/i18n/index.svelte.ts';
 	import { can, isAdmin } from '#lib/session.svelte.ts';
 
@@ -169,20 +171,42 @@
 	{/if}
 
 	{#if can('calls.active') && stats}
+		{@const prev = stats.previous}
 		<div class="grid grid-cols-2 gap-3 @3xl:grid-cols-5">
-			{#each [['dash.kpi.active', String(active.filter((c) => c.state !== 'ringing').length)], ['dash.kpi.calls', String(stats.total)], ['dash.kpi.missed', String(stats.missed)], ['dash.kpi.answerRate', stats.answer_rate === null ? '—' : `${stats.answer_rate.toLocaleString()} %`], ['dash.kpi.avgTalk', formatDuration(stats.avg_talk_secs)]] as const as [key, value] (key)}
-				<div class="card">
-					<p class="text-xs text-slate-500 dark:text-slate-400">{t(key)}</p>
-					<p
-						class="mt-1 text-2xl font-semibold tabular-nums {key === 'dash.kpi.missed' &&
-						stats.missed > 0
-							? 'text-red-600 dark:text-red-400'
-							: ''}"
-					>
-						{value}
-					</p>
-				</div>
-			{/each}
+			<KpiTile
+				label={t('dash.kpi.active')}
+				value={String(active.filter((c) => c.state !== 'ringing').length)}
+				accent="text-emerald-600 dark:text-emerald-400"
+			/>
+			<KpiTile
+				label={t('dash.kpi.calls')}
+				value={String(stats.total)}
+				trend={prev ? trend(stats.total, prev.total) : null}
+				spark={stats.buckets.map((b) => b.inbound + b.outbound + b.internal)}
+			/>
+			<KpiTile
+				label={t('dash.kpi.missed')}
+				value={String(stats.missed)}
+				alert={stats.missed > 0}
+				trend={prev ? trend(stats.missed, prev.missed) : null}
+				upIsGood={false}
+				spark={stats.buckets.map((b) => b.missed)}
+				accent="text-red-500 dark:text-red-400"
+			/>
+			<KpiTile
+				label={t('dash.kpi.answerRate')}
+				value={stats.answer_rate === null ? '—' : `${stats.answer_rate.toLocaleString()} %`}
+				trend={prev ? trend(stats.answer_rate, prev.answer_rate) : null}
+				ring={stats.answer_rate}
+			/>
+			<KpiTile
+				label={t('dash.kpi.avgTalk')}
+				value={formatDuration(stats.avg_talk_secs)}
+				trend={prev && stats.avg_talk_secs > 0
+					? trend(stats.avg_talk_secs, prev.avg_talk_secs || null)
+					: null}
+				accent="text-sky-500 dark:text-sky-400"
+			/>
 		</div>
 
 		<div class="grid grid-cols-1 gap-4 @3xl:grid-cols-3">

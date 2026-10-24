@@ -53,6 +53,69 @@ pub struct CallStats {
     pub answer_rate: Option<f64>,
     /// Average talk time of answered calls in seconds.
     pub avg_talk_secs: i64,
+    /// The same totals for the period of the same length before `buckets`,
+    /// for the trend of the dashboard figures.
+    pub previous: PeriodTotals,
+}
+
+/// Call totals of one period.
+#[derive(Debug, Clone, Default, PartialEq, FromRow, Serialize, utoipa::ToSchema)]
+pub struct PeriodTotals {
+    pub total: i64,
+    pub inbound: i64,
+    pub outbound: i64,
+    pub internal: i64,
+    pub missed: i64,
+    pub blocked: i64,
+    pub answer_rate: Option<f64>,
+    pub avg_talk_secs: i64,
+}
+
+/// Answered non-blocked inbound calls in percent, one decimal.
+fn answer_rate(inbound: i64, blocked: i64, missed: i64) -> Option<f64> {
+    let eligible = inbound - blocked;
+    (eligible > 0).then(|| ((eligible - missed) as f64 * 1000.0 / eligible as f64).round() / 10.0)
+}
+
+/// Totals of the calls that started in `[start, end)`.
+pub async fn period(
+    pool: &PgPool,
+    tenant: TenantId,
+    start: DateTime<Utc>,
+    end: DateTime<Utc>,
+) -> CoreResult<PeriodTotals> {
+    let (inbound, outbound, internal, missed, blocked, avg): (
+        i64,
+        i64,
+        i64,
+        i64,
+        i64,
+        Option<f64>,
+    ) = sqlx::query_as(
+        "SELECT count(*) FILTER (WHERE direction = 'inbound'),
+                    count(*) FILTER (WHERE direction = 'outbound'),
+                    count(*) FILTER (WHERE direction = 'internal'),
+                    count(*) FILTER (WHERE direction = 'inbound' AND answered_at IS NULL
+                        AND blocked_reason IS NULL),
+                    count(*) FILTER (WHERE direction = 'inbound' AND blocked_reason IS NOT NULL),
+                    avg(billsec) FILTER (WHERE answered_at IS NOT NULL)::float8
+             FROM cdr WHERE tenant_id = $1 AND started_at >= $2 AND started_at < $3",
+    )
+    .bind(tenant)
+    .bind(start)
+    .bind(end)
+    .fetch_one(pool)
+    .await?;
+    Ok(PeriodTotals {
+        total: inbound + outbound + internal,
+        inbound,
+        outbound,
+        internal,
+        missed,
+        blocked,
+        answer_rate: answer_rate(inbound, blocked, missed),
+        avg_talk_secs: avg.unwrap_or(0.0).round() as i64,
+    })
 }
 
 /// Slot boundaries for `range` ending with the slot containing `now`.
@@ -133,7 +196,7 @@ pub async fn calls(
         sum(|b| b.missed),
     );
     let blocked = sum(|b| b.blocked);
-    let eligible = inbound - blocked;
+    let previous = period(pool, tenant, start - (end - start), start).await?;
     Ok(CallStats {
         range,
         end,
@@ -143,10 +206,10 @@ pub async fn calls(
         internal,
         missed,
         blocked,
-        answer_rate: (eligible > 0)
-            .then(|| ((eligible - missed) as f64 * 1000.0 / eligible as f64).round() / 10.0),
+        answer_rate: answer_rate(inbound, blocked, missed),
         avg_talk_secs: avg.unwrap_or(0.0).round() as i64,
         buckets,
+        previous,
     })
 }
 

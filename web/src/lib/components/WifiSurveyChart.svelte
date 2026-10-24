@@ -106,6 +106,29 @@
 		return d;
 	});
 
+	const uid = $props.id();
+	// Areas under the RSSI line, one per run of samples without a gap.
+	const rssiAreas = $derived.by(() => {
+		const out: string[] = [];
+		let run: string[] = [];
+		const base = (RSSI_TOP + RSSI_H).toFixed(1);
+		const close = () => {
+			if (run.length > 1) {
+				const first = run[0].split(',')[0];
+				const last = run.at(-1)!.split(',')[0];
+				out.push(`M${first},${base}L${run.join('L')}L${last},${base}Z`);
+			}
+			run = [];
+		};
+		for (const r of timeline.radio) {
+			if (!inView(r.offset_ms)) continue;
+			if (r.rssi == null) close();
+			else run.push(`${x(r.offset_ms).toFixed(1)},${yRssi(r.rssi).toFixed(1)}`);
+		}
+		close();
+		return out;
+	});
+
 	const bars = $derived(
 		timeline.media
 			.filter((m) => inView(m.offset_ms) && m.expected > 0)
@@ -199,7 +222,29 @@
 				class="fill-slate-400 text-[10px]">{level}</text
 			>
 		{/each}
-		<path d={rssiPath} class="fill-none stroke-sky-700 dark:stroke-sky-300" stroke-width="2" />
+		<defs>
+			<linearGradient
+				id="wifi-rssi-{uid}"
+				x1="0"
+				x2="0"
+				y1="0"
+				y2="1"
+				class="text-sky-600 dark:text-sky-400"
+			>
+				<stop offset="0%" style="stop-color: currentColor" stop-opacity="0.3" />
+				<stop offset="100%" style="stop-color: currentColor" stop-opacity="0.02" />
+			</linearGradient>
+		</defs>
+		{#each rssiAreas as d (d)}
+			<path {d} fill="url(#wifi-rssi-{uid})" />
+		{/each}
+		<path
+			d={rssiPath}
+			class="fill-none stroke-sky-700 dark:stroke-sky-300"
+			stroke-width="2"
+			stroke-linecap="round"
+			stroke-linejoin="round"
+		/>
 
 		<line
 			x1={PAD.left}
@@ -237,6 +282,7 @@
 					y={LOSS_TOP + LOSS_H - h}
 					width={barW}
 					height={h}
+					rx={Math.min(1.5, barW / 2)}
 					class={b.pct > 5 ? 'fill-red-500' : 'fill-amber-500'}
 					><title>{clock(b.m.offset_ms)}: {b.pct.toFixed(1)} %</title></rect
 				>

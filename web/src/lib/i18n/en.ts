@@ -2179,6 +2179,8 @@ export default {
 	'dash.range.1d': '1D',
 	'dash.range.1w': '1W',
 	'dash.range.1m': '1M',
+	'dash.kpi.vsPrevious': 'compared with the previous period',
+	'dash.kpi.new': 'new',
 	'dash.kpi.active': 'Active calls',
 	'dash.kpi.calls': 'Calls',
 	'dash.kpi.missed': 'Missed',

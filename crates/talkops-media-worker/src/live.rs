@@ -1,5 +1,9 @@
 //! Live previews of active calls (ADR 0022, 0024). Reads bounded PCM from
 //! the growing recording without relying on an unfinished WAV data length.
+//!
+//! A Coral realtime preview (ADR 0046) that failed in the last 30 s runs
+//! local Whisper `base` in parts instead; after the backoff the next job
+//! tries the stream again.
 
 use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
@@ -145,30 +149,54 @@ pub async fn run(ctx: &Ctx, job: &Job) -> anyhow::Result<()> {
     let source = root.join(&work.file).canonicalize()?;
     ensure!(source.starts_with(&root), "recording outside media volume");
     let language = talkops_core::prompts::language(&settings.default_language);
-    let engine = profiles::engine(&ctx.pool, job.tenant_id, Purpose::Live)
+    let mut engine = profiles::engine(&ctx.pool, job.tenant_id, Purpose::Live)
         .await?
         .unwrap_or(Engine::Local(settings::TranscriptionQuality::Base));
+    let mut fallback_from = None;
     if let Engine::Cloud {
         provider_id,
         model,
         realtime: true,
         price,
+        coral,
+        ..
     } = &engine
     {
         let cfg = crate::cloud_config(ctx, job.tenant_id, *provider_id, model).await?;
-        return realtime::start(realtime::Start {
-            pool: ctx.pool.clone(),
-            worker_id: ctx.worker_id.clone(),
-            streams: ctx.streams.clone(),
-            tenant: job.tenant_id,
-            preview: payload.preview_id,
-            source,
-            cfg,
-            language: language.to_owned(),
-            vocabulary: settings.transcription_vocabulary,
-            price: *price,
-        })
-        .await;
+        let failed = *coral
+            && live_transcripts::stream_failed_recently(
+                &ctx.pool,
+                job.tenant_id,
+                payload.preview_id,
+            )
+            .await?;
+        if failed {
+            fallback_from = Some(cfg.label());
+            engine = Engine::Local(settings::TranscriptionQuality::Base);
+            // Show the fallback at once, also before new audio arrives.
+            live_transcripts::set_engine(
+                &ctx.pool,
+                job.tenant_id,
+                payload.preview_id,
+                "whisper:base",
+                fallback_from.as_deref(),
+            )
+            .await?;
+        } else {
+            return realtime::start(realtime::Start {
+                pool: ctx.pool.clone(),
+                worker_id: ctx.worker_id.clone(),
+                streams: ctx.streams.clone(),
+                tenant: job.tenant_id,
+                preview: payload.preview_id,
+                source,
+                cfg,
+                language: language.to_owned(),
+                vocabulary: settings.transcription_vocabulary,
+                price: *price,
+            })
+            .await;
+        }
     }
     let temporary = transcribe::tempdir()?;
     let output = temporary.path.join("preview.wav");
@@ -177,7 +205,7 @@ pub async fn run(ctx: &Ctx, job: &Job) -> anyhow::Result<()> {
     else {
         return Ok(());
     };
-    let (mut segments, _) = tokio::time::timeout(
+    let done = tokio::time::timeout(
         Duration::from_secs(60),
         crate::run_engine(
             ctx,
@@ -191,6 +219,16 @@ pub async fn run(ctx: &Ctx, job: &Job) -> anyhow::Result<()> {
     )
     .await
     .context("live recognition timed out")??;
+    let fallback_from = fallback_from.or(done.fallback_from);
+    live_transcripts::set_engine(
+        &ctx.pool,
+        job.tenant_id,
+        payload.preview_id,
+        &done.engine,
+        fallback_from.as_deref(),
+    )
+    .await?;
+    let mut segments = done.segments;
     let offset = chunk.start as f32 / chunk.rate as f32;
     let end = chunk.end as f32 / chunk.rate as f32;
     segments.retain(|s| {

@@ -33,6 +33,7 @@ fn cloud(purpose: &str, provider: Uuid, model: &str) -> Profile {
         realtime: false,
         price_per_minute: None,
         list_price: None,
+        provider_kind: None,
     }
 }
 
@@ -99,7 +100,7 @@ async fn providers_keep_keys_encrypted(pool: PgPool) {
     .await
     .unwrap();
     assert!(kept.has_key);
-    let cfg = providers::config(&pool, T, &sb, openai.id, "gpt-transcribe")
+    let cfg = providers::config(&pool, T, Some(&sb), openai.id, "gpt-transcribe")
         .await
         .unwrap();
     assert_eq!(cfg.key.as_deref(), Some("sk-1"));
@@ -118,7 +119,7 @@ async fn providers_keep_keys_encrypted(pool: PgPool) {
     let other = other_tenant(&pool).await;
     assert!(providers::list(&pool, other).await.unwrap().is_empty());
     assert!(matches!(
-        providers::config(&pool, other, &sb, lan.id, "m").await,
+        providers::config(&pool, other, Some(&sb), lan.id, "m").await,
         Err(CoreError::NotFound)
     ));
     assert_eq!(providers::list(&pool, T).await.unwrap().len(), 2);
@@ -160,7 +161,9 @@ async fn profiles_select_engines_per_purpose(pool: PgPool) {
             provider_id: openai.id,
             model: "gpt-live-transcribe".into(),
             realtime: true,
-            price: Some(0.017)
+            price: Some(0.017),
+            coral: false,
+            fallback: None,
         })
     );
     assert_eq!(
@@ -171,7 +174,9 @@ async fn profiles_select_engines_per_purpose(pool: PgPool) {
             provider_id: openai.id,
             model: "gpt-transcribe".into(),
             realtime: false,
-            price: Some(0.01)
+            price: Some(0.01),
+            coral: false,
+            fallback: None,
         })
     );
     assert_eq!(
@@ -329,4 +334,210 @@ async fn migration_keeps_local_settings(pool: PgPool) {
     // The same engine twice never ran a second pass.
     assert_eq!(p[2].engine, "off");
     assert_eq!(p[4].engine, "off");
+}
+
+/// Coral connections (ADR 0046): loopback only, default URL, no key, no
+/// list price; the profile engine knows its local fallback.
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn coral_connections_and_fallback(pool: PgPool) {
+    let sb = SecretBox::from_hex(KEY).unwrap();
+    let coral = providers::create(&pool, T, &sb, &input("Coral", "coral", "", None))
+        .await
+        .unwrap();
+    assert_eq!(
+        (coral.kind.as_str(), coral.url.as_str()),
+        ("coral", providers::CORAL_URL)
+    );
+    assert!(!coral.has_key);
+    let remote = providers::create(
+        &pool,
+        T,
+        &sb,
+        &input("LAN", "coral", "http://192.168.1.9:8095/v1", None),
+    )
+    .await;
+    assert!(
+        matches!(remote, Err(CoreError::Validation(_))),
+        "{remote:?}"
+    );
+    let other_port = providers::update(
+        &pool,
+        T,
+        &sb,
+        coral.id,
+        &input("Coral", "coral", "http://localhost:9000/v1/", Some("k1")),
+    )
+    .await
+    .unwrap();
+    assert_eq!(other_port.url, "http://localhost:9000/v1");
+    assert!(other_port.has_key);
+    // Without TALKOPS_SECRET_KEY a key cannot be read; without a key it works.
+    assert!(
+        providers::config(&pool, T, None, coral.id, "coral-auto")
+            .await
+            .is_err()
+    );
+    providers::update(
+        &pool,
+        T,
+        &sb,
+        coral.id,
+        &input("Coral", "coral", "", Some("")),
+    )
+    .await
+    .unwrap();
+    let cfg = providers::config(&pool, T, None, coral.id, "coral-auto")
+        .await
+        .unwrap();
+    assert!(cfg.is_coral() && cfg.key.is_none());
+    assert_eq!(
+        cfg.realtime_endpoint(),
+        "ws://127.0.0.1:8095/v1/realtime?intent=transcription"
+    );
+
+    let mut live = cloud("live", coral.id, "coral-auto");
+    live.realtime = true;
+    let mut recording = cloud("recording", coral.id, "coral-auto");
+    recording.local_model = "accurate".into();
+    recording.price_per_minute = Some(0.5);
+    let saved = profiles::update(&pool, T, &[live, recording])
+        .await
+        .unwrap();
+    let rec = saved.iter().find(|p| p.purpose == "recording").unwrap();
+    assert_eq!(rec.provider_kind.as_deref(), Some("coral"));
+    assert_eq!(rec.list_price, None);
+    assert_eq!(
+        profiles::engine(&pool, T, Purpose::Recording)
+            .await
+            .unwrap(),
+        Some(Engine::Cloud {
+            provider_id: coral.id,
+            model: "coral-auto".into(),
+            realtime: false,
+            price: None,
+            coral: true,
+            fallback: Some(TranscriptionQuality::Accurate),
+        })
+    );
+    assert!(matches!(
+        profiles::engine(&pool, T, Purpose::Live).await.unwrap(),
+        Some(Engine::Cloud {
+            realtime: true,
+            coral: true,
+            fallback: Some(TranscriptionQuality::Base),
+            ..
+        })
+    ));
+}
+
+/// Transcripts keep the fallback and the language of each line; live
+/// previews show their engine and fallback instead of a failure.
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn fallback_and_language_are_stored(pool: PgPool) {
+    use talkops_core::live_transcripts as live;
+    use talkops_core::recordings::{self, Segment, Source, TranscriptMeta};
+    let rec: Uuid = sqlx::query_scalar(
+        "INSERT INTO recordings (tenant_id, call_uuid, file, duration_secs) VALUES ($1, 'c', 'c.wav', 3) RETURNING id",
+    )
+    .bind(T)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    let line = Segment {
+        start: 0.0,
+        end: 1.0,
+        speaker: "caller".into(),
+        text: "hello".into(),
+        language: Some("en".into()),
+    };
+    let meta = TranscriptMeta {
+        engine: "whisper:base",
+        is_final: true,
+        fallback_from: Some("Coral/coral-auto"),
+    };
+    recordings::save_transcript(
+        &pool,
+        T,
+        Source::Recording(rec),
+        "en",
+        std::slice::from_ref(&line),
+        meta,
+    )
+    .await
+    .unwrap();
+    let t = recordings::transcript_of(&pool, T, Source::Recording(rec))
+        .await
+        .unwrap();
+    assert_eq!(t.fallback_from.as_deref(), Some("Coral/coral-auto"));
+    assert_eq!(
+        (t.language.as_str(), t.segments[0].language.as_deref()),
+        ("en", Some("en"))
+    );
+    // Lines without a language stay as before in JSON.
+    let plain = Segment {
+        language: None,
+        ..line
+    };
+    assert!(!serde_json::to_string(&plain).unwrap().contains("language"));
+
+    let user: Uuid = sqlx::query_scalar(
+        "INSERT INTO users (tenant_id, username, display_name) VALUES ($1, 'v', 'V') RETURNING id",
+    )
+    .bind(T)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    let call = Uuid::new_v4();
+    let file = format!("{T}/2026-10/{call}.wav");
+    let now = chrono::Utc::now();
+    let p = live::request(&pool, T, user, call, &file, now)
+        .await
+        .unwrap()
+        .0;
+    assert_eq!((p.engine.as_str(), p.fallback_from.as_deref()), ("", None));
+    assert!(!live::stream_failed_recently(&pool, T, p.id).await.unwrap());
+    assert!(live::claim_stream(&pool, T, p.id, "w1").await.unwrap());
+    live::set_engine(&pool, T, p.id, "api:Coral/coral-auto", None)
+        .await
+        .unwrap();
+    live::release_stream(&pool, T, p.id, "w1", true)
+        .await
+        .unwrap();
+    assert!(live::stream_failed_recently(&pool, T, p.id).await.unwrap());
+    assert_eq!(
+        live::request(&pool, T, user, call, &file, now)
+            .await
+            .unwrap()
+            .0
+            .status,
+        "failed"
+    );
+    // A local fallback runs: no failure to show.
+    live::set_engine(&pool, T, p.id, "whisper:base", Some("Coral/coral-auto"))
+        .await
+        .unwrap();
+    let p = live::request(&pool, T, user, call, &file, now)
+        .await
+        .unwrap()
+        .0;
+    assert_ne!(p.status, "failed");
+    assert_eq!(
+        (p.engine.as_str(), p.fallback_from.as_deref()),
+        ("whisper:base", Some("Coral/coral-auto"))
+    );
+    // Another tenant cannot change it.
+    let other = other_tenant(&pool).await;
+    live::set_engine(&pool, other, p.id, "x", None)
+        .await
+        .unwrap();
+    assert!(
+        !live::stream_failed_recently(&pool, other, p.id)
+            .await
+            .unwrap()
+    );
+    let p = live::request(&pool, T, user, call, &file, now)
+        .await
+        .unwrap()
+        .0;
+    assert_eq!(p.engine, "whisper:base");
 }

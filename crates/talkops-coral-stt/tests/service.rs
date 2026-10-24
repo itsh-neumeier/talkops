@@ -58,9 +58,22 @@ async fn start(
     let backend = MockBackend::new(devices, Duration::from_millis(delay_ms));
     let fail = backend.fail.clone();
     let engine = Engine::start(Arc::new(backend), mock::catalog(true), queue, sessions);
-    if devices > 0 {
-        assert!(engine.wait_ready(Duration::from_secs(5)).await);
+    // Wait until every device has loaded its models.
+    for _ in 0..250 {
+        if engine.devices().len() == devices && engine.devices().iter().all(|d| d.state == "ready")
+        {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(20)).await;
     }
+    assert_eq!(
+        engine
+            .devices()
+            .iter()
+            .filter(|d| d.state == "ready")
+            .count(),
+        devices
+    );
     (engine, fail)
 }
 

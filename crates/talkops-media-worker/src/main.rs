@@ -257,6 +257,7 @@ async fn main() -> anyhow::Result<()> {
         worker_id: args.worker_id.clone(),
         streams: realtime::Streams::default(),
         current_job: std::sync::Mutex::new(None),
+        coral_backoff: CoralBackoff::default(),
     });
     spawn_resource_reports(ctx.clone());
     match tts::ensure_prompts(&ctx.piper, &args.sounds_dir).await {
@@ -335,6 +336,39 @@ struct Ctx {
     streams: realtime::Streams,
     /// The transcription job that runs now (for the resource report).
     current_job: std::sync::Mutex<Option<uuid::Uuid>>,
+    /// Coral connections that failed recently (ADR 0046).
+    coral_backoff: CoralBackoff,
+}
+
+/// After a failure, a Coral connection is not tried again for 30 s (the
+/// backoff of ADR 0024); its local fallback runs at once meanwhile.
+#[derive(Debug, Default)]
+pub(crate) struct CoralBackoff(
+    std::sync::Mutex<std::collections::HashMap<uuid::Uuid, std::time::Instant>>,
+);
+
+impl CoralBackoff {
+    pub(crate) const WAIT: Duration = Duration::from_secs(30);
+
+    fn active(&self, provider: uuid::Uuid) -> bool {
+        self.0
+            .lock()
+            .ok()
+            .and_then(|m| m.get(&provider).copied())
+            .is_some_and(|at| at.elapsed() < Self::WAIT)
+    }
+
+    fn failed(&self, provider: uuid::Uuid) {
+        if let Ok(mut m) = self.0.lock() {
+            m.insert(provider, std::time::Instant::now());
+        }
+    }
+
+    fn succeeded(&self, provider: uuid::Uuid) {
+        if let Ok(mut m) = self.0.lock() {
+            m.remove(&provider);
+        }
+    }
 }
 
 async fn drain_queue(ctx: &Ctx, worker_id: &str, kinds: &[&str]) -> anyhow::Result<()> {
@@ -793,7 +827,7 @@ async fn transcribe(ctx: &Ctx, job: &Job) -> anyhow::Result<JobEnd> {
     monitor.abort();
     let last_attempt = job.attempts >= job.max_attempts;
     let result = match result {
-        Ok(Run::Done(segments, label)) => Ok((segments, label)),
+        Ok(Run::Done(done)) => Ok(done),
         Ok(Run::Paused(checkpoint)) => {
             let progress = checkpoint.as_ref().map_or(0.0, |c| c.progress);
             return Ok(JobEnd::Paused {
@@ -806,25 +840,29 @@ async fn transcribe(ctx: &Ctx, job: &Job) -> anyhow::Result<JobEnd> {
         Err(err) => Err(err),
     };
     let finished = match &result {
-        Ok((segments, label)) => {
+        Ok(done) => {
             let is_final = manual || p.pass >= 2 || refine.is_none();
             let meta = recordings::TranscriptMeta {
-                engine: label,
+                engine: &done.engine,
                 is_final,
+                fallback_from: done.fallback_from.as_deref(),
             };
-            recordings::save_transcript(&ctx.pool, tenant, source, language, segments, meta)
+            // Coral reports the language it detected; others keep the setting.
+            let language = done.language.as_deref().unwrap_or(language);
+            recordings::save_transcript(&ctx.pool, tenant, source, language, &done.segments, meta)
                 .await?;
             let secs = started.elapsed().as_secs_f32();
             tracing::info!(
                 ?source,
                 pass = p.pass,
                 manual,
-                engine = %label,
-                segments = segments.len(),
+                engine = %done.engine,
+                fallback_from = ?done.fallback_from,
+                segments = done.segments.len(),
                 secs,
                 "transcribed"
             );
-            if !resumed {
+            if !resumed && done.fallback_from.is_none() {
                 let _ = tjobs::record_speed(&ctx.pool, &key, audio_secs as f32, secs).await;
             }
             if !is_final {
@@ -860,9 +898,21 @@ async fn transcribe(ctx: &Ctx, job: &Job) -> anyhow::Result<JobEnd> {
     result.map(|_| JobEnd::Done)
 }
 
+/// A finished transcription.
+#[derive(Debug)]
+pub(crate) struct Transcribed {
+    pub segments: Vec<recordings::Segment>,
+    /// The engine that made the text, e.g. `whisper:base` or `api:Coral/coral-auto`.
+    pub engine: String,
+    /// The selected engine that was not available (local fallback).
+    pub fallback_from: Option<String>,
+    /// The language the engine detected (Coral), if any.
+    pub language: Option<String>,
+}
+
 /// The result of a transcription that users can pause and stop.
 enum Run {
-    Done(Vec<recordings::Segment>, String),
+    Done(Transcribed),
     /// Paused; a local run has a resume point, a cloud run starts again.
     Paused(Option<Checkpoint>),
     Stopped,
@@ -894,7 +944,12 @@ async fn run_engine_controlled(
                     .transcribe_with(file, language, &opts, Some(control), resume)
                     .await?
                 {
-                    Outcome::Done(segments) => Run::Done(segments, label),
+                    Outcome::Done(segments) => Run::Done(Transcribed {
+                        segments,
+                        engine: label,
+                        fallback_from: None,
+                        language: None,
+                    }),
                     Outcome::Paused(checkpoint) => Run::Paused(Some(checkpoint)),
                     Outcome::Stopped => Run::Stopped,
                 },
@@ -908,14 +963,13 @@ async fn run_engine_controlled(
             loop {
                 tokio::select! {
                     result = &mut work => {
-                        let (segments, label) = result?;
+                        let done = result?;
                         let _ = control.progress.send(1.0);
-                        return Ok(Run::Done(segments, label));
+                        return Ok(Run::Done(done));
                     }
                     changed = interrupt.changed() => {
                         if changed.is_err() {
-                            let (segments, label) = work.await?;
-                            return Ok(Run::Done(segments, label));
+                            return Ok(Run::Done(work.await?));
                         }
                         match *interrupt.borrow() {
                             Some(Interrupt::Pause) => return Ok(Run::Paused(None)),
@@ -929,8 +983,9 @@ async fn run_engine_controlled(
     }
 }
 
-/// Runs one transcription; returns the segments and an engine label.
-/// Audio sent to a cloud provider is added to the usage.
+/// Runs one transcription. Audio sent to a cloud provider is added to the
+/// usage. A Coral connection that is not available, overloaded or fails
+/// is replaced by its local fallback model (ADR 0046).
 pub(crate) async fn run_engine(
     ctx: &Ctx,
     tenant: talkops_core::tenant::TenantId,
@@ -939,52 +994,132 @@ pub(crate) async fn run_engine(
     file: &Path,
     language: &str,
     vocabulary: &str,
-) -> anyhow::Result<(Vec<recordings::Segment>, String)> {
+) -> anyhow::Result<Transcribed> {
     match engine {
         Engine::Local(quality) => {
-            let opts = transcribe::Options {
-                quality,
-                vocabulary: vocabulary.to_owned(),
-            };
-            let whisper = if purpose == Purpose::Live {
-                // Previews leave CPU for calls and the other transcriptions.
-                Whisper {
-                    threads: ctx.whisper.threads.clamp(1, 2),
-                    ..ctx.whisper.clone()
-                }
-            } else {
-                ctx.whisper.clone()
-            };
-            let segments = whisper.transcribe(file, language, &opts).await?;
-            Ok((segments, format!("whisper:{}", whisper.model_name(quality))))
+            let (segments, label) =
+                run_local(ctx, purpose, quality, file, language, vocabulary).await?;
+            Ok(Transcribed {
+                segments,
+                engine: label,
+                fallback_from: None,
+                language: None,
+            })
         }
         Engine::Cloud {
             provider_id,
             model,
             price,
+            coral,
+            fallback,
             ..
         } => {
             let cfg = cloud_config(ctx, tenant, provider_id, &model).await?;
-            let (segments, seconds) = api::transcribe(&cfg, file, language, vocabulary).await?;
-            profiles::record_usage(&ctx.pool, tenant, purpose, &cfg.label(), seconds, price)
-                .await?;
-            Ok((segments, format!("api:{}", cfg.label())))
+            let fallback = fallback.filter(|_| coral);
+            if let Some(quality) = fallback
+                && ctx.coral_backoff.active(provider_id)
+            {
+                return local_fallback(ctx, purpose, quality, &cfg, file, language, vocabulary)
+                    .await;
+            }
+            match api::transcribe(&cfg, file, language, vocabulary).await {
+                Ok(done) => {
+                    if coral {
+                        ctx.coral_backoff.succeeded(provider_id);
+                    } else {
+                        profiles::record_usage(
+                            &ctx.pool,
+                            tenant,
+                            purpose,
+                            &cfg.label(),
+                            done.seconds,
+                            price,
+                        )
+                        .await?;
+                    }
+                    Ok(Transcribed {
+                        segments: done.segments,
+                        engine: format!("api:{}", cfg.label()),
+                        fallback_from: None,
+                        language: done.language,
+                    })
+                }
+                Err(err) => match fallback {
+                    Some(quality) => {
+                        tracing::warn!(connection = %cfg.label(), error = %format!("{err:#}"), "Coral not available, using the local fallback");
+                        ctx.coral_backoff.failed(provider_id);
+                        local_fallback(ctx, purpose, quality, &cfg, file, language, vocabulary)
+                            .await
+                    }
+                    None => Err(err),
+                },
+            }
         }
     }
 }
 
-/// A cloud connection with its decrypted key.
+/// Local Whisper in place of an unavailable Coral connection. The live
+/// preview always uses `base`.
+async fn local_fallback(
+    ctx: &Ctx,
+    purpose: Purpose,
+    quality: settings::TranscriptionQuality,
+    cfg: &transcription_api::ApiConfig,
+    file: &Path,
+    language: &str,
+    vocabulary: &str,
+) -> anyhow::Result<Transcribed> {
+    let quality = if purpose == Purpose::Live {
+        settings::TranscriptionQuality::Base
+    } else {
+        quality
+    };
+    let (segments, label) = run_local(ctx, purpose, quality, file, language, vocabulary).await?;
+    Ok(Transcribed {
+        segments,
+        engine: label,
+        fallback_from: Some(cfg.label()),
+        language: None,
+    })
+}
+
+async fn run_local(
+    ctx: &Ctx,
+    purpose: Purpose,
+    quality: settings::TranscriptionQuality,
+    file: &Path,
+    language: &str,
+    vocabulary: &str,
+) -> anyhow::Result<(Vec<recordings::Segment>, String)> {
+    let opts = transcribe::Options {
+        quality,
+        vocabulary: vocabulary.to_owned(),
+    };
+    let whisper = if purpose == Purpose::Live {
+        // Previews leave CPU for calls and the other transcriptions.
+        Whisper {
+            threads: ctx.whisper.threads.clamp(1, 2),
+            ..ctx.whisper.clone()
+        }
+    } else {
+        ctx.whisper.clone()
+    };
+    let segments = whisper.transcribe(file, language, &opts).await?;
+    Ok((segments, format!("whisper:{}", whisper.model_name(quality))))
+}
+
+/// A cloud connection with its decrypted key. A connection without a key
+/// (Coral) also works without TALKOPS_SECRET_KEY.
 pub(crate) async fn cloud_config(
     ctx: &Ctx,
     tenant: talkops_core::tenant::TenantId,
     provider_id: uuid::Uuid,
     model: &str,
 ) -> anyhow::Result<transcription_api::ApiConfig> {
-    let secrets = ctx
-        .secrets
-        .as_ref()
-        .context("TALKOPS_SECRET_KEY is not set for the media worker (needed for the API key)")?;
-    Ok(transcription_api::config(&ctx.pool, tenant, secrets, provider_id, model).await?)
+    Ok(
+        transcription_api::config(&ctx.pool, tenant, ctx.secrets.as_ref(), provider_id, model)
+            .await?,
+    )
 }
 
 #[cfg(all(test, unix))]

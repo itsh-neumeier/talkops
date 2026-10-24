@@ -323,6 +323,18 @@
 	animation: menu-in var(--dur) var(--ease-out);
 }
 
+/* The target of a settings search result is marked for a short time. */
+@keyframes search-hit {
+	0%,
+	60% {
+		box-shadow: 0 0 0 3px rgb(20 184 166 / 0.55);
+	}
+}
+.search-hit {
+	animation: search-hit 2s var(--ease-out);
+	scroll-margin-top: calc(var(--header-h, 4rem) + 1rem);
+}
+
 /*
  * Reduced motion: no movement, no repetition. Colors and opacity still
  * change, but at once.

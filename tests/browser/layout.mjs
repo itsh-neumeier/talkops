@@ -108,7 +108,7 @@ try {
     }
     // Below 1024 px the settings menu is a strip above the content, not a second column.
     await page.goto(`${BASE}/extensions`); await page.locator('main h1').waitFor();
-    const nav = await page.evaluate(() => { const n = document.querySelector('nav[aria-label="Einstellungen"]'); const c = n?.nextElementSibling?.getBoundingClientRect(); return { direction: n && getComputedStyle(n).flexDirection, content: c?.width, main: document.querySelector('main')?.clientWidth }; });
+    const nav = await page.evaluate(() => { const n = document.querySelector('nav[aria-label="Einstellungen"]'); const c = (n?.closest('[data-settings-nav]') ?? n)?.nextElementSibling?.getBoundingClientRect(); return { direction: n && getComputedStyle(n).flexDirection, content: c?.width, main: document.querySelector('main')?.clientWidth }; });
     assert.equal(nav.direction, width < 1024 ? 'row' : 'column', `settings menu @${width}`);
     if (width < 1024) assert.ok(nav.content >= nav.main - 32, `content width @${width}: ${JSON.stringify(nav)}`);
     await ctx.close();

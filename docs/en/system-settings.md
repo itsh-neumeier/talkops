@@ -27,6 +27,19 @@ Setup pages also live under Settings: extensions, users, call routing, trunks,
 phone numbers, phones, door stations and audit log. **My phones** shows your
 own assigned extensions. Their handbook chapters are in the [index](index.md).
 
+## Search the settings
+
+The field **Search settings** is above the settings navigation. Type a word,
+for example `hold music`, `LDAP` or `area code`. The search finds sections,
+cards inside them and setup pages. It also finds field labels and common
+synonyms in English and German. Umlauts and their spelling with `e` compare
+equal, for example `Ubersicht` finds `Übersicht`.
+
+- Select a result, or use the arrow keys and **Enter**. TalkOps opens the
+  page and marks the card for a short time.
+- Press **/** or **Ctrl+K** to go to the search field. **Esc** clears it.
+- The search shows only the settings that your role allows.
+
 ## Change a setting
 
 1. Open the appropriate section and record the current value.

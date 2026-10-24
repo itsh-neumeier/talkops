@@ -708,6 +708,9 @@ export default {
 	'settings.externalIp': 'Public IP for trunks',
 	'settings.externalIpHint':
 		'Empty, an IP address or stun:host. Changing it restarts the trunk profile.',
+	'settings.search.label': 'Search settings',
+	'settings.search.placeholder': 'Search settings',
+	'settings.search.none': 'No settings found.',
 	'settings.setup': 'Setup',
 	'settings.section.telephony': 'Telephony',
 	'settings.section.calls': 'Call handling',

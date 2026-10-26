@@ -1001,7 +1001,7 @@
 
 {#if !full && account}
 	<aside
-		class="card fixed right-4 bottom-4 z-40 max-w-sm space-y-2 shadow-lg"
+		class="card fixed right-4 bottom-[calc(var(--footer-h)+1rem)] z-40 max-w-sm space-y-2 shadow-lg"
 		aria-label={t('nav.phone')}
 	>
 		<a href="/phone" class="font-medium">{t('nav.phone')} · {account.extension_number}</a>

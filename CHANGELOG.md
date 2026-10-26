@@ -6,6 +6,32 @@ All notable changes to TalkOps. The format follows
 
 ## [Unreleased]
 
+## [1.8.11] – 2026-10-26
+
+### Fixed
+
+- Keep phone, extension and user lists wide beside an open side panel.
+  Use the panel width for phone network layout decisions.
+- Keep settings search results above the page content.
+- Keep the side panel, navigation and mini softphone clear of the fixed footer.
+
+### Added
+
+- Show copyright and the TalkOps version in a fixed footer for signed-in users.
+- Show CPU use, load averages, memory use and uptime to users with
+  diagnostics.manage. Refresh every 15 seconds while the tab is visible.
+  GET /api/v1/system/load uses the same permission.
+
+### Upgrade notes
+
+- No new database migration or dependency upgrade. Update server and worker
+  together and reload the web UI.
+- CPU use, load averages and uptime refer to the host. Memory uses the
+  container limit when available. The first CPU sample has no value.
+- Coral service PR81 and stable-preview PR82 remain drafts with hardware and
+  quality validation pending. Their code and migration are not included.
+- Repository guides are updated. This release does not republish the Wiki.
+
 ## [1.8.10] – 2026-10-24
 
 ### Added

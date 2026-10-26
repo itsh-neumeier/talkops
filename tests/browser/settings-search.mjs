@@ -22,6 +22,7 @@ async function context(width, role) {
     else if (path === '/api/v1/setup') value = { needs_setup: false };
     else if (path === '/api/v1/settings') value = settings;
     else if (path === '/api/v1/settings/smtp') value = { host: '', port: 587, security: 'starttls', username: '', has_password: false, from: '' };
+    else if (path === '/api/v1/extensions') value = [{ id: 'e1', number: '100', display_name: 'Familie Neumeier', user_id: null, outbound_number_id: null, hide_caller_id: false, ring_timeout_secs: 30, enabled: true, dnd: false, forward_all: null, record_calls: 'inherit', video_enabled: false }];
     else if (path === '/api/v1/unifi/connection') value = { connection: null, has_api_key: false };
     await route.fulfill({ status: 200, json: value });
   });
@@ -67,6 +68,20 @@ try {
     await box.press('Enter');
     await page.waitForURL(/\/wifi-surveys\?tab=unifi/);
 
+    // On a setup page the results lie above the page content.
+    if (width >= 1024) {
+      await page.goto(`${BASE}/extensions`);
+      await page.locator('main .card').first().waitFor();
+      await box.fill('un');
+      await options.first().waitFor();
+      const hidden = await page.evaluate(() => {
+        const list = document.getElementById('settings-search-results');
+        const r = list.getBoundingClientRect();
+        const hit = document.elementFromPoint(r.right - 8, r.top + 20);
+        return list.contains(hit) ? '' : (hit?.outerHTML.slice(0, 80) ?? 'nothing');
+      });
+      assert.equal(hidden, '', `${width}: search results are behind the page content`);
+    }
     await box.fill('xyzzy');
     await page.getByText('Keine Einstellung gefunden.').waitFor();
     await box.press('Escape');

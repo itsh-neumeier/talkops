@@ -64,7 +64,7 @@
 <aside
 	bind:this={panel}
 	tabindex="-1"
-	class="side-panel fixed inset-0 z-30 flex flex-col border-slate-200 bg-white shadow-2xl outline-none lg:top-[var(--header-h)] lg:left-auto lg:w-[26rem] lg:border-l dark:border-slate-800 dark:bg-slate-900"
+	class="side-panel @container fixed inset-0 z-30 flex flex-col border-slate-200 bg-white shadow-2xl outline-none lg:top-[var(--header-h)] lg:bottom-(--footer-h) lg:left-auto lg:w-(--side-panel-w) lg:border-l dark:border-slate-800 dark:bg-slate-900"
 	aria-label={title}
 	transition:fly={{ x: 24, duration: motion(220), easing: cubicOut }}
 	data-testid="side-panel"

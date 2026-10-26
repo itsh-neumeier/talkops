@@ -31,6 +31,22 @@ trunks, last backup). It refreshes every 10 seconds.
 - The legend shows the total of each series. Select a series in the legend
   to hide or show it.
 
+### Footer with the system load
+
+The footer at the bottom of each page shows the copyright and the TalkOps
+version. Users with `diagnostics.manage` also see the system load:
+
+- **CPU**: CPU use of all cores in percent.
+- **Load**: load average of 1, 5 and 15 minutes. Narrow screens do not show
+  it.
+- **RAM**: memory use in percent. The pointer shows the values in bytes.
+  When the container has a memory limit, the value refers to the limit.
+- **Up**: uptime of the host. Only wide screens show it.
+
+A value is amber from 80 % and red from 95 % (for the load: per CPU core).
+The footer reads the values from `GET /api/v1/system/load` every 15 seconds
+while the page is visible. In a container, CPU and load refer to the host.
+
 ## Enable
 
 Set a long random token in `.env` (or the Portainer stack environment) and

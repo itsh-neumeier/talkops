@@ -48,7 +48,7 @@
 	const numberOf = (id: string | null) => numbers.find((n) => n.id === id)?.e164;
 </script>
 
-<div class="space-y-4 {panel ? 'lg:pr-[26rem]' : ''}">
+<div class="space-y-4">
 	<PageHeader title={t('nav.extensions')}>
 		{#snippet actions()}
 			{#if can('extensions.manage')}<button class="btn btn-primary" onclick={() => (open = true)}

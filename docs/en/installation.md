@@ -31,9 +31,9 @@ a restore assistant.
 
 ```sh
 mkdir talkops && cd talkops
-curl -fLO https://raw.githubusercontent.com/itsh-neumeier/talkops/v1.8.10/docker-compose.yml
-curl -fL -o .env https://raw.githubusercontent.com/itsh-neumeier/talkops/v1.8.10/.env.example
-sed -i 's/^TALKOPS_VERSION=.*/TALKOPS_VERSION=1.8.10/' .env
+curl -fLO https://raw.githubusercontent.com/itsh-neumeier/talkops/v1.8.11/docker-compose.yml
+curl -fL -o .env https://raw.githubusercontent.com/itsh-neumeier/talkops/v1.8.11/.env.example
+sed -i 's/^TALKOPS_VERSION=.*/TALKOPS_VERSION=1.8.11/' .env
 ```
 
 Set the required values in `.env`, for example:
@@ -49,7 +49,7 @@ sed -i "s/^TALKOPS_XMLCURL_PASSWORD=$/TALKOPS_XMLCURL_PASSWORD=$(openssl rand -h
 > credentials. Back it up separately from the database – without it, the
 > credentials cannot be decrypted after a restore.
 
-These files and images use the existing published release 1.8.10. For a later
+These files and images use the existing published release 1.8.11. For a later
 release, select matching configuration and image versions. `latest` is a moving
 stable image tag; it does not pin the configuration files.
 Protect `.env` after generating secrets with `chmod 600 .env`. If you enable

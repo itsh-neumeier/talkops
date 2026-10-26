@@ -22,7 +22,7 @@ und [Changelog](../../CHANGELOG.md), keinen ungemergten Feature-Branch.
 
 ## Docker Compose aktualisieren
 
-Das Beispiel wählt den bereits veröffentlichten Stand 1.8.10. Ersetze für spätere
+Das Beispiel wählt den bereits veröffentlichten Stand 1.8.11. Ersetze für spätere
 Releases Git-Tag und Image-Version gemeinsam nach Prüfung der Hinweise.
 Nutze dein bestehendes Deployment-Verzeichnis. Erhalte `.env` und alle Overrides.
 
@@ -30,15 +30,15 @@ Nutze dein bestehendes Deployment-Verzeichnis. Erhalte `.env` und alle Overrides
 
    ```sh
    mkdir -p update-review
-   curl -fL -o update-review/docker-compose.yml https://raw.githubusercontent.com/itsh-neumeier/talkops/v1.8.10/docker-compose.yml
-   curl -fL -o update-review/env.example https://raw.githubusercontent.com/itsh-neumeier/talkops/v1.8.10/.env.example
+   curl -fL -o update-review/docker-compose.yml https://raw.githubusercontent.com/itsh-neumeier/talkops/v1.8.11/docker-compose.yml
+   curl -fL -o update-review/env.example https://raw.githubusercontent.com/itsh-neumeier/talkops/v1.8.11/.env.example
    diff -u docker-compose.yml update-review/docker-compose.yml
    ```
 
 2. Übernimm notwendige Änderungen in deine Deployment-Dateien. Erhalte eigene
    Mounts, Netzwerte, Geheimnisse und Datenvolumes. Prüfe genutzte Backup-/Ziel-Overrides
    aus demselben Release. Ersetze deine `.env` nicht durch die Beispieldatei.
-3. Setze `TALKOPS_VERSION=1.8.10` in `.env`. `latest` folgt dem beweglichen
+3. Setze `TALKOPS_VERSION=1.8.11` in `.env`. `latest` folgt dem beweglichen
    stabilen Image-Tag; eine feste Version legt den gewünschten Stand ausdrücklich fest.
 4. Prüfe, lade und starte mit **allen** bisherigen Compose-Optionen:
 

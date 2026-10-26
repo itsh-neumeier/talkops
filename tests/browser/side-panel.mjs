@@ -115,10 +115,14 @@ try {
     const page = await ctx.newPage();
     for (const path of ['/extensions', '/phones', '/users']) {
       await page.goto(`${BASE}${path}`);
-      const card = page.locator('main .card').first();
+      // Wait for the loaded list, not the layout's temporary skeleton card.
+      const link = page.locator('main [data-panel-link]').first();
+      await link.waitFor();
+      const card = page.locator('main .card').filter({ has: page.locator('[data-panel-link]') }).first();
       await card.waitFor();
       const before = await card.boundingBox();
-      await page.locator('main [data-panel-link]').first().click();
+      assert.ok(before, `${width} ${path}: loaded list has no bounding box`);
+      await link.click();
       const panel = page.getByTestId('side-panel');
       await panel.waitFor();
       await page.waitForTimeout(50);

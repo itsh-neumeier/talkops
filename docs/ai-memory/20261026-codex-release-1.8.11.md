@@ -91,3 +91,15 @@ Record final results in the integration PR and separate audit.
 - docs/ai-memory/20261024-claude-panel-layout-footer.md
 - docs/ai-memory/20261024-codex-release-1.8.10.md
 - docs/release-workflow.md
+
+## Candidate correction
+
+Initial candidate f7ccac93138565d0e061e787951f4d8d87b2d92c is superseded.
+Push CI40359624923 failed in side-panel.mjs: the initial generic card locator
+could match the root skeleton before authentication completed. The card was
+removed before boundingBox, so the before width was null. The parallel PR web
+job passed, confirming the timing-sensitive path. This failed gate is not waived.
+Wait for a loaded data-panel link and select its containing card before measuring.
+Keep the overlap and full-width assertions; add a diagnostic null check.
+No product change. Node syntax and diff checks passed. Final candidate must
+receive new complete CI/E2E results before merge.

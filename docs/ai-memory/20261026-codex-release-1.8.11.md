@@ -126,3 +126,24 @@ receive new complete CI/E2E results before merge.
   E2E40393450582 and FreeSWITCH40393450824 started. No competing release.
 - Wait for publication, verify stable GitHub release, three amd64/arm64 manifests,
   six version/revision labels and moving tags 1.8/latest. Cleanup remains pending.
+## Publication verified checkpoint
+
+Release workflow40393450794 succeeded. Stable GitHub release published at
+2026-10-26T20:20:27Z: https://github.com/itsh-neumeier/talkops/releases/tag/v1.8.11.
+Docker buildx imagetools verified all three manifests and six platform configs.
+OCI version v1.8.11 and revision f8bdfb37cf3f7705d7fbbaf63d6bd6148caba400 match.
+Moving tags 1.8/latest have identical platform digests. Version smoke passed on main.
+Removed only unchanged merged source PR80 branch and release batch branch, with
+atomic expected-head guards. All six draft/unmerged foreign branches preserved.
+Primary checkout remains at 397fc83 with its original three untracked summaries.
+Additional tag FreeSWITCH40393450824 passed. Tag CI40393450593 and E2E40393450582
+still running; exact-main CI/E2E already passed before tag. Complete final audit next.
+
+| Image | Platform | Digest |
+| --- | --- | --- |
+| talkops-server | amd64 | sha256:ebb6756e637f0a2c5e21da0b07847ebd8b6df7d34d158647c16f168a144acf0d |
+| talkops-server | arm64 | sha256:b92c4ae271624a464b50eb8d2a8b273126825977a3a54efe30c4dede0eb70054 |
+| talkops-media-worker | amd64 | sha256:7ee80696d3dd1e154196895a1931254549cb6690eab909e2fb8fba89b69915f9 |
+| talkops-media-worker | arm64 | sha256:743ab898b608b428b48abb1c16c27d1e96dd646cf9d7eab56237c6c055014082 |
+| talkops-freeswitch | amd64 | sha256:8f45f4b33de6bd0ebedb4c181626ab78d8c26b6f28c56025849430cf045332d0 |
+| talkops-freeswitch | arm64 | sha256:1f2b793b78004bef25dfe72ffe6d2d6c0991321ceec3dfaa61bbd97d7d1c7d52 |

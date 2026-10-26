@@ -37,6 +37,8 @@ const MAX_UPLOAD: usize = 100 * 1024 * 1024;
 pub struct AppState {
     pub engine: Arc<Engine>,
     pub api_key: Option<String>,
+    /// Opt-in complete-word realtime previews. File decoding is unchanged.
+    pub stable_preview: bool,
 }
 
 /// An error in the OpenAI format.
@@ -404,5 +406,7 @@ async fn realtime(
         return Err(err.into());
     };
     let engine = state.engine.clone();
-    Ok(upgrade.on_upgrade(move |socket| crate::realtime::session(socket, engine, guard)))
+    Ok(upgrade.on_upgrade(move |socket| {
+        crate::realtime::session(socket, engine, guard, state.stable_preview)
+    }))
 }

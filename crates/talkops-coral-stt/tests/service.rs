@@ -81,6 +81,7 @@ fn app(engine: &Arc<Engine>, key: Option<&str>) -> axum::Router {
     router(AppState {
         engine: engine.clone(),
         api_key: key.map(str::to_owned),
+        stable_preview: false,
     })
 }
 
@@ -356,9 +357,17 @@ type Ws =
     tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>;
 
 async fn serve(engine: &Arc<Engine>) -> u16 {
+    serve_with_preview(engine, false).await
+}
+
+async fn serve_with_preview(engine: &Arc<Engine>, stable_preview: bool) -> u16 {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
-    let app = app(engine, None);
+    let app = router(AppState {
+        engine: engine.clone(),
+        api_key: None,
+        stable_preview,
+    });
     tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
     port
 }
@@ -511,6 +520,72 @@ async fn realtime_sessions_like_the_worker_client() {
     )
     .await;
     assert_ne!(status, StatusCode::OK);
+    engine.shutdown();
+}
+
+#[tokio::test]
+async fn stable_preview_is_opt_in_and_preserves_completed_text() {
+    let (engine, _) = start(1, 0, 16, 4).await;
+    let mut completed = Vec::new();
+    for enabled in [false, true] {
+        let port = serve_with_preview(&engine, enabled).await;
+        let url = format!("ws://127.0.0.1:{port}/v1/realtime?intent=transcription");
+        let (mut ws, _) = tokio_tungstenite::connect_async(&url).await.unwrap();
+        let created = next_event(&mut ws).await.unwrap();
+        assert_eq!(
+            created["session"]["audio"]["input"]["transcription"]["stable_preview"],
+            enabled
+        );
+        send(
+            &mut ws,
+            json!({"type": "session.update", "session": {"audio": {"input": {
+                "format": {"type": "audio/pcm", "rate": 24000},
+                "transcription": {"model": "coral-ctc-de", "stable_preview": !enabled},
+                "turn_detection": null
+            }}}}),
+        )
+        .await;
+        let updated = next_event(&mut ws).await.unwrap();
+        // A client cannot change this operator-controlled service feature.
+        assert_eq!(
+            updated["session"]["audio"]["input"]["transcription"]["stable_preview"],
+            enabled
+        );
+        append(&mut ws, &tone(200.0, 6.0, 24000)).await;
+        let first = next_event(&mut ws).await.expect("a delta before commit");
+        assert_eq!(
+            first["type"],
+            "conversation.item.input_audio_transcription.delta"
+        );
+        send(&mut ws, json!({"type": "input_audio_buffer.commit"})).await;
+        let mut events = vec![first];
+        events.extend(until_completed(&mut ws).await);
+        let final_event = events.last().unwrap();
+        assert_eq!(
+            final_event["type"],
+            "conversation.item.input_audio_transcription.completed"
+        );
+        let text = final_event["transcript"].as_str().unwrap();
+        let prefix: String = events.iter().filter_map(|e| e["delta"].as_str()).collect();
+        assert!(text.starts_with(&prefix), "{prefix:?} must prefix {text:?}");
+        completed.push(text.to_owned());
+        // Clear discards an unfinished turn. A short following turn still
+        // completes, even when it is too short for any preview window.
+        append(&mut ws, &tone(200.0, 0.1, 24000)).await;
+        send(&mut ws, json!({"type": "input_audio_buffer.clear"})).await;
+        assert_eq!(
+            next_event(&mut ws).await.unwrap()["type"],
+            "input_audio_buffer.cleared"
+        );
+        append(&mut ws, &tone(200.0, 1.5, 24000)).await;
+        send(&mut ws, json!({"type": "input_audio_buffer.commit"})).await;
+        assert_eq!(
+            until_completed(&mut ws).await.last().unwrap()["transcript"],
+            "hallo"
+        );
+        ws.close(None).await.unwrap();
+    }
+    assert_eq!(completed[0], completed[1]);
     engine.shutdown();
 }
 

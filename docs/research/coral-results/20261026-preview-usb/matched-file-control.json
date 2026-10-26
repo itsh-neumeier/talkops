@@ -1,0 +1,22 @@
+{
+  "kind": "file",
+  "engine": "coral",
+  "device": "usb:0",
+  "lang_mode": "fixed",
+  "utterances": 41,
+  "audio_secs": 183.5,
+  "rtf": 0.0421,
+  "latency_p50": 0.157,
+  "cpu_secs_per_audio_sec": 0.1043,
+  "cpu_cores": 2.438,
+  "tpu_busy_share": 0.962,
+  "wer": {
+    "de": 0.2226
+  },
+  "cer": {
+    "de": 0.0929
+  },
+  "langid_accuracy": null,
+  "reference_words": 265,
+  "matched_to_live_selection": true
+}

@@ -45,6 +45,7 @@ pub mod sip_guard;
 pub mod speech;
 pub mod stats;
 pub mod storage_targets;
+pub mod system_load;
 pub mod telemetry;
 pub mod tenant;
 pub mod time_conditions;

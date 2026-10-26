@@ -107,6 +107,28 @@ try {
     await page.screenshot({ path: `test-results/side-panel-user-${width}.png` });
     await ctx.close();
   }
+  // An open panel must not squeeze the list into the centred content
+  // column: the content moves left beside the panel, and on a very wide
+  // screen the list keeps its full width.
+  for (const width of [1280, 2000]) {
+    const ctx = await context(width);
+    const page = await ctx.newPage();
+    for (const path of ['/extensions', '/phones', '/users']) {
+      await page.goto(`${BASE}${path}`);
+      const card = page.locator('main .card').first();
+      await card.waitFor();
+      const before = await card.boundingBox();
+      await page.locator('main [data-panel-link]').first().click();
+      const panel = page.getByTestId('side-panel');
+      await panel.waitFor();
+      await page.waitForTimeout(50);
+      const after = await card.boundingBox();
+      const side = await panel.boundingBox();
+      assert.ok(after.x + after.width <= side.x + 1, `${width} ${path}: list under the panel`);
+      if (width === 2000) assert.ok(after.width >= before.width - 1, `${width} ${path}: list ${before.width}px → ${after.width}px`);
+    }
+    await ctx.close();
+  }
   assert.deepEqual(problems, []);
   console.log('side panel browser checks passed');
 } finally {

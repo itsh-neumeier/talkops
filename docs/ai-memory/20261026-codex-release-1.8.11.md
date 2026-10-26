@@ -117,3 +117,12 @@ receive new complete CI/E2E results before merge.
   draft PR61/81/82 remain open. No tag pushed. Do not push the merged branch again.
 - Next: wait for both exact-main gates, publish unused v1.8.11, verify all
   release artifacts and save the final task-only audit separately.
+## Publication checkpoint
+
+- Exact-main CI40390896849 and E2E40390896741 passed before tagging.
+- New annotated v1.8.11 pushed once on f8bdfb37cf3f7705d7fbbaf63d6bd6148caba400.
+  Tag object: 00fec99a23de1f0ce4145170490cd4803231ea45.
+- Release40393450794 is running/queued. Additional tag CI40393450593,
+  E2E40393450582 and FreeSWITCH40393450824 started. No competing release.
+- Wait for publication, verify stable GitHub release, three amd64/arm64 manifests,
+  six version/revision labels and moving tags 1.8/latest. Cleanup remains pending.

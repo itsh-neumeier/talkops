@@ -8,7 +8,7 @@
 - Status: In progress
 - Branch: codex/release-1.8.11
 - Base commit: 8f32ec7778ec7a147c09ac98c97c5f1a434e22cc
-- Related PR: Pending
+- Related PR: https://github.com/itsh-neumeier/talkops/pull/83
 
 ## Goal
 
@@ -103,3 +103,17 @@ Wait for a loaded data-panel link and select its containing card before measurin
 Keep the overlap and full-width assertions; add a diagnostic null check.
 No product change. Node syntax and diff checks passed. Final candidate must
 receive new complete CI/E2E results before merge.
+## Merged checkpoint
+
+- Final candidate: ac34eaee4abf44d1dbef0f6e96a5c4c6172515ec.
+- All 16 final checks passed: PR CI40361524234/E2E40361524170 (attempt2),
+  push CI40361517433/E2E40361517325. Rust 513 passed, one existing ignored
+  model test; 83 web tests and all 23 browser suites. Source history preserved.
+- PR E2E attempt1 was cancelled during very slow Ubuntu mirror downloads in
+  Playwright setup. No test failure. Complete attempt2 passed; no gate waived.
+- PR83 and source PR80 merged. Main: f8bdfb37cf3f7705d7fbbaf63d6bd6148caba400.
+  Its tree equals the final candidate; source PR80 head is an ancestor.
+- Exact-main CI40390896849/E2E40390896741 running. Scope unchanged; only
+  draft PR61/81/82 remain open. No tag pushed. Do not push the merged branch again.
+- Next: wait for both exact-main gates, publish unused v1.8.11, verify all
+  release artifacts and save the final task-only audit separately.

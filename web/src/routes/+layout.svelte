@@ -18,6 +18,7 @@
 	import Skeleton from '#lib/components/Skeleton.svelte';
 	import { pageChanged } from '#lib/net.svelte.ts';
 	import Softphone from '#lib/components/Softphone.svelte';
+	import AppFooter from '#lib/components/AppFooter.svelte';
 
 	let { children } = $props();
 	let menuOpen = $state(false);
@@ -144,38 +145,45 @@
 		</div>
 	</header>
 
-	<div class="mx-auto flex max-w-7xl">
-		{#if session.user}
-			<nav
-				class="{menuOpen
-					? 'menu-in flex'
-					: 'hidden'} fixed inset-x-0 top-(--header-h) z-20 max-h-[calc(100dvh-var(--header-h))] flex-col gap-1 overflow-y-auto border-b border-slate-200 bg-white p-2 shadow-lg md:sticky md:flex md:h-[calc(100dvh-var(--header-h))] md:max-h-none md:w-56 md:shrink-0 md:border-r md:border-b-0 md:bg-transparent md:shadow-none dark:border-slate-800 dark:bg-slate-900 md:dark:bg-transparent"
-				aria-label={t('nav.menu')}
-			>
-				{#each nav.filter((n) => hasRole(n.role) && (!n.perms || n.perms.some( (p) => can(p) )) && shown(n.href)) as item (item.href)}
-					<a
-						href={item.href}
-						onclick={() => (menuOpen = false)}
-						class="nav-item"
-						aria-current={active(item.href) ? 'page' : undefined}>{t(item.key)}</a
-					>
-				{/each}
-			</nav>
-		{/if}
-		<main class="@container min-w-0 flex-1 p-4">
-			{#if session.loaded && (session.user || publicPaths.includes(page.url.pathname))}
-				{#key page.url.pathname}
-					<div class="page-in">{@render children()}</div>
-				{/key}
-				{#if session.user && phoneOwner === session.user.id}
-					{#key phoneOwner}<Softphone full={page.url.pathname === '/phone'} />{/key}
-				{/if}
-			{:else}
-				<div class="space-y-4" aria-label={t('common.loading')}>
-					<div class="skeleton"><div class="skeleton-bar h-7 w-48"></div></div>
-					<div class="card"><Skeleton lines={6} /></div>
-				</div>
+	<div class="app-body">
+		<div class="mx-auto flex max-w-7xl">
+			{#if session.user}
+				<nav
+					class="{menuOpen
+						? 'menu-in flex'
+						: 'hidden'} fixed inset-x-0 top-(--header-h) z-20 max-h-[calc(100dvh-var(--header-h)-var(--footer-h))] flex-col gap-1 overflow-y-auto border-b border-slate-200 bg-white p-2 shadow-lg md:sticky md:flex md:h-[calc(100dvh-var(--header-h)-var(--footer-h))] md:max-h-none md:w-56 md:shrink-0 md:border-r md:border-b-0 md:bg-transparent md:shadow-none dark:border-slate-800 dark:bg-slate-900 md:dark:bg-transparent"
+					aria-label={t('nav.menu')}
+				>
+					{#each nav.filter((n) => hasRole(n.role) && (!n.perms || n.perms.some( (p) => can(p) )) && shown(n.href)) as item (item.href)}
+						<a
+							href={item.href}
+							onclick={() => (menuOpen = false)}
+							class="nav-item"
+							aria-current={active(item.href) ? 'page' : undefined}>{t(item.key)}</a
+						>
+					{/each}
+				</nav>
 			{/if}
-		</main>
+			<main
+				class="@container min-w-0 flex-1 p-4 {session.user
+					? 'pb-[calc(var(--footer-h)+1rem)]'
+					: ''}"
+			>
+				{#if session.loaded && (session.user || publicPaths.includes(page.url.pathname))}
+					{#key page.url.pathname}
+						<div class="page-in">{@render children()}</div>
+					{/key}
+					{#if session.user && phoneOwner === session.user.id}
+						{#key phoneOwner}<Softphone full={page.url.pathname === '/phone'} />{/key}
+					{/if}
+				{:else}
+					<div class="space-y-4" aria-label={t('common.loading')}>
+						<div class="skeleton"><div class="skeleton-bar h-7 w-48"></div></div>
+						<div class="card"><Skeleton lines={6} /></div>
+					</div>
+				{/if}
+			</main>
+		</div>
 	</div>
+	{#if session.user}<AppFooter />{/if}
 </div>

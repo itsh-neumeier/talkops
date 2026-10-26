@@ -1356,6 +1356,17 @@ export interface WorkerStatus {
 	updated_at: string;
 }
 
+export interface SystemLoad {
+	cpu_percent: number | null;
+	cpus: number;
+	load1: number;
+	load5: number;
+	load15: number;
+	mem_used_bytes: number;
+	mem_total_bytes: number;
+	uptime_secs: number;
+}
+
 export interface PhoneProvisioning {
 	account_slots?: number | null;
 	parameters?: Record<string, string>;

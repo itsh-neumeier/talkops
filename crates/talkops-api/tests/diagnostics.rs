@@ -30,6 +30,15 @@ async fn diagnostics_api(db: PgPool) {
     let (status, _) = ben.get("/api/v1/diagnostics").await;
     assert_eq!(status, StatusCode::FORBIDDEN);
 
+    // System load for the footer of the web UI.
+    let (status, load) = admin.get("/api/v1/system/load").await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(load["cpus"].as_u64().unwrap() >= 1);
+    assert!(load["mem_total_bytes"].is_u64());
+    assert!(load["load1"].is_number());
+    let (status, _) = ben.get("/api/v1/system/load").await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+
     // Validation before touching FreeSWITCH.
     let (status, _) = admin
         .post("/api/v1/diagnostics/capture", json!({"level": "trace"}))

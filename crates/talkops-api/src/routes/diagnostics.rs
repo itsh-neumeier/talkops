@@ -18,6 +18,7 @@ use crate::auth::AuthUser;
 use crate::diagnostics::{self, CaptureStatus, Channel, DiagnosticsError, LogLine};
 use crate::error::{ApiError, ApiResult};
 use talkops_core::roles::Permission;
+use talkops_core::system_load::SystemLoad;
 
 pub fn router() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
@@ -27,6 +28,7 @@ pub fn router() -> OpenApiRouter<AppState> {
         .routes(routes!(download_log))
         .routes(routes!(restart))
         .routes(routes!(reset_sessions))
+        .routes(routes!(system_load))
 }
 
 impl From<DiagnosticsError> for ApiError {
@@ -43,6 +45,17 @@ pub struct DiagnosticsView {
     pub freeswitch: Option<String>,
     pub capture: CaptureStatus,
     pub channels: Vec<Channel>,
+}
+
+/// CPU use, load average, memory and uptime of the system (footer of the
+/// web UI).
+#[utoipa::path(get, path = "/api/v1/system/load", tag = "system", responses((status = 200, body = SystemLoad)))]
+pub async fn system_load(auth: AuthUser) -> ApiResult<Json<SystemLoad>> {
+    auth.require_perm(Permission::DiagnosticsManage)?;
+    let load = tokio::task::spawn_blocking(talkops_core::system_load::sample)
+        .await
+        .map_err(|e| ApiError::Internal(e.to_string()))?;
+    Ok(Json(load))
 }
 
 /// Versions, uptime, capture state and active call legs.

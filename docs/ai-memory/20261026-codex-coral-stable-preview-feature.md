@@ -5,10 +5,12 @@
 - Task ID: 20261026-codex-coral-stable-preview-feature
 - Date: 2026-10-26
 - Tool: Codex
-- Status: Implemented and tested; PR publication pending
+- Status: Completed implementation; published as a draft PR
 - Branch: codex/coral-stable-preview
 - Base commit: 3d11790618ed99c70fc5b7864c5be363e8a969d7
-- Related PR: Pending; depends on https://github.com/itsh-neumeier/talkops/pull/81
+- Related PR: https://github.com/itsh-neumeier/talkops/pull/82
+- Dependency: https://github.com/itsh-neumeier/talkops/pull/81
+- Implementation commit: ecda10b52fb5b88c82a942c093d466077cb6f7f5
 
 ## Goal
 
@@ -18,6 +20,8 @@ actual Coral latency and quality measurements.
 ## Result
 
 Implemented an optional complete-word preview in the Rust Coral service.
+Published the feature branch and draft PR #82. No merge or deployment was
+done. GitHub CI and physical Rust-service verification remain pending.
 The setting `TALKOPS_CORAL_STABLE_PREVIEW` defaults to `false` and accepts
 `true` to enable the feature. Compose forwards this setting. Session
 configuration reports it; a client cannot change the operator setting.
@@ -87,5 +91,6 @@ quality approval remains open. No merge, release or deployment is authorized.
 
 ## Next action
 
-Publish this feature branch and open a PR with dependency and hardware
-limits in its description. The implementation has not been deployed.
+Review PR #82 after CI. Repeat quality and latency tests with the Rust
+service on real hardware before enabling the feature for normal use.
+Integrate after PR #81. No further user hardware action is currently needed.

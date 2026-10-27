@@ -157,3 +157,29 @@ only by this stronger CI/release validation contract and task record.
 - Wait for Release success, verify stable GitHub release and FOUR amd64/arm64
   manifests, eight OCI configs, native Coral runtime and 1.8/latest. Then remove
   only unchanged merged source/batch branches and archive the final task record.
+## Publication verified checkpoint
+
+Release workflow40518594652 succeeded. Stable GitHub release published at
+2026-10-27T14:19:05Z: https://github.com/itsh-neumeier/talkops/releases/tag/v1.8.12.
+Registry inspection verified four manifests, eight configs, OCI version v1.8.12
+and revision 3603ed56b0073a1dd23646622cf4fb0284644ab7. Moving 1.8/latest have the
+same platform digests. Actual Coral release digests passed native library/mock
+smoke on amd64 and arm64. This is not physical TPU/quality acceptance.
+Removed only the three unchanged merged sources and batch branch, with atomic
+expected-head guards. Preserve draft61 and the three other unmerged branches.
+Source PR82 trial guide and PR84 task-record links now use immutable source
+commits instead of the removed branches. Source content/history preserved.
+Primary remains at 397fc83 with its original three untracked summaries.
+Additional tag CI40518594859 and FreeSWITCH40518594647 passed. E2E40518595237
+still running; main CI/E2E already passed before tagging. Final audit next.
+
+| Image | Platform | Digest |
+| --- | --- | --- |
+| talkops-server | amd64 | sha256:d2e2b02dd21c04dbc951601581f41cd1e4ba2cb6d2073fb20da16696755541fd |
+| talkops-server | arm64 | sha256:8f8a35558e9caf926642ebe9d212fd408e183be910ed1173becb7ef4133bbaf4 |
+| talkops-media-worker | amd64 | sha256:b5284872b3baf588048586d4ae0075a2d29a1efec39c4aa5a4382f0313bbc4db |
+| talkops-media-worker | arm64 | sha256:ed270b09b0d9575fd498a4c9094c3fad730248ba534a04f3cba0a0ea04e2cdc9 |
+| talkops-freeswitch | amd64 | sha256:160aaac3e5c3dd2ef912d96ee04e6e00fa0ebb3cec0c361cb2634914a5e34e60 |
+| talkops-freeswitch | arm64 | sha256:5994ffb19cfd3ffe0d13f881618f0c9a736e995e735cfc04dd5d133da9570c28 |
+| talkops-coral-stt | amd64 | sha256:9496336c6f1c9be2a99bbd2df410c5bed99744767ac047491f430148b73855fe |
+| talkops-coral-stt | arm64 | sha256:ea936a84cf758a46395300bf7348dc1e39fe9655429bce98b1db6c2a1ea74bf0 |

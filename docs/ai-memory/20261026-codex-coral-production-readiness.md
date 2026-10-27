@@ -5,7 +5,7 @@
 - Task ID: 20261026-codex-coral-production-readiness
 - Date: 2026-10-26
 - Tool: Codex
-- Status: Implementation and local validation complete; PR/CI handoff in progress
+- Status: Implemented and locally validated; user-owned production trial pending
 - Branch: codex/coral-stable-preview
 - Base commit: 51e7df588ab028a435e79685ff43baeae5a52898
 - Related PRs: #81 and #82
@@ -20,8 +20,8 @@ or claim the unresolved quality gate passed.
 ## Current state
 
 - Fetched main at f8bdfb3 (1.8.11).
-- Created local `codex/coral-base-readiness` from PR #81 head, merged main
-  without conflict. This local base branch is not pushed yet.
+- Created `codex/coral-base-readiness` from PR #81 head and merged main
+  without conflict. Published the base to PR #81 at 0063ce2.
 - Merged that updated base into `codex/coral-stable-preview`.
 - Fixed the Coral package lock version to match inherited 1.8.11 metadata.
 - Added pending migration `20261112000002_coral_stable_preview`.
@@ -34,7 +34,8 @@ or claim the unresolved quality gate passed.
 - Added the System Diagnostics Coral card with capture and report download.
 - Added technical live-preview state export, excluding call identity/files
   and transcript contents.
-- Added initial SQL and trace tests. Validation and documentation are open.
+- Added SQL/API/worker, trace and browser tests. Local validation and the
+  test/rollback documentation are complete.
 
 ## Result and remaining handoff
 
@@ -92,7 +93,8 @@ has been requested. Do not mark quality/readability approved without data.
 
 ## Next action
 
-Publish the updated base of #81 and the feature branch for #82. Update both
-PRs for review with the user-owned production trial pending. Verify CI and
-the three trial image tags before a deployment handoff. Do not deploy or
-mark readability/quality approved. Use `docs/research/coral-production-trial.md`.
+The base synchronization is published. The feature handoff is in #82;
+GitHub checks and workflow summaries are the authority for current CI and
+trial tags. Verify all three trial image jobs before deployment. The user
+owns the production trial. Do not deploy or mark readability/quality
+approved. Use `docs/research/coral-production-trial.md`.

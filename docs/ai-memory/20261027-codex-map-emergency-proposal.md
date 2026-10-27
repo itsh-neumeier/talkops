@@ -5,11 +5,11 @@
 - Task ID: 20261027-codex-map-emergency-proposal
 - Date: 2026-10-27, Europe/Berlin
 - Tool: Codex
-- Status: In progress. User approved implementation; final checks are running.
+- Status: Completed. Implementation is pushed; release integration remains separate.
 - Branch: `codex/map-emergency-proposal`
 - Base commit: `f8bdfb37cf3f7705d7fbbaf63d6bd6148caba400` (remote main, 1.8.11)
 - Related commits or PR: [Draft PR #84](https://github.com/itsh-neumeier/talkops/pull/84),
-  proposal commit `817b2955da1a061bd9d9853de0c77af7f4dc14ac`.
+  implementation commit `50df060e51e07cab38b2a7667d741a1259a2965a`.
 
 ## Goal
 
@@ -20,10 +20,11 @@ email alerts. User approval on 2026-10-27 completed the design review checkpoint
 
 Prepared a technical proposal and two interactive marker designs. Added a
 sample emergency alert editor and email preview. The browser checks pass.
-The proposal is committed, pushed and published as draft PR #84. Product code
-now adds device markers, previews, split country groups with legacy aliases,
-and an opt-in emergency dialing event. Final check results and publication of
-the implementation are pending. Dependencies and release metadata are unchanged.
+Product code adds device markers, previews, split country groups with legacy
+aliases, and an opt-in emergency dialing event. The approved mobile label is
+"DE ohne Ortsbezug". Implementation is committed and pushed to PR #84.
+Full Linux CI passed on the implementation commit. Dependencies and release
+metadata are unchanged. The PR holds the live CI/E2E and review state.
 
 ## Changes
 
@@ -76,11 +77,27 @@ the implementation are pending. Dependencies and release metadata are unchanged.
 - Passed: `git diff --check` before commit.
 - Resolved environment failure: default Playwright browser was absent.
   The same checks passed with the installed Edge executable override.
-- Implementation checks passed so far: production web check, unit tests,
-  build and lint; map browser checks; four PostgreSQL map integration tests,
-  ten existing dialing tests and two notification integration tests.
-- Further checks are running: updated layout coverage, notifier SMTP delivery,
-  the storage-failure routing case, final migration ID and workspace clippy.
+- Passed: web lint, check (zero errors/warnings), 86 unit tests and build.
+- Passed: production map browser checks, including hover/focus, Escape,
+  selection preservation, smartphone/desk-phone shapes, country label, touch
+  preview/details, offline behavior and narrow layouts. Layout checks in both
+  themes, including the emergency editor, and call-list browser checks pass.
+- Passed: four PostgreSQL map tests, ten existing dialing tests, two notification
+  tests, and focused reruns of emergency cases. New cases cover configured 911,
+  no-route attempts, distinct extensions, concurrent/repeated deduplication,
+  role recipients and routing with a deliberately broken notification index.
+- Passed: notifier tests, including a local SMTP fixture, no hourly suppression,
+  disabled default, no replay of processed events, logged SMTP failure and
+  German/English dialing-attempt mail status.
+- Passed: full Linux CI on implementation commit 50df060, run 40504713389:
+  workspace formatting/clippy/tests, web/browser tests, handbook/Wiki checks,
+  fax fixtures, Compose validation and server/worker image build/smoke tests.
+- E2E: SIPp run 40504713283 was still running when this summary was saved.
+  Check the PR for its current result. No merge, tag or release was performed.
+- Environment interruptions: default GNU tooling lacks gcc/dlltool. A local
+  broad clippy run exhausted host memory; a concurrent web check also stopped.
+  The web checks then passed in isolation. Full Linux CI passed all workspace
+  checks. Local pure-core checking was redundant once that CI run passed.
 - Local environment: MSVC Rust toolchain; private PostgreSQL 17 data directory
   `A:/aislop/codex/talkops/map-emergency-pg`, port 55439. Verified with
   `SHOW data_directory`. Task build cache is on A: after local disk exhaustion.
@@ -98,18 +115,18 @@ the implementation are pending. Dependencies and release metadata are unchanged.
 - Migration ID: `20261113000001_emergency_dial_alert.sql`. Initial local ID
   20261112000001 was changed before publication because PR #81 uses it.
   PR #82 also uses 20261112000002. ADR 0047 avoids Coral's ADR 0046.
-- No Docker daemon is available. Full Linux/LDAP/FreeSWITCH/SIPp validation
-  needs CI. CodeRabbit CLI is absent; review the diff locally.
+- No local Docker daemon is available. Linux/LDAP checks passed in CI;
+  FreeSWITCH/SIPp use the separate E2E workflow. CodeRabbit CLI is absent;
+  a local diff review was completed. No CodeRabbit result is claimed.
 
 ## Next action
 
-Finish the pending checks, commit and push implementation, then update PR #84
-with final evidence. The release chat owns integration,
-version changes, tags and publication.
+Release chat: inspect the final PR and its current CI/E2E checks, integrate
+the feature and migration, then manage version changes, tags and publication.
 
 ## References
 
 - `docs/ai-memory/20261023-claude-call-map.md`
 - `docs/ai-memory/20261016-claude-notifications.md`
-- ADR 0035, ADR 0044 and ADR 0045
+- ADR 0035, ADR 0044, ADR 0045 and ADR 0047
 - `docs/release-workflow.md`

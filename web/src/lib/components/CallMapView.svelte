@@ -180,6 +180,7 @@
 			<span>☎ {t('callMap.marker.area')}</span><span>▯ {t('callMap.marker.mobile')}</span><span
 				>▧ {t('callMap.marker.unlocated')}</span
 			>
+			<span>◉ {t('callMap.clusterLegend')}</span>
 		</p>
 	</div>
 

@@ -227,6 +227,19 @@ Klick, Enter oder Leertaste öffnet die Details. Auf Touchgeräten öffnet ein
 Antippen zunächst die Vorschau; **Details öffnen** zeigt den Detailbereich.
 Escape schließt die Vorschau. Dashboard und große Karte nutzen dieselben Formen.
 
+Nahe Marker werden zu einem runden Bündel, wenn sich Telefone oder Beschriftungen
+überlagern würden. Das Kuchendiagramm summiert die Kategorien der enthaltenen
+Gruppen. Die Zahl in der Mitte zählt Gruppen, keine Anrufe oder physischen Orte.
+Berühre das Bündel mit der Maus, fokussiere es oder tippe darauf, um seine Gruppen
+und Anrufzahlen zu sehen. **Bündel vergrößern** oder die Zoomtasten teilen nahe
+Gruppen beim Hineinzoomen auf. Bei Zoom- und Größenänderungen prüft die Karte
+die Markergrößen erneut.
+
+Wähle eine Gruppe im Bündel für ihre Vorschau und dann **Details öffnen**.
+Das funktioniert auch bei gleicher Position und in der höchsten Zoomstufe.
+Ländergruppen können mit Ortsnetzen gebündelt sein. Ihre Länderposition ist
+weiterhin kein Aufenthaltsort. Das Dashboard nutzt dieselben Bündel.
+
 Die API liefert zusätzlich `marker_kind` (`area`, `mobile`, `unlocated`).
 Landesgruppen heißen nun beispielsweise `DE-mobile` und `DE-unlocated`.
 Bestehende Anruflisten-Filterlinks mit `DE-none` umfassen weiterhin beide Gruppen.

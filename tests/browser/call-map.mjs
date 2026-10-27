@@ -41,6 +41,26 @@ try {
   });
   const mapRequests = [];
   const listRequests = [];
+  let dense = false;
+  const denseMap = range => {
+    const data = map(range);
+    const area = data.areas[0];
+    data.areas.push(
+      ...[
+        ['DE-9541', 'Hallstadt', 49.93, 10.89],
+        ['DE-9573', 'Bad Staffelstein', 50.10, 11.0],
+        ['DE-9191', 'Forchheim', 49.72, 11.06],
+        ['DE-9131', 'Erlangen', 49.59, 11.0],
+        ['DE-89', 'München', 48.14, 11.58],
+        ['same-position', 'Gleiche Position', 49.89, 10.89]
+      ].map(([id, name, lat, lon]) => ({ ...area, id, name, lat, lon, prefix: '+49', calls: [] })),
+      { ...data.areas[1], id: 'DE-unlocated', marker_kind: 'unlocated', mobile: 0, unresolved: 1 },
+      { ...area, id: 'outbound-only', name: 'Nur ausgehend', lat: 49.90, lon: 10.90, counts: counts(0, 0, 1, 0), total: 1, calls: [] }
+    );
+    data.counts = data.areas.reduce((sum, a) => Object.fromEntries(Object.keys(sum).map(c => [c, sum[c] + a.counts[c]])), counts(0, 0, 0, 0));
+    data.total = Object.values(data.counts).reduce((a, b) => a + b, 0) + 1;
+    return data;
+  };
   await page.route('**/api/**', async route => {
     const url = new URL(route.request().url());
     let value = [];
@@ -53,7 +73,7 @@ try {
     else if (url.pathname === '/api/v1/setup') value = { needs_setup: false };
     else if (url.pathname === '/api/v1/calls/map') {
       mapRequests.push(url.searchParams);
-      value = map(url.searchParams.get('range'));
+      value = dense ? denseMap(url.searchParams.get('range')) : map(url.searchParams.get('range'));
     } else if (url.pathname === '/api/v1/calls') {
       listRequests.push(url.searchParams);
       value = [call('a')];
@@ -204,6 +224,92 @@ try {
   assert.equal(mapRequests.at(-1).get('range'), '1h');
   assert.equal(await widget.getByRole('link', { name: 'Karte öffnen' }).getAttribute('href'), '/calls?view=map&range=1h');
   assert.deepEqual(foreign, [], 'the widget makes no external request either');
+
+  // Dense real-world positions bundle before devices, bases or country labels overlap.
+  dense = true;
+  const assertDisjointMarkers = async () => {
+    const boxes = await page.locator('.call-bubble').evaluateAll(els => els.map(el => {
+      const r = el.getBoundingClientRect();
+      const label = el.querySelector('.call-marker-name')?.getBoundingClientRect();
+      return { left: Math.min(r.left, label?.left ?? r.left), right: Math.max(r.right, label?.right ?? r.right), top: r.top, bottom: Math.max(r.bottom, label?.bottom ?? r.bottom) };
+    }));
+    for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
+      const a = boxes[i], b = boxes[j];
+      assert.ok(a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top, `markers overlap: ${JSON.stringify([a, b])}`);
+    }
+    const ids = await page.locator('.call-bubble').evaluateAll(els => els.flatMap(el => el.dataset.clusterMembers?.split(',') ?? [el.dataset.areaId]));
+    assert.equal(new Set(ids).size, ids.length, 'each group appears once');
+    return ids;
+  };
+  for (const dark of [false, true]) for (const width of [1280, 768, 360]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.evaluate(dark => localStorage.setItem('talkops.theme', dark ? 'dark' : 'light'), dark);
+    await page.goto(`${base}/calls?view=map&range=1w`);
+    await page.locator('.call-map-cluster').first().waitFor();
+    assert.equal((await assertDisjointMarkers()).length, denseMap('1w').areas.length);
+    assert.ok(await page.locator('.call-map-cluster').count() > 0, 'dense groups are bundled');
+    if (!dark && width === 1280 && process.env.CALL_MAP_SCREENSHOT) await page.screenshot({ path: process.env.CALL_MAP_SCREENSHOT, fullPage: true });
+    const cluster = page.locator('.call-map-cluster[data-cluster-members*="DE-951"]');
+    await cluster.focus();
+    await preview.waitFor();
+    assert.match(await preview.textContent(), /Gruppen.*Anrufe/);
+    assert.equal(await details.count(), 0, 'bundle focus does not select');
+    await page.keyboard.press('Enter');
+    assert.equal(await preview.getByRole('button', { name: 'Schließen', exact: true }).evaluate(el => el === document.activeElement), true, 'keyboard activation enters bundle controls');
+    await page.keyboard.press('Escape');
+    await preview.waitFor({ state: 'detached' });
+    assert.equal(await cluster.evaluate(el => el === document.activeElement), true, 'Escape restores bundle focus');
+    await page.keyboard.press('Enter');
+    await preview.waitFor();
+    await preview.getByRole('button', { name: /^Gleiche Position/ }).click();
+    assert.match(await preview.textContent(), /Gleiche Position/);
+    await preview.getByRole('button', { name: 'Details öffnen' }).click();
+    await details.waitFor();
+    assert.match(await details.locator('h2').textContent(), /Gleiche Position/);
+    await page.keyboard.press('Escape');
+    await details.waitFor({ state: 'detached' });
+  }
+  // Resize the mounted map without a reload, including its Leaflet viewport.
+  for (const width of [1280, 360, 768]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    assert.equal((await assertDisjointMarkers()).length, denseMap('1w').areas.length);
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1));
+  }
+  // Cluster action zooms in; normal zoom splits nearby places. Equal positions
+  // still have a usable keyboard/touch member list at the offline zoom limit.
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto(`${base}/calls?view=map&range=1w`);
+  const near = page.locator('.call-map-cluster[data-cluster-members*="DE-951"]');
+  await near.waitFor();
+  const initialMembers = (await near.getAttribute('data-cluster-members')).split(',').length;
+  const beforeZoom = await zoom();
+  await near.tap();
+  await preview.waitFor();
+  await preview.getByRole('button', { name: 'Bündel vergrößern' }).click();
+  await page.waitForFunction(z => Number(document.querySelector('.call-map').dataset.zoom) > z, beforeZoom);
+  await assertDisjointMarkers();
+  await zoomTo(11);
+  assert.equal((await assertDisjointMarkers()).length, denseMap('1w').areas.length);
+  const same = page.locator('.call-map-cluster[data-cluster-members*="same-position"]');
+  const remainingMembers = (await same.getAttribute('data-cluster-members')).split(',');
+  assert.ok(remainingMembers.length < initialMembers, 'nearby places split on zoom');
+  assert.ok(remainingMembers.includes('DE-951'), 'equal-position groups remain accessible');
+  await same.tap();
+  await preview.waitFor();
+  assert.equal(await preview.getByRole('button', { name: 'Bündel vergrößern' }).isDisabled(), true);
+  await preview.getByRole('button', { name: /^Bamberg/ }).tap();
+  await preview.getByRole('button', { name: 'Details öffnen' }).tap();
+  await details.waitFor();
+  assert.match(await details.locator('h2').textContent(), /Bamberg/);
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: /^Ausgehend/ }).click();
+  assert.ok(!(await assertDisjointMarkers()).includes('outbound-only'), 'hidden category removed from bundles');
+  // The compact dashboard uses the same collision rule.
+  await page.goto(`${base}/`);
+  await widget.locator('.call-map-cluster').first().waitFor();
+  await assertDisjointMarkers();
+  dense = false;
 
   // With a tile URL the tile layer loads from the tile server. The server
   // adds the tile host to the page policy; the preview does not, so this

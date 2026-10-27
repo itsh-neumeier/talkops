@@ -34,3 +34,15 @@ without the test result. No merge, release or deployment was performed.
 
 STE review: repository writing rules used; full standard unavailable,
 full language review pending.
+
+## CI overload-test correction
+
+Feature push CI 40461728658 failed the pre-existing overload test. The
+four HTTP requests did not saturate the queue before the fixed 300 ms mock
+delay elapsed. The assertion depended on runner speed. Replace this timing
+assumption with a gated inference: hold one active job, wait for one queued
+job, then assert that the HTTP request returns 503 with Retry-After. Release
+the gate and drain both jobs. Runtime queue behavior is unchanged.
+The combined feature branch passed Clippy and all seven service tests with
+a two-CPU quota after this correction. Apply the same focused test fix to
+the base PR so both branches use the deterministic overload assertion.

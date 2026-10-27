@@ -303,32 +303,89 @@ async fn transcribes_files_with_language_per_segment() {
 
 #[tokio::test]
 async fn rejects_work_when_overloaded_or_without_tpu() {
-    // One slow device and room for one waiting job.
-    let (engine, _) = start(1, 300, 1, 4).await;
-    let file = wav(&tone(200.0, 2.0, RATE), RATE);
-    let mut tasks = Vec::new();
-    for _ in 0..4 {
-        let app = app(&engine, None);
-        let file = file.clone();
-        tasks.push(tokio::spawn(async move {
-            transcribe(app, &[("model", "coral-ctc-de")], &file, None).await
-        }));
-    }
-    let mut overloaded = 0;
-    for t in tasks {
-        let (status, headers, body) = t.await.unwrap();
-        if status == StatusCode::SERVICE_UNAVAILABLE {
-            overloaded += 1;
-            assert_eq!(headers["retry-after"], "5");
-            assert_eq!(
-                serde_json::from_slice::<Value>(&body).unwrap()["error"]["code"],
-                "overloaded"
-            );
-        } else {
-            assert_eq!(status, StatusCode::OK);
+    use talkops_coral_stt::devices::DeviceSpec;
+    use talkops_coral_stt::engine::{Backend, Output, Port, Priority, Task, TaskKind};
+    use talkops_coral_stt::models::Catalog;
+
+    // Hold the first inference until the HTTP overload response has arrived.
+    // File preparation can be slow on CI; a fixed mock delay is not a gate.
+    struct GatedBackend(std::sync::Mutex<std::sync::mpsc::Receiver<()>>);
+    impl Backend for GatedBackend {
+        fn name(&self) -> &'static str {
+            "mock"
+        }
+        fn discover(&self) -> Vec<DeviceSpec> {
+            MockBackend::new(1, Duration::ZERO).discover()
+        }
+        fn serve(&self, _: &DeviceSpec, catalog: &Catalog, port: &mut Port) -> Result<(), String> {
+            port.ready(catalog.ids());
+            if port.next_task().is_some() {
+                self.0
+                    .lock()
+                    .map_err(|_| "test gate lock")?
+                    .recv()
+                    .map_err(|_| "test gate closed")?;
+                port.complete(Ok(Output::Probs(vec![0.5, 0.5])));
+            }
+            while port.next_task().is_some() {
+                port.complete(Ok(Output::Probs(vec![0.5, 0.5])));
+            }
+            Ok(())
         }
     }
-    assert!(overloaded >= 1, "some requests must be rejected");
+    let (release, gate) = std::sync::mpsc::channel();
+    let engine = Engine::start(
+        Arc::new(GatedBackend(std::sync::Mutex::new(gate))),
+        mock::catalog(true),
+        1,
+        4,
+    );
+    assert!(engine.wait_ready(Duration::from_secs(5)).await);
+    let task = Task {
+        kind: TaskKind::LangId,
+        features: Vec::new(),
+        samples: Vec::new(),
+    };
+    let first = {
+        let e = engine.clone();
+        let t = task.clone();
+        tokio::spawn(async move { e.run(t, Priority::File).await })
+    };
+    tokio::time::timeout(Duration::from_secs(5), async {
+        while !engine.devices().iter().any(|d| d.busy) {
+            tokio::task::yield_now().await;
+        }
+    })
+    .await
+    .expect("first inference must start");
+    let second = {
+        let e = engine.clone();
+        tokio::spawn(async move { e.run(task, Priority::File).await })
+    };
+    tokio::time::timeout(Duration::from_secs(5), async {
+        while engine.queue_status().length != 1 {
+            tokio::task::yield_now().await;
+        }
+    })
+    .await
+    .expect("one job must be queued");
+    let file = wav(&tone(200.0, 2.0, RATE), RATE);
+    let (status, headers, body) = transcribe(
+        app(&engine, None),
+        &[("model", "coral-ctc-de")],
+        &file,
+        None,
+    )
+    .await;
+    release.send(()).unwrap();
+    assert!(first.await.unwrap().is_ok());
+    assert!(second.await.unwrap().is_ok());
+    assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
+    assert_eq!(headers["retry-after"], "5");
+    assert_eq!(
+        serde_json::from_slice::<Value>(&body).unwrap()["error"]["code"],
+        "overloaded"
+    );
     engine.shutdown();
 
     let (none, _) = start(0, 0, 4, 4).await;

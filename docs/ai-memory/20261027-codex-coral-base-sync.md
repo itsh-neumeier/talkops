@@ -46,3 +46,5 @@ the gate and drain both jobs. Runtime queue behavior is unchanged.
 The combined feature branch passed Clippy and all seven service tests with
 a two-CPU quota after this correction. Apply the same focused test fix to
 the base PR so both branches use the deterministic overload assertion.
+Bound the HTTP response wait as well. Release the gate before checking the
+result, so a broken rejection path fails promptly instead of blocking CI.

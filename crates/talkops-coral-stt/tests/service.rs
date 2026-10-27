@@ -370,24 +370,28 @@ async fn rejects_work_when_overloaded_or_without_tpu() {
     .await
     .expect("one job must be queued");
     let file = wav(&tone(200.0, 2.0, RATE), RATE);
-    let (status, headers, body) = transcribe(
-        app(&engine, None),
-        &[("model", "coral-ctc-de")],
-        &file,
-        None,
+    let response = tokio::time::timeout(
+        Duration::from_secs(10),
+        transcribe(
+            app(&engine, None),
+            &[("model", "coral-ctc-de")],
+            &file,
+            None,
+        ),
     )
     .await;
     release.send(()).unwrap();
     assert!(first.await.unwrap().is_ok());
     assert!(second.await.unwrap().is_ok());
+    engine.shutdown();
+    let (status, headers, body) =
+        response.expect("a full queue must reject without waiting for inference");
     assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
     assert_eq!(headers["retry-after"], "5");
     assert_eq!(
         serde_json::from_slice::<Value>(&body).unwrap()["error"]["code"],
         "overloaded"
     );
-    engine.shutdown();
-
     let (none, _) = start(0, 0, 4, 4).await;
     let (status, _, body) = call(
         app(&none, None),

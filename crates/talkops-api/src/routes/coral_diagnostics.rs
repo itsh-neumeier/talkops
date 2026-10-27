@@ -262,12 +262,20 @@ pub async fn download(
     if query.include_text {
         auth.require_perm(Permission::CallsLiveTranscriptAll)?;
     }
-    let service = send(request(
+    let service_result = send(request(
         &cfg,
         reqwest::Method::GET,
         &format!("/diagnostics?scope={}", auth.tenant),
     ))
-    .await?;
+    .await;
+    let (service, service_error) = match service_result {
+        Ok(value) => (value, None),
+        Err(ApiError::BadRequest(message)) => (Value::Null, Some(message)),
+        Err(_) => (
+            Value::Null,
+            Some("Coral diagnostic report unavailable".to_owned()),
+        ),
+    };
     let profiles = transcription_profiles::list(&state.db, auth.tenant).await?;
     let previews =
         talkops_core::live_transcripts::diagnostic_states(&state.db, auth.tenant).await?;
@@ -275,6 +283,7 @@ pub async fn download(
         "talkops_build_revision": option_env!("TALKOPS_BUILD_REVISION"),
         "generated_at": chrono::Utc::now(), "provider_id": id, "profiles": profiles,
         "live_preview_states": previews, "coral": service, "includes_text": query.include_text,
+        "coral_service_error": service_error,
         "system_load": talkops_core::system_load::sample(),
         "notes": ["Audio is not included. Capture is bounded and stops automatically.",
             "Fallback states are a snapshot. Capture errors and preview IDs help correlate failures.",

@@ -92,6 +92,24 @@ async fn coral_support_report_is_scoped_redacted_and_permission_checked(db: PgPo
         StatusCode::OK
     );
     let unknown = uuid::Uuid::new_v4();
+    // An unavailable service is exactly when a support report is needed.
+    let closed = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let closed_port = closed.local_addr().unwrap().port();
+    drop(closed);
+    let (_, offline) = admin.post("/api/v1/settings/transcription/providers", json!({"kind":"coral", "name":"Offline Coral", "url":format!("http://127.0.0.1:{closed_port}/v1")})).await;
+    let offline_id = offline["id"].as_str().unwrap();
+    let (status, report) = admin
+        .get(&format!("/api/v1/diagnostics/coral/{offline_id}/download"))
+        .await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(report["coral"].is_null());
+    assert!(
+        report["coral_service_error"]
+            .as_str()
+            .unwrap()
+            .contains("not reachable")
+    );
+    assert!(report["profiles"].is_array() && report["talkops_version"].is_string());
     assert_eq!(
         admin
             .get(&format!("/api/v1/diagnostics/coral/{unknown}/download"))

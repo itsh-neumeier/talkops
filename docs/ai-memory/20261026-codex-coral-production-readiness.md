@@ -53,6 +53,8 @@ The capture is bounded to 5,000 events/2 MiB and 1–30 minutes. Events expire
 after one hour. Text capture/export needs explicit consent and all-live-text
 permission. The technical report does not retain audio or credentials.
 It is diagnostic data, not a WAV/TSV training export.
+The download also works when Coral is unreachable, with application state
+and `coral_service_error`. A regression test covers that failure case.
 
 Local model package, not committed or publicly uploaded:
 `build/coral-work/coral-production-trial/coral-de-candidate-20261025.tar.gz`.

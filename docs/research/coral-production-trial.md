@@ -74,6 +74,8 @@ events can be discarded. The report identifies discarded-event counts.
 Capture stops automatically after the chosen 1–30 minutes. Events expire
 after one hour. Restarting Coral loses the in-memory buffer. Preview cleanup
 can remove the fallback snapshot, so export before closing the popup.
+If Coral is unavailable, the report still downloads with the TalkOps state
+and a `coral_service_error` field. Service-side events are then unavailable.
 
 ## Return these artifacts
 

@@ -531,6 +531,13 @@ async fn a_failing_tpu_ends_the_session_with_an_error() {
         ["inference_failed", "unavailable"].contains(&error["error"]["code"].as_str().unwrap())
     );
     assert!(next_event(&mut ws).await.is_none(), "the session closes");
+    // The device thread answers the job first and then records its state.
+    for _ in 0..250 {
+        if engine.devices()[0].state == "error" {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
     let devices = engine.devices();
     assert_eq!(devices[0].state, "error");
     assert!(

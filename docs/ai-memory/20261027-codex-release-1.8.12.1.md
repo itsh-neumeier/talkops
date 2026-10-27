@@ -45,7 +45,7 @@ No release version, main branch or published tag changed. No release published.
   and maximum zoom. Existing API IDs, scope and filters stay unchanged.
 - Both DE/EN locale changes and handbook instructions inspected.
 - No SQL migration, Cargo.lock or npm lock change in the source PR.
-- Local web: 91 unit tests and lint passed. Type/build checks are running.
+- Local web: 91 unit tests, lint, type check (zero errors/warnings) and build passed.
   Initial lint failed on Windows checkout line endings. Normalized the seven
   affected files to LF; Git proves no source-content change. Combined CI/E2E
   started on intake revision 932acee; not final versioned release evidence.

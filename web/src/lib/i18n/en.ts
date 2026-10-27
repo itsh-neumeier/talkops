@@ -1689,8 +1689,8 @@ export default {
 	'stt.engineConnection': 'Connection (Coral or cloud)',
 	'stt.provider.coral': 'Coral (this server)',
 	'stt.coralHint':
-		'The coral-stt service on this server (Compose profile coral). Loopback addresses only; audio does not leave the server, no costs.',
-	'stt.coralBadge': 'Coral',
+		'Experimental: hardware and transcription quality approval are pending. Disabled by default. The coral-stt service runs on this server (Compose profile coral). Loopback addresses only; audio stays on the server.',
+	'stt.coralBadge': 'Coral (experimental)',
 	'stt.fallback': 'Local fallback',
 	'stt.fallbackHint':
 		'If Coral is not reachable, overloaded or fails, this local model transcribes. TalkOps tries Coral again after 30 s.',

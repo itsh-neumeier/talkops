@@ -83,10 +83,14 @@ jobs:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
           platforms: linux/${{ matrix.arch }}
+          build-args: TALKOPS_BUILD_REVISION=${{ github.sha }}
           labels: ${{ steps.meta.outputs.labels }}
           outputs: type=image,name=${{ env.NAMESPACE }}/${{ matrix.image }},push-by-digest=true,name-canonical=true,push=true
           cache-from: type=gha,scope=${{ matrix.image }}-${{ matrix.arch }}
           cache-to: type=gha,scope=${{ matrix.image }}-${{ matrix.arch }},mode=max
+      - name: Verify Coral runtime on the native architecture
+        if: matrix.image == 'talkops-coral-stt'
+        run: bash tests/coral/image.sh '${{ env.NAMESPACE }}/${{ matrix.image }}@${{ steps.build.outputs.digest }}'
       - name: Export digest
         run: |
           mkdir -p /tmp/digests

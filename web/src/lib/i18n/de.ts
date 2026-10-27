@@ -1707,8 +1707,8 @@ const de: Record<keyof typeof en, string> = {
 	'stt.engineConnection': 'Verbindung (Coral oder Cloud)',
 	'stt.provider.coral': 'Coral (dieser Server)',
 	'stt.coralHint':
-		'Der Dienst coral-stt auf diesem Server (Compose-Profil coral). Nur Loopback-Adressen; Audio verlässt den Server nicht, keine Kosten.',
-	'stt.coralBadge': 'Coral',
+		'Experimentell: Hardware- und Transkriptionsqualität sind noch nicht abgenommen. Standardmäßig deaktiviert. Der Dienst coral-stt läuft auf diesem Server (Compose-Profil coral). Nur Loopback-Adressen; Audio bleibt auf dem Server.',
+	'stt.coralBadge': 'Coral (experimentell)',
 	'stt.fallback': 'Lokales Fallback',
 	'stt.fallbackHint':
 		'Ist Coral nicht erreichbar, überlastet oder bricht ab, transkribiert dieses lokale Modell. Nach 30 s versucht TalkOps Coral erneut.',

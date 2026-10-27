@@ -6,6 +6,47 @@ All notable changes to TalkOps. The format follows
 
 ## [Unreleased]
 
+## [1.8.12] – 2026-10-27
+
+### Added
+
+- Add an experimental, opt-in Coral Edge TPU transcription service for DE/EN.
+  Local Whisper stays the default. Hardware, readability and quality acceptance
+  remain pending. No model weights are shipped.
+- Add optional complete-word live previews and local Whisper fallback. Show the
+  selected engine, detected language and fallback state.
+- Add bounded, tenant-scoped Coral diagnostic capture and JSON export. Audio
+  is excluded. Text requires explicit selection and calls.live_transcript_all,
+  in addition to diagnostics.manage. Capture and export are audited.
+- Preview call-map statistics on hover, focus and touch before selection.
+  Use desk-phone/mobile markers and keep legacy country filter links valid.
+- Add opt-in email alerts for configured emergency dialing attempts. Use existing
+  users, roles and email recipients. Each call UUID is deduplicated per tenant.
+  Storage failure cannot reject routing. SMTP remains best effort.
+
+### Integration
+
+- Include Claude Code PR81 and Codex PR82/84 with source history preserved.
+- Mark Coral experimental in the UI and English/German setup guides.
+- Include exact build revisions in release diagnostics. Verify the Coral runtime
+  libraries and mock service on both native release architectures.
+
+### Upgrade notes
+
+- Back up the database. Apply 20261112000001_coral_transcription,
+  20261112000002_coral_stable_preview and 20261113000001_emergency_dial_alert.
+  Update server and worker together; update Coral with them if enabled.
+  Reload the web UI. Old-binary rollback needs the matching pre-upgrade backup.
+- Four images are published: server, media worker, FreeSWITCH and coral-stt.
+  The coral Compose profile is off by default. Model setup and a deliberate
+  trial are required. See the Coral setup and trial/rollback guides.
+- Experimental Coral inclusion was explicitly selected by the user. Automated
+  checks do not approve physical TPU behavior or transcription quality.
+- Emergency alerts confirm dialing attempts, including failed connections.
+  They are disabled by default and need SMTP plus valid recipients. No delay,
+  digest or hourly suppression applies. No retry/exactly-once guarantee is added.
+- Repository guides are updated. The live Wiki is not republished.
+
 ## [1.8.11] – 2026-10-26
 
 ### Fixed

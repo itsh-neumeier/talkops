@@ -203,6 +203,12 @@ eigenen Server. Maßgeblich ist die Rechnung des Anbieters.
 
 ## Coral Edge TPU (dieser Server)
 
+Coral ist in TalkOps 1.8.12 experimentell. Die Hardware- und
+Transkriptionsqualität sind noch nicht abgenommen. Der Dienst ist
+standardmäßig deaktiviert; lokales Whisper bleibt der Standard.
+Aktiviere Coral nur für einen bewussten Test. Siehe die
+[Test- und Rollback-Anleitung](../research/coral-production-trial.md).
+
 Eine Google-Coral-Edge-TPU im TalkOps-Server kann Deutsch und Englisch
 transkribieren: der USB Accelerator oder eine M.2- bzw. Mini-PCIe-Karte
 ([ADR 0046](../adr/0046-coral-edge-tpu-speech-recognition.md)). Der Dienst

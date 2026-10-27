@@ -21,7 +21,8 @@ or claim the unresolved quality gate passed.
 
 - Fetched main at f8bdfb3 (1.8.11).
 - Created `codex/coral-base-readiness` from PR #81 head and merged main
-  without conflict. Published the base to PR #81 at 0063ce2.
+  without conflict. Initial base publish was 0063ce2; combined concurrent
+  test corrections are published at 5a1a531.
 - Merged that updated base into `codex/coral-stable-preview`.
 - Fixed the Coral package lock version to match inherited 1.8.11 metadata.
 - Added pending migration `20261112000002_coral_stable_preview`.
@@ -85,6 +86,11 @@ has been requested. Do not mark quality/readability approved without data.
   mounted directory, which avoids adapter EBUSY on removal.
 - Resolved: initial browser DNS hostname failed Vite's host check. The
   checks passed on localhost in the UI container's network namespace.
+- Resolved: CI 40461728658 failed the older overload timing assumption.
+  The gated test now fills the queue causally and bounds the response wait.
+  Preserve Claude's concurrent device-state wait and successful recovery
+  assertion. Merged base passed all five service tests; merged feature
+  passed all seven, both with two CPUs. Runtime behavior is unchanged.
 - Not run locally: full workspace/SIP E2E and full production image builds.
   GitHub CI covers these. The physical Rust-service quality gate remains
   pending and is not replaced by mock tests or the prior Python results.

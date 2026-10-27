@@ -318,7 +318,12 @@ async fn rejects_work_when_overloaded_or_without_tpu() {
         fn discover(&self) -> Vec<DeviceSpec> {
             MockBackend::new(1, Duration::ZERO).discover()
         }
-        fn serve(&self, _: &DeviceSpec, catalog: &Catalog, port: &mut Port) -> Result<(), String> {
+        fn serve(
+            &self,
+            spec: &DeviceSpec,
+            catalog: &Catalog,
+            port: &mut Port,
+        ) -> Result<(), String> {
             port.ready(catalog.ids());
             if port.next_task().is_some() {
                 self.0
@@ -328,10 +333,7 @@ async fn rejects_work_when_overloaded_or_without_tpu() {
                     .map_err(|_| "test gate closed")?;
                 port.complete(Ok(Output::Probs(vec![0.5, 0.5])));
             }
-            while port.next_task().is_some() {
-                port.complete(Ok(Output::Probs(vec![0.5, 0.5])));
-            }
-            Ok(())
+            MockBackend::new(1, Duration::ZERO).serve(spec, catalog, port)
         }
     }
     let (release, gate) = std::sync::mpsc::channel();
@@ -371,24 +373,48 @@ async fn rejects_work_when_overloaded_or_without_tpu() {
     .await
     .expect("one job must be queued");
     let file = wav(&tone(200.0, 2.0, RATE), RATE);
-    let (status, headers, body) = transcribe(
-        app(&engine, None),
-        &[("model", "coral-ctc-de")],
-        &file,
-        None,
+    let response = tokio::time::timeout(
+        Duration::from_secs(10),
+        transcribe(
+            app(&engine, None),
+            &[("model", "coral-ctc-de")],
+            &file,
+            None,
+        ),
     )
     .await;
     release.send(()).unwrap();
     assert!(first.await.unwrap().is_ok());
     assert!(second.await.unwrap().is_ok());
+    if response.is_err() {
+        engine.shutdown();
+    }
+    let (status, headers, body) =
+        response.expect("a full queue must reject without waiting for inference");
     assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
     assert_eq!(headers["retry-after"], "5");
     assert_eq!(
         serde_json::from_slice::<Value>(&body).unwrap()["error"]["code"],
         "overloaded"
     );
+    // Preserve the recovery assertion: with free capacity the same request works.
+    let response = tokio::time::timeout(
+        Duration::from_secs(10),
+        transcribe(
+            app(&engine, None),
+            &[("model", "coral-ctc-de")],
+            &file,
+            None,
+        ),
+    )
+    .await;
     engine.shutdown();
-
+    assert_eq!(
+        response
+            .expect("the released device must complete the request")
+            .0,
+        StatusCode::OK
+    );
     let (none, _) = start(0, 0, 4, 4).await;
     let (status, _, body) = call(
         app(&none, None),
@@ -721,6 +747,13 @@ async fn a_failing_tpu_ends_the_session_with_an_error() {
         ["inference_failed", "unavailable"].contains(&error["error"]["code"].as_str().unwrap())
     );
     assert!(next_event(&mut ws).await.is_none(), "the session closes");
+    // The device thread answers the job first and then records its state.
+    for _ in 0..250 {
+        if engine.devices()[0].state == "error" {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
     let devices = engine.devices();
     assert_eq!(devices[0].state, "error");
     assert!(

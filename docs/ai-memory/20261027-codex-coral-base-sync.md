@@ -48,3 +48,8 @@ a two-CPU quota after this correction. Apply the same focused test fix to
 the base PR so both branches use the deterministic overload assertion.
 Bound the HTTP response wait as well. Release the gate before checking the
 result, so a broken rejection path fails promptly instead of blocking CI.
+
+Claude concurrently added 10649b7 (wait for device error state) and 7e22c74
+(pre-fill queue and verify recovery). Preserve both commits and assertions.
+The merged fixture keeps the explicit inference gate, then delegates to the
+existing mock backend so the same HTTP request succeeds after release.

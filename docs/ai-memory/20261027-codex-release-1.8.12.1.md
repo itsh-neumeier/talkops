@@ -8,7 +8,7 @@
 - Status: In progress; version decision pending
 - Branch: codex/release-1.8.12.1
 - Base commit: 3603ed56b0073a1dd23646622cf4fb0284644ab7
-- Related PR: Pending
+- Related PR: https://github.com/itsh-neumeier/talkops/pull/87
 
 ## Goal
 
@@ -45,7 +45,10 @@ No release version, main branch or published tag changed. No release published.
   and maximum zoom. Existing API IDs, scope and filters stay unchanged.
 - Both DE/EN locale changes and handbook instructions inspected.
 - No SQL migration, Cargo.lock or npm lock change in the source PR.
-- Local web unit/lint/type checks are running. Combined CI/E2E not yet run.
+- Local web: 91 unit tests and lint passed. Type/build checks are running.
+  Initial lint failed on Windows checkout line endings. Normalized the seven
+  affected files to LF; Git proves no source-content change. Combined CI/E2E
+  started on intake revision 932acee; not final versioned release evidence.
 - CodeRabbit CLI is absent. No CodeRabbit result claimed; manual review used.
 - A local SemVer module probe failed because that optional module was absent.
   No source change resulted. Full STE standard unavailable; language review pending.

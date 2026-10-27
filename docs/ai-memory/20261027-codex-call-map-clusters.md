@@ -5,10 +5,11 @@
 - Task ID: 20261027-codex-call-map-clusters
 - Date: 2026-10-27, Europe/Berlin
 - Tool: Codex
-- Status: Completed locally; PR handoff pending
+- Status: Completed; submitted for review
 - Branch: `codex/call-map-clusters`
 - Base commit: `3603ed56b0073a1dd23646622cf4fb0284644ab7` (verified remote main)
-- Related commits or PR: Pending
+- Related commits or PR: [PR #86](https://github.com/itsh-neumeier/talkops/pull/86),
+  implementation `7b095b21fb963071a24b039d8a9103ad87f14e8c`.
 
 ## Goal
 
@@ -20,6 +21,8 @@ on zoom or smaller markers. Commit, push and PR creation remain authorized.
 Added screen-space bundles with a category pie and group count. Each group
 remains available through a preview list, including groups at equal positions.
 The map rebuilds bundles after zoom, movement, size, category and data changes.
+Implementation is committed and pushed to PR #86. The PR holds the current
+review and CI state. No merge, release version change, tag or publication was done.
 
 ## Changes
 
@@ -48,9 +51,14 @@ The map rebuilds bundles after zoom, movement, size, category and data changes.
   `npm test` (91 tests) and `npm run build`.
 - Passed: production `tests/browser/call-map.mjs` with Playwright and Edge.
   Includes both themes at 360, 768 and 1280 px, disjoint marker boxes,
-  keyboard focus/activation/Escape, touch, equal positions, maximum zoom,
+  mounted-map resize, keyboard focus/activation/Escape, touch, equal positions, maximum zoom,
   category filtering, dashboard bundles and existing map checks.
 - Passed: 13 handbook tests and Wiki check (75 pages, 688 local links).
+- Passed: Git whitespace checks and visual inspection of the production
+  dense-map capture with test data. Main checkout and foreign files are unchanged.
+- GitHub checks at handoff preparation: handbook, Compose, fax fixtures and
+  Coral tools passed on the implementation commit. Web, Rust, image and SIPp
+  jobs were still in progress. Check live results on the final PR revision.
 - Passed: local diff review. CodeRabbit CLI is absent; no CodeRabbit review
   result is claimed. Rust/SIPp tests are not run locally for this UI-only change.
 - Environment issue resolved: a browser check used an old Vite preview process
@@ -70,7 +78,8 @@ The map rebuilds bundles after zoom, movement, size, category and data changes.
 
 ## Next action
 
-Complete checks and local review. Commit, push and submit the correction PR.
+Release manager: inspect PR #86 and its final CI results. Integrate the fix
+through the release workflow, then manage release versions, tags and publication.
 
 ## References
 

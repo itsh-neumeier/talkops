@@ -46,7 +46,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        image: [talkops-server, talkops-media-worker, talkops-freeswitch]
+        image: [talkops-server, talkops-media-worker, talkops-freeswitch, talkops-coral-stt]
         arch: [amd64, arm64]
         include:
           - arch: amd64
@@ -62,6 +62,9 @@ jobs:
           - image: talkops-freeswitch
             context: docker/freeswitch
             dockerfile: docker/freeswitch/Dockerfile
+          - image: talkops-coral-stt
+            context: .
+            dockerfile: docker/coral-stt/Dockerfile
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
@@ -80,10 +83,14 @@ jobs:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
           platforms: linux/${{ matrix.arch }}
+          build-args: TALKOPS_BUILD_REVISION=${{ github.sha }}
           labels: ${{ steps.meta.outputs.labels }}
           outputs: type=image,name=${{ env.NAMESPACE }}/${{ matrix.image }},push-by-digest=true,name-canonical=true,push=true
           cache-from: type=gha,scope=${{ matrix.image }}-${{ matrix.arch }}
           cache-to: type=gha,scope=${{ matrix.image }}-${{ matrix.arch }},mode=max
+      - name: Verify Coral runtime on the native architecture
+        if: matrix.image == 'talkops-coral-stt'
+        run: bash tests/coral/image.sh '${{ env.NAMESPACE }}/${{ matrix.image }}@${{ steps.build.outputs.digest }}'
       - name: Export digest
         run: |
           mkdir -p /tmp/digests
@@ -103,7 +110,7 @@ jobs:
       packages: write
     strategy:
       matrix:
-        image: [talkops-server, talkops-media-worker, talkops-freeswitch]
+        image: [talkops-server, talkops-media-worker, talkops-freeswitch, talkops-coral-stt]
     steps:
       - uses: actions/download-artifact@v4
         with:

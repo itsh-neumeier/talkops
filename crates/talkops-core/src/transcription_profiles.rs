@@ -78,8 +78,10 @@ impl Purpose {
             provider_id: None,
             model: String::new(),
             realtime: false,
+            coral_stable_preview: false,
             price_per_minute: None,
             list_price: None,
+            provider_kind: None,
         }
     }
 }
@@ -122,12 +124,20 @@ pub struct Profile {
     /// Live only: stream over the Realtime API.
     #[serde(default)]
     pub realtime: bool,
+    /// Coral realtime only: hold open words until the model closes them.
+    #[serde(default)]
+    pub coral_stable_preview: bool,
     /// Own price per audio minute; `null` = list price.
     #[serde(default)]
     pub price_per_minute: Option<f64>,
     /// The known list price of the cloud model (read-only).
     #[serde(default)]
     pub list_price: Option<f64>,
+    /// The kind of the connection: `openai`, `compatible` or `coral`
+    /// (read-only). For `coral`, `local_model` is the local fallback.
+    #[serde(default)]
+    #[sqlx(skip)]
+    pub provider_kind: Option<String>,
 }
 
 /// The engine that runs a transcription.
@@ -138,8 +148,15 @@ pub enum Engine {
         provider_id: Uuid,
         model: String,
         realtime: bool,
+        coral_stable_preview: bool,
         /// Price per audio minute, if known.
         price: Option<f64>,
+        /// The coral-stt service on this server (ADR 0046): no usage, and
+        /// `fallback` runs when it is not available.
+        coral: bool,
+        /// The local model that replaces an unavailable Coral connection.
+        /// The live preview always falls back to `base`.
+        fallback: Option<TranscriptionQuality>,
     },
 }
 
@@ -151,7 +168,7 @@ struct Row {
 }
 
 const SELECT: &str = "SELECT p.purpose, p.engine, p.local_model, p.provider_id, p.model, \
-                      p.realtime, p.price_per_minute, NULL::float8 AS list_price, tp.kind \
+                      p.realtime, p.coral_stable_preview, p.price_per_minute, NULL::float8 AS list_price, tp.kind \
                       FROM transcription_profiles p \
                       LEFT JOIN transcription_providers tp \
                         ON tp.tenant_id = p.tenant_id AND tp.id = p.provider_id \
@@ -163,6 +180,7 @@ fn finish(row: Row) -> Profile {
         (Some(kind), "cloud") => list_price(kind, &profile.model),
         _ => None,
     };
+    profile.provider_kind = row.kind;
     profile
 }
 
@@ -217,6 +235,11 @@ fn check(profile: &Profile) -> CoreResult<Purpose> {
     if profile.realtime && (purpose != Purpose::Live || profile.engine != "cloud") {
         return invalid("only a cloud live preview can stream");
     }
+    if profile.coral_stable_preview
+        && (purpose != Purpose::Live || profile.engine != "cloud" || !profile.realtime)
+    {
+        return invalid("complete-word preview requires a Coral realtime live profile");
+    }
     if let Some(price) = profile.price_per_minute
         && !(price.is_finite() && (0.0..=10.0).contains(&price))
     {
@@ -245,13 +268,27 @@ pub async fn update(
     let mut tx = pool.begin().await?;
     for p in profiles {
         let cloud = p.engine == "cloud";
+        if p.coral_stable_preview {
+            let kind: Option<String> = sqlx::query_scalar(
+                "SELECT kind FROM transcription_providers WHERE tenant_id = $1 AND id = $2",
+            )
+            .bind(tenant)
+            .bind(p.provider_id)
+            .fetch_optional(&mut *tx)
+            .await?;
+            if kind.as_deref() != Some("coral") {
+                return Err(CoreError::Validation(
+                    "complete-word preview requires a Coral connection".into(),
+                ));
+            }
+        }
         sqlx::query(
             "INSERT INTO transcription_profiles
-                 (tenant_id, purpose, engine, local_model, provider_id, model, realtime, price_per_minute)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                 (tenant_id, purpose, engine, local_model, provider_id, model, realtime, price_per_minute, coral_stable_preview)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
              ON CONFLICT (tenant_id, purpose) DO UPDATE SET engine = $3, local_model = $4,
                  provider_id = $5, model = $6, realtime = $7, price_per_minute = $8,
-                 updated_at = now()",
+                 coral_stable_preview = $9, updated_at = now()",
         )
         .bind(tenant)
         .bind(&p.purpose)
@@ -261,6 +298,7 @@ pub async fn update(
         .bind(if cloud { p.model.trim() } else { "" })
         .bind(p.realtime && cloud)
         .bind(if cloud { p.price_per_minute } else { None })
+        .bind(p.coral_stable_preview)
         .execute(&mut *tx)
         .await?;
     }
@@ -286,12 +324,27 @@ pub async fn engine(
 
 fn to_engine(p: &Profile) -> Option<Engine> {
     match (p.engine.as_str(), p.provider_id) {
-        ("cloud", Some(provider_id)) => Some(Engine::Cloud {
-            provider_id,
-            model: p.model.clone(),
-            realtime: p.realtime,
-            price: p.price_per_minute.or(p.list_price),
-        }),
+        ("cloud", Some(provider_id)) => {
+            let coral = p.provider_kind.as_deref() == Some("coral");
+            let fallback = if p.purpose == Purpose::Live.as_str() {
+                TranscriptionQuality::Base
+            } else {
+                TranscriptionQuality::parse(&p.local_model).unwrap_or(TranscriptionQuality::Fast)
+            };
+            Some(Engine::Cloud {
+                provider_id,
+                model: p.model.clone(),
+                realtime: p.realtime,
+                coral_stable_preview: coral && p.coral_stable_preview,
+                price: if coral {
+                    None
+                } else {
+                    p.price_per_minute.or(p.list_price)
+                },
+                coral,
+                fallback: coral.then_some(fallback),
+            })
+        }
         ("local", _) => Some(Engine::Local(
             TranscriptionQuality::parse(&p.local_model).unwrap_or(TranscriptionQuality::Fast),
         )),
@@ -441,7 +494,10 @@ mod tests {
                 provider_id: Uuid::nil(),
                 model: "gpt-transcribe".into(),
                 realtime: false,
-                price: Some(0.0045)
+                coral_stable_preview: false,
+                price: Some(0.0045),
+                coral: false,
+                fallback: None,
             })
         );
         p.price_per_minute = Some(0.0);
@@ -449,6 +505,37 @@ mod tests {
             to_engine(&p),
             Some(Engine::Cloud {
                 price: Some(0.0),
+                ..
+            })
+        ));
+        // A Coral connection: no price, the local model is the fallback.
+        p.provider_kind = Some("coral".into());
+        p.model = "coral-auto".into();
+        p.local_model = "accurate".into();
+        assert_eq!(
+            to_engine(&p),
+            Some(Engine::Cloud {
+                provider_id: Uuid::nil(),
+                model: "coral-auto".into(),
+                realtime: false,
+                coral_stable_preview: false,
+                price: None,
+                coral: true,
+                fallback: Some(TranscriptionQuality::Accurate),
+            })
+        );
+        let mut live = profile(Purpose::Live);
+        live.engine = "cloud".into();
+        live.provider_id = Some(Uuid::nil());
+        live.model = "coral-auto".into();
+        live.realtime = true;
+        live.local_model = "fast".into();
+        live.provider_kind = Some("coral".into());
+        assert!(matches!(
+            to_engine(&live),
+            Some(Engine::Cloud {
+                coral: true,
+                fallback: Some(TranscriptionQuality::Base),
                 ..
             })
         ));

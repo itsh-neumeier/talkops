@@ -13,6 +13,16 @@ use crate::tenant::TenantId;
 pub const JOB: &str = "transcribe.live";
 pub const MAX_SEGMENTS: usize = 200;
 
+/// Bounded technical state for a tenant's support report. No call identities
+/// or transcript contents are selected. Normal preview retention still applies.
+pub async fn diagnostic_states(
+    pool: &PgPool,
+    tenant: TenantId,
+) -> CoreResult<Vec<serde_json::Value>> {
+    Ok(sqlx::query_scalar("SELECT jsonb_build_object('preview_id', id, 'processed_secs', processed_secs, 'engine', engine, 'fallback_from', fallback_from, 'stream_failed_at', stream_failed_at) FROM live_transcript_previews WHERE tenant_id = $1 AND requested_at > now() - interval '1 hour' ORDER BY requested_at DESC LIMIT 20")
+        .bind(tenant).fetch_all(pool).await?)
+}
+
 #[derive(Debug, Clone, FromRow, Serialize, utoipa::ToSchema)]
 pub struct Preview {
     pub id: Uuid,
@@ -22,6 +32,11 @@ pub struct Preview {
     pub segments: Json<Vec<Segment>>,
     /// queued, running, done, or failed; text is always provisional.
     pub status: String,
+    /// The engine of the latest text, e.g. `api:Coral/coral-auto`.
+    pub engine: String,
+    /// The selected engine that is not available now, while a local
+    /// fallback makes the text (ADR 0046).
+    pub fallback_from: Option<String>,
 }
 
 #[derive(Debug, FromRow)]
@@ -94,10 +109,10 @@ pub async fn request(
             .execute(&mut *tx)
             .await?;
     }
-    let mut preview: Preview = sqlx::query_as("SELECT p.id, p.started_at, p.processed_secs, p.segments, CASE WHEN p.stream_failed_at > now() - interval '30 seconds' THEN 'failed' ELSE j.status::text END AS status FROM live_transcript_previews p JOIN jobs j ON j.id = p.job_id WHERE p.id = $1")
+    let mut preview: Preview = sqlx::query_as("SELECT p.id, p.started_at, p.processed_secs, p.segments, CASE WHEN p.stream_failed_at > now() - interval '30 seconds' AND p.fallback_from IS NULL THEN 'failed' ELSE j.status::text END AS status, p.engine, p.fallback_from FROM live_transcript_previews p JOIN jobs j ON j.id = p.job_id WHERE p.id = $1")
         .bind(id).fetch_one(&mut *tx).await?;
     tx.commit().await?;
-    if previous_status.as_deref() == Some("failed") {
+    if previous_status.as_deref() == Some("failed") && preview.fallback_from.is_none() {
         preview.status = "failed".into();
     }
     Ok((preview, created))
@@ -157,6 +172,27 @@ pub async fn beat_stream(
 ) -> CoreResult<bool> {
     Ok(sqlx::query("UPDATE live_transcript_previews SET stream_beat = now() WHERE id = $1 AND tenant_id = $2 AND stream_owner = $3 AND requested_at > now() - interval '30 seconds'")
         .bind(id).bind(tenant).bind(owner).execute(pool).await?.rows_affected() == 1)
+}
+
+/// Records the engine of the preview text and, for a local fallback, the
+/// engine it replaces.
+pub async fn set_engine(
+    pool: &PgPool,
+    tenant: TenantId,
+    id: Uuid,
+    engine: &str,
+    fallback_from: Option<&str>,
+) -> CoreResult<()> {
+    sqlx::query("UPDATE live_transcript_previews SET engine = $3, fallback_from = $4 WHERE id = $1 AND tenant_id = $2")
+        .bind(id).bind(tenant).bind(engine).bind(fallback_from).execute(pool).await?;
+    Ok(())
+}
+
+/// A realtime stream of the preview failed in the last 30 s (the backoff
+/// of ADR 0024): a Coral preview uses its local fallback meanwhile.
+pub async fn stream_failed_recently(pool: &PgPool, tenant: TenantId, id: Uuid) -> CoreResult<bool> {
+    Ok(sqlx::query_scalar::<_, Option<bool>>("SELECT stream_failed_at > now() - interval '30 seconds' FROM live_transcript_previews WHERE id = $1 AND tenant_id = $2")
+        .bind(id).bind(tenant).fetch_optional(pool).await?.flatten().unwrap_or(false))
 }
 
 /// Ends a stream; a failed one is not restarted for 30 s.
@@ -281,6 +317,7 @@ mod tests {
                 end: i as f32 + 1.0,
                 speaker: "caller".into(),
                 text: format!("line {i}"),
+                language: None,
             })
             .collect();
         assert!(

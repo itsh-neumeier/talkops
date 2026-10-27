@@ -1,0 +1,39 @@
+{
+  "device": "usb:0",
+  "utterances": 200,
+  "language": "de",
+  "manifest_sha256": "dd9df0d8fd2ee2f1db4c62c6305ea75377f78ae04a15a16305381cae0fd0a15a",
+  "model_sha256": "694931801d196734efd6b5ed5deeba2b0152462656325a611e8f33700095fa14",
+  "window_frames": 512,
+  "overlap_frames": 256,
+  "wall_secs": 227.7140268669973,
+  "realtime": false,
+  "latency_measured": false,
+  "existing_recognizer_parity_checked_clips": 5,
+  "profiles": [
+    {
+      "padding_frames": 0,
+      "padding_secs": 0.0,
+      "wer": 0.22926008968609865,
+      "cer": 0.07049482717138504,
+      "word_edits": 409,
+      "reference_words": 1784
+    },
+    {
+      "padding_frames": 128,
+      "padding_secs": 1.28,
+      "wer": 0.24439461883408073,
+      "cer": 0.0783543187104018,
+      "word_edits": 436,
+      "reference_words": 1784
+    },
+    {
+      "padding_frames": 256,
+      "padding_secs": 2.56,
+      "wer": 0.24047085201793722,
+      "cer": 0.07514636298019087,
+      "word_edits": 429,
+      "reference_words": 1784
+    }
+  ]
+}

@@ -26,6 +26,7 @@ async fn renders_box_speeds_and_refreshes_existing_message_information(pool: PgP
         worker_id: "test".into(),
         streams: realtime::Streams::default(),
         current_job: std::sync::Mutex::new(None),
+        coral_backoff: CoralBackoff::default(),
     };
     let tenant = TenantId::DEFAULT;
     let input: extensions::ExtensionInput = serde_json::from_value(serde_json::json!({
@@ -183,8 +184,10 @@ async fn streams_live_previews_over_the_realtime_api(pool: PgPool) {
             provider_id: Some(provider.id),
             model: "gpt-live-transcribe".into(),
             realtime: true,
+            coral_stable_preview: false,
             price_per_minute: Some(0.06),
             list_price: None,
+            provider_kind: None,
         }],
     )
     .await
@@ -254,6 +257,7 @@ async fn streams_live_previews_over_the_realtime_api(pool: PgPool) {
         worker_id: "test".into(),
         streams: realtime::Streams::default(),
         current_job: std::sync::Mutex::new(None),
+        coral_backoff: CoralBackoff::default(),
     };
     let job = jobs::claim(&pool, "test", &[talkops_core::live_transcripts::JOB])
         .await
@@ -371,6 +375,7 @@ async fn manual_transcription_pauses_and_resumes_at_the_paused_position(pool: Pg
         worker_id: "test".into(),
         streams: realtime::Streams::default(),
         current_job: std::sync::Mutex::new(None),
+        coral_backoff: CoralBackoff::default(),
     };
     let tenant = TenantId::DEFAULT;
     // A mono recording of 10 s with a tone, so the channel is not silent.
@@ -604,6 +609,7 @@ async fn analyses_a_finished_wifi_survey(pool: PgPool) {
         worker_id: "test".into(),
         streams: realtime::Streams::default(),
         current_job: std::sync::Mutex::new(None),
+        coral_backoff: CoralBackoff::default(),
     };
     let tenant = TenantId::DEFAULT;
     let input: extensions::ExtensionInput =
@@ -679,4 +685,509 @@ async fn analyses_a_finished_wifi_survey(pool: PgPool) {
     assert_eq!(s.state, "analysed");
     assert_eq!(ws::roams(&pool, tenant, survey.id).await.unwrap().len(), 1);
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// A whisper-cli stand-in without delays: words `f0`…`f2` per channel.
+fn fast_whisper(dir: &Path) -> Whisper {
+    let bin = dir.join("fast-whisper-cli");
+    std::fs::write(
+        &bin,
+        r#"#!/usr/bin/env python3
+import json, sys
+args = sys.argv[1:]
+out = args[args.index('-of') + 1]
+segments = [{'offsets': {'from': k * 1000, 'to': k * 1000 + 300}, 'text': ' f%d' % k} for k in range(3)]
+with open(out + '.json', 'w') as f:
+    json.dump({'transcription': segments}, f)
+"#,
+    )
+    .unwrap();
+    std::fs::set_permissions(&bin, std::fs::Permissions::from_mode(0o755)).unwrap();
+    std::fs::write(dir.join("ggml-base.bin"), b"model").unwrap();
+    std::fs::write(dir.join("ggml-large-v3-q5_0.bin"), b"model").unwrap();
+    Whisper {
+        bin,
+        models_dir: dir.to_owned(),
+        model: "base".into(),
+        threads: 1,
+        vad: false,
+    }
+}
+
+fn coral_ctx(pool: &PgPool, dir: &Path) -> Ctx {
+    Ctx {
+        pool: pool.clone(),
+        piper: tts::tests::fake_piper(dir),
+        whisper: fast_whisper(dir),
+        // A Coral connection has no key: no TALKOPS_SECRET_KEY needed.
+        secrets: None,
+        voicemail_dir: dir.join("voicemail"),
+        sounds_dir: dir.join("sounds"),
+        recordings_dir: dir.join("recordings"),
+        worker_id: "test".into(),
+        streams: realtime::Streams::default(),
+        current_job: std::sync::Mutex::new(None),
+        coral_backoff: CoralBackoff::default(),
+    }
+}
+
+/// How the Coral test double answers.
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum CoralMode {
+    Ok,
+    /// HTTP 503 / realtime `error` with code `overloaded`.
+    Overloaded,
+    /// The realtime connection closes without an answer.
+    Close,
+}
+
+/// A coral-stt stand-in: `/v1/audio/transcriptions` answers verbose JSON
+/// with the language of each segment; `/v1/realtime` answers each commit
+/// with an English transcript. Counts the requests.
+async fn fake_coral(
+    mode: std::sync::Arc<std::sync::Mutex<CoralMode>>,
+    hits: std::sync::Arc<std::sync::atomic::AtomicUsize>,
+) -> u16 {
+    use futures_util::{SinkExt, StreamExt};
+    use std::sync::atomic::Ordering;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio_tungstenite::tungstenite::Message;
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    tokio::spawn(async move {
+        while let Ok((mut tcp, _)) = listener.accept().await {
+            let (mode, hits) = (mode.clone(), hits.clone());
+            tokio::spawn(async move {
+                let mut head = [0u8; 4];
+                let _ = tcp.peek(&mut head).await;
+                hits.fetch_add(1, Ordering::Relaxed);
+                let now = *mode.lock().unwrap();
+                let mut peek = vec![0u8; 512];
+                let n = tcp.peek(&mut peek).await.unwrap_or(0);
+                if String::from_utf8_lossy(&peek[..n]).contains("/v1/realtime") {
+                    let Ok(mut ws) = tokio_tungstenite::accept_async(tcp).await else {
+                        return;
+                    };
+                    let mut item = 0;
+                    while let Some(Ok(Message::Text(text))) = ws.next().await {
+                        let v: serde_json::Value = serde_json::from_str(&text).unwrap();
+                        match (now, v["type"].as_str().unwrap_or_default()) {
+                            (CoralMode::Overloaded, "session.update") => {
+                                let e = serde_json::json!({"type": "error", "error": {"type": "server_error", "code": "overloaded", "message": "all Edge TPUs are busy"}});
+                                let _ = ws.send(Message::Text(e.to_string().into())).await;
+                                let _ = ws.close(None).await;
+                                return;
+                            }
+                            (CoralMode::Close, _) => return,
+                            (CoralMode::Ok, "input_audio_buffer.commit") => {
+                                item += 1;
+                                let id = format!("item_{item}");
+                                for e in [
+                                    serde_json::json!({"type": "input_audio_buffer.committed", "item_id": id}),
+                                    serde_json::json!({"type": "conversation.item.input_audio_transcription.completed", "item_id": id, "transcript": "hello there", "language": "en"}),
+                                ] {
+                                    ws.send(Message::Text(e.to_string().into())).await.unwrap();
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                    return;
+                }
+                // HTTP: read the whole request, then answer.
+                let mut bytes = Vec::new();
+                let mut buf = [0u8; 8192];
+                loop {
+                    let n = tcp.read(&mut buf).await.unwrap_or(0);
+                    if n == 0 {
+                        return;
+                    }
+                    bytes.extend_from_slice(&buf[..n]);
+                    if let Some(end) = bytes.windows(4).position(|b| b == b"\r\n\r\n") {
+                        let headers = String::from_utf8_lossy(&bytes[..end]).to_ascii_lowercase();
+                        let len: usize = headers
+                            .lines()
+                            .find_map(|l| l.strip_prefix("content-length:"))
+                            .map_or(0, |v| v.trim().parse().unwrap());
+                        if bytes.len() >= end + 4 + len {
+                            break;
+                        }
+                    }
+                }
+                let (status, body) = match now {
+                    CoralMode::Ok => (
+                        "200 OK",
+                        serde_json::json!({
+                            "task": "transcribe", "language": "en", "duration": 4.0, "text": "hello there",
+                            "segments": [{"id": 0, "start": 0.2, "end": 1.5, "text": "hello there", "language": "en"}],
+                            "words": [{"word": "hello", "start": 0.2, "end": 0.6}, {"word": "there", "start": 0.7, "end": 1.5}]
+                        }),
+                    ),
+                    _ => (
+                        "503 Service Unavailable",
+                        serde_json::json!({"error": {"message": "all Edge TPUs are busy", "type": "server_error", "code": "overloaded"}}),
+                    ),
+                };
+                let body = body.to_string();
+                let res = format!(
+                    "HTTP/1.1 {status}\r\ncontent-type: application/json\r\nretry-after: 5\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{body}",
+                    body.len()
+                );
+                let _ = tcp.write_all(res.as_bytes()).await;
+            });
+        }
+    });
+    port
+}
+
+async fn coral_provider(pool: &PgPool, url: &str) -> uuid::Uuid {
+    use talkops_core::transcription_api::{self as providers, ProviderInput};
+    let secrets = SecretBox::from_hex(&"00".repeat(32)).unwrap();
+    providers::create(
+        pool,
+        TenantId::DEFAULT,
+        &secrets,
+        &ProviderInput {
+            name: "Coral".into(),
+            kind: "coral".into(),
+            url: url.into(),
+            key: None,
+        },
+    )
+    .await
+    .unwrap()
+    .id
+}
+
+fn coral_profile(
+    purpose: &str,
+    provider: uuid::Uuid,
+    realtime: bool,
+) -> talkops_core::transcription_profiles::Profile {
+    talkops_core::transcription_profiles::Profile {
+        purpose: purpose.into(),
+        engine: "cloud".into(),
+        // The local fallback of recordings.
+        local_model: if purpose == "live" {
+            "base"
+        } else {
+            "accurate"
+        }
+        .into(),
+        provider_id: Some(provider),
+        model: "coral-auto".into(),
+        realtime,
+        coral_stable_preview: false,
+        price_per_minute: None,
+        list_price: None,
+        provider_kind: None,
+    }
+}
+
+async fn recording_job(pool: &PgPool, dir: &Path, name: &str) -> uuid::Uuid {
+    let tenant = TenantId::DEFAULT;
+    let wav = dir.join("recordings").join(format!("{name}.wav"));
+    std::fs::create_dir_all(wav.parent().unwrap()).unwrap();
+    let mut w = hound::WavWriter::create(
+        &wav,
+        hound::WavSpec {
+            channels: 1,
+            sample_rate: 8000,
+            bits_per_sample: 16,
+            sample_format: hound::SampleFormat::Int,
+        },
+    )
+    .unwrap();
+    for i in 0..32_000 {
+        w.write_sample(((i as f32 * 0.05).sin() * 8000.0) as i16)
+            .unwrap();
+    }
+    w.finalize().unwrap();
+    let rec: uuid::Uuid = sqlx::query_scalar(
+        "INSERT INTO recordings (tenant_id, call_uuid, file, duration_secs)
+         VALUES ($1, $2, $3, 4) RETURNING id",
+    )
+    .bind(tenant)
+    .bind(name)
+    .bind(format!("{name}.wav"))
+    .fetch_one(pool)
+    .await
+    .unwrap();
+    let payload = TranscribePayload {
+        recording_id: Some(rec),
+        voicemail_id: None,
+        pass: 1,
+        engine: None,
+    };
+    let mut job = jobs::NewJob::new(
+        recordings::JOB_TRANSCRIBE,
+        serde_json::to_value(&payload).unwrap(),
+    );
+    job.tenant_id = tenant;
+    jobs::enqueue(pool, job).await.unwrap();
+    rec
+}
+
+/// Recordings with a Coral connection: the service transcribes and names
+/// the language; overload, the 30 s backoff and an unreachable service use
+/// the local fallback model of the profile.
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn coral_recordings_use_the_service_or_the_local_fallback(pool: PgPool) {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use talkops_core::transcription_profiles as profiles;
+    let tenant = TenantId::DEFAULT;
+    let dir = std::env::temp_dir().join(format!("talkops-worker-{}", uuid::Uuid::new_v4()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let mode = std::sync::Arc::new(std::sync::Mutex::new(CoralMode::Ok));
+    let hits = std::sync::Arc::new(AtomicUsize::new(0));
+    let port = fake_coral(mode.clone(), hits.clone()).await;
+    let provider = coral_provider(&pool, &format!("http://127.0.0.1:{port}/v1")).await;
+    profiles::update(
+        &pool,
+        tenant,
+        &[coral_profile("recording", provider, false)],
+    )
+    .await
+    .unwrap();
+    let ctx = coral_ctx(&pool, &dir);
+    let lane = [recordings::JOB_TRANSCRIBE];
+
+    // 1. Coral answers: its text and detected language are stored.
+    let rec = recording_job(&pool, &dir, "ok").await;
+    drain_queue(&ctx, "test", &lane).await.unwrap();
+    let t = recordings::transcript_of(&pool, tenant, Source::Recording(rec))
+        .await
+        .unwrap();
+    assert_eq!(t.engine, "api:Coral/coral-auto");
+    assert_eq!(t.fallback_from, None);
+    assert_eq!(t.language, "en");
+    assert_eq!(t.text, "hello there");
+    assert_eq!(t.segments[0].language.as_deref(), Some("en"));
+    assert!(
+        profiles::usage(&pool, tenant).await.unwrap().is_empty(),
+        "Coral costs nothing"
+    );
+    let after_ok = hits.load(Ordering::Relaxed);
+    assert!(after_ok >= 1);
+
+    // 2. Overloaded (HTTP 503): the local fallback model of the profile.
+    *mode.lock().unwrap() = CoralMode::Overloaded;
+    let rec = recording_job(&pool, &dir, "busy").await;
+    drain_queue(&ctx, "test", &lane).await.unwrap();
+    let t = recordings::transcript_of(&pool, tenant, Source::Recording(rec))
+        .await
+        .unwrap();
+    assert_eq!(
+        t.engine, "whisper:large-v3-q5_0",
+        "the profile's local model (accurate)"
+    );
+    assert_eq!(t.fallback_from.as_deref(), Some("Coral/coral-auto"));
+    assert_eq!(t.language, "de", "the tenant language without Coral");
+    assert!(t.text.starts_with("f0"), "{}", t.text);
+    let after_busy = hits.load(Ordering::Relaxed);
+    assert_eq!(after_busy, after_ok + 1);
+
+    // 3. Within the 30 s backoff Coral is not asked again.
+    *mode.lock().unwrap() = CoralMode::Ok;
+    let rec = recording_job(&pool, &dir, "backoff").await;
+    drain_queue(&ctx, "test", &lane).await.unwrap();
+    let t = recordings::transcript_of(&pool, tenant, Source::Recording(rec))
+        .await
+        .unwrap();
+    assert_eq!(t.fallback_from.as_deref(), Some("Coral/coral-auto"));
+    assert_eq!(hits.load(Ordering::Relaxed), after_busy);
+
+    // 4. After the backoff Coral is tried again.
+    ctx.coral_backoff.0.lock().unwrap().clear();
+    let rec = recording_job(&pool, &dir, "again").await;
+    drain_queue(&ctx, "test", &lane).await.unwrap();
+    let t = recordings::transcript_of(&pool, tenant, Source::Recording(rec))
+        .await
+        .unwrap();
+    assert_eq!(t.engine, "api:Coral/coral-auto");
+
+    // 5. Not reachable (nothing listens): the fallback.
+    let closed = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let dead = closed.local_addr().unwrap().port();
+    drop(closed);
+    sqlx::query("UPDATE transcription_providers SET url = $1")
+        .bind(format!("http://127.0.0.1:{dead}/v1"))
+        .execute(&pool)
+        .await
+        .unwrap();
+    let rec = recording_job(&pool, &dir, "down").await;
+    drain_queue(&ctx, "test", &lane).await.unwrap();
+    let t = recordings::transcript_of(&pool, tenant, Source::Recording(rec))
+        .await
+        .unwrap();
+    assert_eq!(t.fallback_from.as_deref(), Some("Coral/coral-auto"));
+    assert!(t.is_final);
+    std::fs::remove_dir_all(&dir).ok();
+}
+
+/// The live preview with Coral Realtime: a failed stream (overloaded,
+/// broken connection, service down) is replaced by local Whisper `base` in
+/// parts; after the 30 s backoff the stream starts again and the segments
+/// name their language.
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn coral_live_preview_falls_back_and_retries(pool: PgPool) {
+    use std::sync::atomic::AtomicUsize;
+    use talkops_core::live_transcripts as live;
+    use talkops_core::transcription_profiles as profiles;
+    let tenant = TenantId::DEFAULT;
+    let dir = std::env::temp_dir().join(format!("talkops-worker-{}", uuid::Uuid::new_v4()));
+    let mode = std::sync::Arc::new(std::sync::Mutex::new(CoralMode::Overloaded));
+    let hits = std::sync::Arc::new(AtomicUsize::new(0));
+    let port = fake_coral(mode.clone(), hits.clone()).await;
+    let provider = coral_provider(&pool, &format!("http://127.0.0.1:{port}/v1")).await;
+    profiles::update(&pool, tenant, &[coral_profile("live", provider, true)])
+        .await
+        .unwrap();
+    sqlx::query("UPDATE tenant_settings SET transcription_enabled = true, default_language = 'de'")
+        .execute(&pool)
+        .await
+        .unwrap();
+    let call = uuid::Uuid::new_v4();
+    let file = format!("{tenant}/2026-10/{call}.wav");
+    let path = dir.join("recordings").join(&file);
+    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    let mut writer = hound::WavWriter::create(
+        &path,
+        hound::WavSpec {
+            channels: 2,
+            sample_rate: 8000,
+            bits_per_sample: 16,
+            sample_format: hound::SampleFormat::Int,
+        },
+    )
+    .unwrap();
+    for i in 0..8000 * 10 {
+        let speech = (8000 * 4..8000 * 6).contains(&i);
+        let s = if speech {
+            ((i as f32 * 0.3).sin() * 9000.0) as i16
+        } else {
+            0
+        };
+        writer.write_sample(s).unwrap();
+        writer.write_sample(0i16).unwrap();
+    }
+    writer.finalize().unwrap();
+    let user: uuid::Uuid = sqlx::query_scalar(
+        "INSERT INTO users (tenant_id, username, display_name) VALUES ($1, 'viewer', 'Viewer') RETURNING id",
+    )
+    .bind(tenant)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    let request = || {
+        live::request(
+            &pool,
+            tenant,
+            user,
+            call,
+            &file,
+            sqlx::types::chrono::Utc::now(),
+        )
+    };
+    let preview = request().await.unwrap().0;
+    let ctx = coral_ctx(&pool, &dir);
+    let job = jobs::claim(&pool, "test", &[live::JOB])
+        .await
+        .unwrap()
+        .unwrap();
+    let failed = || live::stream_failed_recently(&pool, tenant, preview.id);
+    let wait_failed = || async {
+        for _ in 0..100 {
+            if failed().await.unwrap() && ctx.streams.is_empty() {
+                return true;
+            }
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+        false
+    };
+    let reset = || async {
+        sqlx::query(
+            "UPDATE live_transcript_previews SET stream_failed_at = now() - interval '31 seconds'",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+    };
+
+    for (case, down) in [
+        (CoralMode::Overloaded, false),
+        (CoralMode::Close, false),
+        (CoralMode::Ok, true),
+    ] {
+        *mode.lock().unwrap() = case;
+        if down {
+            // The service is not running.
+            let closed = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let dead = closed.local_addr().unwrap().port();
+            drop(closed);
+            sqlx::query("UPDATE transcription_providers SET url = $1")
+                .bind(format!("http://127.0.0.1:{dead}/v1"))
+                .execute(&pool)
+                .await
+                .unwrap();
+        }
+        // The stream fails in the background.
+        run(&ctx, &job).await.unwrap();
+        assert!(wait_failed().await, "{case:?}: the stream fails");
+        // The next job runs the local fallback in parts.
+        run(&ctx, &job).await.unwrap();
+        let p = request().await.unwrap().0;
+        assert_eq!(p.engine, "whisper:base", "{case:?}: {p:?}");
+        assert_eq!(
+            p.fallback_from.as_deref(),
+            Some("Coral/coral-auto"),
+            "{case:?}"
+        );
+        assert_ne!(p.status, "failed", "{case:?}: the fallback is no failure");
+        assert!(
+            p.segments.iter().any(|s| s.text.starts_with("f")),
+            "{case:?}: {:?}",
+            p.segments
+        );
+        reset().await;
+    }
+
+    // Back up: after the backoff the next job streams over Coral again.
+    sqlx::query("UPDATE transcription_providers SET url = $1")
+        .bind(format!("http://127.0.0.1:{port}/v1"))
+        .execute(&pool)
+        .await
+        .unwrap();
+    *mode.lock().unwrap() = CoralMode::Ok;
+    // Clear the text of the fallback, so the streamed text shows.
+    sqlx::query("UPDATE live_transcript_previews SET segments = '[]', cursor_frames = -1")
+        .execute(&pool)
+        .await
+        .unwrap();
+    run(&ctx, &job).await.unwrap();
+    let mut streamed = None;
+    for _ in 0..100 {
+        let p = request().await.unwrap().0;
+        if let Some(s) = p.segments.iter().find(|s| s.text == "hello there") {
+            streamed = Some((p.clone(), s.clone()));
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    let (p, segment) = streamed.expect("streamed text");
+    assert_eq!(p.engine, "api:Coral/coral-auto");
+    assert_eq!(p.fallback_from, None);
+    assert_eq!(segment.language.as_deref(), Some("en"));
+    assert!(
+        profiles::usage(&pool, tenant).await.unwrap().is_empty(),
+        "Coral costs nothing"
+    );
+    live::stop(&pool, tenant, user, call).await.unwrap();
+    for _ in 0..100 {
+        if ctx.streams.is_empty() {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    std::fs::remove_dir_all(&dir).ok();
 }

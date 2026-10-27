@@ -2,6 +2,10 @@
 //! the OpenAI interface (`POST {url}/audio/transcriptions`), such as Groq,
 //! Mistral or a self-hosted Speaches. A tenant can have several. The key is
 //! stored encrypted (ADR 0008) and never returned.
+//!
+//! The kind `coral` is the coral-stt service on this server (ADR 0046): the
+//! same interface, on a loopback address only, without costs, and with a
+//! local fallback when it is not available.
 
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, PgPool};
@@ -13,13 +17,15 @@ use crate::tenant::TenantId;
 
 /// The fixed base URL of connections of kind `openai`.
 pub const OPENAI_URL: &str = "https://api.openai.com/v1";
+/// The default base URL of connections of kind `coral`.
+pub const CORAL_URL: &str = "http://127.0.0.1:8095/v1";
 
 /// A connection as shown in the UI (without the key).
 #[derive(Debug, Clone, FromRow, Serialize, utoipa::ToSchema)]
 pub struct Provider {
     pub id: Uuid,
     pub name: String,
-    /// `openai` or `compatible`.
+    /// `openai`, `compatible` or `coral`.
     pub kind: String,
     /// Base URL including the version, e.g. `https://api.openai.com/v1`.
     pub url: String,
@@ -29,9 +35,9 @@ pub struct Provider {
 #[derive(Debug, Clone, Deserialize, utoipa::ToSchema)]
 pub struct ProviderInput {
     pub name: String,
-    /// `openai` (URL is fixed) or `compatible`.
+    /// `openai` (URL is fixed), `compatible` or `coral`.
     pub kind: String,
-    /// Ignored for `openai`.
+    /// Ignored for `openai`; empty means [CORAL_URL] for `coral`.
     #[serde(default)]
     pub url: String,
     /// New key; `null` keeps the stored one, `""` removes it.
@@ -43,6 +49,8 @@ pub struct ProviderInput {
 #[derive(Debug, Clone)]
 pub struct ApiConfig {
     pub name: String,
+    /// `openai`, `compatible` or `coral`.
+    pub kind: String,
     pub url: String,
     pub model: String,
     pub key: Option<String>,
@@ -68,6 +76,37 @@ impl ApiConfig {
     pub fn label(&self) -> String {
         format!("{}/{}", self.name, self.model)
     }
+
+    /// The coral-stt service on this server.
+    pub fn is_coral(&self) -> bool {
+        self.kind == "coral"
+    }
+
+    /// The base URL without the API version (`/health` of coral-stt).
+    pub fn root(&self) -> String {
+        let url = self.url.trim_end_matches('/');
+        url.strip_suffix("/v1").unwrap_or(url).to_owned()
+    }
+}
+
+/// A loopback host: `127.x.x.x`, `localhost` or `[::1]`. Audio for a
+/// `coral` connection does not leave the server.
+pub fn is_loopback_url(url: &str) -> bool {
+    let rest = url
+        .strip_prefix("http://")
+        .or_else(|| url.strip_prefix("https://"))
+        .unwrap_or_default();
+    let host_port = rest.split('/').next().unwrap_or_default();
+    let host = if let Some(v6) = host_port.strip_prefix('[') {
+        v6.split(']').next().unwrap_or_default()
+    } else {
+        host_port.split(':').next().unwrap_or_default()
+    };
+    host == "localhost"
+        || host == "::1"
+        || host
+            .parse::<std::net::Ipv4Addr>()
+            .is_ok_and(|ip| ip.is_loopback())
 }
 
 const COLUMNS: &str = "id, name, kind, url, key_enc IS NOT NULL AS has_key";
@@ -131,15 +170,24 @@ fn check(secrets: &SecretBox, input: &ProviderInput) -> CoreResult<Checked> {
     let url = match input.kind.as_str() {
         "openai" => OPENAI_URL.to_owned(),
         "compatible" => input.url.trim().trim_end_matches('/').to_owned(),
+        "coral" => match input.url.trim().trim_end_matches('/') {
+            "" => CORAL_URL.to_owned(),
+            url => url.to_owned(),
+        },
         _ => {
             return Err(CoreError::Validation(
-                "kind must be openai or compatible".into(),
+                "kind must be openai, compatible or coral".into(),
             ));
         }
     };
     if !valid_url(&url) {
         return Err(CoreError::Validation(
             "API URL must start with http:// or https://".into(),
+        ));
+    }
+    if input.kind == "coral" && !is_loopback_url(&url) {
+        return Err(CoreError::Validation(
+            "a Coral connection must use a loopback address (127.0.0.1, localhost or [::1])".into(),
         ));
     }
     let key_enc = match input.key.as_deref().map(str::trim) {
@@ -230,24 +278,35 @@ pub async fn delete(pool: &PgPool, tenant: TenantId, id: Uuid) -> CoreResult<()>
     Ok(())
 }
 
-/// A connection with the decrypted key and the given model.
+/// A connection with the decrypted key and the given model. `secrets` is
+/// only needed when the connection has a key.
 pub async fn config(
     pool: &PgPool,
     tenant: TenantId,
-    secrets: &SecretBox,
+    secrets: Option<&SecretBox>,
     id: Uuid,
     model: &str,
 ) -> CoreResult<ApiConfig> {
-    let (name, url, key_enc): (String, String, Option<String>) = sqlx::query_as(
-        "SELECT name, url, key_enc FROM transcription_providers WHERE tenant_id = $1 AND id = $2",
+    let (name, kind, url, key_enc): (String, String, String, Option<String>) = sqlx::query_as(
+        "SELECT name, kind, url, key_enc FROM transcription_providers
+         WHERE tenant_id = $1 AND id = $2",
     )
     .bind(tenant)
     .bind(id)
     .fetch_one(pool)
     .await?;
-    let key = key_enc.map(|k| secrets.decrypt(&k)).transpose()?;
+    let key = match (key_enc, secrets) {
+        (Some(k), Some(secrets)) => Some(secrets.decrypt(&k)?),
+        (Some(_), None) => {
+            return Err(CoreError::Validation(
+                "TALKOPS_SECRET_KEY is not set (needed for the API key)".into(),
+            ));
+        }
+        (None, _) => None,
+    };
     Ok(ApiConfig {
         name,
+        kind,
         url,
         model: model.to_owned(),
         key,
@@ -281,6 +340,7 @@ mod tests {
     fn endpoints() {
         let mut cfg = ApiConfig {
             name: "OpenAI".into(),
+            kind: "openai".into(),
             url: "https://api.openai.com/v1/".into(),
             model: "gpt-live-transcribe".into(),
             key: None,
@@ -299,5 +359,25 @@ mod tests {
             cfg.realtime_endpoint(),
             "ws://10.0.0.5:8000/v1/realtime?intent=transcription"
         );
+        assert!(!cfg.is_coral());
+        cfg.url = CORAL_URL.into();
+        cfg.kind = "coral".into();
+        assert!(cfg.is_coral());
+        assert_eq!(cfg.root(), "http://127.0.0.1:8095");
+        assert_eq!(
+            cfg.realtime_endpoint(),
+            "ws://127.0.0.1:8095/v1/realtime?intent=transcription"
+        );
+    }
+
+    #[test]
+    fn loopback_urls() {
+        assert!(is_loopback_url("http://127.0.0.1:8095/v1"));
+        assert!(is_loopback_url("http://127.1.2.3/v1"));
+        assert!(is_loopback_url("http://localhost:8095/v1"));
+        assert!(is_loopback_url("http://[::1]:8095/v1"));
+        assert!(!is_loopback_url("http://192.168.1.5:8095/v1"));
+        assert!(!is_loopback_url("http://127.0.0.1.example.com/v1"));
+        assert!(!is_loopback_url("http://localhost.example.com/v1"));
     }
 }

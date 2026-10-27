@@ -108,7 +108,7 @@ async fn transcription_settings(db: PgPool) {
     let cfg = transcription_api::config(
         &db,
         TenantId::DEFAULT,
-        &SecretBox::from_hex(KEY).unwrap(),
+        Some(&SecretBox::from_hex(KEY).unwrap()),
         uuid,
         "whisper-1",
     )
@@ -204,4 +204,101 @@ async fn transcription_settings(db: PgPool) {
     .await
     .unwrap();
     assert_eq!(audit, 0, "no keys in the audit log");
+}
+
+/// A fake coral-stt service: `/health` with one USB TPU, `/v1/models`.
+async fn fake_coral() -> String {
+    let app = Router::new()
+        .route(
+            "/health",
+            get(|| async {
+                axum::Json(json!({"status": "ok", "backend": "tpu", "version": "1",
+                    "tpus": [{"id": "usb:0", "kind": "usb", "state": "ready", "load": 0.1, "busy": false,
+                              "inferences": 3, "models": ["coral-ctc-de", "coral-ctc-en", "langid"], "node": null, "error": null}],
+                    "queue": {"length": 0, "capacity": 16, "sessions": 0, "max_sessions": 4},
+                    "models": ["coral-ctc-de", "coral-ctc-en", "coral-auto"]}))
+            }),
+        )
+        .route(
+            "/v1/models",
+            get(|| async {
+                axum::Json(json!({"object": "list", "data": [
+                    {"id": "coral-ctc-de"}, {"id": "coral-ctc-en"}, {"id": "coral-auto"}
+                ]}))
+            }),
+        );
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+    format!("http://127.0.0.1:{port}/v1")
+}
+
+/// A Coral connection (ADR 0046): loopback only, tested with /health and
+/// /v1/models; an unreachable service fails the test.
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn coral_connection(db: PgPool) {
+    let router = router(db.clone());
+    let admin = setup_admin(&router).await;
+    let (status, body) = admin
+        .post(
+            "/api/v1/settings/transcription/providers",
+            json!({"name": "Coral", "kind": "coral", "url": "http://10.0.0.5:8095/v1"}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{body}");
+    let url = fake_coral().await;
+    let (status, p) = admin
+        .post(
+            "/api/v1/settings/transcription/providers",
+            json!({"name": "Coral", "kind": "coral", "url": url}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::CREATED, "{p}");
+    assert_eq!(p["kind"], "coral");
+    let id = p["id"].as_str().unwrap().to_owned();
+    let (status, body) = admin
+        .put(
+            "/api/v1/settings/transcription/profiles",
+            json!([{"purpose": "live", "engine": "cloud", "local_model": "base", "provider_id": id,
+                    "model": "coral-auto", "realtime": true},
+                   {"purpose": "recording", "engine": "cloud", "local_model": "fast", "provider_id": id,
+                    "model": "coral-auto"},
+                   {"purpose": "recording_refine", "engine": "local", "local_model": "accurate", "provider_id": null, "model": ""}]),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_eq!(body[1]["provider_kind"], "coral");
+    let path = format!("/api/v1/settings/transcription/providers/{id}/test");
+    let (status, t) = admin.post(&path, json!({})).await;
+    assert_eq!(status, StatusCode::OK, "{t}");
+    assert_eq!(t["missing_models"], json!([]));
+    assert_eq!(t["coral"]["tpus"][0]["kind"], "usb");
+    assert_eq!(t["coral"]["tpus"][0]["models"][0], "coral-ctc-de");
+    assert!(
+        t["speech_models"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|m| m == "coral-auto")
+    );
+    // The service is down: the test says so.
+    let closed = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let dead = closed.local_addr().unwrap().port();
+    drop(closed);
+    let (status, _) = admin
+        .put(
+            &format!("/api/v1/settings/transcription/providers/{id}"),
+            json!({"name": "Coral", "kind": "coral", "url": format!("http://127.0.0.1:{dead}/v1")}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK);
+    let (status, t) = admin.post(&path, json!({})).await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(
+        t["message"]
+            .as_str()
+            .unwrap()
+            .contains("Coral service not reachable"),
+        "{t}"
+    );
 }

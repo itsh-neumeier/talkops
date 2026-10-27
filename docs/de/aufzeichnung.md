@@ -201,6 +201,196 @@ z. B. `gpt-transcribe` 0,0045 USD, `gpt-live-transcribe` 0,017 USD pro
 Minute). Ein Sternchen markiert Audio ohne bekannten Preis, etwa von einem
 eigenen Server. Maßgeblich ist die Rechnung des Anbieters.
 
+## Coral Edge TPU (dieser Server)
+
+Coral ist in TalkOps 1.8.12 experimentell. Die Hardware- und
+Transkriptionsqualität sind noch nicht abgenommen. Der Dienst ist
+standardmäßig deaktiviert; lokales Whisper bleibt der Standard.
+Aktiviere Coral nur für einen bewussten Test. Siehe die
+[Test- und Rollback-Anleitung](../research/coral-production-trial.md).
+
+Eine Google-Coral-Edge-TPU im TalkOps-Server kann Deutsch und Englisch
+transkribieren: der USB Accelerator oder eine M.2- bzw. Mini-PCIe-Karte
+([ADR 0046](../adr/0046-coral-edge-tpu-speech-recognition.md)). Der Dienst
+`coral-stt` läuft neben TalkOps und lauscht nur auf `127.0.0.1`. Audio
+verlässt den Server nicht, es entstehen keine Kosten.
+
+Whisper läuft nicht auf der Edge TPU. Coral nutzt kleine Sprachmodelle mit
+festem Fenster; ihr Text ist ungenauer als der von Whisper. Deshalb gibt es
+den **Hybrid**-Betrieb:
+
+| Zweck | Engine |
+|---|---|
+| Live-Vorschau | Coral Realtime (Text während des Sprechens) |
+| Aufnahme – schnell, Voicemail – schnell | Coral |
+| Aufnahme / Voicemail – langsam, genau | Lokales Whisper (ersetzt den Coral-Text) |
+
+> **Stand:** Die Messungen auf echter Hardware (Phase 0) stehen noch aus.
+> Methode und Grenzen stehen im
+> [Benchmark-Bericht](../research/coral-stt-benchmark.md).
+
+### Qualität im Hybrid-Betrieb
+
+- Der Coral-Text ist eine schnelle Vorschau. Fehler bei Namen, Zahlen und
+  schnellem Sprechen sind zu erwarten; Zahlen erscheinen als Wörter.
+- Coral erkennt die Sprache je Gesprächsabschnitt (Deutsch oder Englisch).
+  Ist die Erkennung unsicher, gilt die Sprache des Mandanten. Transkript und
+  Zeilen zeigen die erkannte Sprache.
+- Der zweite Durchgang mit lokalem Whisper ersetzt den Coral-Text. Bis dahin
+  ist das Transkript als *Vorläufig* markiert.
+- Ist Coral nicht verfügbar, erstellt ein lokales Modell den Text (siehe
+  [Fallback](#fallback)).
+
+### Host vorbereiten
+
+#### USB Accelerator
+
+1. Den Stick an einen USB-3-Anschluss stecken. USB 2 geht, ist aber langsamer.
+2. Die udev-Regel aus dem Image installieren. Sie gibt der Gruppe `plugdev`
+   Zugriff auf den Stick:
+
+   ```sh
+   docker run --rm --entrypoint cat ghcr.io/itsh-neumeier/talkops-coral-stt:latest \
+     /usr/share/talkops/coral/60-libedgetpu1-std.rules \
+     | sudo tee /etc/udev/rules.d/60-libedgetpu1-std.rules
+   sudo udevadm control --reload-rules && sudo udevadm trigger
+   ```
+
+3. Die Gruppen-ID ermitteln: `getent group plugdev` (Debian: 46) und als
+   `TALKOPS_CORAL_GID` in `.env` eintragen.
+4. Den Stick abziehen und wieder anstecken.
+
+Hinweis: Vor der ersten Nutzung zeigt `lsusb` den Stick als
+`1a6e:089a Global Unichip`. Nachdem der Dienst die Firmware geladen hat,
+erscheint er als `18d1:9302 Google` mit neuer Gerätenummer. Das ist normal.
+Der Compose-Dienst bindet `/dev/bus/usb` ein und erlaubt alle USB-Geräte,
+deshalb funktioniert die neue Nummer ohne Neustart.
+
+#### M.2- oder Mini-PCIe-Karte (Debian 13 „trixie“)
+
+Die Karte braucht den Kerneltreiber gasket/apex. Der Treiber von Google baut
+nicht mit aktuellen Kerneln; nutze einen gepflegten Community-Fork, z. B.
+`https://github.com/feranick/gasket-driver` (DKMS). Prüfe vor der
+Installation seine Hinweise zu deinem Kernel.
+
+1. Werkzeuge und Kernel-Header installieren:
+
+   ```sh
+   sudo apt install git dkms devscripts debhelper dh-dkms linux-headers-$(uname -r)
+   ```
+
+2. Das DKMS-Paket bauen und installieren:
+
+   ```sh
+   git clone https://github.com/feranick/gasket-driver.git
+   cd gasket-driver && debuild -us -uc -tc -b
+   sudo dpkg -i ../gasket-dkms_*.deb
+   ```
+
+3. Einer Gruppe Zugriff auf das Gerät geben:
+
+   ```sh
+   sudo groupadd --system apex
+   echo 'SUBSYSTEM=="apex", MODE="0660", GROUP="apex"' | sudo tee /etc/udev/rules.d/65-apex.rules
+   sudo reboot
+   ```
+
+4. Gerät prüfen: `ls -l /dev/apex_0` zeigt die Gruppe `apex`.
+5. Die GID von `apex` (`getent group apex`) als `TALKOPS_CORAL_GID`
+   eintragen und in `docker-compose.yml` beim Dienst `coral-stt` die
+   Beispielzeilen `devices: /dev/apex_0:/dev/apex_0` aktivieren. Mit Secure
+   Boot muss das DKMS-Modul signiert sein (MOK), sonst lädt es nicht.
+
+#### Proxmox VE und LXC
+
+- **VM, USB:** den Stick **per USB-Anschluss** durchreichen (Proxmox:
+  *USB-Port verwenden*), nicht per Hersteller- und Produkt-ID. Die ID ändert
+  sich nach dem Laden der Firmware.
+- **VM, PCIe:** die Karte durchreichen (IOMMU) und den Treiber wie oben in
+  der VM installieren.
+- **LXC, USB:** die udev-Regel auf dem Proxmox-Host installieren und in der
+  Container-Konfiguration ergänzen:
+
+  ```text
+  lxc.cgroup2.devices.allow: c 189:* rwm
+  lxc.mount.entry: /dev/bus/usb dev/bus/usb none bind,optional,create=dir
+  ```
+
+- **LXC, PCIe:** den Treiber auf dem Proxmox-Host installieren. Die
+  Major-Nummer mit `ls -l /dev/apex_0` ermitteln (z. B. `120`) und ergänzen:
+
+  ```text
+  lxc.cgroup2.devices.allow: c 120:* rwm
+  lxc.mount.entry: /dev/apex_0 dev/apex_0 none bind,optional,create=file
+  ```
+
+  In einem unprivilegierten Container die Gruppe des Geräts abbilden oder
+  einen privilegierten Container nutzen.
+
+### Modelle installieren
+
+Das Image enthält keine Sprachmodelle. Erstelle sie mit den Werkzeugen in
+[`tools/coral/`](../../tools/coral/README.md) (Export, Kompilieren,
+Lizenzprüfung) und kopiere sie in das Volume `models`:
+
+```text
+models/coral/de/model_edgetpu.tflite   models/coral/de/model.json
+models/coral/en/model_edgetpu.tflite   models/coral/en/model.json
+models/coral/langid/model_edgetpu.tflite   models/coral/langid/model.json   (optional)
+```
+
+Ohne das Sprach-ID-Modell laufen für jeden Abschnitt beide Sprachmodelle;
+das verdoppelt die Last auf der TPU.
+
+### Dienst starten
+
+1. In `.env` `coral` zu `COMPOSE_PROFILES` hinzufügen (z. B.
+   `COMPOSE_PROFILES=coral`) und die Werte `TALKOPS_CORAL_*` prüfen.
+2. `docker compose up -d` ausführen.
+3. Status prüfen: `curl -s http://127.0.0.1:8095/health`. Jede TPU zeigt
+   `"state": "ready"` und ihre geladenen Modelle.
+
+### TalkOps verbinden
+
+1. Unter *Einstellungen → Anrufbehandlung → Cloud-Verbindungen*
+   **Verbindung hinzufügen** und den Typ **Coral (dieser Server)** wählen.
+   Die URL ist `http://127.0.0.1:8095/v1`. Ein Schlüssel ist optional
+   (`TALKOPS_CORAL_API_KEY`).
+2. **Verbindung testen** wählen. TalkOps zeigt die TPUs (Art, Zustand, Last,
+   Modelle) und die Warteschlange.
+3. **Hybrid übernehmen** wählen, die Engines prüfen und **Engines
+   speichern**.
+
+Die Modelle heißen `coral-auto` (Sprache je Abschnitt), `coral-ctc-de` und
+`coral-ctc-en`. Eine Coral-Verbindung muss eine Loopback-Adresse nutzen.
+TalkOps zeigt dafür keinen Datenschutzhinweis und keine Kosten.
+
+### Fallback
+
+Ist der Coral-Dienst nicht erreichbar, überlastet (HTTP 503) oder bricht der
+Stream ab,
+
+- nutzt die Live-Vorschau lokales Whisper *Base* in 8-Sekunden-Stücken und
+  zeigt einen Hinweis;
+- nutzen Aufnahmen und Voicemails das **lokale Fallback**-Modell, das du bei
+  der Engine wählst.
+
+Das Transkript nennt das Modell, das den Text erstellt hat, und die ersetzte
+Engine, z. B. *Fallback: lokales Modell, weil Coral/coral-auto nicht
+verfügbar war*. Nach 30 Sekunden versucht TalkOps Coral erneut.
+
+### Fehlersuche
+
+| Symptom | Ursache und Abhilfe |
+|---|---|
+| `/health` meldet `"status": "unavailable"` | Keine TPU bereit oder keine Modelle installiert. `tpus[].error`, Volume `models` und Logs prüfen: `docker compose logs coral-stt`. |
+| Keine TPU in `tpus` | Der Container sieht das Gerät nicht. USB: `lsusb` und udev-Regel prüfen. PCIe: `/dev/apex_0` und die Zeilen `devices:` prüfen. |
+| `state: error`, „permission denied“ | Falsche Gruppe. `TALKOPS_CORAL_GID` auf die Gruppe des Geräteknotens setzen. |
+| USB-Stick bleibt `firmware-not-loaded` | Der Stick setzt beim Laden der Firmware zurück. Direkten USB-3-Anschluss oder aktiven Hub nutzen; in einer VM per Anschluss durchreichen. |
+| Viele Fallbacks, HTTP 503 | Die TPU ist überlastet. Weniger gleichzeitige Live-Vorschauen, eine weitere TPU oder `TALKOPS_CORAL_QUEUE` erhöhen (mehr Verzögerung). |
+| Fehler zur TensorFlow-Lite-Version | libedgetpu und TensorFlow Lite müssen zusammenpassen. Die Bibliotheken des Images verwenden. |
+| Text in der falschen Sprache | Sprach-ID-Modell installieren oder `coral-ctc-de` bzw. `coral-ctc-en` für eine Sprache wählen. |
+
 ## Suche
 
 **Suche** findet Wörter in allen Transkripten, auf die Sie Zugriff haben –

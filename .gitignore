@@ -6,3 +6,4 @@ backup-password
 backup.env
 recovered/
 __pycache__/
+web/test-results/coral-diagnostics-*.png

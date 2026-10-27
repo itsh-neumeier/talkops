@@ -83,6 +83,7 @@
 		<div class="@3xl:col-span-2">
 			{#if tiles}
 				<CallMap
+					{range}
 					compact
 					areas={located}
 					{shown}

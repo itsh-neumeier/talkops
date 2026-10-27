@@ -49,11 +49,15 @@ impl EngineChoice {
                     return Err(CoreError::Validation("invalid model name".into()));
                 }
                 let provider = transcription_api::get(pool, tenant, *provider_id).await?;
+                let coral = provider.kind == "coral";
                 Ok(Engine::Cloud {
                     provider_id: provider.id,
                     model: model.trim().to_owned(),
                     realtime: false,
+                    coral_stable_preview: false,
                     price: profiles::list_price(&provider.kind, model.trim()),
+                    coral,
+                    fallback: coral.then_some(TranscriptionQuality::Fast),
                 })
             }
         }

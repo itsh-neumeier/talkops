@@ -10,6 +10,10 @@
 //! A stream runs in the background, not in the job lane, and ends when the
 //! viewer leaves, the recording stops growing, or after four hours. A
 //! database lease keeps it on one worker.
+//!
+//! A Coral connection (ADR 0046) gets the tenant language first and then
+//! the other supported language; its completed transcripts name the
+//! detected language. Its audio is not added to the cloud usage.
 
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::path::PathBuf;
@@ -89,6 +93,7 @@ pub struct Start {
     pub language: String,
     pub vocabulary: String,
     pub price: Option<f64>,
+    pub coral_stable_preview: bool,
 }
 
 /// Starts a stream unless one already runs for this preview.
@@ -297,6 +302,7 @@ impl Transcript {
                     end,
                     speaker: SPEAKERS[channel].into(),
                     text: String::new(),
+                    language: None,
                 });
                 segment
                     .text
@@ -318,6 +324,7 @@ impl Transcript {
                         end,
                         speaker: SPEAKERS[channel].into(),
                         text: text.to_owned(),
+                        language: v["language"].as_str().map(crate::api::normalize_language),
                     });
                 }
                 self.pending = self.pending.saturating_sub(1);
@@ -355,11 +362,26 @@ impl Transcript {
     }
 }
 
+/// Languages of the Coral models (ADR 0046).
+const CORAL_LANGUAGES: [&str; 2] = ["de", "en"];
+
 /// The session configuration. Newer models take keywords and a language
-/// list; older ones a prompt and one language.
-fn session_update(model: &str, language: &str, vocabulary: &str) -> Value {
+/// list; older ones a prompt and one language. Coral takes the language
+/// list in order of preference: the tenant language, then the other one.
+fn session_update(
+    model: &str,
+    language: &str,
+    vocabulary: &str,
+    coral: bool,
+    stable_preview: bool,
+) -> Value {
     let mut transcription = json!({ "model": model });
-    if model.starts_with("gpt-live-transcribe") || model.starts_with("gpt-transcribe") {
+    if coral {
+        let mut languages = vec![language];
+        languages.extend(CORAL_LANGUAGES.iter().filter(|l| **l != language));
+        transcription["languages"] = json!(languages);
+        transcription["stable_preview"] = json!(stable_preview);
+    } else if model.starts_with("gpt-live-transcribe") || model.starts_with("gpt-transcribe") {
         transcription["languages"] = json!([language]);
         let keywords: Vec<String> = vocabulary
             .split(',')
@@ -414,7 +436,7 @@ fn tls() -> Arc<rustls::ClientConfig> {
     )
 }
 
-async fn connect(s: &Start) -> anyhow::Result<Socket> {
+async fn connect(s: &Start, channel: usize) -> anyhow::Result<Socket> {
     let mut request = s.cfg.realtime_endpoint().into_client_request()?;
     if let Some(key) = &s.cfg.key {
         request.headers_mut().insert(
@@ -444,7 +466,20 @@ async fn connect(s: &Start) -> anyhow::Result<Socket> {
         ),
         other => anyhow::anyhow!("realtime API not reachable ({}): {other}", s.cfg.url),
     })?;
-    let update = session_update(&s.cfg.model, &s.language, &s.vocabulary);
+    let mut update = session_update(
+        &s.cfg.model,
+        &s.language,
+        &s.vocabulary,
+        s.cfg.is_coral(),
+        s.coral_stable_preview,
+    );
+    if s.cfg.is_coral() {
+        let transcription = &mut update["session"]["audio"]["input"]["transcription"];
+        transcription["diagnostic_scope"] = json!(s.tenant.to_string());
+        transcription["diagnostic_preview"] = json!(s.preview.to_string());
+        transcription["diagnostic_channel"] = json!(channel);
+        transcription["diagnostic_worker_revision"] = json!(option_env!("TALKOPS_BUILD_REVISION"));
+    }
     socket
         .send(Message::Text(update.to_string().into()))
         .await?;
@@ -458,8 +493,17 @@ async fn stream(s: &Start) -> anyhow::Result<()> {
     let mut saved = work.cursor_frames;
     let mut cursor = work.cursor_frames;
     let mut transcript = Transcript::new(work.segments.0);
-    let (mut tx0, rx0) = connect(s).await?.split();
-    let (mut tx1, rx1) = connect(s).await?.split();
+    let (mut tx0, rx0) = connect(s, 0).await?.split();
+    let (mut tx1, rx1) = connect(s, 1).await?.split();
+    // The stream runs: the text comes from this engine (no fallback).
+    live_transcripts::set_engine(
+        &s.pool,
+        s.tenant,
+        s.preview,
+        &format!("api:{}", s.cfg.label()),
+        None,
+    )
+    .await?;
     let mut events =
         futures_util::stream::select(rx0.map(|m| (0usize, m)), rx1.map(|m| (1usize, m)));
     let mut turns: Option<[Turns; 2]> = None;
@@ -571,8 +615,9 @@ where
 
 /// Adds sent audio to the usage; returns the samples it covered.
 async fn bill(s: &Start, samples: usize, rate: u32) -> usize {
-    if samples == 0 {
-        return 0;
+    // Coral runs on this server: nothing to bill.
+    if samples == 0 || s.cfg.is_coral() {
+        return samples;
     }
     let seconds = samples as f64 / f64::from(rate);
     match profiles::record_usage(
@@ -707,7 +752,13 @@ pub(crate) mod tests {
 
     #[test]
     fn configures_the_session() {
-        let live = session_update("gpt-live-transcribe", "de", "TalkOps, <Yealink>, ");
+        let live = session_update(
+            "gpt-live-transcribe",
+            "de",
+            "TalkOps, <Yealink>, ",
+            false,
+            false,
+        );
         let tr = &live["session"]["audio"]["input"]["transcription"];
         assert_eq!(tr["languages"], json!(["de"]));
         assert_eq!(tr["keywords"], json!(["TalkOps", "Yealink"]));
@@ -715,10 +766,31 @@ pub(crate) mod tests {
         assert_eq!(live["session"]["type"], "transcription");
         assert!(live["session"]["audio"]["input"]["turn_detection"].is_null());
         assert_eq!(live["session"]["audio"]["input"]["format"]["rate"], 24000);
-        let old = session_update("gpt-4o-transcribe", "en", "");
+        let old = session_update("gpt-4o-transcribe", "en", "", false, false);
         let tr = &old["session"]["audio"]["input"]["transcription"];
         assert_eq!(tr["language"], "en");
         assert!(tr["prompt"].as_str().unwrap().contains("phone call"));
+        // Coral: the tenant language first, then the other; no prompt.
+        let coral = session_update("coral-auto", "en", "TalkOps", true, false);
+        let tr = &coral["session"]["audio"]["input"]["transcription"];
+        assert_eq!(tr["model"], "coral-auto");
+        assert_eq!(tr["languages"], json!(["en", "de"]));
+        assert!(tr.get("prompt").is_none() && tr.get("keywords").is_none());
+        let coral = session_update("coral-auto", "de", "", true, false);
+        assert_eq!(
+            coral["session"]["audio"]["input"]["transcription"]["languages"],
+            json!(["de", "en"])
+        );
+        let coral = session_update("coral-auto", "de", "", true, true);
+        assert_eq!(
+            coral["session"]["audio"]["input"]["transcription"]["stable_preview"],
+            true
+        );
+        assert!(
+            live["session"]["audio"]["input"]["transcription"]
+                .get("stable_preview")
+                .is_none()
+        );
     }
 
     #[test]

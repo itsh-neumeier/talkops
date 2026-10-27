@@ -11,7 +11,7 @@ use base64::Engine as _;
 use futures_util::{SinkExt, StreamExt};
 use http_body_util::BodyExt;
 use serde_json::{Value, json};
-use talkops_coral_stt::engine::Engine;
+use talkops_coral_stt::engine::{Engine, Priority, Task, TaskKind};
 use talkops_coral_stt::http::{AppState, router};
 use talkops_coral_stt::mock::{self, MockBackend};
 use tokio_tungstenite::tungstenite::Message;
@@ -304,31 +304,62 @@ async fn transcribes_files_with_language_per_segment() {
 #[tokio::test]
 async fn rejects_work_when_overloaded_or_without_tpu() {
     // One slow device and room for one waiting job.
-    let (engine, _) = start(1, 300, 1, 4).await;
+    let (engine, _) = start(1, 500, 1, 4).await;
     let file = wav(&tone(200.0, 2.0, RATE), RATE);
-    let mut tasks = Vec::new();
-    for _ in 0..4 {
-        let app = app(&engine, None);
-        let file = file.clone();
-        tasks.push(tokio::spawn(async move {
-            transcribe(app, &[("model", "coral-ctc-de")], &file, None).await
-        }));
-    }
-    let mut overloaded = 0;
-    for t in tasks {
-        let (status, headers, body) = t.await.unwrap();
-        if status == StatusCode::SERVICE_UNAVAILABLE {
-            overloaded += 1;
-            assert_eq!(headers["retry-after"], "5");
-            assert_eq!(
-                serde_json::from_slice::<Value>(&body).unwrap()["error"]["code"],
-                "overloaded"
-            );
-        } else {
-            assert_eq!(status, StatusCode::OK);
+    let job = || Task {
+        kind: TaskKind::Ctc {
+            language: "de".into(),
+        },
+        features: vec![0.0; 64 * 256],
+        samples: vec![0.1; 1000],
+    };
+    // The device takes the first job, the second one waits in the queue.
+    let running = {
+        let engine = engine.clone();
+        tokio::spawn(async move { engine.run(job(), Priority::File).await })
+    };
+    for _ in 0..250 {
+        if engine.devices()[0].busy {
+            break;
         }
+        tokio::time::sleep(Duration::from_millis(5)).await;
     }
-    assert!(overloaded >= 1, "some requests must be rejected");
+    let waiting = {
+        let engine = engine.clone();
+        tokio::spawn(async move { engine.run(job(), Priority::File).await })
+    };
+    for _ in 0..250 {
+        if engine.queue_status().length == 1 {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(5)).await;
+    }
+    assert_eq!(engine.queue_status().length, 1);
+    // The queue is full: a file request is rejected at once.
+    let (status, headers, body) = transcribe(
+        app(&engine, None),
+        &[("model", "coral-ctc-de")],
+        &file,
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
+    assert_eq!(headers["retry-after"], "5");
+    assert_eq!(
+        serde_json::from_slice::<Value>(&body).unwrap()["error"]["code"],
+        "overloaded"
+    );
+    assert!(running.await.unwrap().is_ok());
+    assert!(waiting.await.unwrap().is_ok());
+    // With free capacity the same request works.
+    let (status, _, _) = transcribe(
+        app(&engine, None),
+        &[("model", "coral-ctc-de")],
+        &file,
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
     engine.shutdown();
 
     let (none, _) = start(0, 0, 4, 4).await;

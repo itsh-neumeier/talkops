@@ -140,6 +140,7 @@ jobs:
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/layout.mjs
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/transcription-settings.mjs
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/coral-transcription.mjs
+          PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/coral-diagnostics.mjs
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/roles.mjs
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/settings-system.mjs
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/phone-network.mjs
@@ -173,6 +174,7 @@ jobs:
           docker compose --env-file ci.env -f docker-compose.yml config -q
           docker compose --env-file ci.env -f docker-compose.yml -f docker-compose.dev.yml config -q
           COMPOSE_PROFILES=coral docker compose --env-file ci.env -f docker-compose.yml config -q
+          TALKOPS_CORAL_TEST_TAG=coral-test-ci COMPOSE_PROFILES=coral docker compose --env-file ci.env -f docker-compose.yml -f docker-compose.coral-test.yml config -q
       - name: Production compose must not build
         run: |
           if grep -nE '^\s+build:' docker-compose.yml; then
@@ -222,3 +224,53 @@ jobs:
       - name: Coral libraries load and the mock service is healthy
         if: matrix.image == 'talkops-coral-stt'
         run: bash tests/coral/image.sh ${{ matrix.image }}:ci
+
+  coral-preview-images:
+    name: Coral trial image (${{ matrix.image }}, amd64)
+    if: github.event_name == 'push' && github.repository == 'itsh-neumeier/talkops' && github.ref == 'refs/heads/codex/coral-stable-preview'
+    needs: [rust, web, documentation, coral-tools, images]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: talkops-server
+            dockerfile: docker/talkops/Dockerfile
+          - image: talkops-media-worker
+            dockerfile: docker/media-worker/Dockerfile
+          - image: talkops-coral-stt
+            dockerfile: docker/coral-stt/Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: trial
+        name: Immutable trial tag
+        run: echo "tag=coral-test-${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64
+          push: true
+          tags: ghcr.io/itsh-neumeier/${{ matrix.image }}:${{ steps.trial.outputs.tag }}
+          build-args: TALKOPS_BUILD_REVISION=${{ github.sha }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=https://github.com/itsh-neumeier/talkops
+            org.opencontainers.image.description=Optional Coral production trial; quality validation pending
+          cache-from: type=gha,scope=${{ matrix.image }}-amd64
+          cache-to: type=gha,scope=${{ matrix.image }}-amd64,mode=max
+      - name: Trial image handoff
+        run: |
+          echo '### Coral trial image (linux/amd64)' >> "$GITHUB_STEP_SUMMARY"
+          echo 'ghcr.io/itsh-neumeier/${{ matrix.image }}:${{ steps.trial.outputs.tag }}' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Source: ${{ github.sha }}. FreeSWITCH remains at 1.8.11. No stable/latest tag is changed.' >> "$GITHUB_STEP_SUMMARY"

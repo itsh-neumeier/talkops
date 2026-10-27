@@ -10,6 +10,7 @@
 
 <script lang="ts">
 	import DiagnosticsCapture from '#lib/components/DiagnosticsCapture.svelte';
+	import CoralDiagnostics from '#lib/components/CoralDiagnostics.svelte';
 	import SystemMaintenance from '#lib/components/SystemMaintenance.svelte';
 	import SystemSessions from '#lib/components/SystemSessions.svelte';
 	import SystemStatus from '#lib/components/SystemStatus.svelte';
@@ -34,6 +35,7 @@
 		<SystemStatus />
 	{:else if tab === 'diagnostics'}
 		<DiagnosticsCapture />
+		<CoralDiagnostics />
 	{:else if tab === 'sessions'}
 		<SystemSessions />
 	{:else}

@@ -125,7 +125,10 @@
 		if (engine === 'cloud' && !p.model) {
 			p.model = isCoral(p) ? 'coral-auto' : 'gpt-transcribe';
 		}
-		if (engine !== 'cloud') p.realtime = false;
+		if (engine !== 'cloud') {
+			p.realtime = false;
+			p.coral_stable_preview = false;
+		}
 	}
 
 	function setProvider(p: TranscriptionProfile, id: string) {
@@ -134,6 +137,7 @@
 		const after = isCoral(p);
 		if (after && !coralModels.includes(p.model)) p.model = 'coral-auto';
 		if (!after && before) {
+			p.coral_stable_preview = false;
 			p.model = 'gpt-transcribe';
 			p.realtime = false;
 		}
@@ -142,6 +146,7 @@
 
 	function setRealtime(p: TranscriptionProfile, on: boolean) {
 		p.realtime = on;
+		if (!on) p.coral_stable_preview = false;
 		if (isCoral(p)) return;
 		if (on && !realtimeModels.includes(p.model)) p.model = realtimeModels[0];
 		if (!on && realtimeModels.slice(0, 2).includes(p.model)) p.model = 'gpt-transcribe';
@@ -157,6 +162,7 @@
 				p.engine = 'local';
 				p.local_model = keep ? p.local_model : 'fast';
 				p.realtime = false;
+				p.coral_stable_preview = false;
 				continue;
 			}
 			p.engine = 'cloud';
@@ -392,6 +398,21 @@
 									>
 								{/if}
 								{#if isCoral(p)}
+									{#if purpose === 'live' && p.realtime}
+										<label class="flex items-start gap-2 text-sm">
+											<input
+												type="checkbox"
+												class="mt-1"
+												bind:checked={p.coral_stable_preview}
+												data-testid="stt-coral-stable-preview"
+											/>
+											<span
+												>{t('stt.coralStablePreview')}<br /><span class="hint"
+													>{t('stt.coralStablePreviewHint')}</span
+												></span
+											>
+										</label>
+									{/if}
 									{#if purpose === 'live'}
 										<p class="hint" data-testid={`${id}-fallback`}>{t('stt.fallbackLive')}</p>
 									{:else}

@@ -1,7 +1,10 @@
 .git
 target
+build/
 web/node_modules
 web/build
 web/.svelte-kit
+web/test-results
+web/playwright-report
 **/*.log
 .env

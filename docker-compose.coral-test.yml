@@ -1,0 +1,9 @@
+# Use with docker-compose.yml for the user-owned trial. No build directives.
+# Only these three services change. FreeSWITCH keeps the released 1.8.11 tag.
+services:
+  talkops:
+    image: ghcr.io/itsh-neumeier/talkops-server:${TALKOPS_CORAL_TEST_TAG:?set the verified coral-test commit tag}
+  media-worker:
+    image: ghcr.io/itsh-neumeier/talkops-media-worker:${TALKOPS_CORAL_TEST_TAG:?set the verified coral-test commit tag}
+  coral-stt:
+    image: ghcr.io/itsh-neumeier/talkops-coral-stt:${TALKOPS_CORAL_TEST_TAG:?set the verified coral-test commit tag}

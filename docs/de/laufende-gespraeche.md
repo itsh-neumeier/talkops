@@ -108,6 +108,35 @@ das Popup *Coral ist gerade nicht verfügbar; lokales Whisper erstellt die
 Vorschau*, und das lokale Modell `base` arbeitet in 8-Sekunden-Stücken
 weiter. Nach 30 Sekunden versucht TalkOps Coral erneut. Das ist kein Fehler.
 
+Administratoren können **Vollständige Wörter anzeigen (experimentell)** im
+Live-Transkriptionsprofil aktivieren, wenn Coral Realtime ausgewählt ist.
+Danach die Engines speichern und eine neue Vorschau öffnen. Standardmäßig
+ist die Option aus. Die Umgebungsvariable `TALKOPS_CORAL_STABLE_PREVIEW` ist
+nur der Standard für direkte Dienst-Clients; TalkOps sendet die gespeicherte
+Profileinstellung für jede Sitzung.
+Dieser Modus hält ein angefangenes Wort zurück, bis weiteres Audio es
+abschließt oder eine Sprechpause den Abschnitt beendet. Modellkontext und
+Pausenerkennung bleiben erhalten. Endgültige Transkripte von Aufnahmen und
+Voicemails ändern sich dadurch nicht.
+
+Beim getesteten deutschen Modell sind ungefähr 4–5 Sekunden Verzögerung
+einzuplanen. Der erste Text kann länger dauern. Das ist eine modellabhängige
+Schätzung und keine garantierte Obergrenze. Die Erkennungsqualität braucht
+noch Verbesserungen. Widerspricht ein späteres Ergebnis einem bereits
+angezeigten Wort, meldet der Stream einen Fehler und TalkOps nutzt den
+vorhandenen Rückfall auf lokales Whisper. Zum Zurückstellen den UI-Schalter
+ausschalten und eine neue Vorschau öffnen.
+
+Für den Produktionstest unter **Einstellungen → System → Diagnose →
+Coral-Transkriptionsdiagnose** vor dem Anruf eine fünfminütige Erfassung
+starten. Die Live-Vorschau offen halten und den Bericht zeitnah herunterladen.
+Er enthält technische Ereignisse, Modell-Hashes, TPU-Zustand,
+Verarbeitungszeiten und verfügbare Rückfallzustände. Der Diagnosepuffer
+speichert kein Audio. Erkannte Texte erfordern eine ausdrückliche Auswahl
+und die Berechtigung für alle Live-Transkripte. Audio kann mit den bestehenden
+Aufzeichnungsberechtigungen separat aus dem aufgezeichneten Anruf geladen
+werden. Siehe die [technische Testanleitung](../research/coral-production-trial.md).
+
 Bei einem Transfer zu einem anderen Gesprächspartner das Popup neu öffnen.
 Die bisherige Vorschau stoppt, damit ihre Sprechernamen nicht dem neuen
 Gesprächspartner zugeordnet werden.

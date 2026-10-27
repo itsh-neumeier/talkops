@@ -37,6 +37,8 @@ const MAX_UPLOAD: usize = 100 * 1024 * 1024;
 pub struct AppState {
     pub engine: Arc<Engine>,
     pub api_key: Option<String>,
+    /// Opt-in complete-word realtime previews. File decoding is unchanged.
+    pub stable_preview: bool,
 }
 
 /// An error in the OpenAI format.
@@ -108,6 +110,11 @@ pub fn router(state: AppState) -> Router {
         .route("/v1/models", get(models))
         .route("/v1/audio/transcriptions", post(transcribe))
         .route("/v1/realtime", get(realtime))
+        .route("/v1/diagnostics", get(diagnostic_report))
+        .route(
+            "/v1/diagnostics/capture",
+            post(diagnostic_start).delete(diagnostic_stop),
+        )
         .layer(DefaultBodyLimit::max(MAX_UPLOAD))
         .with_state(state)
 }
@@ -172,6 +179,70 @@ async fn health(State(state): State<AppState>) -> Response {
         StatusCode::OK
     };
     (code, Json(health)).into_response()
+}
+
+#[derive(Deserialize)]
+struct DiagnosticQuery {
+    scope: String,
+}
+
+#[derive(Deserialize)]
+struct DiagnosticCapture {
+    scope: String,
+    minutes: u32,
+    #[serde(default)]
+    include_text: bool,
+}
+
+async fn diagnostic_report(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(query): Query<DiagnosticQuery>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    authorize(&state, &headers)?;
+    if !crate::diagnostics::valid_scope(&query.scope) {
+        return Err(ApiError::bad_request("invalid diagnostic scope"));
+    }
+    let models: Vec<_> = state.engine.catalog.files().iter().map(|m| json!({"id": m.name,
+        "sha256": m.sha256,
+        "language": m.language, "candidate": m.meta.candidate, "window_frames": m.meta.window_frames,
+        "overlap_frames": m.meta.overlap(), "subsampling": m.meta.subsampling,
+        "window_stride": m.mel.fe.window_stride, "input_layout": m.meta.input_layout})).collect();
+    Ok(Json(
+        json!({"schema_version": 1, "service_version": env!("CARGO_PKG_VERSION"),
+          "service_build_revision": option_env!("TALKOPS_BUILD_REVISION"),
+        "generated_unix_ms": crate::diagnostics::now_ms(), "platform": {"os": std::env::consts::OS, "arch": std::env::consts::ARCH},
+        "stable_preview_default": state.stable_preview, "health": health_of(&state.engine),
+        "models": models, "capture": state.engine.diagnostics.snapshot(&query.scope),
+        "timing_note": "processing and first-output timings; no human-aligned word latency or WER"}),
+    ))
+}
+
+async fn diagnostic_start(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(input): Json<DiagnosticCapture>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    authorize(&state, &headers)?;
+    state
+        .engine
+        .diagnostics
+        .start(&input.scope, input.minutes, input.include_text)
+        .map_err(ApiError::bad_request)?;
+    Ok(Json(state.engine.diagnostics.snapshot(&input.scope)))
+}
+
+async fn diagnostic_stop(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(query): Query<DiagnosticQuery>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    authorize(&state, &headers)?;
+    if !crate::diagnostics::valid_scope(&query.scope) {
+        return Err(ApiError::bad_request("invalid diagnostic scope"));
+    }
+    state.engine.diagnostics.stop(&query.scope);
+    Ok(Json(state.engine.diagnostics.snapshot(&query.scope)))
 }
 
 async fn models(State(state): State<AppState>, headers: HeaderMap) -> Result<Response, ApiError> {
@@ -404,5 +475,7 @@ async fn realtime(
         return Err(err.into());
     };
     let engine = state.engine.clone();
-    Ok(upgrade.on_upgrade(move |socket| crate::realtime::session(socket, engine, guard)))
+    Ok(upgrade.on_upgrade(move |socket| {
+        crate::realtime::session(socket, engine, guard, state.stable_preview)
+    }))
 }

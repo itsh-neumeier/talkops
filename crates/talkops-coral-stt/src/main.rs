@@ -69,6 +69,11 @@ struct Args {
     #[arg(long, env = "TALKOPS_CORAL_SESSIONS_PER_TPU", default_value_t = 4)]
     sessions_per_tpu: usize,
 
+    /// Experimental complete-word live previews; final decoding stays unchanged.
+    #[arg(long, env = "TALKOPS_CORAL_STABLE_PREVIEW", default_value_t = false,
+          action = clap::ArgAction::Set)]
+    stable_preview: bool,
+
     /// Optional key that clients send as `Authorization: Bearer <key>`.
     #[arg(long, env = "TALKOPS_CORAL_API_KEY", hide_env_values = true)]
     api_key: Option<String>,
@@ -183,6 +188,7 @@ async fn main() -> anyhow::Result<()> {
     let state = AppState {
         engine: engine.clone(),
         api_key: args.api_key.filter(|k| !k.is_empty()),
+        stable_preview: args.stable_preview,
     };
     let listener = tokio::net::TcpListener::bind(args.listen)
         .await

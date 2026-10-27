@@ -5,6 +5,10 @@
   measurements and to correct the result afterwards if the gate fails
   (see section 8).
 - Date: 2026-10-24
+- Update 2026-10-27: the user will run the actual Rust-service trial on the
+  production host. The earlier [Python USB comparison](coral-results/20261026-preview-usb/README.md)
+  does not establish the Rust-service gate. Use the
+  [trial and diagnostic guide](coral-production-trial.md) for that handoff.
 - Scope: Phase 0 (feasibility gate) of the task "Coral Edge TPU speech
   recognition for German and English". Phases 2 to 7 (service
   `coral-stt`, integration, fallback, UI, deployment, documentation) are

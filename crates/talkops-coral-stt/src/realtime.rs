@@ -17,6 +17,8 @@
 //! client can fall back.
 
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::Instant;
 
 use axum::extract::ws::{Message, WebSocket};
 use base64::Engine as _;
@@ -36,6 +38,8 @@ struct Open {
     turn: Turn,
     /// Text already sent as deltas.
     sent: String,
+    started: Instant,
+    samples: usize,
 }
 
 struct Session {
@@ -47,7 +51,15 @@ struct Session {
     open: Option<Open>,
     items: u64,
     previous: Option<String>,
+    stable_preview: bool,
+    diagnostic_scope: String,
+    diagnostic_preview: String,
+    diagnostic_channel: Option<u64>,
+    diagnostic_session: String,
+    diagnostic_worker_revision: String,
 }
+
+static NEXT_SESSION: AtomicU64 = AtomicU64::new(1);
 
 fn error_event(code: &str, message: &str) -> Value {
     json!({"type": "error", "error": {"type": "server_error", "code": code, "message": message}})
@@ -62,8 +74,23 @@ fn engine_code(err: &EngineError) -> &'static str {
     }
 }
 
+fn check_prefix(sent: &str, text: &str) -> Result<(), EngineError> {
+    if sent.is_empty()
+        || text == sent
+        || text
+            .strip_prefix(sent)
+            .is_some_and(|rest| rest.starts_with(' '))
+    {
+        Ok(())
+    } else {
+        Err(EngineError::Failed(
+            "a published preview word changed".into(),
+        ))
+    }
+}
+
 impl Session {
-    fn new(engine: Arc<Engine>) -> Self {
+    fn new(engine: Arc<Engine>, stable_preview: bool) -> Self {
         let languages = engine.catalog.languages();
         Self {
             engine,
@@ -74,6 +101,16 @@ impl Session {
             open: None,
             items: 0,
             previous: None,
+            stable_preview,
+            diagnostic_scope: String::new(),
+            diagnostic_preview: String::new(),
+            diagnostic_channel: None,
+            diagnostic_session: format!(
+                "{}-{}",
+                crate::diagnostics::now_ms(),
+                NEXT_SESSION.fetch_add(1, Ordering::Relaxed)
+            ),
+            diagnostic_worker_revision: String::new(),
         }
     }
 
@@ -86,7 +123,8 @@ impl Session {
             "type": "transcription",
             "audio": {"input": {
                 "format": {"type": "audio/pcm", "rate": self.rate},
-                "transcription": {"model": self.model, "languages": languages},
+                "transcription": {"model": self.model, "languages": languages,
+                                  "stable_preview": self.stable_preview},
                 "turn_detection": null,
             }}
         })
@@ -117,6 +155,33 @@ impl Session {
             ));
         }
         let t = &input["transcription"];
+        if let Some(value) = t["stable_preview"].as_bool() {
+            if self.open.is_some() && value != self.stable_preview {
+                return vec![error_event(
+                    "invalid_value",
+                    "change preview mode between turns",
+                )];
+            }
+            self.stable_preview = value;
+        }
+        if let Some(scope) = t["diagnostic_scope"].as_str() {
+            if !crate::diagnostics::valid_scope(scope) {
+                return vec![error_event("invalid_value", "invalid diagnostic scope")];
+            }
+            self.diagnostic_scope = scope.into();
+        }
+        self.diagnostic_preview = t["diagnostic_preview"]
+            .as_str()
+            .unwrap_or_default()
+            .chars()
+            .take(64)
+            .collect();
+        self.diagnostic_channel = t["diagnostic_channel"].as_u64().filter(|v| *v < 2);
+        self.diagnostic_worker_revision = t["diagnostic_worker_revision"]
+            .as_str()
+            .filter(|value| value.len() == 40 && value.bytes().all(|byte| byte.is_ascii_hexdigit()))
+            .unwrap_or("unknown")
+            .to_owned();
         let mut languages: Vec<String> = t["languages"]
             .as_array()
             .map(|a| {
@@ -178,14 +243,27 @@ impl Session {
                 item,
                 turn,
                 sent: String::new(),
+                started: Instant::now(),
+                samples: 0,
             });
         }
         let Some(open) = self.open.as_mut() else {
             return Ok(Vec::new());
         };
         open.turn.push(&samples).await?;
+        open.samples += samples.len();
         let mut out = Vec::new();
-        if let Some(text) = open.turn.partial()
+        let partial = if self.stable_preview {
+            open.turn.stable_partial()
+        } else {
+            open.turn.partial()
+        };
+        if self.stable_preview
+            && let Some(text) = &partial
+        {
+            check_prefix(&open.sent, text)?;
+        }
+        if let Some(text) = partial
             && text.len() > open.sent.len()
             && text.starts_with(&open.sent)
         {
@@ -198,6 +276,10 @@ impl Session {
                 "type": "conversation.item.input_audio_transcription.delta",
                 "item_id": open.item, "content_index": 0, "delta": delta,
             }));
+            self.engine.diagnostics.record(&self.diagnostic_scope, &self.diagnostic_session, "preview_latency",
+                json!({"preview": self.diagnostic_preview, "channel": self.diagnostic_channel,
+                    "first_output": open.sent.is_empty(), "turn_elapsed_ms": open.started.elapsed().as_secs_f64() * 1000.0,
+                    "available_audio_secs": open.samples as f64 / f64::from(MODEL_RATE)}), None);
             open.sent = text;
         }
         Ok(out)
@@ -213,6 +295,8 @@ impl Session {
                 item: self.new_item(),
                 turn: Turn::new(self.engine.clone(), self.choice.clone(), Priority::Live)?,
                 sent: String::new(),
+                started: Instant::now(),
+                samples: 0,
             },
         };
         let mut out = vec![json!({
@@ -223,6 +307,9 @@ impl Session {
         let mut turn = open.turn;
         turn.push(&tail).await?;
         let decoded = turn.finish().await?;
+        if self.stable_preview {
+            check_prefix(&open.sent, &decoded.text)?;
+        }
         out.push(json!({
             "type": "conversation.item.input_audio_transcription.completed",
             "item_id": open.item, "content_index": 0,
@@ -241,7 +328,9 @@ impl Session {
         let Ok(v) = serde_json::from_str::<Value>(text) else {
             return Ok(vec![error_event("invalid_json", "the event is not JSON")]);
         };
-        match v["type"].as_str().unwrap_or_default() {
+        let started = Instant::now();
+        let kind = v["type"].as_str().unwrap_or_default();
+        let result = match kind {
             "session.update" | "transcription_session.update" => Ok(self.update(&v)),
             "input_audio_buffer.append" => {
                 self.append(v["audio"].as_str().unwrap_or_default()).await
@@ -252,14 +341,54 @@ impl Session {
                 "unknown_event",
                 &format!("unsupported event type `{other}`"),
             )]),
+        };
+        let event_type = match kind {
+            "session.update" | "transcription_session.update" => "session_update",
+            "input_audio_buffer.append" => "append",
+            "input_audio_buffer.commit" => "commit",
+            "input_audio_buffer.clear" => "clear",
+            _ => "unknown_event",
+        };
+        let mut details = json!({"preview": self.diagnostic_preview, "channel": self.diagnostic_channel,
+            "worker_build_revision": self.diagnostic_worker_revision,
+            "model": self.model, "rate": self.rate, "stable_preview": self.stable_preview,
+            "processing_ms": started.elapsed().as_secs_f64() * 1000.0});
+        details["queue"] = json!(self.engine.queue_status());
+        if let Err(error) = &result {
+            details["error_code"] = json!(engine_code(error));
+            details["error"] = json!(error.to_string().chars().take(512).collect::<String>());
         }
+        self.engine.diagnostics.record(
+            &self.diagnostic_scope,
+            &self.diagnostic_session,
+            event_type,
+            details,
+            None,
+        );
+        if let Ok(events) = &result {
+            for event in events {
+                let text = event["transcript"]
+                    .as_str()
+                    .or_else(|| event["delta"].as_str());
+                self.engine.diagnostics.record(&self.diagnostic_scope, &self.diagnostic_session, "server_event",
+                    json!({"preview": self.diagnostic_preview, "channel": self.diagnostic_channel,
+                        "type": event["type"], "item_id": event["item_id"], "language": event["language"],
+                        "characters": text.map(str::len), "error_code": event["error"]["code"]}), text);
+            }
+        }
+        result
     }
 }
 
 /// Runs one session until the client closes it or an engine error ends it.
-pub async fn session(socket: WebSocket, engine: Arc<Engine>, guard: SessionGuard) {
+pub async fn session(
+    socket: WebSocket,
+    engine: Arc<Engine>,
+    guard: SessionGuard,
+    stable_preview: bool,
+) {
     let (mut tx, mut rx) = socket.split();
-    let mut session = Session::new(engine);
+    let mut session = Session::new(engine, stable_preview);
     let created = json!({"type": "session.created", "session": session.config()});
     if tx
         .send(Message::Text(created.to_string().into()))
@@ -296,4 +425,21 @@ pub async fn session(socket: WebSocket, engine: Arc<Engine>, guard: SessionGuard
         }
     }
     drop(guard);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn committed_preview_requires_complete_unchanged_words() {
+        for text in ["", "hallo", "grüße"] {
+            assert!(check_prefix("", text).is_ok());
+        }
+        assert!(check_prefix("grüße", "grüße zurück").is_ok());
+        assert!(check_prefix("hallo", "hallo").is_ok());
+        for text in ["", "hall", "hallob", "hello welt"] {
+            assert!(check_prefix("hallo", text).is_err());
+        }
+    }
 }

@@ -62,6 +62,7 @@ pub fn catalog(langid: bool) -> Catalog {
         name: name.into(),
         language: language.map(str::to_owned),
         path: PathBuf::from("mock"),
+        sha256: None,
         meta: m,
         mel: mel.clone(),
     };

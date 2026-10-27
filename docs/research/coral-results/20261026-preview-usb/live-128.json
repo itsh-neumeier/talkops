@@ -1,0 +1,45 @@
+{
+  "kind": "continuous_stable_preview",
+  "device": "usb:0",
+  "channels": 2,
+  "manifest_sha256": "dd9df0d8fd2ee2f1db4c62c6305ea75377f78ae04a15a16305381cae0fd0a15a",
+  "model_sha256": "694931801d196734efd6b5ed5deeba2b0152462656325a611e8f33700095fa14",
+  "padding_frames": 128,
+  "padding_secs": 1.28,
+  "minimum_audio_secs_per_channel": 120.0,
+  "wall_secs": 123.98147610100568,
+  "source_secs_per_channel": [
+    123.228,
+    121.728
+  ],
+  "wer": 0.4679245283018868,
+  "reference_words": 265,
+  "word_edits": 124,
+  "first_speech_to_first_text_secs": {
+    "p50": 3.6435,
+    "p95": 4.9961,
+    "max": 5.5553
+  },
+  "estimated_word_end_to_text_secs": {
+    "p50": 3.0166,
+    "p95": 4.1611,
+    "max": 5.8519
+  },
+  "first_nonempty_text_secs_per_channel": [
+    4.360137981006119,
+    4.191911915004312
+  ],
+  "missing_utterances": 0,
+  "reference_utterances": 41,
+  "backlog_secs": 0.3702262420002427,
+  "max_input_lag_secs": 0.18328140900848666,
+  "cpu_cores": 0.1780104632890476,
+  "tpu_busy_share": 0.12234224394684247,
+  "timing_definitions": "first speech: fixed 20ms RMS proxy; word times: CTC estimates; no word-aligned ground truth",
+  "audio_preparation_included_in_cpu": false,
+  "network_latency_included": false,
+  "prefix_revisions": 0,
+  "reset_on_pause": false,
+  "first_text_timing_observations": 41,
+  "word_timing_observations": 224
+}

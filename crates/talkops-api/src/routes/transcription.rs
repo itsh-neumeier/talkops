@@ -85,7 +85,8 @@ pub async fn update_profiles(
         .iter()
         .map(|p| {
             json!({"purpose": p.purpose, "engine": p.engine, "local_model": p.local_model,
-                   "provider_id": p.provider_id, "model": p.model, "realtime": p.realtime})
+                   "provider_id": p.provider_id, "model": p.model, "realtime": p.realtime,
+                   "coral_stable_preview": p.coral_stable_preview})
         })
         .collect();
     audit::record(
@@ -184,7 +185,7 @@ pub struct ApiTest {
     pub coral: Option<serde_json::Value>,
 }
 
-fn client() -> &'static reqwest::Client {
+pub(super) fn client() -> &'static reqwest::Client {
     static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
     CLIENT.get_or_init(|| {
         talkops_doorbell::ensure_tls_provider();

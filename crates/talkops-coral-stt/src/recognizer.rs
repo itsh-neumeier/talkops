@@ -154,6 +154,50 @@ impl Stream {
             .join(" ")
     }
 
+    /// Complete words from immutable centre frames. Keep the open last
+    /// word until a space closes it or the client commits the turn.
+    pub fn stable_partial(&self) -> String {
+        let Some(last) = self.outputs.len().checked_sub(1) else {
+            return String::new();
+        };
+        let meta = &self.model.meta;
+        let end = last * (meta.window_frames - meta.overlap()) + meta.window_frames;
+        let keep = end - (meta.overlap() - meta.overlap() / 2);
+        let rows = ctc::stitch(
+            &self.outputs,
+            meta.window_frames,
+            meta.overlap(),
+            end,
+            meta.subsampling,
+        );
+        let ids: Vec<usize> = rows
+            .iter()
+            .take(keep.div_ceil(meta.subsampling))
+            .map(|row| ctc::argmax(row))
+            .collect();
+        let blank = meta.classes_with_blank() - 1;
+        let mut words = ctc::collapse(
+            &ids,
+            &meta.labels,
+            blank,
+            self.model.mel.fe.window_stride * meta.subsampling as f32,
+        );
+        let closed = ids
+            .iter()
+            .rev()
+            .find(|&&id| id != blank)
+            .and_then(|&id| meta.labels.get(id))
+            .is_some_and(|label| label == " ");
+        if !closed {
+            words.pop();
+        }
+        words
+            .iter()
+            .map(|word| word.word.as_str())
+            .collect::<Vec<_>>()
+            .join(" ")
+    }
+
     /// Runs the rest of the audio and decodes the turn.
     pub async fn finish(&mut self, engine: &Engine) -> Result<Decoded, EngineError> {
         if self.samples.is_empty() {
@@ -296,6 +340,14 @@ impl Turn {
         }
     }
 
+    /// Conservative preview, after the language of the turn is known.
+    pub fn stable_partial(&self) -> Option<String> {
+        match self.streams.as_slice() {
+            [one] => Some(one.stable_partial()),
+            _ => None,
+        }
+    }
+
     pub async fn finish(mut self) -> Result<Decoded, EngineError> {
         if self.streams.is_empty() {
             if self.buffer.is_empty() {
@@ -327,5 +379,69 @@ impl Turn {
             .or_else(|| results.iter().position(|d| d.confidence == best))
             .unwrap_or(0);
         Ok(results.swap_remove(pick))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn stream(ids: &[usize]) -> Stream {
+        let mut model = crate::mock::catalog(false).ctc.remove(0);
+        model.meta.labels = [" ", "a", "b"].map(str::to_owned).to_vec();
+        model.meta.window_frames = 8;
+        model.meta.overlap_frames = Some(4);
+        model.meta.subsampling = 1;
+        let mut stream = Stream::new(model, Priority::Live);
+        stream.outputs.push(matrix(ids));
+        stream
+    }
+
+    fn matrix(ids: &[usize]) -> Matrix {
+        let data = ids
+            .iter()
+            .flat_map(|&id| (0..4).map(move |k| if k == id { 0.0 } else { -10.0 }))
+            .collect();
+        Matrix::new(ids.len(), 4, data)
+    }
+
+    #[test]
+    fn stable_preview_holds_an_open_word_and_ignores_unstable_space() {
+        let mut s = stream(&[1, 2, 3, 3, 3, 3, 0, 3]);
+        assert_eq!(s.stable_partial(), "");
+        // The next window confirms the closing space at global frame 6.
+        s.outputs.push(matrix(&[3, 3, 0, 3, 3, 3, 3, 3]));
+        assert_eq!(s.stable_partial(), "ab");
+        assert_eq!(s.decode(12).text, "ab");
+    }
+
+    #[test]
+    fn stable_preview_publishes_a_closed_word_but_holds_the_next_word() {
+        let s = stream(&[1, 0, 2, 3, 3, 3, 1, 0]);
+        assert_eq!(s.stable_partial(), "a");
+    }
+
+    #[test]
+    fn stable_previews_remain_prefixes_across_windows_and_final_decode() {
+        let ids: Vec<usize> = [1, 2, 0, 3].into_iter().cycle().take(40).collect();
+        for length in 8..=40 {
+            let mut s = stream(&ids[..8]);
+            let mut previous = String::new();
+            for (start, end) in ctc::windows(length, 8, 4) {
+                if end <= length {
+                    if start > 0 {
+                        s.outputs.push(matrix(&ids[start..end]));
+                    }
+                    let partial = s.stable_partial();
+                    assert!(partial.starts_with(&previous));
+                    previous = partial;
+                } else {
+                    let mut tail = ids[start..length].to_vec();
+                    tail.resize(8, 3);
+                    s.outputs.push(matrix(&tail));
+                }
+            }
+            assert!(s.decode(length).text.starts_with(&previous));
+        }
     }
 }

@@ -78,6 +78,7 @@ impl Purpose {
             provider_id: None,
             model: String::new(),
             realtime: false,
+            coral_stable_preview: false,
             price_per_minute: None,
             list_price: None,
             provider_kind: None,
@@ -123,6 +124,9 @@ pub struct Profile {
     /// Live only: stream over the Realtime API.
     #[serde(default)]
     pub realtime: bool,
+    /// Coral realtime only: hold open words until the model closes them.
+    #[serde(default)]
+    pub coral_stable_preview: bool,
     /// Own price per audio minute; `null` = list price.
     #[serde(default)]
     pub price_per_minute: Option<f64>,
@@ -144,6 +148,7 @@ pub enum Engine {
         provider_id: Uuid,
         model: String,
         realtime: bool,
+        coral_stable_preview: bool,
         /// Price per audio minute, if known.
         price: Option<f64>,
         /// The coral-stt service on this server (ADR 0046): no usage, and
@@ -163,7 +168,7 @@ struct Row {
 }
 
 const SELECT: &str = "SELECT p.purpose, p.engine, p.local_model, p.provider_id, p.model, \
-                      p.realtime, p.price_per_minute, NULL::float8 AS list_price, tp.kind \
+                      p.realtime, p.coral_stable_preview, p.price_per_minute, NULL::float8 AS list_price, tp.kind \
                       FROM transcription_profiles p \
                       LEFT JOIN transcription_providers tp \
                         ON tp.tenant_id = p.tenant_id AND tp.id = p.provider_id \
@@ -230,6 +235,11 @@ fn check(profile: &Profile) -> CoreResult<Purpose> {
     if profile.realtime && (purpose != Purpose::Live || profile.engine != "cloud") {
         return invalid("only a cloud live preview can stream");
     }
+    if profile.coral_stable_preview
+        && (purpose != Purpose::Live || profile.engine != "cloud" || !profile.realtime)
+    {
+        return invalid("complete-word preview requires a Coral realtime live profile");
+    }
     if let Some(price) = profile.price_per_minute
         && !(price.is_finite() && (0.0..=10.0).contains(&price))
     {
@@ -258,13 +268,27 @@ pub async fn update(
     let mut tx = pool.begin().await?;
     for p in profiles {
         let cloud = p.engine == "cloud";
+        if p.coral_stable_preview {
+            let kind: Option<String> = sqlx::query_scalar(
+                "SELECT kind FROM transcription_providers WHERE tenant_id = $1 AND id = $2",
+            )
+            .bind(tenant)
+            .bind(p.provider_id)
+            .fetch_optional(&mut *tx)
+            .await?;
+            if kind.as_deref() != Some("coral") {
+                return Err(CoreError::Validation(
+                    "complete-word preview requires a Coral connection".into(),
+                ));
+            }
+        }
         sqlx::query(
             "INSERT INTO transcription_profiles
-                 (tenant_id, purpose, engine, local_model, provider_id, model, realtime, price_per_minute)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                 (tenant_id, purpose, engine, local_model, provider_id, model, realtime, price_per_minute, coral_stable_preview)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
              ON CONFLICT (tenant_id, purpose) DO UPDATE SET engine = $3, local_model = $4,
                  provider_id = $5, model = $6, realtime = $7, price_per_minute = $8,
-                 updated_at = now()",
+                 coral_stable_preview = $9, updated_at = now()",
         )
         .bind(tenant)
         .bind(&p.purpose)
@@ -274,6 +298,7 @@ pub async fn update(
         .bind(if cloud { p.model.trim() } else { "" })
         .bind(p.realtime && cloud)
         .bind(if cloud { p.price_per_minute } else { None })
+        .bind(p.coral_stable_preview)
         .execute(&mut *tx)
         .await?;
     }
@@ -310,6 +335,7 @@ fn to_engine(p: &Profile) -> Option<Engine> {
                 provider_id,
                 model: p.model.clone(),
                 realtime: p.realtime,
+                coral_stable_preview: coral && p.coral_stable_preview,
                 price: if coral {
                     None
                 } else {
@@ -468,6 +494,7 @@ mod tests {
                 provider_id: Uuid::nil(),
                 model: "gpt-transcribe".into(),
                 realtime: false,
+                coral_stable_preview: false,
                 price: Some(0.0045),
                 coral: false,
                 fallback: None,
@@ -491,6 +518,7 @@ mod tests {
                 provider_id: Uuid::nil(),
                 model: "coral-auto".into(),
                 realtime: false,
+                coral_stable_preview: false,
                 price: None,
                 coral: true,
                 fallback: Some(TranscriptionQuality::Accurate),

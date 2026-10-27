@@ -11,6 +11,7 @@
 pub mod audio;
 pub mod ctc;
 pub mod devices;
+pub mod diagnostics;
 pub mod engine;
 pub mod features;
 mod fft;

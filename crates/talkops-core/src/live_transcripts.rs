@@ -13,6 +13,16 @@ use crate::tenant::TenantId;
 pub const JOB: &str = "transcribe.live";
 pub const MAX_SEGMENTS: usize = 200;
 
+/// Bounded technical state for a tenant's support report. No call identities
+/// or transcript contents are selected. Normal preview retention still applies.
+pub async fn diagnostic_states(
+    pool: &PgPool,
+    tenant: TenantId,
+) -> CoreResult<Vec<serde_json::Value>> {
+    Ok(sqlx::query_scalar("SELECT jsonb_build_object('preview_id', id, 'processed_secs', processed_secs, 'engine', engine, 'fallback_from', fallback_from, 'stream_failed_at', stream_failed_at) FROM live_transcript_previews WHERE tenant_id = $1 AND requested_at > now() - interval '1 hour' ORDER BY requested_at DESC LIMIT 20")
+        .bind(tenant).fetch_all(pool).await?)
+}
+
 #[derive(Debug, Clone, FromRow, Serialize, utoipa::ToSchema)]
 pub struct Preview {
     pub id: Uuid,

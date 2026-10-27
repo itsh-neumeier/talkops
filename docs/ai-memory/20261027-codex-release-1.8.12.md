@@ -119,3 +119,13 @@ keep all connection, runtime, fallback and permission assertions unchanged.
 No product behavior changed by this correction. New complete CI/E2E required.
 Clean local npm ci, lint, check (zero errors/warnings) and build also passed.
 All source PR checks have now passed; PR84 E2E finished successfully.
+## Native architecture gate
+
+Add a native Coral arm64 row to the existing CI image matrix. The source trial
+images only proved amd64. This new fourth image must build and pass its existing
+library/mock smoke on arm64 before any release tag is pushed. Existing server,
+worker and Coral amd64 checks stay. All image jobs pass their explicit platform
+and exact build revision; per-image/per-architecture cache scopes stay separate.
+The normal Release build also checks its actual Coral digest on both platforms.
+No physical TPU, quality or deployment claim. Candidate e7fb60c is superseded
+only by this stronger CI/release validation contract and task record.

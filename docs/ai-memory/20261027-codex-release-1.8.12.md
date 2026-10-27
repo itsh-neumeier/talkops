@@ -8,7 +8,7 @@
 - Status: In progress
 - Branch: codex/release-1.8.12
 - Base commit: f8bdfb37cf3f7705d7fbbaf63d6bd6148caba400
-- Related PR: Pending
+- Related PR: https://github.com/itsh-neumeier/talkops/pull/85
 
 ## Goal and scope
 
@@ -129,3 +129,21 @@ and exact build revision; per-image/per-architecture cache scopes stay separate.
 The normal Release build also checks its actual Coral digest on both platforms.
 No physical TPU, quality or deployment claim. Candidate e7fb60c is superseded
 only by this stronger CI/release validation contract and task record.
+## Merged checkpoint
+
+- Final candidate: b6c6f6b225bf6712e91138617dbdf718a1673b29.
+- All 22 required checks passed. Two branch-only trial publication contexts skipped.
+  PR CI40510106255/E2E40510106360; push CI40510095619/E2E40510095618.
+  Rust 558 passed, two model/runtime tests ignored. Web 86 tests/25 browser suites.
+  Docs 13 tests/75 pages/688 links; Coral tools 25 tests. Native Coral amd64/arm64
+  libraries/mock smoke passed. Server/worker/Coral reported 1.8.12.
+- PR82 retargeted to main after validation; exact source head unchanged.
+  PR85 and source PR81/82/84 merged at 2026-10-27T13:45:30Z.
+- Exact-main target: 3603ed56b0073a1dd23646622cf4fb0284644ab7. Its tree equals
+  the candidate. All three agreed source heads are ancestors. Rules/source scope
+  unchanged before merge; only unchanged draft PR61 remains open.
+- Main CI40514888617 and E2E40514888443 started. No tag pushed. Do not push the
+  merged batch branch again. Archive final task-only changes separately.
+- Next: wait for both exact-main gates; publish unused v1.8.12 once; verify
+  four amd64/arm64 image manifests, eight configs and moving tags. Coral remains
+  explicitly experimental; no hardware/quality acceptance is claimed.

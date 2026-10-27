@@ -1,6 +1,6 @@
 # Call map markers and emergency call alerts
 
-- State: Proposal. User review is required before product changes.
+- State: Approved by the user on 2026-10-27. Implementation is in this branch.
 - Date: 2026-10-27 (Europe/Berlin).
 - Base: `origin/main`, `f8bdfb37cf3f7705d7fbbaf63d6bd6148caba400` (1.8.11).
 - Preview: [Interactive review mockup](../mockups/call-map-emergency.html).
@@ -9,8 +9,10 @@
 
 The user requested map previews, distinct mobile markers and an email alert
 when an extension dials an emergency number. The user also requested a review
-before implementation. This contribution contains a proposal and a mockup.
-It does not change the application, database or mail delivery.
+before implementation. The user then approved the device design and alarm.
+This document records the accepted specification. The task summary records
+implementation and check results. The final label correction is
+"DE ohne Ortsbezug" instead of "DE Mobil".
 
 ## Current behavior
 
@@ -49,15 +51,14 @@ The new groups must add up to the same 149 calls.
 The user supplied a second reference on 2026-10-27. It replaces the earlier
 proposal to keep local area markers circular. Use a desk phone for local
 areas and a smartphone for mobile groups. Each device has a circular pie
-in its display. The user reference is a design correction, not approval to
-implement the application or the emergency alert.
+in its display. The user approved implementation after review of this correction.
 
 The mockup has two density previews. **Devices with counts** shows four
 category counts beside each marker. **Compact devices** uses the same device
 shapes and shows exact counts in the hover/focus preview. Use the first density
 when markers have sufficient space. On narrow screens or with overlapping
 markers, use the compact density. Keep place labels and the mobile country
-label, such as "DE Mobile", visible. Apply this rule to all countries.
+label, such as "DE without local area", visible. Apply this rule to all countries.
 
 Keep the map theme consistent with TalkOps. Subtle circular bases can anchor
 the devices. Do not infer call routes from the decorative dashed lines in
@@ -152,9 +153,8 @@ Use tenant ID, `calls.emergency_dialed` and the originating call UUID as the
 idempotency key. Add a forward migration with a partial unique index on
 `notification_events(tenant_id, event_type, source)` for this event only.
 Use `ON CONFLICT DO NOTHING` in its producer. Do not change other producers.
-Reserve the timestamp ID only when implementation starts, after checking
-remote migrations and concurrent contributions. No migration ID is allocated
-in this proposal.
+The allocated migration ID is `20261113000001_emergency_dial_alert.sql`.
+The remote main branch and concurrent contributions were checked first.
 
 The existing worker has no guaranteed SMTP retry delivery. This proposal
 reuses its delivery log and failure behavior. Event deduplication does not
@@ -219,13 +219,13 @@ Also run the handbook checks: `node tests/docs/wiki.mjs` and
 - Dependencies: existing map and notification features are on the base.
   Open PRs #61, #81 and #82 have no identified dependency for this proposal.
   Recheck this at implementation time.
-- Migration IDs: none in this contribution. One event-deduplication index
-  migration is proposed. Allocate its ID during implementation.
-- Upgrade: proposal only. A later feature upgrade is additive, with the new
+- Migration IDs: `20261113000001_emergency_dial_alert.sql`, the partial
+  event-deduplication index.
+- Upgrade: additive, with the new
   emergency rule disabled and existing combined map filter links supported.
 - Suggested future release notes, only after implementation:
   - "Preview call counts and duration before selecting a map marker."
   - "Distinguish local areas, mobile numbers and other numbers without a local area."
   - "Configure email alerts to users or roles when an extension dials an emergency number."
 - Release version, target merges, tags and publication belong to the release
-  manager. This draft must not be released as an implemented feature.
+  manager. Mark the PR ready only after implementation checks pass.

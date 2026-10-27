@@ -60,6 +60,31 @@ Click **Edit** next to an event:
 **Send test** sends a sample mail to the recipients of the saved rule.
 **Reset to default** restores the default values.
 
+## Emergency dialing alerts
+
+In **Settings > Notifications > Calls**, edit **Emergency number dialed**.
+This rule is disabled after an upgrade. Select users, roles or email addresses,
+then enable the rule and save. The administrator role is the default recipient.
+Selected users and active members of selected roles need an email address.
+The settings show a hint if SMTP is not configured.
+
+The rule covers attempts by authenticated extensions, including the browser
+softphone, and transfers by a resolved extension. It uses the configured
+emergency numbers. An unavailable trunk or an unanswered call does not cancel
+the alert. The message includes the extension, dialed number, attempt time
+in the tenant time zone and call UUID. It confirms a dialing attempt only.
+
+This event has no delay, digest, recovery mail or hourly suppression. Repeated
+processing of the same call does not create another event. The worker normally
+processes the event in its next five-second cycle. SMTP and mailbox delivery
+can take longer. Storage or mail failures do not reject the call. Inspect the
+delivery log for missing recipients, missing SMTP and failures. The existing
+worker does not guarantee retries after a failure or crash.
+
+**Send test** sends synthetic notification data only. It does not dial a
+number. Use this action to check delivery; do not place a real emergency call
+to test the rule. Recipients receive extension and call details.
+
 ## Log
 
 The card **Notification log** shows the last 100 events and the last 100

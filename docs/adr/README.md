@@ -50,6 +50,7 @@ nächste freie Nummer; überholte ADRs werden nicht gelöscht, sondern auf
 | [0043](0043-wifi-handset-band-and-roaming.md) | Wi-Fi handset roaming threshold and band protection | Accepted |
 | [0044](0044-call-origin-map-and-number-geolocation.md) | Call origin map and number geolocation | Accepted |
 | [0045](0045-outbound-dialing-permissions.md) | Outbound dialing permissions | Accepted |
+| [0047](0047-call-map-device-markers-and-emergency-alerts.md) | Call map device markers and emergency dialing alerts | Accepted |
 
 
 Vorlage: [`template.md`](template.md)

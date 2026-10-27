@@ -78,6 +78,7 @@ impl Severity {
 
 /// Event categories in the order of the settings page.
 pub const CATEGORIES: &[&str] = &[
+    "calls",
     "trunks",
     "freeswitch",
     "devices",
@@ -90,6 +91,7 @@ pub const CATEGORIES: &[&str] = &[
 /// Category name in the mail (index 0 = de, 1 = en).
 pub fn category_label(category: &str, lang: usize) -> &'static str {
     let names: [&str; 2] = match category {
+        "calls" => ["Telefonie", "Calls"],
         "trunks" => ["Trunks", "Trunks"],
         "freeswitch" => ["FreeSWITCH", "FreeSWITCH"],
         "devices" => ["Geräte", "Devices"],
@@ -173,6 +175,14 @@ use Severity::{Critical, Info, Warning};
 
 /// All event types.
 pub const CATALOG: &[EventDef] = &[
+    ev(
+        EMERGENCY_DIALED,
+        "calls",
+        Critical,
+        "Notrufnummer {number} von Nebenstelle {extension} gewählt",
+        "Emergency number {number} dialed by extension {extension}",
+    )
+    .off(),
     // Trunks
     ev(
         "trunk.down",
@@ -697,6 +707,34 @@ pub async fn emit_logged(
     }
 }
 
+pub const EMERGENCY_DIALED: &str = "calls.emergency_dialed";
+
+/// Durable deduplication of XML lookup retries. No SMTP runs in this path.
+pub async fn emergency_dialed(
+    pool: &PgPool,
+    tenant: TenantId,
+    call: Uuid,
+    extension: &str,
+    display_name: &str,
+    number: &str,
+) -> CoreResult<()> {
+    sqlx::query(
+        "INSERT INTO notification_events (tenant_id, event_type, source, severity, params)
+         VALUES ($1, 'calls.emergency_dialed', $2, 'critical', $3)
+         ON CONFLICT (tenant_id, event_type, source)
+         WHERE event_type = 'calls.emergency_dialed' DO NOTHING",
+    )
+    .bind(tenant)
+    .bind(call.to_string())
+    .bind(
+        serde_json::json!({"extension": extension, "name": display_name,
+        "number": number, "call_uuid": call, "status": "Dialing attempt"}),
+    )
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
 /// Remembers the address of a login. True if the user logged in before,
 /// but never from this address.
 pub async fn new_login_address(
@@ -785,7 +823,7 @@ pub fn default_rule(d: &EventDef, admin_role: Option<Uuid>) -> Rule {
         recipient_roles: admin_role.into_iter().collect(),
         recipient_emails: Vec::new(),
         delay_secs: d.delay_secs,
-        send_recovery: true,
+        send_recovery: d.key != EMERGENCY_DIALED,
         digest_secs: d.digest_secs,
         rate_limit_per_hour: 20,
         custom: false,
@@ -903,6 +941,19 @@ pub async fn save_rule(
     if foreign > 0 {
         return Err(CoreError::Validation("unknown user or role".into()));
     }
+    if d.key == EMERGENCY_DIALED && input.enabled {
+        let candidate = Rule {
+            recipient_users: input.recipient_users.clone(),
+            recipient_roles: input.recipient_roles.clone(),
+            recipient_emails: emails.clone(),
+            ..default_rule(d, None)
+        };
+        if recipients(pool, tenant, &candidate).await?.is_empty() {
+            return Err(CoreError::Validation(
+                "emergency alert needs an active recipient with an email address".into(),
+            ));
+        }
+    }
     let sql = format!(
         "INSERT INTO notification_rules (tenant_id, event_type, enabled, min_severity,
              recipient_users, recipient_roles, recipient_emails, delay_secs, send_recovery,
@@ -921,9 +972,17 @@ pub async fn save_rule(
         .bind(&input.recipient_users)
         .bind(&input.recipient_roles)
         .bind(&emails)
-        .bind(input.delay_secs)
-        .bind(input.send_recovery)
-        .bind(input.digest_secs)
+        .bind(if d.key == EMERGENCY_DIALED {
+            0
+        } else {
+            input.delay_secs
+        })
+        .bind(d.key != EMERGENCY_DIALED && input.send_recovery)
+        .bind(if d.key == EMERGENCY_DIALED {
+            0
+        } else {
+            input.digest_secs
+        })
         .bind(input.rate_limit_per_hour)
         .fetch_one(pool)
         .await?)
@@ -991,6 +1050,9 @@ pub fn decide(d: &EventDef, rule: &Rule, severity: Severity, open: Option<AlertS
     let min = Severity::parse(&rule.min_severity).unwrap_or(Severity::Info);
     if !rule.enabled || severity < min {
         return Decision::Ignore;
+    }
+    if d.key == EMERGENCY_DIALED {
+        return Decision::SendNow;
     }
     if d.recovery.is_some() {
         if open.is_some() {
@@ -1299,6 +1361,19 @@ mod tests {
             );
         }
         assert_eq!(problems_of("trunk.up").count(), 2);
+    }
+
+    #[test]
+    fn emergency_alert_is_opt_in_and_never_delayed_or_digested() {
+        let d = def(EMERGENCY_DIALED).unwrap();
+        let mut r = default_rule(d, None);
+        assert!(!r.enabled);
+        assert!(!r.send_recovery);
+        assert_eq!(decide(d, &r, Severity::Critical, None), Decision::Ignore);
+        r.enabled = true;
+        r.delay_secs = 3600;
+        r.digest_secs = 3600;
+        assert_eq!(decide(d, &r, Severity::Critical, None), Decision::SendNow);
     }
 
     #[test]

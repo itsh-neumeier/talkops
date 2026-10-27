@@ -149,6 +149,23 @@ async fn call(router: &axum::Router, ext: &Value, dest: &str) -> Vec<(String, St
     call_with(router, ext, dest, &[]).await
 }
 
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn emergency_alert_storage_failure_does_not_block_the_call(db: PgPool) {
+    let router = geo_router(db.clone());
+    let f = fixture(&router).await;
+    // Simulate a broken alert insert without changing routing tables.
+    sqlx::query("DROP INDEX notification_emergency_call_once")
+        .execute(&db)
+        .await
+        .unwrap();
+    let uuid = Uuid::new_v4().to_string();
+    let a = call_with(&router, &f.ext20, "112", &[("variable_uuid", &uuid)]).await;
+    assert!(
+        goes_out(&a, &f.gw),
+        "notification storage must not reject emergency routing: {a:?}"
+    );
+}
+
 /// A blind transfer (SIP REFER) of a call to `dest`.
 async fn transfer(
     router: &axum::Router,

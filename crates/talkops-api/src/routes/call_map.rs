@@ -102,12 +102,21 @@ pub enum AreaKind {
     None,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, utoipa::ToSchema)]
+#[serde(rename_all = "lowercase")]
+pub enum MarkerKind {
+    Area,
+    Mobile,
+    Unlocated,
+}
+
 /// A bubble of the map, or an entry without a location.
 #[derive(Serialize, utoipa::ToSchema)]
 pub struct MapArea {
-    /// Geo area ID (`DE-951`), `<country>-none` or `none` (unknown country).
+    /// Geo area ID, `<country>-mobile`, `<country>-unlocated`, or `none`.
     pub id: String,
     pub kind: AreaKind,
+    pub marker_kind: MarkerKind,
     /// ISO country code; `None` when the country is unknown.
     pub country: Option<String>,
     pub name: String,
@@ -183,14 +192,21 @@ pub enum Place<'g> {
 }
 
 impl Place<'_> {
-    /// The ID of the bubble or list entry (`DE-951`, `DE-none`, `none`).
+    /// The ID of the marker or list entry.
     pub fn id(&self) -> Option<String> {
         match self {
             Place::Anonymous => None,
             Place::Area(a) => Some(a.id.clone()),
-            Place::NoLocation(Some(a), _) => Some(format!("{}-none", a.country)),
+            Place::NoLocation(Some(a), GeoKind::Mobile) => Some(format!("{}-mobile", a.country)),
+            Place::NoLocation(Some(a), _) => Some(format!("{}-unlocated", a.country)),
             Place::NoLocation(None, _) => Some("none".into()),
         }
+    }
+
+    /// Old combined country links continue to include both new groups.
+    fn matches(&self, id: &str) -> bool {
+        self.id().as_deref() == Some(id)
+            || matches!(self, Place::NoLocation(Some(a), _) if id == format!("{}-none", a.country))
     }
 }
 
@@ -280,7 +296,7 @@ pub async fn area_call_ids(
     Ok(rows
         .iter()
         .take(cdr::WINDOW_LIMIT as usize)
-        .filter(|c| place(directory, &state.geo, c).id().as_deref() == Some(area))
+        .filter(|c| place(directory, &state.geo, c).matches(area))
         .map(|c| c.id)
         .collect())
 }
@@ -379,6 +395,11 @@ fn new_area(id: String, place: &Place<'_>) -> MapArea {
     MapArea {
         id,
         kind,
+        marker_kind: match place {
+            Place::Area(_) => MarkerKind::Area,
+            Place::NoLocation(Some(_), GeoKind::Mobile) => MarkerKind::Mobile,
+            _ => MarkerKind::Unlocated,
+        },
         country: geo.map(|a| a.country.clone()),
         name: geo.map(|a| a.name.clone()).unwrap_or_default(),
         prefix: geo.map(|a| a.prefix.clone()).unwrap_or_default(),

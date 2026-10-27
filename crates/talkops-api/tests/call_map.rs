@@ -194,7 +194,7 @@ async fn counts_external_calls_by_area_category_range_and_scope(db: PgPool) {
     assert_eq!(status, StatusCode::OK, "{hour}");
     assert_eq!(hour["range"], "1h");
     assert_eq!(hour["truncated"], false);
-    assert_eq!(ids(&hour), ["DE-951", "DE-none", "none"]);
+    assert_eq!(ids(&hour), ["DE-951", "DE-mobile", "none"]);
     let bamberg = area(&hour, "DE-951").unwrap();
     assert_eq!(bamberg["kind"], "area");
     assert_eq!(bamberg["name"], "Bamberg");
@@ -204,7 +204,8 @@ async fn counts_external_calls_by_area_category_range_and_scope(db: PgPool) {
     assert_eq!(bamberg["counts"]["missed"], 0, "61 minutes ago");
     assert_eq!(bamberg["billsec"], 60);
     assert_eq!(bamberg["calls"][0]["caller"]["name"], "Bäckerei Bamberg");
-    let mobile = area(&hour, "DE-none").unwrap();
+    let mobile = area(&hour, "DE-mobile").unwrap();
+    assert_eq!(mobile["marker_kind"], "mobile");
     assert_eq!(mobile["kind"], "none");
     assert_eq!(mobile["counts"]["blocked"], 1);
     assert_eq!(mobile["mobile"], 1);
@@ -294,7 +295,7 @@ async fn counts_external_calls_by_area_category_range_and_scope(db: PgPool) {
     let user = login(&router, "user", "user-password").await.unwrap();
     let (status, mine) = user.get("/api/v1/calls/map?range=1w").await;
     assert_eq!(status, StatusCode::OK);
-    assert_eq!(ids(&mine), ["AT-1", "DE-951", "DE-none"]);
+    assert_eq!(ids(&mine), ["AT-1", "DE-951", "DE-mobile"]);
     assert_eq!(area(&mine, "DE-951").unwrap()["counts"]["missed"], 0);
     assert_eq!(area(&mine, "DE-951").unwrap()["total"], 1);
     let (_, rows) = user.get(&query("DE-951")).await;
@@ -310,6 +311,67 @@ async fn counts_external_calls_by_area_category_range_and_scope(db: PgPool) {
 
 fn urlencode(text: &str) -> String {
     text.replace('+', "%2B").replace(':', "%3A")
+}
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn separates_mobile_from_other_country_calls_and_keeps_legacy_links(db: PgPool) {
+    let geo =
+        format!("{GEO}A\tAT-mobile\tAT\tmobile\t47.5\t14\t43\tAustria\nP\t43664\tAT-mobile\n");
+    let router = talkops_api::app(
+        state(db.clone()).with_geo(GeoIndex::from_files([("test.tsv", geo.as_str())]).unwrap()),
+        None,
+    );
+    let admin = setup_admin(&router).await;
+    let (_, ext) = admin
+        .post(
+            "/api/v1/extensions",
+            json!({"number":"101", "display_name":"Office"}),
+        )
+        .await;
+    let own = Uuid::parse_str(ext["id"].as_str().unwrap()).unwrap();
+    for (uuid, caller, billsec) in [
+        ("mobile", "+49171234567", 60),
+        ("other", "+49800123456", 20),
+        ("foreign-mobile", "+43664123456", 30),
+    ] {
+        insert(
+            &db,
+            Call {
+                uuid,
+                caller,
+                billsec,
+                direction: Direction::Inbound,
+                destination: "101",
+                extension: own,
+                minutes_ago: 1,
+                answered: true,
+                blocked: None,
+            },
+        )
+        .await;
+    }
+    let (_, map) = admin.get("/api/v1/calls/map").await;
+    assert_eq!(map["total"], 3);
+    assert_eq!(ids(&map), ["AT-mobile", "DE-mobile", "DE-unlocated"]);
+    assert_eq!(area(&map, "DE-mobile").unwrap()["billsec"], 60);
+    assert_eq!(
+        area(&map, "DE-unlocated").unwrap()["marker_kind"],
+        "unlocated"
+    );
+    assert_eq!(area(&map, "DE-unlocated").unwrap()["mobile"], 0);
+    assert_eq!(area(&map, "AT-mobile").unwrap()["marker_kind"], "mobile");
+    for (id, count) in [
+        ("DE-none", 2),
+        ("DE-mobile", 1),
+        ("DE-unlocated", 1),
+        ("AT-none", 1),
+    ] {
+        let (_, rows) = admin.get(&format!("/api/v1/calls?area={id}")).await;
+        assert_eq!(rows.as_array().unwrap().len(), count, "{id}: {rows}");
+    }
+    let (_, filtered) = admin.get("/api/v1/calls/map?categories=outbound").await;
+    assert_eq!(filtered["total"], 0);
+    assert!(filtered["areas"].as_array().unwrap().is_empty());
 }
 
 #[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]

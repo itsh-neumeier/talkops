@@ -55,10 +55,12 @@ const fixtures = {
     max_logo_bytes: 262144
   },
   '/api/v1/settings/notifications': {
-    categories: ['trunks', 'backup'],
-    event_types: [{ key: 'trunk.down', category: 'trunks', severity: 'warning', recovery: 'trunk.up', implemented: true }, { key: 'backup.failed', category: 'backup', severity: 'critical', recovery: null, implemented: true }, { key: 'trunk.outbound_failures', category: 'trunks', severity: 'warning', recovery: null, implemented: false }],
-    rules: ['trunk.down', 'backup.failed', 'trunk.outbound_failures'].map((event_type) => ({ event_type, enabled: true, min_severity: 'info', recipient_users: ['u1'], recipient_roles: [], recipient_emails: ['verkehrsausscheidungsziffer-langname@example.com'], delay_secs: 120, send_recovery: true, digest_secs: 0, rate_limit_per_hour: 20, custom: false }))
+    smtp_configured: false,
+    categories: ['calls', 'trunks', 'backup'],
+    event_types: [{ key: 'calls.emergency_dialed', category: 'calls', severity: 'critical', recovery: null, implemented: true }, { key: 'trunk.down', category: 'trunks', severity: 'warning', recovery: 'trunk.up', implemented: true }, { key: 'backup.failed', category: 'backup', severity: 'critical', recovery: null, implemented: true }, { key: 'trunk.outbound_failures', category: 'trunks', severity: 'warning', recovery: null, implemented: false }],
+    rules: ['calls.emergency_dialed', 'trunk.down', 'backup.failed', 'trunk.outbound_failures'].map((event_type) => ({ event_type, enabled: event_type !== 'calls.emergency_dialed', min_severity: 'info', recipient_users: ['u1'], recipient_roles: [], recipient_emails: ['verkehrsausscheidungsziffer-langname@example.com'], delay_secs: 0, send_recovery: false, digest_secs: 0, rate_limit_per_hour: 20, custom: false }))
   },
+  '/api/v1/roles': { roles: [{ id: 'r-admin', name: 'Administrators', builtin: 'admin', permissions: [], description: '' }], permissions: [] },
   '/api/v1/settings/notifications/log': {
     events: [{ id: 1, event_type: 'trunk.down', source: 'gw-0123456789abcdef0123456789abcdef', severity: 'warning', params: {}, created_at: now }],
     deliveries: [{ id: 1, event_type: 'trunk.down', kind: 'alert', subject: long, recipients: ['verkehrsausscheidungsziffer-langname@example.com', 'administrator.mustermann@example.com'], status: 'failed', error: long, event_count: 1, created_at: now }]
@@ -100,6 +102,16 @@ try {
     for (const route of routes) {
       await page.goto(BASE + route); await page.locator('main h1').first().waitFor({ timeout: 20_000 });
       await page.waitForTimeout(300);
+      if (route === '/settings#notifications') {
+        const row = page.locator('li').filter({ has: page.getByText('Notrufnummer gewählt', { exact: true }) });
+        await row.locator('button[aria-expanded]').click();
+        const form = row.locator('form');
+        assert.match(await form.textContent(), /Ohne Verzögerung, Zusammenfassung oder stündliche Begrenzung/);
+        assert.equal(await form.locator('#n-rate').count(), 0);
+        assert.equal(await form.locator('#n-digest').count(), 0);
+        assert.equal(await form.locator('input[type=checkbox]').first().isChecked(), false);
+        assert.match(await page.locator('main').textContent(), /SMTP ist nicht eingerichtet/);
+      }
       const geometry = await page.evaluate(() => ({ width: innerWidth, scroll: document.documentElement.scrollWidth, title: document.querySelector('main h1')?.textContent?.trim(),
         overflow: [...document.querySelectorAll('main *')].filter(el => el.getBoundingClientRect().right > innerWidth + 1 && !el.closest('.scroll-x')).slice(0, 5).map(el => `${el.tagName}.${String(el.className).slice(0, 40)}`) }));
       assert.ok(geometry.scroll <= geometry.width, `${route} @${width} ${theme}: ${JSON.stringify(geometry)}`);

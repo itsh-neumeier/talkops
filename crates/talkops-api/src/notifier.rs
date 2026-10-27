@@ -88,6 +88,8 @@ pub fn values(
     let at = last.map(|e| e.created_at).unwrap_or_else(Utc::now);
     let mut v = Values::new();
     let status = match (kind, i) {
+        (Kind::Alert, 0) if rule_def.key == n::EMERGENCY_DIALED => "Wählversuch",
+        (Kind::Alert, _) if rule_def.key == n::EMERGENCY_DIALED => "Dialing attempt",
         (Kind::Recovery, 0) => "Behoben",
         (Kind::Recovery, _) => "Resolved",
         (Kind::Digest, 0) => "Zusammenfassung",
@@ -219,6 +221,7 @@ async fn send_to_recipients(
         return Ok((outcome("no_recipients", &[], None), String::new()));
     }
     if kind != Kind::Test
+        && rule.event_type != n::EMERGENCY_DIALED
         && n::sent_last_hour(db, tenant, &rule.event_type).await?
             >= i64::from(rule.rate_limit_per_hour)
     {
@@ -687,6 +690,137 @@ pub fn spawn(db: PgPool, secrets: SecretBox, media: Arc<MediaPaths>) {
 
 #[cfg(test)]
 mod tests {
+
+    #[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+    async fn emergency_delivery_is_immediate_and_bypasses_hourly_suppression(db: PgPool) {
+        use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+        let tenant = TenantId::DEFAULT;
+        let secrets =
+            SecretBox::from_hex("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f")
+                .unwrap();
+        let d = n::def(n::EMERGENCY_DIALED).unwrap();
+        let call = uuid::Uuid::new_v4();
+        n::emergency_dialed(&db, tenant, call, "21", "Office", "112")
+            .await
+            .unwrap();
+        let events = n::claim_events(&db, 50).await.unwrap();
+        handle(&db, &secrets, &events[0]).await.unwrap();
+        assert!(
+            n::deliveries(&db, tenant, 10).await.unwrap().is_empty(),
+            "disabled by default"
+        );
+        let input = serde_json::from_value(
+            json!({"enabled":true,"recipient_emails":["ops@example.com"],"rate_limit_per_hour":1}),
+        )
+        .unwrap();
+        n::save_rule(&db, tenant, d, &input).await.unwrap();
+        n::log_delivery(
+            &db,
+            tenant,
+            &NewDelivery {
+                event_type: n::EMERGENCY_DIALED,
+                kind: "alert",
+                subject: "earlier",
+                recipients: &["ops@example.com".into()],
+                status: "sent",
+                error: None,
+                event_count: 1,
+            },
+        )
+        .await
+        .unwrap();
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        talkops_core::mail::update(
+            &db,
+            tenant,
+            &secrets,
+            &talkops_core::mail::SmtpInput {
+                host: "127.0.0.1".into(),
+                port: listener.local_addr().unwrap().port().into(),
+                security: "none".into(),
+                username: String::new(),
+                password: None,
+                from: "pbx@example.com".into(),
+            },
+        )
+        .await
+        .unwrap();
+        let smtp = tokio::spawn(async move {
+            let mut messages = Vec::new();
+            for _ in 0..2 {
+                let (stream, _) = listener.accept().await.unwrap();
+                let (read, mut write) = stream.into_split();
+                let mut read = BufReader::new(read);
+                write.write_all(b"220 fixture ESMTP\r\n").await.unwrap();
+                let mut body = String::new();
+                let mut data = false;
+                loop {
+                    let mut line = String::new();
+                    if read.read_line(&mut line).await.unwrap() == 0 {
+                        break;
+                    }
+                    if data {
+                        if line == ".\r\n" {
+                            write.write_all(b"250 queued\r\n").await.unwrap();
+                            break;
+                        }
+                        body.push_str(&line);
+                    } else if line.starts_with("DATA") {
+                        write.write_all(b"354 send data\r\n").await.unwrap();
+                        data = true;
+                    } else if line.starts_with("EHLO") {
+                        write
+                            .write_all(b"250-fixture\r\n250 8BITMIME\r\n")
+                            .await
+                            .unwrap();
+                    } else {
+                        write.write_all(b"250 OK\r\n").await.unwrap();
+                    }
+                }
+                messages.push(body);
+            }
+            messages
+        });
+        for _ in 0..2 {
+            n::emergency_dialed(&db, tenant, uuid::Uuid::new_v4(), "21", "Office", "112")
+                .await
+                .unwrap();
+        }
+        let events = n::claim_events(&db, 50).await.unwrap();
+        for e in &events {
+            handle(&db, &secrets, e).await.unwrap();
+        }
+        let messages = tokio::time::timeout(Duration::from_secs(10), smtp)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(messages.len(), 2);
+        assert!(
+            messages
+                .iter()
+                .all(|m| m.contains("112") && m.contains("Office"))
+        );
+        assert!(
+            n::claim_events(&db, 50).await.unwrap().is_empty(),
+            "processed events are not replayed after worker restart"
+        );
+        let log = n::deliveries(&db, tenant, 10).await.unwrap();
+        assert_eq!(
+            log.iter().filter(|d| d.status == "sent").count(),
+            3,
+            "hourly limit does not suppress emergency calls"
+        );
+        // SMTP now refuses connections: log the failure without affecting routing.
+        n::emergency_dialed(&db, tenant, uuid::Uuid::new_v4(), "21", "Office", "112")
+            .await
+            .unwrap();
+        let events = n::claim_events(&db, 50).await.unwrap();
+        handle(&db, &secrets, &events[0]).await.unwrap();
+        assert_eq!(
+            n::deliveries(&db, tenant, 1).await.unwrap()[0].status,
+            "failed"
+        );
+    }
     use super::*;
     use serde_json::json;
 
@@ -752,6 +886,28 @@ mod tests {
         assert_eq!(v["event.count"], "2");
         assert_eq!(v["event.digest"].lines().count(), 2);
         assert!(v["event.digest"].contains("System settings: smtp update (admin)"));
+    }
+
+    #[test]
+    fn emergency_mail_status_is_a_dialing_attempt() {
+        let d = n::def(n::EMERGENCY_DIALED).unwrap();
+        let mut e = event(1, json!({"extension":"21","number":"112"}));
+        e.event_type = n::EMERGENCY_DIALED.into();
+        assert_eq!(
+            values(
+                d,
+                d,
+                Kind::Alert,
+                std::slice::from_ref(&e),
+                "de",
+                "Europe/Berlin"
+            )["event.status"],
+            "Wählversuch"
+        );
+        assert_eq!(
+            values(d, d, Kind::Alert, std::slice::from_ref(&e), "en", "UTC")["event.status"],
+            "Dialing attempt"
+        );
     }
 
     #[test]

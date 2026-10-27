@@ -9,7 +9,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE?.replace(/index\.mjs$
 const browser = await chromium.launch({ headless: true, ...(process.env.BROWSER_EXECUTABLE ? { executablePath: process.env.BROWSER_EXECUTABLE } : {}) });
 const base = process.env.BASE || 'http://127.0.0.1:5184';
 try {
-  const context = await browser.newContext({ locale: 'de-DE', timezoneId: 'Europe/Berlin', reducedMotion: 'reduce', viewport: { width: 1280, height: 900 } });
+  const context = await browser.newContext({ hasTouch: true, locale: 'de-DE', timezoneId: 'Europe/Berlin', reducedMotion: 'reduce', viewport: { width: 1280, height: 900 } });
   await context.addInitScript(() => { localStorage.setItem('talkops.locale', 'de'); localStorage.setItem('talkops.gettingStarted.hidden', '1'); });
   const page = await context.newPage();
   const errors = []; page.on('pageerror', error => errors.push(error.message));
@@ -34,7 +34,7 @@ try {
     areas: [
       { id: 'DE-951', kind: 'area', country: 'DE', name: 'Bamberg', prefix: '+49 951', lat: 49.89, lon: 10.89, counts: counts(2, 1, 0, 0), total: 3, billsec: 150, mobile: 0, service: 0, unresolved: 0,
         calls: [call('a'), call('b'), call('c', { answered_at: null, billsec: 0, hangup_cause: 'NO_ANSWER' })] },
-      { id: 'DE-none', kind: 'none', country: 'DE', name: 'Germany', prefix: '+49', lat: 50.96, lon: 9.68, counts: counts(0, 0, 0, 1), total: 1, billsec: 0, mobile: 1, service: 0, unresolved: 0,
+      { id: 'DE-mobile', kind: 'none', marker_kind: 'mobile', country: 'DE', name: 'Germany', prefix: '+49', lat: 50.96, lon: 9.68, counts: counts(0, 0, 0, 1), total: 1, billsec: 0, mobile: 1, service: 0, unresolved: 0,
         calls: [call('m', { caller_number: '+491711234567', caller: { name: '', number: '+491711234567', extension_id: null, ambiguous: false }, answered_at: null, billsec: 0, blocked_reason: 'phoneblock:3' })] }
     ],
     sources: [{ file: 'de.tsv', title: 'Germany', source: 'BNetzA', license: '© Bundesnetzagentur', updated: '2026-10-23' }]
@@ -75,7 +75,21 @@ try {
 
   // Keyboard: focus the Bamberg bubble, Enter opens the details, Esc closes them.
   const bamberg = page.getByRole('button', { name: /Bamberg \+49 951: 3 Anrufe/ });
+  assert.equal(await bamberg.locator('.call-device-keys b').count(), 9, 'desk phone keypad');
+  const mobile = page.getByRole('button', { name: /DE ohne Ortsbezug \+49: 1 Anrufe/ });
+  assert.equal(await mobile.locator('.call-device-mobile').count(), 1, 'smartphone country marker');
+  await mobile.hover();
+  const preview = page.getByRole('region', { name: 'Markervorschau' });
+  await preview.waitFor();
+  assert.match(await preview.textContent(), /DE ohne Ortsbezug/);
+  assert.match(await preview.textContent(), /Nur Landeszuordnung/);
+  assert.equal(await page.locator('#call-map-popup-title').count(), 0, 'hover does not select');
   await bamberg.focus();
+  assert.match(await preview.textContent(), /Bamberg/);
+  assert.match(await preview.textContent(), /Gesamtdauer\s*2:30/);
+  assert.ok(!((await preview.textContent()).includes('Bäckerei')), 'no individual contact details in preview');
+  await page.keyboard.press('Escape');
+  await preview.waitFor({ state: 'detached' });
   await page.keyboard.press('Enter');
   const details = page.locator('section[aria-labelledby="call-map-popup-title"]');
   await details.waitFor();
@@ -87,6 +101,12 @@ try {
   const href = new URL(await link.getAttribute('href'), base);
   assert.equal(href.searchParams.get('range'), '1w');
   assert.equal(href.searchParams.get('area'), 'DE-951');
+  await mobile.hover();
+  await preview.waitFor();
+  assert.equal(await details.count(), 1, 'hover preserves the selected details');
+  await page.keyboard.press('Escape');
+  await preview.waitFor({ state: 'detached' });
+  assert.equal(await details.count(), 1, 'Escape dismisses preview before selection');
   await page.keyboard.press('Escape');
   await details.waitFor({ state: 'detached' });
 
@@ -156,6 +176,12 @@ try {
   await page.goto(`${base}/calls?view=map`);
   await bubbles.first().waitFor({ timeout: 20_000 });
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1), 'no sideways scrolling');
+  await mobile.tap();
+  await preview.waitFor();
+  assert.equal(await details.count(), 0, 'touch previews before selection');
+  await preview.getByRole('button', { name: 'Details öffnen' }).tap();
+  await details.waitFor();
+  assert.match(await details.locator('h2').textContent(), /DE ohne Ortsbezug/);
 
   assert.deepEqual(foreign, [], 'no request to another host without a tile URL');
 

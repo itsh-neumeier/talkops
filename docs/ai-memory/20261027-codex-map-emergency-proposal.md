@@ -8,7 +8,8 @@
 - Status: In progress. Proposal is complete; user review precedes implementation.
 - Branch: `codex/map-emergency-proposal`
 - Base commit: `f8bdfb37cf3f7705d7fbbaf63d6bd6148caba400` (remote main, 1.8.11)
-- Related commits or PR: Pending draft PR creation.
+- Related commits or PR: [Draft PR #84](https://github.com/itsh-neumeier/talkops/pull/84),
+  proposal commit `817b2955da1a061bd9d9853de0c77af7f4dc14ac`.
 
 ## Goal
 
@@ -20,7 +21,7 @@ email alerts. Obtain user feedback before application changes.
 Prepared a technical proposal and two interactive marker designs. Added a
 sample emergency alert editor and email preview. The browser checks pass.
 Application code, dependencies, database migrations and release metadata
-are unchanged. Commit, push and a draft PR are authorized.
+are unchanged. The proposal is committed, pushed and published as draft PR #84.
 
 ## Changes
 
@@ -81,7 +82,7 @@ are unchanged. Commit, push and a draft PR are authorized.
 
 ## Next action
 
-Publish the proposal as a draft PR and ask for review. After user approval,
+Wait for user feedback on draft PR #84 and the chat mockup. After user approval,
 implement the accepted design, add feature tests and bilingual user docs,
 run relevant CI checks and update the PR. The release chat owns integration,
 version changes, tags and publication.

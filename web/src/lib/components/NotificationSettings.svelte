@@ -245,6 +245,9 @@
 <div class="card space-y-4">
 	<h2>{t('notif.title')}</h2>
 	<p class="text-sm text-slate-600 dark:text-slate-300">{t('notif.hint')}</p>
+	{#if view?.smtp_configured === false}<p class="hint text-amber-700 dark:text-amber-300">
+			{t('notif.smtpMissing')}
+		</p>{/if}
 	<ErrorBox {error} />
 	{#if info}<p class="text-sm text-emerald-700 dark:text-emerald-400">{info}</p>{/if}
 	{#if view}
@@ -261,7 +264,12 @@
 										type="checkbox"
 										checked={r?.enabled ?? false}
 										disabled={!e.implemented}
-										onchange={(ev) => quickToggle(e.key, ev.currentTarget.checked)}
+										onchange={(ev) => {
+											const input = ev.currentTarget;
+											void quickToggle(e.key, input.checked).finally(() => {
+												input.checked = rule(e.key)?.enabled ?? false;
+											});
+										}}
 									/>
 									<span class="min-w-0">
 										<span class="block">{eventLabel(e.key)}</span>
@@ -287,6 +295,9 @@
 									class="mt-3 space-y-3 rounded-lg bg-slate-50 p-3 dark:bg-slate-800/50"
 									onsubmit={save}
 								>
+									{#if e.key === 'calls.emergency_dialed'}<p class="hint">
+											{t('notif.emergencyHint')}
+										</p>{/if}
 									<label class="flex items-center gap-2 font-medium"
 										><input type="checkbox" bind:checked={draft.enabled} />
 										{t('notif.enabled')}</label
@@ -300,17 +311,17 @@
 												{/each}
 											</select>
 										</div>
-										<div>
-											<label for="n-rate">{t('notif.rateLimit')}</label>
-											<input
-												id="n-rate"
-												class="input"
-												type="number"
-												min="1"
-												max="1000"
-												bind:value={draft.rate_limit_per_hour}
-											/>
-										</div>
+										{#if e.key !== 'calls.emergency_dialed'}<div>
+												<label for="n-rate">{t('notif.rateLimit')}</label>
+												<input
+													id="n-rate"
+													class="input"
+													type="number"
+													min="1"
+													max="1000"
+													bind:value={draft.rate_limit_per_hour}
+												/>
+											</div>{/if}
 										{#if isProblem(e)}
 											<div>
 												<label for="n-delay">{t('notif.delay')}</label>
@@ -328,7 +339,7 @@
 												><input type="checkbox" bind:checked={draft.send_recovery} />
 												{t('notif.sendRecovery')}</label
 											>
-										{:else}
+										{:else if e.key !== 'calls.emergency_dialed'}
 											<div>
 												<label for="n-digest">{t('notif.digest')}</label>
 												<input
@@ -338,6 +349,7 @@
 													min="0"
 													max="86400"
 													bind:value={draft.digest_secs}
+													disabled={e.key === 'calls.emergency_dialed'}
 												/>
 												<p class="hint">{t('notif.digestHint')}</p>
 											</div>

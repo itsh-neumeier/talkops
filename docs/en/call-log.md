@@ -92,11 +92,11 @@ same map.
   blocked / spam (violet). Click a category to hide or show it. The number
   next to it is the count in the time range. Internal calls are not on the
   map.
-- **Bubbles**: one bubble for each local network area or place. The area
-  of a bubble grows with the number of calls. The segments show the
-  categories. Mobile numbers, service numbers (for example 0800, 0180) and
-  numbers without a known area form one bubble "Mobile / no location" for
-  each country (dashed border).
+- **Markers**: one desk phone for each local area or place. The display pie
+  grows with the number of calls; its segments show the categories. Each
+  country has separate smartphone and square groups for mobile numbers and
+  service/other numbers without a known local area. Their country position
+  is not the caller location.
 - **Details**: click a bubble, or select it with the Tab key and press
   Enter. The panel shows the area, the prefix (for example
   `Bamberg · +49 951`), the country, the totals for each category, the
@@ -191,6 +191,28 @@ the list has only the calls of that map area.
 returns the map data: for each area the position, name, prefix, counts for
 each category, total talk time and the 20 newest calls, plus the anonymous
 counts and the data sources.
+
+## Device markers and previews
+
+Local areas use a desk-phone marker with a category pie in its display.
+Mobile groups use a smartphone. Their label is the country code followed
+by **without local area**, for example **DE without local area**. Service
+and other numbers without an area use a separate square marker. The same
+shapes apply to all countries. The country position is not a caller location.
+
+Hover over a marker or focus it with the keyboard to see category counts,
+the current range, total calls and talk duration before selection. The preview
+does not show individual phone numbers or contact names. Counts appear beside
+markers when there is enough space. Dense maps and small screens use previews.
+
+Click a marker or press Enter or Space to open its detailed call panel. On a
+touch device, tap for the preview and select **Open details**. Escape closes
+the preview. Category changes and refreshed data update the statistics.
+The dashboard uses the same marker shapes and previews.
+
+The API adds `marker_kind` (`area`, `mobile`, `unlocated`). New country IDs
+are `DE-mobile` and `DE-unlocated`, for example. Old `DE-none` call-list
+filter links still include both groups. Existing local area IDs stay unchanged.
 
 ## Blocked calls and whitelist exceptions
 

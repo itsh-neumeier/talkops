@@ -42,13 +42,20 @@ pub struct CallRequest {
 impl CallRequest {
     pub fn from_params(params: &HashMap<String, String>) -> Self {
         let get = |k: &str| params.get(k).cloned().unwrap_or_default();
-        let vars = params
+        let mut vars: HashMap<String, String> = params
             .iter()
             .filter_map(|(k, v)| {
                 k.strip_prefix("variable_")
                     .map(|k| (k.to_owned(), v.clone()))
             })
             .collect();
+        if !vars.contains_key("uuid")
+            && let Some(id) = params
+                .get("Unique-ID")
+                .or_else(|| params.get("Caller-Unique-ID"))
+        {
+            vars.insert("uuid".into(), id.clone());
+        }
         Self {
             context: get("Caller-Context"),
             destination: get("Caller-Destination-Number"),
@@ -643,6 +650,7 @@ async fn plan_internal(r: &Routing<'_>, req: &CallRequest) -> CoreResult<Vec<Act
     }
     let dial_plan = settings.dial_plan();
     let dialed = dial_plan.classify(&dest);
+    notify_emergency(pool, tenant, &caller, req, &dialed).await;
     // Emergency calls are never checked (ADR 0045).
     if let Some(reason) =
         profile_blocks(r, tenant, caller.dialing_profile_id, &dial_plan, &dialed).await?
@@ -1693,6 +1701,9 @@ async fn transfer_external(
         None => None,
     };
     let own = transferor.as_ref().and_then(|e| e.dialing_profile_id);
+    if let Some(caller) = &transferor {
+        notify_emergency(r.pool, tenant, caller, req, &dialed).await;
+    }
     if let Some(reason) = profile_blocks(r, tenant, own, &dial_plan, &dialed).await? {
         tracing::info!(
             extension = transferor.as_ref().map(|e| e.number.as_str()).unwrap_or("unknown"),
@@ -1733,6 +1744,38 @@ async fn transfer_external(
 /// Destinations may point to each other (group → fallback → menu …); this
 /// bounds the chain so misconfigurations cannot loop.
 const MAX_DEPTH: u8 = 5;
+
+/// Alert on an authenticated dialing attempt even when no outbound route exists.
+async fn notify_emergency(
+    pool: &PgPool,
+    tenant: TenantId,
+    caller: &Extension,
+    req: &CallRequest,
+    dialed: &Dialed,
+) {
+    let Dialed::Emergency(number) = dialed else {
+        return;
+    };
+    let Some(call) = req.uuid_var("uuid") else {
+        tracing::warn!("emergency attempt without a call UUID; alert not stored");
+        return;
+    };
+    let result = tokio::time::timeout(
+        std::time::Duration::from_millis(250),
+        talkops_core::notifications::emergency_dialed(
+            pool,
+            tenant,
+            call,
+            &caller.number,
+            &caller.display_name,
+            number,
+        ),
+    )
+    .await;
+    if !matches!(result, Ok(Ok(()))) {
+        tracing::warn!("cannot store emergency dialing alert; call routing continues");
+    }
+}
 
 type Planned<'a> =
     std::pin::Pin<Box<dyn std::future::Future<Output = CoreResult<Vec<Action>>> + Send + 'a>>;

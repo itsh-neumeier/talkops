@@ -449,6 +449,8 @@ export interface MapArea {
 	id: string;
 	/** `area`: a local network area or place; `none`: no location below the country. */
 	kind: 'area' | 'none';
+	/** Device shape; optional for cached responses from earlier servers. */
+	marker_kind?: 'area' | 'mobile' | 'unlocated';
 	/** ISO country code; `null` when the country is unknown. */
 	country: string | null;
 	name: string;
@@ -1028,6 +1030,7 @@ export interface NotificationRule {
 }
 
 export interface NotificationsView {
+	smtp_configured?: boolean;
 	categories: string[];
 	event_types: NotificationEventType[];
 	rules: NotificationRule[];

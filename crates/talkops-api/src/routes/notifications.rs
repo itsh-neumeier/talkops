@@ -41,6 +41,7 @@ pub struct EventTypeView {
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct NotificationsView {
+    pub smtp_configured: bool,
     pub categories: Vec<&'static str>,
     /// Configurable event types (no recovery events), in display order.
     pub event_types: Vec<EventTypeView>,
@@ -88,6 +89,10 @@ pub async fn get_notifications(
     let order = |c: &str| n::CATEGORIES.iter().position(|x| *x == c).unwrap_or(99);
     event_types.sort_by_key(|e| order(e.category));
     Ok(Json(NotificationsView {
+        smtp_configured: !talkops_core::mail::get(&state.db, auth.tenant)
+            .await?
+            .host
+            .is_empty(),
         categories: n::CATEGORIES.to_vec(),
         event_types,
         rules: n::rules(&state.db, auth.tenant).await?,
@@ -160,7 +165,10 @@ pub async fn test_rule(
         event_type: d.key.to_owned(),
         source: String::new(),
         severity: d.severity.as_str().to_owned(),
-        params: json!({"name": "Test", "user": "test", "ip": "192.0.2.1", "error": "test",
+        params: json!({"name": "Test", "extension": "21", "number": "112",
+                       "call_uuid": "00000000-0000-4000-8000-000000000021",
+                       "status": "Test dialing attempt (no call)",
+                       "user": "test", "ip": "192.0.2.1", "error": "test",
                        "entity": "test", "action": "test"}),
         created_at: Utc::now(),
     };

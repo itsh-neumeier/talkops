@@ -63,6 +63,33 @@ Klicke bei einem Ereignis auf **Bearbeiten**:
 **Test senden** schickt eine Beispiel-Mail an die Empfänger der gespeicherten
 Regel. **Auf Standard zurücksetzen** stellt die Standardwerte wieder her.
 
+## Alarm bei Notruf-Wählversuchen
+
+Öffne unter **Einstellungen > Benachrichtigungen > Telefonie** die Regel
+**Notrufnummer gewählt**. Sie ist nach dem Update zunächst deaktiviert.
+Wähle Benutzer, Rollen oder E-Mail-Adressen aus, aktiviere die Regel und
+speichere sie. Standardempfänger ist die Administratorrolle. Ausgewählte
+Benutzer und aktive Rollenmitglieder brauchen eine E-Mail-Adresse.
+Fehlende SMTP-Einstellungen werden als Hinweis angezeigt.
+
+Der Alarm gilt für Wählversuche authentifizierter Nebenstellen, einschließlich
+Browser-Softphone, und Weitervermittlungen durch eine erkannte Nebenstelle.
+Er nutzt die konfigurierten Notrufnummern und löst auch ohne verfügbaren
+Trunk oder erfolgreiche Verbindung aus. Die Mail enthält Nebenstelle,
+gewählte Nummer, Zeitpunkt in der Anlagenzeitzone und Anruf-ID. Sie bestätigt
+nur den Wählversuch. Empfänger erhalten damit Nebenstellen- und Anrufdetails.
+
+Es gibt keine Verzögerung, Zusammenfassung, Entwarnung oder stündliche
+Begrenzung. Wiederholte Verarbeitung desselben Anrufs erzeugt kein zweites
+Ereignis. Der Hintergrunddienst verarbeitet Ereignisse üblicherweise im
+nächsten Fünf-Sekunden-Zyklus. SMTP und Postfachzustellung können länger dauern.
+Speicher- oder Mailfehler verhindern den Rufaufbau nicht. Prüfe das Protokoll
+auf fehlende Empfänger, fehlendes SMTP und Versandfehler. Der vorhandene
+Versanddienst garantiert keine Wiederholung nach Fehlern oder Abstürzen.
+
+**Test senden** verschickt nur künstliche Beispieldaten und wählt keine
+Nummer. Nutze diese Funktion zum Testen des Versands, keinen echten Notruf.
+
 ## Protokoll
 
 Die Karte **Benachrichtigungsprotokoll** zeigt die letzten 100 Ereignisse und

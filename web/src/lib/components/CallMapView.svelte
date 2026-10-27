@@ -153,6 +153,7 @@
 		<div class="relative">
 			{#if tiles}
 				<CallMap
+					{range}
 					tileUrl={tiles.tile_url}
 					tileAttribution={tiles.attribution}
 					areas={located}
@@ -172,6 +173,14 @@
 				</p>
 			{/if}
 		</div>
+		<p
+			class="flex flex-wrap gap-3 text-xs text-slate-600 dark:text-slate-300"
+			aria-label={t('callMap.markerLegend')}
+		>
+			<span>☎ {t('callMap.marker.area')}</span><span>▯ {t('callMap.marker.mobile')}</span><span
+				>▧ {t('callMap.marker.unlocated')}</span
+			>
+		</p>
 	</div>
 
 	<div class="grid grid-cols-1 gap-4 @3xl:grid-cols-2">

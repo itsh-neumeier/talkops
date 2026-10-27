@@ -3,6 +3,7 @@
 	import type { Call, MapArea } from '#lib/api.ts';
 	import CountryFlag from '#lib/components/CountryFlag.svelte';
 	import PhoneNumber from '#lib/components/PhoneNumber.svelte';
+	import { markerName } from '#lib/calls/mapMarkers.ts';
 	import {
 		CATEGORIES,
 		CATEGORY_COLORS,
@@ -31,7 +32,7 @@
 
 	let heading: HTMLElement | undefined = $state();
 
-	const title = $derived(area.kind === 'none' ? t('callMap.noLocation') : area.name);
+	const title = $derived(markerName(area, t('callMap.noLocation')));
 	const place = $derived(`${title} · ${area.prefix}`);
 
 	$effect(() => {

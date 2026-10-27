@@ -122,11 +122,11 @@ kopierter Link öffnet dieselbe Karte.
   blockiert / Spam (violett). Ein Klick blendet eine Kategorie aus oder ein.
   Die Zahl daneben ist die Anzahl im Zeitraum. Interne Anrufe erscheinen
   nicht auf der Karte.
-- **Blasen**: eine Blase je Ortsnetz oder Ort. Die Fläche wächst mit der
-  Zahl der Anrufe. Die Segmente zeigen die Kategorien. Mobilnummern,
-  Servicenummern (zum Beispiel 0800, 0180) und Nummern ohne bekanntes
-  Ortsnetz bilden je Land eine Blase „Mobil / ohne Ort“ (gestrichelter
-  Rand).
+- **Marker**: ein Tischtelefon je Ortsnetz oder Ort. Das Kreisdiagramm im
+  Display wächst mit der Anrufzahl, seine Segmente zeigen die Kategorien.
+  Pro Land gibt es getrennte Smartphone- und eckige Gruppen für Mobilnummern
+  und Service-/sonstige Nummern ohne Ortsnetz. Die Landesposition ist kein
+  tatsächlicher Standort.
 - **Details**: Klicke auf eine Blase oder wähle sie mit der Tab-Taste und
   drücke Enter. Das Feld zeigt Ortsnetz, Vorwahl (zum Beispiel
   `Bamberg · +49 951`), Land, Summen je Kategorie, Gesamtdauer und die 20
@@ -209,6 +209,27 @@ Der Browser lädt die Kartenkacheln dann von diesem Server.
 Die Liste lädt jeweils 50 Anrufe. Die Zeile unter der Tabelle zeigt die Zahl
 der geladenen und aller passenden Anrufe. **Weitere laden** lädt die
 nächsten Anrufe.
+
+## Gerätemarker und Vorschau
+
+Ortsnetze erscheinen als Tischtelefon mit Kreisdiagramm im Display.
+Mobilnummern erscheinen als Smartphone. Die Beschriftung lautet zum Beispiel
+**DE ohne Ortsbezug**. Service- und sonstige Nummern ohne Ortsnetz erhalten
+einen eigenen eckigen Marker. Das gilt für alle Länder. Die Landesposition
+zeigt keinen tatsächlichen Aufenthaltsort.
+
+Hover oder Tastaturfokus zeigt vor der Auswahl die Kategorien, den Zeitraum,
+die Anrufzahl und Gesprächsdauer. Einzelne Rufnummern oder Kontaktnamen stehen
+erst im Detailbereich. Bei genügend Platz stehen Zähler direkt am Marker;
+bei vielen Markern oder schmalen Ansichten stehen sie in der Vorschau.
+
+Klick, Enter oder Leertaste öffnet die Details. Auf Touchgeräten öffnet ein
+Antippen zunächst die Vorschau; **Details öffnen** zeigt den Detailbereich.
+Escape schließt die Vorschau. Dashboard und große Karte nutzen dieselben Formen.
+
+Die API liefert zusätzlich `marker_kind` (`area`, `mobile`, `unlocated`).
+Landesgruppen heißen nun beispielsweise `DE-mobile` und `DE-unlocated`.
+Bestehende Anruflisten-Filterlinks mit `DE-none` umfassen weiterhin beide Gruppen.
 
 ## API
 

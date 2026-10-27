@@ -91,6 +91,12 @@ quality approval remains open. No merge, release or deployment is authorized.
 
 ## Next action
 
+Follow-up 2026-10-27: the user requested UI control and exportable diagnostics
+and will run the real production test. The newer task supersedes the
+service-only control described above: each tenant live profile can now set
+the mode for a new session. See
+[production readiness](20261026-codex-coral-production-readiness.md).
+
 Review PR #82 after CI. Repeat quality and latency tests with the Rust
 service on real hardware before enabling the feature for normal use.
 Integrate after PR #81. No further user hardware action is currently needed.

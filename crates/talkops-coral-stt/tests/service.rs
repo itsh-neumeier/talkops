@@ -528,25 +528,25 @@ async fn stable_preview_is_opt_in_and_preserves_completed_text() {
     let (engine, _) = start(1, 0, 16, 4).await;
     let mut completed = Vec::new();
     for enabled in [false, true] {
-        let port = serve_with_preview(&engine, enabled).await;
+        let port = serve_with_preview(&engine, !enabled).await;
         let url = format!("ws://127.0.0.1:{port}/v1/realtime?intent=transcription");
         let (mut ws, _) = tokio_tungstenite::connect_async(&url).await.unwrap();
         let created = next_event(&mut ws).await.unwrap();
         assert_eq!(
             created["session"]["audio"]["input"]["transcription"]["stable_preview"],
-            enabled
+            !enabled
         );
         send(
             &mut ws,
             json!({"type": "session.update", "session": {"audio": {"input": {
                 "format": {"type": "audio/pcm", "rate": 24000},
-                "transcription": {"model": "coral-ctc-de", "stable_preview": !enabled},
+            "transcription": {"model": "coral-ctc-de", "stable_preview": enabled},
                 "turn_detection": null
             }}}}),
         )
         .await;
         let updated = next_event(&mut ws).await.unwrap();
-        // A client cannot change this operator-controlled service feature.
+        // The tenant profile overrides the service default for this session.
         assert_eq!(
             updated["session"]["audio"]["input"]["transcription"]["stable_preview"],
             enabled
@@ -586,6 +586,64 @@ async fn stable_preview_is_opt_in_and_preserves_completed_text() {
         ws.close(None).await.unwrap();
     }
     assert_eq!(completed[0], completed[1]);
+    engine.shutdown();
+}
+
+#[tokio::test]
+async fn diagnostic_capture_is_authorized_scoped_and_has_no_audio() {
+    let (engine, _) = start(1, 0, 16, 4).await;
+    let body = json!({"scope":"test-tenant", "minutes":1}).to_string();
+    let make = |authorized| {
+        let mut request =
+            Request::post("/v1/diagnostics/capture").header("content-type", "application/json");
+        if authorized {
+            request = request.header("authorization", "Bearer support-key");
+        }
+        request.body(Body::from(body.clone())).unwrap()
+    };
+    assert_eq!(
+        call(app(&engine, Some("support-key")), make(false)).await.0,
+        StatusCode::UNAUTHORIZED
+    );
+    assert_eq!(
+        call(app(&engine, Some("support-key")), make(true)).await.0,
+        StatusCode::OK
+    );
+    let port = serve(&engine).await;
+    let (mut ws, _) = tokio_tungstenite::connect_async(format!(
+        "ws://127.0.0.1:{port}/v1/realtime?intent=transcription"
+    ))
+    .await
+    .unwrap();
+    next_event(&mut ws).await.unwrap();
+    send(&mut ws, json!({"type":"session.update", "session":{"audio":{"input":{"transcription":{"model":"coral-ctc-de", "diagnostic_scope":"test-tenant", "diagnostic_preview":"preview-test", "diagnostic_channel":0}}}}})).await;
+    next_event(&mut ws).await.unwrap();
+    append(&mut ws, &tone(200.0, 1.5, 24000)).await;
+    send(&mut ws, json!({"type":"input_audio_buffer.commit"})).await;
+    until_completed(&mut ws).await;
+    let snapshot = engine.diagnostics.snapshot("test-tenant");
+    assert!(!snapshot["events"].as_array().unwrap().is_empty());
+    assert!(!snapshot.to_string().contains("hallo"));
+    assert!(!snapshot.to_string().contains("support-key"));
+    assert!(
+        engine.diagnostics.snapshot("other-tenant")["events"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
+    engine.diagnostics.start("test-tenant", 1, true).unwrap();
+    append(&mut ws, &tone(200.0, 1.5, 24000)).await;
+    send(&mut ws, json!({"type":"input_audio_buffer.commit"})).await;
+    until_completed(&mut ws).await;
+    assert!(
+        engine
+            .diagnostics
+            .snapshot("test-tenant")
+            .to_string()
+            .contains("hallo")
+    );
+    engine.diagnostics.stop("test-tenant");
+    ws.close(None).await.unwrap();
     engine.shutdown();
 }
 

@@ -54,6 +54,7 @@ impl EngineChoice {
                     provider_id: provider.id,
                     model: model.trim().to_owned(),
                     realtime: false,
+                    coral_stable_preview: false,
                     price: profiles::list_price(&provider.kind, model.trim()),
                     coral,
                     fallback: coral.then_some(TranscriptionQuality::Fast),

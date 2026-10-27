@@ -1704,6 +1704,22 @@ export default {
 		'Coral gives the live preview and the first pass; local Whisper replaces the text in the second pass.',
 	'stt.hybridApplied': 'Hybrid setup applied. Click “Save engines” to keep it.',
 	'stt.coralStatus': 'Coral status',
+	'stt.coralStablePreview': 'Publish complete words (experimental)',
+	'stt.coralStablePreviewHint':
+		'Hold unfinished words. Allow about 4–5 seconds; this is not a maximum delay guarantee. The setting applies to the next preview session.',
+	'stt.debugTitle': 'Coral transcription diagnostics',
+	'stt.debugHint':
+		'Capture technical events for a test call, then download a JSON report. Includes models, TPU state, queue, processing times and available fallback states. Audio and credentials are excluded. Capture stops after at most 30 minutes; events expire after one hour. The buffer holds at most 5,000 events or 2 MiB, so download promptly.',
+	'stt.debugStart': 'Start Coral capture',
+	'stt.debugRefresh': 'Refresh status',
+	'stt.debugDownload': 'Download Coral report',
+	'stt.debugIncludeText': 'Include recognized conversation text',
+	'stt.debugTextHint':
+		'Optional sensitive content. Requires permission to view all live transcripts. Enable before the test call. Audio can be downloaded separately from the call recording with its existing permissions.',
+	'stt.debugRunning': 'Coral capture active until',
+	'stt.debugStopped': 'Coral capture stopped; last deadline',
+	'stt.debugEvents': '{count} retained events',
+	'stt.debugNoConnection': 'Add a Coral connection in transcription settings first.',
 	'stt.coralState.ok': 'ready',
 	'stt.coralState.degraded': 'degraded',
 	'stt.coralState.unavailable': 'not available',

@@ -103,9 +103,11 @@ detected language (`DE` or `EN`). If Coral is not available, the popup shows
 `base` model continues in 8-second parts. After 30 seconds TalkOps tries
 Coral again. This is no error.
 
-An administrator can enable the experimental complete-word preview with
-`TALKOPS_CORAL_STABLE_PREVIEW=true` in the stack environment. Recreate the
-`coral-stt` service to apply the setting. The default is `false`.
+An administrator can enable **Publish complete words (experimental)** in
+the live transcription profile when Coral Realtime is selected. Save the
+engines and open a new preview. The default is off. The environment setting
+`TALKOPS_CORAL_STABLE_PREVIEW` is only the default for direct service clients;
+TalkOps sends the saved profile setting for each session.
 This mode holds an unfinished word until more audio closes it or a speech
 pause ends the turn. It uses the existing model context and turn detection.
 It does not change final recording or voicemail transcription.
@@ -114,8 +116,18 @@ Allow about 4–5 seconds for this preview with the tested German model.
 First text can take longer. This is a model-dependent estimate, not a
 maximum delay guarantee. Recognition quality still needs improvement.
 If a later result changes a published word, the stream reports an error
-and TalkOps uses its existing local Whisper fallback. Set the option to
-`false` and recreate the service to restore the previous preview mode.
+and TalkOps uses its existing local Whisper fallback. Disable the checkbox
+and open a new preview to restore the previous preview mode.
+
+For a production trial, use **Settings → System → Diagnostics → Coral
+transcription diagnostics**. Start a five-minute capture before the call.
+Keep the live preview open and download the report promptly. The report
+contains technical events, model hashes, TPU state, processing times and
+available fallback state. No audio is stored in the diagnostic buffer.
+Recognized text requires explicit selection and permission to view all live
+transcripts. Audio can be downloaded separately from a recorded call with
+the existing recording permissions. See the
+[production trial guide](../research/coral-production-trial.md).
 
 If the call is transferred to another party, reopen the popup. The old
 preview stops so that its speaker names do not identify the new party.

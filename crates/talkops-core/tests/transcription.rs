@@ -31,6 +31,7 @@ fn cloud(purpose: &str, provider: Uuid, model: &str) -> Profile {
         provider_id: Some(provider),
         model: model.into(),
         realtime: false,
+        coral_stable_preview: false,
         price_per_minute: None,
         list_price: None,
         provider_kind: None,
@@ -43,6 +44,48 @@ async fn other_tenant(pool: &PgPool) -> TenantId {
         .await
         .unwrap();
     TenantId(id)
+}
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn coral_stable_preview_is_persisted_and_tenant_checked(pool: PgPool) {
+    let sb = SecretBox::from_hex(KEY).unwrap();
+    let coral = providers::create(&pool, T, &sb, &input("Coral", "coral", "", None))
+        .await
+        .unwrap();
+    let mut p = cloud("live", coral.id, "coral-ctc-de");
+    p.realtime = true;
+    p.coral_stable_preview = true;
+    let saved = profiles::update(&pool, T, &[p.clone()]).await.unwrap();
+    assert!(
+        saved
+            .iter()
+            .find(|p| p.purpose == "live")
+            .unwrap()
+            .coral_stable_preview
+    );
+    assert!(matches!(
+        profiles::engine(&pool, T, Purpose::Live).await.unwrap(),
+        Some(Engine::Cloud {
+            coral_stable_preview: true,
+            ..
+        })
+    ));
+    let other = other_tenant(&pool).await;
+    assert!(profiles::update(&pool, other, &[p.clone()]).await.is_err());
+    let external = providers::create(
+        &pool,
+        T,
+        &sb,
+        &input("Other", "compatible", "http://127.0.0.1:10000/v1", None),
+    )
+    .await
+    .unwrap();
+    p.provider_id = Some(external.id);
+    p.provider_kind = Some("coral".into()); // Client-supplied read-only data is not trusted.
+    assert!(profiles::update(&pool, T, &[p.clone()]).await.is_err());
+    p.provider_id = Some(coral.id);
+    p.realtime = false;
+    assert!(profiles::update(&pool, T, &[p]).await.is_err());
 }
 
 #[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
@@ -161,6 +204,7 @@ async fn profiles_select_engines_per_purpose(pool: PgPool) {
             provider_id: openai.id,
             model: "gpt-live-transcribe".into(),
             realtime: true,
+            coral_stable_preview: false,
             price: Some(0.017),
             coral: false,
             fallback: None,
@@ -174,6 +218,7 @@ async fn profiles_select_engines_per_purpose(pool: PgPool) {
             provider_id: openai.id,
             model: "gpt-transcribe".into(),
             realtime: false,
+            coral_stable_preview: false,
             price: Some(0.01),
             coral: false,
             fallback: None,
@@ -264,18 +309,17 @@ async fn usage_adds_up_per_month(pool: PgPool) {
 }
 
 /// Runs the migrations before the profiles migration, stores settings in the
-/// old columns, then applies the profiles migration.
+/// old columns, then applies the remaining upgrade path. The current profile
+/// reader requires the current schema; migrated profile data must survive.
 async fn migrate_with(pool: &PgPool, settings: &str) {
     let migrator = &talkops_core::db::MIGRATOR;
     for m in migrator.iter().filter(|m| m.version < PROFILES_MIGRATION) {
         sqlx::raw_sql(&m.sql).execute(pool).await.unwrap();
     }
     sqlx::raw_sql(settings).execute(pool).await.unwrap();
-    let m = migrator
-        .iter()
-        .find(|m| m.version == PROFILES_MIGRATION)
-        .unwrap();
-    sqlx::raw_sql(&m.sql).execute(pool).await.unwrap();
+    for m in migrator.iter().filter(|m| m.version >= PROFILES_MIGRATION) {
+        sqlx::raw_sql(&m.sql).execute(pool).await.unwrap();
+    }
 }
 
 #[sqlx::test(migrations = false)]
@@ -414,6 +458,7 @@ async fn coral_connections_and_fallback(pool: PgPool) {
             provider_id: coral.id,
             model: "coral-auto".into(),
             realtime: false,
+            coral_stable_preview: false,
             price: None,
             coral: true,
             fallback: Some(TranscriptionQuality::Accurate),
@@ -423,6 +468,7 @@ async fn coral_connections_and_fallback(pool: PgPool) {
         profiles::engine(&pool, T, Purpose::Live).await.unwrap(),
         Some(Engine::Cloud {
             realtime: true,
+            coral_stable_preview: false,
             coral: true,
             fallback: Some(TranscriptionQuality::Base),
             ..
@@ -530,6 +576,16 @@ async fn fallback_and_language_are_stored(pool: PgPool) {
     live::set_engine(&pool, other, p.id, "x", None)
         .await
         .unwrap();
+    let debug = live::diagnostic_states(&pool, T).await.unwrap();
+    assert_eq!(debug.len(), 1);
+    assert_eq!(debug[0]["engine"], "whisper:base");
+    assert!(debug[0].get("segments").is_none() && debug[0].get("file").is_none());
+    assert!(
+        live::diagnostic_states(&pool, other)
+            .await
+            .unwrap()
+            .is_empty()
+    );
     assert!(
         !live::stream_failed_recently(&pool, other, p.id)
             .await

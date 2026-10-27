@@ -15,6 +15,8 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use serde::Deserialize;
+use sha2::{Digest, Sha256};
+use std::io::Read;
 
 use crate::features::{Frontend, LogMel};
 
@@ -81,6 +83,8 @@ pub struct ModelFile {
     pub language: Option<String>,
     /// The file the backend loads.
     pub path: PathBuf,
+    /// Digest of the loaded model bytes; mock models have no file.
+    pub sha256: Option<String>,
     pub meta: Meta,
     pub mel: Arc<LogMel>,
 }
@@ -128,11 +132,31 @@ fn load_one(dir: &Path, name: &str, file: &str) -> Result<Option<ModelFile>, Cat
     if meta.window_frames < 8 || meta.overlap() >= meta.window_frames || meta.subsampling == 0 {
         return Err(invalid("invalid window".into()));
     }
+    let mut source = std::fs::File::open(&path).map_err(|e| invalid(e.to_string()))?;
+    let mut digest = Sha256::new();
+    let mut buffer = [0u8; 8192];
+    loop {
+        let count = source
+            .read(&mut buffer)
+            .map_err(|e| invalid(e.to_string()))?;
+        if count == 0 {
+            break;
+        }
+        digest.update(&buffer[..count]);
+    }
+    let sha256 = Some(
+        digest
+            .finalize()
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect(),
+    );
     let mel = Arc::new(LogMel::new(meta.frontend.clone()));
     Ok(Some(ModelFile {
         name: name.to_owned(),
         language: None,
         path,
+        sha256,
         meta,
         mel,
     }))

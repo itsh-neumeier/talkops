@@ -157,6 +157,7 @@ pub async fn run(ctx: &Ctx, job: &Job) -> anyhow::Result<()> {
         provider_id,
         model,
         realtime: true,
+        coral_stable_preview,
         price,
         coral,
         ..
@@ -194,6 +195,7 @@ pub async fn run(ctx: &Ctx, job: &Job) -> anyhow::Result<()> {
                 language: language.to_owned(),
                 vocabulary: settings.transcription_vocabulary,
                 price: *price,
+                coral_stable_preview: *coral_stable_preview,
             })
             .await;
         }

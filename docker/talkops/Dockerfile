@@ -15,6 +15,8 @@ COPY web/ ./
 RUN npm run build
 
 FROM rust:${RUST_VERSION}-${DEBIAN_RELEASE} AS build
+ARG TALKOPS_BUILD_REVISION=unknown
+ENV TALKOPS_BUILD_REVISION=${TALKOPS_BUILD_REVISION}
 WORKDIR /src
 COPY . .
 RUN --mount=type=cache,target=/usr/local/cargo/registry \

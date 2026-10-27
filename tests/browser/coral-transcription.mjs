@@ -90,7 +90,8 @@ try {
   const live = page.getByTestId('stt-live');
   assert.equal(await live.getByLabel('Modell').inputValue(), 'coral-auto');
   assert.equal(await live.getByText('Live streamen (Coral Realtime)').count(), 1);
-  assert.equal(await live.getByRole('checkbox').isChecked(), true);
+  assert.equal(await live.getByRole('checkbox').first().isChecked(), true);
+  await live.getByTestId('stt-coral-stable-preview').check();
   await live.getByTestId('stt-live-fallback').waitFor();
   assert.match(await live.getByTestId('stt-live-fallback').textContent(), /Whisper Base/);
   const recording = page.getByTestId('stt-recording');
@@ -102,6 +103,7 @@ try {
   await box.getByRole('button', { name: 'Engines speichern' }).click();
   await page.getByTestId('stt-info').getByText('Gespeichert', { exact: false }).waitFor();
   const byPurpose = Object.fromEntries(saved.profiles.map(p => [p.purpose, p]));
+  assert.equal(byPurpose.live.coral_stable_preview, true, 'complete-word preview is saved in the live profile');
   assert.deepEqual(
     { engine: byPurpose.live.engine, provider: byPurpose.live.provider_id, model: byPurpose.live.model, realtime: byPurpose.live.realtime, fallback: byPurpose.live.local_model },
     { engine: 'cloud', provider: 'coral1', model: 'coral-auto', realtime: true, fallback: 'base' });

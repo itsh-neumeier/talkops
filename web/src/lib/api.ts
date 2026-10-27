@@ -891,6 +891,8 @@ export interface TranscriptionProfile {
 	model: string;
 	/** Live only: stream over the Realtime API. */
 	realtime: boolean;
+	/** Coral realtime only: publish complete stable words. */
+	coral_stable_preview?: boolean;
 	/** Own price per audio minute; null = list price. */
 	price_per_minute: number | null;
 	/** Known list price of the cloud model (read-only). */

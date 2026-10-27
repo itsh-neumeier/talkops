@@ -6,6 +6,7 @@ pub mod backup_targets;
 pub mod backups;
 pub mod blocking;
 pub mod call_map;
+pub mod coral_diagnostics;
 pub mod dashboard;
 pub mod diagnostics;
 pub mod dialing;

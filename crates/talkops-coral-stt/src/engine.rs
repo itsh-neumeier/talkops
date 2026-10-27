@@ -217,6 +217,7 @@ pub struct QueueStatus {
 }
 
 pub struct Engine {
+    pub diagnostics: crate::diagnostics::Diagnostics,
     pub catalog: Arc<Catalog>,
     backend: Arc<dyn Backend>,
     queue: Arc<Queue>,
@@ -243,6 +244,7 @@ impl Engine {
         sessions_per_device: usize,
     ) -> Arc<Self> {
         let engine = Arc::new(Self {
+            diagnostics: crate::diagnostics::Diagnostics::default(),
             catalog: Arc::new(catalog),
             backend,
             queue: Arc::new(Queue {

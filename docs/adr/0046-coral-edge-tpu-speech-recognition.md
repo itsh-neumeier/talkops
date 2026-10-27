@@ -85,6 +85,15 @@ The workspace forbids `unsafe` code. The TPU runtime is a C library.
   line (`segments[].language`) and is shown in the UI.
 - The button "Apply hybrid" sets `live` to Coral Realtime, `recording` and
   `voicemail` to Coral, and the second passes to local Whisper.
+- The live profile can opt into complete-word previews. It sends
+  `transcription.stable_preview` for each session. The service environment
+  setting is the default for direct clients. A preview never changes a
+  published complete word; a conflict uses the existing error/fallback path.
+- The diagnostics UI can start a tenant-scoped technical trace and export a
+  JSON report. Capture is time-limited and bounded. It stores no audio.
+  Conversation text needs explicit selection and all-live-text permission.
+  The trace is diagnostic data, not a training export. See the
+  [production trial guide](../research/coral-production-trial.md).
 - Runtime libraries in the image: TensorFlow Lite C v2.19.1 (built from
   the pinned commit) and libedgetpu 16.0 for TensorFlow 2.19.1 (community
   build for Debian trixie, pinned by checksum).

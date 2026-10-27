@@ -1722,6 +1722,23 @@ const de: Record<keyof typeof en, string> = {
 		'Coral liefert die Live-Vorschau und den ersten Durchgang; lokales Whisper ersetzt den Text im zweiten Durchgang.',
 	'stt.hybridApplied': 'Hybrid-Einstellung übernommen. Mit „Engines speichern“ sichern.',
 	'stt.coralStatus': 'Coral-Status',
+	'stt.coralStablePreview': 'Vollständige Wörter anzeigen (experimentell)',
+	'stt.coralStablePreviewHint':
+		'Angefangene Wörter zurückhalten. Etwa 4–5 Sekunden einplanen; das ist keine garantierte Obergrenze. Die Einstellung gilt für die nächste Vorschau-Sitzung.',
+	'stt.debugTitle': 'Coral-Transkriptionsdiagnose',
+	'stt.debugHint':
+		'Technische Ereignisse für einen Testanruf aufzeichnen und danach einen JSON-Bericht herunterladen. Enthält Modelle, TPU-Zustand, Warteschlange, Verarbeitungszeiten und verfügbare Rückfallzustände. Audio und Zugangsdaten sind ausgeschlossen. Die Erfassung endet nach höchstens 30 Minuten; Ereignisse verfallen nach einer Stunde. Der Puffer hält höchstens 5.000 Ereignisse oder 2 MiB, daher zeitnah herunterladen.',
+	'stt.debugStart': 'Coral-Erfassung starten',
+	'stt.debugRefresh': 'Status aktualisieren',
+	'stt.debugDownload': 'Coral-Bericht herunterladen',
+	'stt.debugIncludeText': 'Erkannten Gesprächsinhalt einschließen',
+	'stt.debugTextHint':
+		'Optionale vertrauliche Inhalte. Erfordert die Berechtigung für alle Live-Transkripte. Vor dem Testanruf aktivieren. Audio kann mit den bestehenden Berechtigungen separat aus der Gesprächsaufzeichnung heruntergeladen werden.',
+	'stt.debugRunning': 'Coral-Erfassung aktiv bis',
+	'stt.debugStopped': 'Coral-Erfassung beendet; letzte Frist',
+	'stt.debugEvents': '{count} gespeicherte Ereignisse',
+	'stt.debugNoConnection':
+		'Zuerst eine Coral-Verbindung in den Transkriptionseinstellungen anlegen.',
 	'stt.coralState.ok': 'bereit',
 	'stt.coralState.degraded': 'eingeschränkt',
 	'stt.coralState.unavailable': 'nicht verfügbar',

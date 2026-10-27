@@ -147,3 +147,13 @@ only by this stronger CI/release validation contract and task record.
 - Next: wait for both exact-main gates; publish unused v1.8.12 once; verify
   four amd64/arm64 image manifests, eight configs and moving tags. Coral remains
   explicitly experimental; no hardware/quality acceptance is claimed.
+## Publication checkpoint
+
+- Exact-main CI40514888617 and E2E40514888443 passed before tag push.
+- New annotated v1.8.12 pushed once on 3603ed56b0073a1dd23646622cf4fb0284644ab7.
+  Tag object: 221b72a2113129530f14b1e59594fb504682fff1.
+- Release40518594652 queued/started. Additional tag CI40518594859,
+  E2E40518595237 and FreeSWITCH40518594647 triggered. No competing release.
+- Wait for Release success, verify stable GitHub release and FOUR amd64/arm64
+  manifests, eight OCI configs, native Coral runtime and 1.8/latest. Then remove
+  only unchanged merged source/batch branches and archive the final task record.

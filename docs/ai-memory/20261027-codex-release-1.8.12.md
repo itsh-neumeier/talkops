@@ -5,10 +5,10 @@
 - Task ID: 20261027-codex-release-1.8.12
 - Date: 2026-10-27, Europe/Berlin
 - Tool: Codex
-- Status: In progress
-- Branch: codex/release-1.8.12
+- Status: Completed
+- Branch: codex/release-1.8.12 (merged and removed)
 - Base commit: f8bdfb37cf3f7705d7fbbaf63d6bd6148caba400
-- Related PR: Pending
+- Related PR: https://github.com/itsh-neumeier/talkops/pull/85
 
 ## Goal and scope
 
@@ -63,8 +63,8 @@ No missing agreed ready handoff. None of the three contributions is silently omi
   redaction and bounded capture; loopback Coral contract and local fallback;
   map grouping/legacy aliases; emergency event before routing lookup, bounded
   best-effort insert, UUID deduplication and unchanged ordinary notification flow.
-- Full Rust/DB/LDAP, clean npm/lint/check/build, image/runtime smoke, all 25
-  browser suites and SIPp/fax/softphone use final CI. No local Linux Docker daemon.
+- Final CI passed full Rust/DB/LDAP, clean npm/lint/check/build, image/runtime
+  smoke, all 25 browser suites and SIPp/fax/softphone. No local Linux Docker daemon.
   C: had about 290 MB free. Automatic approval review blocked removal of this
   worktree's ignored target directory with "blocked by policy". The complete
   command was rejected before execution; nothing was deleted. No bypass/retry.
@@ -91,10 +91,9 @@ checkout stays at 397fc83 with three untracked Dahua summaries.
 
 ## Next action
 
-Publish integration PR, wait for final checks, merge, verify exact-main CI/E2E,
-then push unused v1.8.12 once. Verify Release, stable GitHub release, all four
-amd64/arm64 manifests, version/revision labels, 1.8/latest and Coral mock runtime.
-Save final audit and remove only unchanged fully merged batch branches.
+None for this release. User-owned Coral hardware/readability/quality and model-license
+acceptance, draft PR61 and live Wiki publication remain separate work.
+The task-only final record is archived under audit/release-1.8.12.
 
 ## References
 
@@ -116,7 +115,7 @@ PR CI40508739179 web job122204728574 failed at coral-transcription.mjs:73.
 The release manager changed the badge to Coral (experimentell) but did not
 update the existing exact-text assertion. Match the exact experimental badge;
 keep all connection, runtime, fallback and permission assertions unchanged.
-No product behavior changed by this correction. New complete CI/E2E required.
+No product behavior changed by this correction. New complete CI/E2E passed.
 Clean local npm ci, lint, check (zero errors/warnings) and build also passed.
 All source PR checks have now passed; PR84 E2E finished successfully.
 ## Native architecture gate
@@ -129,3 +128,62 @@ and exact build revision; per-image/per-architecture cache scopes stay separate.
 The normal Release build also checks its actual Coral digest on both platforms.
 No physical TPU, quality or deployment claim. Candidate e7fb60c is superseded
 only by this stronger CI/release validation contract and task record.
+## Final integration and publication
+
+- Final candidate: b6c6f6b225bf6712e91138617dbdf718a1673b29. All 22 required checks passed; two branch-only
+  trial image contexts skipped as designed. PR CI40510106255/E2E40510106360;
+  push CI40510095619/E2E40510095618. The superseded badge expectation failure
+  was corrected and is recorded above. No assertion removed or gate waived.
+- PR82 retargeted to main with its head unchanged. PR85 and all three agreed
+  source PRs merged. Exact-main target: 3603ed56b0073a1dd23646622cf4fb0284644ab7. Its tree equals the candidate;
+  all recorded source heads are ancestors. Only unchanged draft PR61 remained.
+- Exact-main CI40514888617 and E2E40514888443 passed before tag push.
+  Rust 558 passed, two model/runtime tests ignored. Web 86 tests/25 browser suites.
+  Docs 13 tests/75 pages/688 links; Coral tools 25 tests. Native Coral library/mock
+  smoke passed on amd64/arm64. Server, worker and Coral displayed 1.8.12.
+  DB/LDAP, recovery, image/storage smoke, received G.711/T.38 fax PDFs and
+  SIPp/browser softphone passed. No physical TPU or text-quality result implied.
+- Annotated v1.8.12 pushed once on this exact target. Tag object: 221b72a2113129530f14b1e59594fb504682fff1.
+  No published tag moved. Release workflow 40518594652 passed, including the
+  actual Coral digest's native library/mock smoke on both architectures.
+- Stable GitHub release published at 2026-10-27T14:19:05Z. Additional tag CI 40518594859,
+  E2E 40518595237 and FreeSWITCH 40518594647 passed. Build revisions supplied from github.sha.
+- Release: https://github.com/itsh-neumeier/talkops/releases/tag/v1.8.12
+
+## Upgrade
+
+Back up first. Apply 20261112000001_coral_transcription,
+20261112000002_coral_stable_preview and 20261113000001_emergency_dial_alert
+in order. Update server/worker and enabled Coral together, then reload the UI.
+Old-binary rollback needs the matching pre-upgrade DB backup. Coral is off by
+default and remains experimental; hardware/quality and model-license acceptance
+are separate user-owned work. No models are shipped.
+
+## Registry verification
+
+Docker buildx imagetools verified FOUR versioned manifests and eight platform
+configs. Every OCI version label equals v1.8.12; revision labels equal the target.
+Tags 1.8/latest have the same platform digests as 1.8.12.
+Coral remains explicitly experimental, opt-in and without model weights.
+
+| Image | Platform | Digest |
+| --- | --- | --- |
+| talkops-server | amd64 | sha256:d2e2b02dd21c04dbc951601581f41cd1e4ba2cb6d2073fb20da16696755541fd |
+| talkops-server | arm64 | sha256:8f8a35558e9caf926642ebe9d212fd408e183be910ed1173becb7ef4133bbaf4 |
+| talkops-media-worker | amd64 | sha256:b5284872b3baf588048586d4ae0075a2d29a1efec39c4aa5a4382f0313bbc4db |
+| talkops-media-worker | arm64 | sha256:ed270b09b0d9575fd498a4c9094c3fad730248ba534a04f3cba0a0ea04e2cdc9 |
+| talkops-freeswitch | amd64 | sha256:160aaac3e5c3dd2ef912d96ee04e6e00fa0ebb3cec0c361cb2634914a5e34e60 |
+| talkops-freeswitch | arm64 | sha256:5994ffb19cfd3ffe0d13f881618f0c9a736e995e735cfc04dd5d133da9570c28 |
+| talkops-coral-stt | amd64 | sha256:9496336c6f1c9be2a99bbd2df410c5bed99744767ac047491f430148b73855fe |
+| talkops-coral-stt | arm64 | sha256:ea936a84cf758a46395300bf7348dc1e39fe9655429bce98b1db6c2a1ea74bf0 |
+
+## Cleanup and audit
+
+Removed the three unchanged merged source branches and codex/release-1.8.12
+with atomic expected-head guards. Preserve draft61, claude/nifty-babbage-ymchlw,
+claude/charming-bell-fh6q3y and closed unmerged PR36 branch
+claude/vigilant-tesla-ef0027. Foreign worktrees and primary files untouched.
+Only this task record differs from the released commit in the separate audit.
+Source PR82 trial-guide and PR84 task-record links use immutable source commits, so
+they remain available after branch removal. Do not push the merged release branch
+again. No production service or device changed.

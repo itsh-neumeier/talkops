@@ -8,13 +8,20 @@ The chat supplies the design carousel and optional marker-size control.
 The fragment makes no network requests. **Select preview** actions change
 local sample state only. No setting, call or email is created.
 
-## Phone display (recommended)
+## Devices with counts (user reference)
 
-![Phone frame with a category pie and a preview before selection](call-map-phone.png)
+![Desk phones and a smartphone with category pies and adjacent counts](call-map-phone-dark.png)
 
-## Mobile tile (alternative)
+[Light theme preview](call-map-phone.png).
 
-![Mobile tile with a phone symbol and category pie](call-map-tile.png)
+## Compact devices (dense map)
+
+![The same device shapes with counts available through hover or focus](call-map-tile.png)
+
+The user supplied a second reference on 2026-10-27. Local areas now use desk
+phones with a handset and keypad. Mobile groups use a smartphone with a
+country label. This replaces the earlier circular local markers and mobile
+tile alternative. The counts hide at narrow widths to prevent overlap.
 
 ## Emergency alert settings
 
@@ -38,7 +45,8 @@ node tests/browser/call-map-emergency-mockup.mjs
 
 Omit an override when the default package or browser is available. The test
 checks both variants at 1024, 736 and 320 px in light and dark themes. It
-checks hover, focus, Escape, selection, touch and recipient controls. It also
+checks device shapes, keypad marks, inline counts, hover, focus, Escape,
+selection, touch and recipient controls. It also
 checks horizontal overflow, JavaScript errors and network requests.
 The test reveals each variant directly because the chat owns the carousel.
 This test does not validate the future Svelte, Rust, database or SMTP changes.

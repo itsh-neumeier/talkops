@@ -32,7 +32,7 @@ It does not change the application, database or mail delivery.
 
 | Group | Marker | Label and position |
 | --- | --- | --- |
-| Local network area or known place | Circle with category pie | Place, area code and country at the existing area point |
+| Local network area or known place | Desk phone with handset, keypad and category pie in its display | Place, area code and country at the existing area point |
 | Mobile numbers | Phone outline with category pie inside the display | Mobile, country and calling code at the country label point |
 | Service or unresolved numbers with a known country | Rounded square with category pie | No local area, country and calling code at the country label point |
 | Unknown country or anonymous calls | List entry | No map position is invented |
@@ -46,14 +46,27 @@ represent a mixed group of mobile and service numbers. The attached screenshot
 contains 147 mobile calls and two other calls in the same country group.
 The new groups must add up to the same 149 calls.
 
-The recommended design is **Phone display**. It keeps a circular pie inside
-an opaque phone frame. This gives the pie a readable shape. The alternative
-**Mobile tile** uses a wider tile with a phone icon next to the pie. Both
-designs are available in the mockup. A pie clipped to a complete phone
-silhouette is not recommended: the narrow shape distorts visible segment areas.
+The user supplied a second reference on 2026-10-27. It replaces the earlier
+proposal to keep local area markers circular. Use a desk phone for local
+areas and a smartphone for mobile groups. Each device has a circular pie
+in its display. The user reference is a design correction, not approval to
+implement the application or the emergency alert.
+
+The mockup has two density previews. **Devices with counts** shows four
+category counts beside each marker. **Compact devices** uses the same device
+shapes and shows exact counts in the hover/focus preview. Use the first density
+when markers have sufficient space. On narrow screens or with overlapping
+markers, use the compact density. Keep place labels and the mobile country
+label, such as "DE Mobile", visible. Apply this rule to all countries.
+
+Keep the map theme consistent with TalkOps. Subtle circular bases can anchor
+the devices. Do not infer call routes from the decorative dashed lines in
+the reference: aggregated groups do not supply relationships between markers.
+The mockup therefore has no connecting routes. A pie clipped to a complete
+device silhouette would distort visible segment areas; keep the pie circular.
 
 Marker size continues to indicate call count. Use the pie area for the size
-scale, before the phone frame or tile is added. Use minimum 44 px hit targets
+scale, before the device frame is added. Use minimum 44 px hit targets
 on touch devices. Separate country markers with screen offsets when they share
 an anchor. Do not alter their geographic coordinates. At small sizes, keep the
 shape visible and show exact counts in the preview.
@@ -175,7 +188,7 @@ in the settings hint. Preserve emergency routing and caller ID behavior.
 
 | Area | Required evidence after implementation |
 | --- | --- |
-| Marker types | Local area, DE mobile, foreign mobile, service-only and mixed original groups use the right shapes; no calls are lost or counted twice |
+| Marker types | Local areas use desk phones; DE and foreign mobile groups use smartphones; service/other groups use a separate shape; no calls are lost or counted twice |
 | Preview | Hover and focus show current statistics before selection; keyboard, Escape, pointer movement and map edges work |
 | Touch and themes | Tap preview and details action; 320 px layout, 44 px targets, light and dark themes, reduced motion |
 | Selection | Hover preserves selection; click and keyboard open details; filters and refresh do not leave stale previews |

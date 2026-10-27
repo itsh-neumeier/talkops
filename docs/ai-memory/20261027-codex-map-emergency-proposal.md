@@ -40,8 +40,16 @@ are unchanged. The proposal is committed, pushed and published as draft PR #84.
   untracked Dahua summaries. Do not change or copy those files.
 - The user explicitly requires feedback before implementation. Only review
   material is changed. Keep the PR in draft state.
-- Recommend a phone frame with a round pie in the display. Offer a mobile
-  tile as an alternative. Keep local area markers circular.
+- User feedback on 2026-10-27 supersedes the initial circular local markers
+  and mobile tile alternative. Use desk phones with a handset and keypad
+  for local areas, and a smartphone for mobile groups. Keep a circular pie
+  inside each display. Show a country label for mobile, such as "DE Mobile".
+- The updated mockup compares two densities of these device shapes: counts
+  beside each marker when space permits, or counts in the hover/focus preview.
+  Narrow screens use the compact density. Do not infer connecting call routes
+  from the reference image. No relationship data exists in the aggregate API.
+- The new image refines the requested design. It does not approve product
+  implementation or the emergency alarm. Keep the same review checkpoint.
 - Propose separate country groups for mobile and other unlocated calls.
   Preserve old combined map-to-list filter links. Add an ADR after approval
   because this changes one grouping decision in ADR 0044.
@@ -57,8 +65,11 @@ are unchanged. The proposal is committed, pushed and published as draft PR #84.
   Playwright and installed Microsoft Edge. Twelve map variant/theme/width
   cases, six settings cases and touch preview/details passed. No runtime
   errors or network requests. Widths: 1024, 736 and 320 px.
-- Passed: manual screenshot inspection of the light map and dark mobile
-  settings. Preview, labels and controls fit the inspected surfaces.
+- Passed: updated browser checks after the second user reference. Desk-phone
+  shapes, nine-key layouts, smartphone shape, country label and count density
+  checks pass in all twelve map cases.
+- Passed: manual screenshot inspection of the updated light/dark maps and
+  dark mobile settings. Preview, labels and controls fit the inspected surfaces.
 - Passed: `node tests/docs/wiki.mjs` (13 tests).
 - Passed: `node scripts/docs/build-wiki.mjs --check` (75 pages, 672 links).
 - Passed: `git diff --check` before commit.

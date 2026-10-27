@@ -19,22 +19,34 @@
     #talkops-review .to-period { background:var(--to-soft); color:var(--to-accent); border-radius:6px; padding:5px 10px; font-weight:600; }
     #talkops-review .to-legend { display:flex; flex-wrap:wrap; gap:12px; font-size:12px; }
     #talkops-review .to-dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:5px; }
-    #talkops-review .to-map { position:relative; height:340px; background:var(--to-water); border-radius:8px; overflow:hidden; }
+    #talkops-review .to-map { position:relative; height:450px; background:radial-gradient(ellipse at center,light-dark(#e6f2fa,#1a3c59),var(--to-water) 75%); border-radius:8px; overflow:hidden; }
     #talkops-review .to-map svg.to-outline { width:100%; height:100%; }
     #talkops-review .to-land { fill:var(--to-land); stroke:var(--to-line); stroke-width:2; }
     #talkops-review .to-state { fill:none; stroke:var(--to-line); stroke-width:1; stroke-dasharray:4 5; }
     #talkops-review .to-river { fill:none; stroke:light-dark(#a7cdec,#427ba8); stroke-width:2; }
     #talkops-review .to-city { fill:var(--to-muted); font:13px system-ui,sans-serif; }
     #talkops-review .to-maplabel { position:absolute; left:10px; bottom:7px; font-size:11px; color:var(--to-muted); background:var(--to-panel); padding:2px 6px; border-radius:4px; }
-    #talkops-review .to-marker { position:absolute; border:0; background:transparent; padding:0; width:58px; height:74px; display:grid; place-content:center; transform:translate(-50%,-50%); border-radius:8px; }
+    #talkops-review .to-marker { position:absolute; border:0; background:transparent!important; color:var(--to-ink)!important; padding:6px; width:120px; height:130px; display:flex; align-items:center; justify-content:center; gap:12px; transform:translate(-50%,-50%); border-radius:8px; z-index:1; }
     #talkops-review .to-pie { display:block; width:var(--to-size,44px); height:var(--to-size,44px); border-radius:50%; background:conic-gradient(var(--to-green) 0 var(--to-a),var(--to-red) var(--to-a) var(--to-b),var(--to-blue) var(--to-b) 360deg); box-shadow:0 0 0 2px var(--to-panel),0 2px 5px #0003; }
-    #talkops-review .to-marker[data-key=bamberg] { left:57%; top:64%; --to-a:72deg; --to-b:96deg; --to-size:34px; }
-    #talkops-review .to-marker[data-key=frankfurt] { left:32%; top:61%; --to-a:84deg; --to-b:108deg; --to-size:26px; }
-    #talkops-review .to-marker[data-key=mobile] { left:43%; top:31%; --to-a:112.65deg; --to-b:139.6deg; }
-    #talkops-review .to-marker[data-key=other] { left:56%; top:28%; --to-a:0deg; --to-b:0deg; --to-size:19px; }
-    #talkops-review .to-phone { display:grid; place-content:center; background:var(--to-panel); border:2px solid var(--to-ink); border-radius:9px; padding:8px 4px 9px; position:relative; }
-    #talkops-review .to-phone::before { content:''; position:absolute; top:2px; left:40%; width:20%; height:2px; background:var(--to-ink); border-radius:2px; }
-    #talkops-review .to-phone::after { content:''; position:absolute; bottom:3px; left:45%; width:10%; height:2px; background:var(--to-ink); border-radius:2px; }
+    #talkops-review .to-marker[data-key=bamberg] { left:66%; top:77%; --to-a:72deg; --to-b:96deg; --to-size:28px; }
+    #talkops-review .to-marker[data-key=frankfurt] { left:25%; top:67%; --to-a:84deg; --to-b:108deg; --to-size:24px; }
+    #talkops-review .to-marker[data-key=mobile] { left:49%; top:48%; --to-a:112.65deg; --to-b:139.6deg; }
+    #talkops-review .to-marker[data-key=other] { left:77%; top:22%; --to-a:0deg; --to-b:0deg; --to-size:19px; }
+    #talkops-review .to-device { position:relative; flex:none; isolation:isolate; display:inline-flex; }
+    #talkops-review .to-device::after { content:''; position:absolute; left:50%; bottom:-10px; transform:translateX(-50%); width:86px; height:18px; border:2px solid light-dark(#3799d1,#24b7ff); background:light-dark(#dceefa,#12476a); border-radius:50%; z-index:-1; box-shadow:0 0 0 6px light-dark(#c9e5f280,#008bea22); }
+    #talkops-review .to-phone { display:grid; place-content:center; background:var(--to-panel); border:2px solid var(--to-ink); border-radius:10px; width:62px; height:100px; position:relative; }
+    #talkops-review .to-phone::before { content:''; position:absolute; top:6px; left:35%; width:30%; height:3px; background:var(--to-ink); border-radius:2px; }
+    #talkops-review .to-phone::after { content:''; position:absolute; bottom:6px; left:calc(50% - 4px); width:8px; height:8px; background:var(--to-ink); border-radius:50%; }
+    #talkops-review .to-deskphone { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; width:49px; height:77px; position:relative; border:2px solid var(--to-ink); border-radius:7px; background:var(--to-panel); }
+    #talkops-review .to-deskphone::before { content:''; position:absolute; left:-14px; top:9px; width:8px; height:49px; background:var(--to-panel); border:2px solid var(--to-ink); border-radius:5px; }
+    #talkops-review .to-keys { display:grid; grid-template-columns:repeat(3,5px); gap:3px; }
+    #talkops-review .to-keys b { width:5px; height:3px; border-radius:2px; background:var(--to-ink); }
+    #talkops-review .to-marker-name { position:absolute; bottom:calc(100% - 10px); left:50%; transform:translateX(-50%); white-space:nowrap; font-size:13px; font-weight:500; }
+    #talkops-review .to-marker[data-key=mobile] .to-marker-name { bottom:-17px; }
+    #talkops-review .to-inline-stats { display:grid; gap:2px; text-align:left; font-size:12px; font-variant-numeric:tabular-nums; }
+    #talkops-review .to-inline-stats span { white-space:nowrap; }
+    #talkops-review [data-design=tile] .to-inline-stats { display:none; }
+    #talkops-review .to-preview[hidden] { display:none!important; }
     #talkops-review .to-other { border:2px solid var(--to-ink); background:var(--to-panel); padding:5px; border-radius:6px; }
     #talkops-review .to-mobile-tile { display:flex; align-items:center; gap:5px; padding:7px; border:2px solid var(--to-ink); border-radius:10px; background:var(--to-panel); }
     #talkops-review .to-mobile-tile i, #talkops-review .to-mobile-tile svg { width:17px; height:22px; }
@@ -70,13 +82,16 @@
     @media(max-width:660px) {
       #talkops-review .to-two { grid-template-columns:1fr; }
       #talkops-review .to-preview { position:relative; top:auto; right:auto; width:auto; margin:10px; box-shadow:none; }
-      #talkops-review .to-map { height:auto; min-height:300px; overflow:visible; }
-      #talkops-review .to-map svg.to-outline { height:270px; display:block; }
+      #talkops-review .to-map { height:auto; min-height:400px; overflow:visible; }
+      #talkops-review .to-map svg.to-outline { height:400px; display:block; }
       #talkops-review .to-maplabel { position:static; display:block; width:fit-content; margin:7px; }
-      #talkops-review .to-marker[data-key=bamberg] { top:172px; }
-      #talkops-review .to-marker[data-key=frankfurt] { top:164px; }
-      #talkops-review .to-marker[data-key=mobile] { top:84px; }
-      #talkops-review .to-marker[data-key=other] { top:75px; left:67%; }
+      #talkops-review .to-marker { width:68px; height:112px; }
+      #talkops-review .to-inline-stats { display:none; }
+      #talkops-review .to-marker[data-key=bamberg] { top:295px; left:74%; }
+      #talkops-review .to-marker[data-key=frankfurt] { top:290px; left:24%; }
+      #talkops-review .to-marker[data-key=mobile] { top:118px; left:33%; }
+      #talkops-review .to-marker[data-key=other] { top:90px; left:80%; }
+      #talkops-review .to-marker[data-key=other] .to-marker-name { font-size:11px; }
       #talkops-review .to-content { padding:12px; }
       #talkops-review .to-top { padding:12px; }
       #talkops-review .to-panel { padding:10px; }
@@ -90,10 +105,10 @@
       <button type="button" class="cursor-interaction" data-screen="alert" aria-pressed="false">Benachrichtigungen</button>
     </div>
     <div class="to-content" data-view="map">
-      <div class="to-screen-title"><h2>Anrufliste · Karte</h2><span class="to-sub">Vorschau vor der Auswahl</span></div>
-      <div class="viz-carousel" aria-label="Mobilmarker-Varianten" data-previous-label="Zurück" data-next-label="Weiter">
-        <section data-variant="Handyfenster" aria-label="Handyfenster" data-design="phone"><div class="to-stage"></div></section>
-        <section data-variant="Mobilkachel" aria-label="Mobilkachel" data-design="tile" hidden><div class="to-stage"></div></section>
+      <div class="to-screen-title"><h2>Anrufliste · Verteilung</h2><span class="to-sub">Vorschau vor der Auswahl</span></div>
+      <div class="viz-carousel" aria-label="Gerätemarker und Statistik" data-previous-label="Zurück" data-next-label="Weiter">
+        <section data-variant="Geräte mit Zahlen" aria-label="Geräte mit Zahlen" data-design="phone"><div class="to-stage"></div></section>
+        <section data-variant="Kompakte Geräte" aria-label="Kompakte Geräte" data-design="tile" hidden><div class="to-stage"></div></section>
       </div>
     </div>
     <div class="to-content" data-view="alert" hidden>
@@ -129,16 +144,16 @@
           <path class="to-land" d="M300 12 L321 25 349 18 367 33 397 40 391 66 418 83 411 113 432 142 415 165 440 197 416 220 420 253 396 271 400 300 367 312 351 301 329 318 309 304 282 314 257 290 236 297 221 277 232 250 211 239 218 212 197 192 211 168 198 149 217 130 219 104 243 100 242 74 267 61 273 31 Z"/>
           <path class="to-state" d="M221 130 L292 145 330 116 411 113 M218 212 L288 212 321 189 415 165 M257 290 L288 212 330 235 396 271 M292 145 L288 212 M330 116 L321 189"/>
           <path class="to-river" d="M245 276 Q210 239 239 200 T236 113 M404 264 Q350 248 331 268 T262 280"/>
-          <text class="to-city" x="245" y="62">Hamburg</text><text class="to-city" x="410" y="105">Berlin</text><text class="to-city" x="140" y="188">Köln</text><text class="to-city" x="170" y="234">Frankfurt</text><text class="to-city" x="385" y="245">Bamberg</text><text class="to-city" x="368" y="292">München</text>
+          <text class="to-city" x="245" y="62">Hamburg</text><text class="to-city" x="410" y="105">Berlin</text>
         </svg>
-        <button type="button" class="to-marker cursor-interaction" data-key="mobile" aria-label="Mobilnummern Deutschland, 147 Anrufe" aria-pressed="false"><span class="to-mobile-symbol"></span></button>
-        <button type="button" class="to-marker cursor-interaction" data-key="other" aria-label="Deutschland ohne Ortsbezug, 2 Anrufe" aria-pressed="false"><span class="to-other"><span class="to-pie"></span></span></button>
-        <button type="button" class="to-marker cursor-interaction" data-key="bamberg" aria-label="Bamberg, 60 Anrufe" aria-pressed="false"><span class="to-pie"></span></button>
-        <button type="button" class="to-marker cursor-interaction" data-key="frankfurt" aria-label="Frankfurt am Main, 30 Anrufe" aria-pressed="false"><span class="to-pie"></span></button>
-        <div class="to-preview" data-preview role="region" aria-label="Markervorschau"></div>
+        <button type="button" class="to-marker cursor-interaction" data-key="mobile" aria-label="Mobilnummern Deutschland, 147 Anrufe" aria-pressed="false"><span class="to-marker-name">DE Mobil</span><span class="to-device"><span class="to-phone"><span class="to-pie"></span></span></span></button>
+        <button type="button" class="to-marker cursor-interaction" data-key="other" aria-label="Deutschland ohne Ortsbezug, 2 Anrufe" aria-pressed="false"><span class="to-marker-name">DE ohne Ortsbezug</span><span class="to-other"><span class="to-pie"></span></span></button>
+        <button type="button" class="to-marker cursor-interaction" data-key="bamberg" aria-label="Bamberg, 60 Anrufe" aria-pressed="false"><span class="to-marker-name">Bamberg</span><span class="to-device"><span class="to-deskphone"><span class="to-pie"></span><span class="to-keys" aria-hidden="true"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b></span></span></span></button>
+        <button type="button" class="to-marker cursor-interaction" data-key="frankfurt" aria-label="Frankfurt am Main, 30 Anrufe" aria-pressed="false"><span class="to-marker-name">Frankfurt</span><span class="to-device"><span class="to-deskphone"><span class="to-pie"></span><span class="to-keys" aria-hidden="true"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b></span></span></span></button>
+        <div class="to-preview" data-preview role="region" aria-label="Markervorschau" hidden></div>
         <span class="to-maplabel">Schematische Karte · Beispieldaten</span>
       </div>
-      <div class="to-shapes"><span><b class="to-mini"></b>Ortsnetz / Ort</span><span><b class="to-mini to-mini-phone"></b>Mobil · nur Land</span><span><b class="to-mini to-mini-square"></b>Andere ohne Ortsbezug</span></div>
+      <div class="to-shapes"><span>☎ Festnetz · Ortsnetz / Ort</span><span>▯ Mobil · nur Land</span><span><b class="to-mini to-mini-square"></b>Andere ohne Ortsbezug</span></div>
       <div class="to-selected" data-selected aria-live="polite"><span class="to-sub">Keine Auswahl · Marker berühren oder fokussieren für Vorschau.</span></div>
       <p class="to-note">Ortsnetzangaben zeigen die Zuordnung der Rufnummer, nicht den tatsächlichen Aufenthaltsort.</p>
     </div>
@@ -175,8 +190,13 @@
       const template=root.querySelector('[data-map-template]');
       root.querySelectorAll('[data-design]').forEach((section,index)=>{
         const stage=section.querySelector('.to-stage');stage.append(template.content.cloneNode(true));
-        const symbol=stage.querySelector('.to-mobile-symbol');
-        symbol.innerHTML=section.dataset.design==='phone'?'<span class="to-phone"><span class="to-pie"></span></span>':'<span class="to-mobile-tile"><i data-lucide="smartphone" aria-hidden="true">📱</i><span class="to-pie"></span></span>';
+        const names=['Angenommen','Verpasst','Ausgehend','Blockiert / Spam'];const colors=['green','red','blue','purple'];
+        stage.querySelectorAll('[data-key]').forEach(button=>{
+          const stats=document.createElement('span');stats.className='to-inline-stats';stats.setAttribute('aria-hidden','true');
+          stats.innerHTML=data[button.dataset.key].counts.map((n,i)=>'<span><b class="to-dot" style="background:var(--to-'+colors[i]+')"></b>'+n+'</span>').join('');
+          button.append(stats);
+          button.setAttribute('aria-label',data[button.dataset.key].title+', '+data[button.dataset.key].counts.map((n,i)=>names[i]+' '+n).join(', '));
+        });
         const preview=stage.querySelector('[data-preview]');preview.id='to-preview-'+index;
         let active='mobile';let selected=null;let closeTimer;
         function pick(key) {
@@ -206,7 +226,7 @@
         stage.addEventListener('click',e=>{if(!e.target.closest('[data-key], [data-preview]'))preview.hidden=true;});
         const designState={size:44};
         if(globalThis.Tweak){const tweak=new Tweak({container:section,onChange:()=>stage.querySelector('[data-key=mobile]').style.setProperty('--to-size',designState.size+'px')});tweak.addSlider(designState,'size',{min:32,max:56,step:2,unit:'px',label:'Mobil-Kreisdiagramm'});}
-        show(active);
+        // Keep the overview visible until the user opens a marker preview.
       });
       applyState();
       window.addEventListener('openai:set_globals',e=>{const s=e.detail?.globals?.widgetState?.modelContent;if(s){state.screen=s.screen==='alert'?'alert':'map';state.enabled=s.enabled===true;state.recipientMode=s.recipientMode==='user'?'user':'role';state.recipient=String(s.recipient||'Administratoren');applyState();}});

@@ -29,6 +29,12 @@ try {
         const stage = page.locator(`[data-design=${design}]`);
         const preview = stage.locator('[data-preview]');
         const selected = stage.locator('[data-selected]');
+        assert.equal(await stage.locator('[data-key=mobile] .to-phone').count(), 1, 'mobile uses smartphone');
+        assert.equal(await stage.locator('.to-deskphone').count(), 2, 'local areas use desk phones');
+        assert.equal(await stage.locator('.to-deskphone .to-keys b').count(), 18, 'two nine-key layouts');
+        assert.equal(await stage.locator('[data-key=mobile] .to-marker-name').innerText(), 'DE Mobil');
+        assert.equal(await stage.locator('[data-key=mobile] .to-inline-stats').isVisible(), design === 'phone' && width > 660, 'statistics follow density and width');
+        assert.match(await stage.locator('[data-key=mobile]').getAttribute('aria-label'), /Angenommen 46.*Verpasst 11.*Ausgehend 90/);
         assert.match(await selected.innerText(), /Keine Auswahl/);
         await stage.locator('[data-key=bamberg]').hover();
         assert.match(await preview.innerText(), /Bamberg/);
@@ -52,7 +58,12 @@ try {
         assert.match(await selected.innerText(), /Keine Auswahl/);
         await stage.locator('[data-key=mobile]').hover();
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `map overflow at ${width}`);
-        if (shots && width === 1024) await page.locator('#talkops-review').screenshot({ path: resolve(shots, `map-${design}-${colorScheme}.png`) });
+        if (shots && width === 1024) {
+          await stage.locator('[data-key=mobile]').focus();
+          await stage.locator('[data-key=mobile]').press('Escape');
+          await stage.locator('[data-key=mobile]').evaluate(node => node.blur());
+          await page.locator('#talkops-review').screenshot({ path: resolve(shots, `map-${design}-${colorScheme}.png`) });
+        }
         cases++;
       }
       await page.getByRole('button', { name: 'Benachrichtigungen', exact: true }).click();

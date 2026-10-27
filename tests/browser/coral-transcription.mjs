@@ -70,7 +70,7 @@ try {
   assert.equal(await page.locator('#stt-url').inputValue(), 'http://127.0.0.1:8095/v1');
   await box.getByText('Nur Loopback-Adressen', { exact: false }).waitFor();
   await box.getByRole('button', { name: 'Verbindung speichern' }).click();
-  await box.getByTestId('stt-provider').getByText('Coral', { exact: true }).first().waitFor();
+  await box.getByTestId('stt-provider').getByText('Coral (experimentell)', { exact: true }).first().waitFor();
   assert.deepEqual(saved.providers, [{ name: 'Coral', kind: 'coral', url: 'http://127.0.0.1:8095/v1', key: null }]);
 
   // Connection test with the TPU status.

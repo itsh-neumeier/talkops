@@ -108,3 +108,14 @@ Save final audit and remove only unchanged fully merged batch branches.
 - docs/adr/0047-call-map-device-markers-and-emergency-alerts.md
 - docs/research/coral-production-trial.md
 - docs/release-workflow.md
+
+## Candidate correction
+
+Initial candidate 5680cd75a1c789f1d5a439deb3fe6654a970eafe is superseded.
+PR CI40508739179 web job122204728574 failed at coral-transcription.mjs:73.
+The release manager changed the badge to Coral (experimentell) but did not
+update the existing exact-text assertion. Match the exact experimental badge;
+keep all connection, runtime, fallback and permission assertions unchanged.
+No product behavior changed by this correction. New complete CI/E2E required.
+Clean local npm ci, lint, check (zero errors/warnings) and build also passed.
+All source PR checks have now passed; PR84 E2E finished successfully.

@@ -35,6 +35,13 @@ jobs:
         run: sudo apt-get update -qq && sudo apt-get install -y python3-pil python3-reportlab poppler-utils fonts-dejavu-core
       - run: python3 -m unittest discover -s tests/fax -v
 
+  coral-tools:
+    name: Coral benchmark tools
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m unittest discover -s tools/coral/tests -v
+
   rust:
     name: Rust (fmt, clippy, test)
     runs-on: ubuntu-24.04
@@ -132,6 +139,7 @@ jobs:
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/dashboard-charts.mjs
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/layout.mjs
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/transcription-settings.mjs
+          PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/coral-transcription.mjs
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/roles.mjs
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/settings-system.mjs
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/phone-network.mjs
@@ -164,6 +172,7 @@ jobs:
               -e 's/^TALKOPS_XMLCURL_PASSWORD=$/TALKOPS_XMLCURL_PASSWORD=ci/' .env.example > ci.env
           docker compose --env-file ci.env -f docker-compose.yml config -q
           docker compose --env-file ci.env -f docker-compose.yml -f docker-compose.dev.yml config -q
+          COMPOSE_PROFILES=coral docker compose --env-file ci.env -f docker-compose.yml config -q
       - name: Production compose must not build
         run: |
           if grep -nE '^\s+build:' docker-compose.yml; then
@@ -190,6 +199,9 @@ jobs:
           - image: talkops-media-worker
             context: .
             dockerfile: docker/media-worker/Dockerfile
+          - image: talkops-coral-stt
+            context: .
+            dockerfile: docker/coral-stt/Dockerfile
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
@@ -205,4 +217,8 @@ jobs:
       - name: Smoke test
         run: docker run --rm ${{ matrix.image }}:ci --version
       - name: Fax storage with a read-only root filesystem
+        if: matrix.image != 'talkops-coral-stt'
         run: bash tests/fax/storage-image.sh ${{ matrix.image }}:ci
+      - name: Coral libraries load and the mock service is healthy
+        if: matrix.image == 'talkops-coral-stt'
+        run: bash tests/coral/image.sh ${{ matrix.image }}:ci

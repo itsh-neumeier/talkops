@@ -564,6 +564,10 @@ export interface LiveTranscript {
 	processed_secs: number;
 	segments: TranscriptSegment[];
 	status: 'queued' | 'running' | 'done' | 'failed';
+	/** Engine of the latest text, e.g. `api:Coral/coral-auto` or `whisper:base`. */
+	engine?: string;
+	/** The selected engine that is not available while a local fallback runs. */
+	fallback_from?: string | null;
 }
 
 export type TranscriptStatus = 'none' | 'pending' | 'done' | 'failed';
@@ -584,6 +588,8 @@ export interface TranscriptSegment {
 	/** `caller`, `called` or empty (voicemail). */
 	speaker: string;
 	text: string;
+	/** Detected language of the line (Coral), e.g. `de` or `en`. */
+	language?: string | null;
 }
 
 export interface Transcript {
@@ -595,6 +601,8 @@ export interface Transcript {
 	segments: TranscriptSegment[];
 	/** e.g. `whisper:large-v3-turbo-q5_0` or `api:whisper-1`. */
 	engine: string;
+	/** The selected engine that was not available (local fallback), e.g. `Coral/coral-auto`. */
+	fallback_from?: string | null;
 	/** False while a more accurate second pass is still to come. */
 	final: boolean;
 	created_at: string;
@@ -887,13 +895,18 @@ export interface TranscriptionProfile {
 	price_per_minute: number | null;
 	/** Known list price of the cloud model (read-only). */
 	list_price?: number | null;
+	/** Kind of the connection (read-only); for `coral`, `local_model` is the fallback. */
+	provider_kind?: TranscriptionProvider['kind'] | null;
 }
 
-/** Cloud connection: OpenAI or an OpenAI-compatible server (key never returned). */
+/**
+ * Connection: OpenAI, an OpenAI-compatible server or the coral-stt service
+ * on this server (key never returned).
+ */
 export interface TranscriptionProvider {
 	id: string;
 	name: string;
-	kind: 'openai' | 'compatible';
+	kind: 'openai' | 'compatible' | 'coral';
 	url: string;
 	has_key: boolean;
 }
@@ -905,6 +918,36 @@ export interface TranscriptionUsage {
 	seconds: number;
 	cost: number;
 	unpriced_seconds: number;
+}
+
+/** One Edge TPU in the `/health` answer of coral-stt. */
+export interface CoralTpu {
+	id: string;
+	kind: 'usb' | 'pcie' | 'cpu' | 'mock';
+	node: string | null;
+	state: string;
+	busy: boolean;
+	load: number;
+	inferences: number;
+	models: string[];
+	error: string | null;
+}
+
+/** The `/health` answer of coral-stt. */
+export interface CoralHealth {
+	status: 'ok' | 'degraded' | 'unavailable';
+	version: string;
+	backend: string;
+	tpus: CoralTpu[];
+	queue: { length: number; capacity: number; sessions: number; max_sessions: number };
+	models: string[];
+}
+
+/** Result of a connection test. */
+export interface TranscriptionTest {
+	missing_models: string[] | null;
+	speech_models: string[];
+	coral?: CoralHealth | null;
 }
 
 export interface TranscriptionOverview {

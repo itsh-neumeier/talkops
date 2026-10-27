@@ -36,6 +36,7 @@
 | `talkops` | Control Plane: liefert FreeSWITCH-Konfiguration aus der DB, steuert Anrufe per ESL, REST-API, Web-UI, Provisioning, Auth | Rust: tokio, axum, sqlx, utoipa |
 | `postgres` | Einzige Quelle der Wahrheit: Konfiguration, CDR, Job-Queue, Audit-Log | PostgreSQL 17, `postgres:17-trixie` ([ADR 0003](adr/0003-datenbank-postgresql.md)) |
 | `media-worker` | Asynchrone Jobs: TTS (Piper), Transkription (whisper.cpp) | Rust, Postgres-Job-Queue ([ADR 0005](adr/0005-job-queue-postgres.md)) |
+| `coral-stt` (optional, Profil `coral`) | Spracherkennung DE/EN auf Google-Coral-Edge-TPUs (USB, M.2/PCIe), OpenAI-kompatibel, nur auf `127.0.0.1:8095` | Rust, TensorFlow Lite C 2.19.1 + libedgetpu über `edgefirst-tflite` ([ADR 0046](adr/0046-coral-edge-tpu-speech-recognition.md)) |
 | `caddy` (optional) | HTTPS mit ACME vor dem Web-UI | Caddy 2 |
 
 ### Rust-Workspace
@@ -48,6 +49,7 @@
 | `talkops-provisioning` | Yealink-Provisioning, XML-Telefonbuch, Firmware (Phase 2) |
 | `talkops-media-worker` | Worker-Binary für TTS/Transkription |
 | `talkops-doorbell` | Dahua-VTO: Türöffner, Snapshots, Home-Assistant-Events (Phase 6) |
+| `talkops-coral-stt` | Dienst `coral-stt`: Edge-TPU-Erkennung, Warteschlange, `/health`, `/v1/audio/transcriptions`, `/v1/realtime` (ADR 0046) |
 
 Abhängigkeitsrichtung: `api`, `media-worker` → `core`, `esl`, `provisioning`,
 `doorbell` → `core`. Fachlogik liegt in `core` bzw. den Fach-Crates, nicht im
@@ -207,6 +209,16 @@ Standardrufnummer.
   Live in der Cloud: 8-s-Stücke oder Realtime-Streaming per WebSocket
   (`media-worker/src/realtime.rs`, Lease in `live_transcript_previews`).
   Gesendete Audiosekunden und geschätzte Kosten in `transcription_usage`.
+- Coral Edge TPU ([ADR 0046](adr/0046-coral-edge-tpu-speech-recognition.md)):
+  Verbindungsart `coral` (Loopback-URL, keine Kosten) zum Dienst
+  `coral-stt`. Kleine CTC-Modelle mit festen Fenstern laufen auf der TPU,
+  Merkmale und Dekodierung auf dem Host; Sprache je Abschnitt per
+  Sprach-ID (DE/EN, Tenant-Sprache zuerst). Hybrid: Coral für Live und den
+  ersten Durchgang, lokales Whisper im zweiten. Fällt Coral aus, übernimmt
+  lokales Whisper (`base` live in Stücken, sonst das lokale Modell des
+  Profils); `transcripts.fallback_from` und
+  `live_transcript_previews.fallback_from` halten das fest, neuer Versuch
+  nach 30 s. Erkannte Sprache in `transcripts.language` und je Segment.
 - Suche: `websearch_to_tsquery`, Ausschnitte per `ts_headline`; Benutzer sehen
   nur Treffer ihrer Nebenstellen. Löschfrist: stündlicher Lauf
   (`talkops_api::retention`).

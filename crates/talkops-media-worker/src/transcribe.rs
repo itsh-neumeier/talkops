@@ -989,6 +989,7 @@ mod tests {
             end: 2.0,
             speaker: "called".into(),
             text: "x".into(),
+            language: None,
         }];
         refine_starts(&mut segs, &samples);
         assert_eq!(segs[0].start, 1.0);

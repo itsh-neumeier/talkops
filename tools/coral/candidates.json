@@ -1,0 +1,72 @@
+{
+  "_comment": "Phase 0 candidate models. license_verified must be true before a compiled model ships in an image. Check the license on the source page and record the date.",
+  "ctc": [
+    {
+      "id": "en-citrinet-256",
+      "language": "en",
+      "source": "nvidia/stt_en_citrinet_256_ls",
+      "url": "https://huggingface.co/nvidia/stt_en_citrinet_256_ls",
+      "architecture": "Citrinet (1D separable conv, squeeze-excitation), CTC, sentencepiece 256",
+      "params_million": 10,
+      "training_data": "LibriSpeech 960 h",
+      "license": "CC-BY-4.0",
+      "license_verified": true,
+      "license_checked": "2026-10-24, model card",
+      "notes": "About 10 MB int8: slightly above the 8 MB parameter cache. Expect off-chip streaming or use 2 segments."
+    },
+    {
+      "id": "en-quartznet-15x5",
+      "language": "en",
+      "source": "nvidia/stt_en_quartznet15x5 (NGC)",
+      "url": "https://catalog.ngc.nvidia.com/orgs/nvidia/nemo/models/stt_en_quartznet15x5",
+      "architecture": "QuartzNet 15x5 (1D separable conv), CTC, characters",
+      "params_million": 18.9,
+      "training_data": "LibriSpeech, Mozilla Common Voice, WSJ, Fisher, Switchboard, NSC",
+      "license": "to verify on the NGC page",
+      "license_verified": false,
+      "notes": "About 19 MB int8. Parameters stream from host memory on each window; latency depends on USB/PCIe bandwidth. Fisher/Switchboard training includes 8 kHz telephone speech."
+    },
+    {
+      "id": "de-quartznet-15x5",
+      "language": "de",
+      "source": "nvidia/stt_de_quartznet15x5 (NGC)",
+      "url": "https://catalog.ngc.nvidia.com/orgs/nvidia/nemo/models/stt_de_quartznet15x5",
+      "architecture": "QuartzNet 15x5 (1D separable conv), CTC, characters",
+      "params_million": 18.9,
+      "training_data": "Mozilla Common Voice German",
+      "license": "to verify on the NGC page",
+      "license_verified": false,
+      "notes": "Only known small German CTC model with a conv-only architecture. Read speech only; expect a high WER on telephone calls."
+    },
+    {
+      "id": "de-citrinet-256-ft",
+      "language": "de",
+      "source": "own fine-tune of en-citrinet-256 on Common Voice German (CC0)",
+      "url": "https://commonvoice.mozilla.org/",
+      "architecture": "Citrinet 256, CTC, new German sentencepiece vocabulary",
+      "params_million": 10,
+      "training_data": "Mozilla Common Voice German (CC0) with telephone augmentation",
+      "license": "CC-BY-4.0 (base model) + CC0 data",
+      "license_verified": false,
+      "notes": "Fallback if de-quartznet-15x5 fails the gate. Needs a GPU for training; not part of the tools in this phase."
+    }
+  ],
+  "langid": [
+    {
+      "id": "langid-de-en-cnn",
+      "source": "train_langid.py on Common Voice German and English (CC0)",
+      "architecture": "small 2D CNN on 2 s log-mel, 2 classes",
+      "params_million": 0.2,
+      "license": "own model, data CC0",
+      "license_verified": true,
+      "notes": "Alternative without a classifier: CTC confidence of both models (--lang-mode confidence, doubles the TPU load)."
+    }
+  ],
+  "excluded": [
+    {"id": "whisper (all sizes)", "reason": "Transformer attention, dynamic shapes and size: not compilable for the Edge TPU."},
+    {"id": "wav2vec2 / HuBERT / Conformer CTC", "reason": "Attention, LayerNorm and GELU map poorly; models are larger than the parameter cache."},
+    {"id": "Coqui STT / DeepSpeech (MPL-2.0)", "reason": "LSTM layers run mostly on the CPU after compilation; project is archived."},
+    {"id": "Vosk / Kaldi", "reason": "Not TensorFlow Lite models; no conversion path to the Edge TPU."},
+    {"id": "Silero STT", "reason": "License terms of the STT models are not clearly compatible with redistribution under AGPL-3.0; not evaluated."}
+  ]
+}

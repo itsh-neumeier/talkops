@@ -1762,6 +1762,7 @@ async fn voicemail_boxes_messages_and_smtp(pool: PgPool) {
             end: 2.0,
             speaker: String::new(),
             text: " Ruf mich zurück.".into(),
+            language: None,
         }],
         Default::default(),
     )
@@ -1776,12 +1777,14 @@ async fn voicemail_boxes_messages_and_smtp(pool: PgPool) {
     let meta = recordings::TranscriptMeta {
         engine: "whisper:base",
         is_final: false,
+        fallback_from: None,
     };
     let seg = recordings::Segment {
         start: 0.0,
         end: 2.0,
         speaker: String::new(),
         text: " Ruf mich zurück.".into(),
+        language: None,
     };
     recordings::save_transcript(&pool, T, source, "de", std::slice::from_ref(&seg), meta)
         .await

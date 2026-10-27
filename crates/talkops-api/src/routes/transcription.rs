@@ -1,5 +1,6 @@
 //! Transcription settings (admin, ADR 0024): cloud connections, the engine
-//! per purpose and the cloud usage.
+//! per purpose and the cloud usage. A Coral connection (ADR 0046) is tested
+//! with `/health` (TPU status) and `/v1/models` of the coral-stt service.
 
 use std::sync::OnceLock;
 use std::time::Duration;
@@ -177,6 +178,10 @@ pub struct ApiTest {
     pub missing_models: Option<Vec<String>>,
     /// Models that look like speech recognition (whisper, transcribe, voxtral).
     pub speech_models: Vec<String>,
+    /// Coral connections: the `/health` answer of coral-stt (status, TPUs
+    /// with kind, state, load and loaded models, queue).
+    #[schema(value_type = Option<Object>)]
+    pub coral: Option<serde_json::Value>,
 }
 
 fn client() -> &'static reqwest::Client {
@@ -211,7 +216,25 @@ pub async fn test_provider(
     Path(id): Path<Uuid>,
 ) -> ApiResult<Json<ApiTest>> {
     auth.require_perm(Permission::TranscriptionSettings)?;
-    let cfg = transcription_api::config(&state.db, auth.tenant, &state.secrets, id, "").await?;
+    let cfg =
+        transcription_api::config(&state.db, auth.tenant, Some(&state.secrets), id, "").await?;
+    // coral-stt answers /health with 503 while no TPU is ready; the body
+    // still tells why.
+    let coral =
+        if cfg.is_coral() {
+            let res = client()
+                .get(format!("{}/health", cfg.root()))
+                .send()
+                .await
+                .map_err(|e| {
+                    ApiError::BadRequest(format!("Coral service not reachable: {}", root_cause(&e)))
+                })?;
+            Some(res.json::<serde_json::Value>().await.map_err(|_| {
+                ApiError::BadRequest("the Coral service gave no health status".into())
+            })?)
+        } else {
+            None
+        };
     let mut req = client().get(format!("{}/models", cfg.url.trim_end_matches('/')));
     if let Some(key) = &cfg.key {
         req = req.bearer_auth(key);
@@ -241,6 +264,7 @@ pub async fn test_provider(
         return Ok(Json(ApiTest {
             missing_models: None,
             speech_models: Vec::new(),
+            coral,
         }));
     }
     #[derive(serde::Deserialize)]
@@ -260,7 +284,7 @@ pub async fn test_provider(
         .iter()
         .filter(|id| {
             let id = id.to_ascii_lowercase();
-            ["whisper", "transcribe", "voxtral", "parakeet"]
+            ["whisper", "transcribe", "voxtral", "parakeet", "coral"]
                 .iter()
                 .any(|w| id.contains(w))
         })
@@ -284,6 +308,7 @@ pub async fn test_provider(
     Ok(Json(ApiTest {
         missing_models: missing,
         speech_models: speech,
+        coral,
     }))
 }
 

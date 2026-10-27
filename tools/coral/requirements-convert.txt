@@ -1,0 +1,9 @@
+# Conversion workstation (x86-64, no TPU needed). Install in a separate
+# virtual environment; NeMo pulls in PyTorch. Record `pip freeze` with each
+# exported model so that the conversion can be repeated.
+numpy>=1.26,<3
+nemo_toolkit[asr]>=2.0,<3
+onnx>=1.16,<2
+onnx2tf>=1.26,<2
+tensorflow>=2.17,<2.22
+tf_keras>=2.17,<2.22

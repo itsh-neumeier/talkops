@@ -2,11 +2,13 @@
 	import { onMount } from 'svelte';
 	import {
 		api,
+		type CoralHealth,
 		type LocalModel,
 		type TranscriptionOverview,
 		type TranscriptionProfile,
 		type TranscriptionProvider,
-		type TranscriptionPurpose
+		type TranscriptionPurpose,
+		type TranscriptionTest
 	} from '#lib/api.ts';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
 	import { i18n, t } from '#lib/i18n/index.svelte.ts';
@@ -17,7 +19,9 @@
 		{ id: 'openai', kind: 'openai', name: 'OpenAI', url: 'https://api.openai.com/v1' },
 		{ id: 'groq', kind: 'compatible', name: 'Groq', url: 'https://api.groq.com/openai/v1' },
 		{ id: 'mistral', kind: 'compatible', name: 'Mistral', url: 'https://api.mistral.ai/v1' },
-		{ id: 'custom', kind: 'compatible', name: '', url: 'http://192.168.1.10:8000/v1' }
+		{ id: 'custom', kind: 'compatible', name: '', url: 'http://192.168.1.10:8000/v1' },
+		// coral-stt on this server (ADR 0046): loopback only, no costs.
+		{ id: 'coral', kind: 'coral', name: 'Coral', url: 'http://127.0.0.1:8095/v1' }
 	] as const;
 	type PresetId = (typeof presets)[number]['id'];
 
@@ -32,6 +36,8 @@
 		'https://api.mistral.ai/v1': ['voxtral-mini-latest']
 	};
 	const realtimeModels = ['gpt-live-transcribe', 'gpt-realtime-whisper', 'gpt-4o-transcribe'];
+	/** Models of coral-stt: language detection per turn, or one language. */
+	const coralModels = ['coral-auto', 'coral-ctc-de', 'coral-ctc-en'];
 	const localModels: Record<'live' | 'other', LocalModel[]> = {
 		live: ['base', 'fast'],
 		other: ['fast', 'accurate', 'best', 'german']
@@ -54,8 +60,14 @@
 	let editing = $state<string | null>(null);
 	let form = $state({ preset: 'openai' as PresetId, name: 'OpenAI', url: '', key: '' });
 
-	const anyCloud = $derived(profiles.some((p) => p.engine === 'cloud'));
-	const liveCloud = $derived(profiles.some((p) => p.purpose === 'live' && p.engine === 'cloud'));
+	// Coral runs on this server: no privacy note for it.
+	const anyCloud = $derived(profiles.some((p) => p.engine === 'cloud' && !isCoral(p)));
+	const liveCloud = $derived(
+		profiles.some((p) => p.purpose === 'live' && p.engine === 'cloud' && !isCoral(p))
+	);
+	const coralProvider = $derived(data?.providers.find((p) => p.kind === 'coral'));
+	/** TPU status of the last Coral connection test, by connection id. */
+	let coralStatus = $state<Record<string, CoralHealth>>({});
 
 	onMount(load);
 
@@ -72,7 +84,12 @@
 		return data?.providers.find((p) => p.id === id);
 	}
 
+	function isCoral(p: TranscriptionProfile): boolean {
+		return provider(p.provider_id)?.kind === 'coral';
+	}
+
 	function suggestions(p: TranscriptionProfile): string[] {
+		if (isCoral(p)) return coralModels;
 		if (p.realtime) return realtimeModels;
 		return fileModels[provider(p.provider_id)?.url ?? ''] ?? [];
 	}
@@ -106,15 +123,53 @@
 			p.provider_id = data?.providers[0]?.id ?? null;
 		}
 		if (engine === 'cloud' && !p.model) {
-			p.model = 'gpt-transcribe';
+			p.model = isCoral(p) ? 'coral-auto' : 'gpt-transcribe';
 		}
 		if (engine !== 'cloud') p.realtime = false;
 	}
 
+	function setProvider(p: TranscriptionProfile, id: string) {
+		const before = isCoral(p);
+		p.provider_id = id;
+		const after = isCoral(p);
+		if (after && !coralModels.includes(p.model)) p.model = 'coral-auto';
+		if (!after && before) {
+			p.model = 'gpt-transcribe';
+			p.realtime = false;
+		}
+		if (after) p.price_per_minute = null;
+	}
+
 	function setRealtime(p: TranscriptionProfile, on: boolean) {
 		p.realtime = on;
+		if (isCoral(p)) return;
 		if (on && !realtimeModels.includes(p.model)) p.model = realtimeModels[0];
 		if (!on && realtimeModels.slice(0, 2).includes(p.model)) p.model = 'gpt-transcribe';
+	}
+
+	/** Coral for the live preview (Realtime) and the first passes; local Whisper refines. */
+	function applyHybrid() {
+		const coral = coralProvider;
+		if (!coral) return;
+		for (const p of profiles) {
+			if (p.purpose.endsWith('_refine')) {
+				const keep = p.engine === 'local' && localModels.other.includes(p.local_model);
+				p.engine = 'local';
+				p.local_model = keep ? p.local_model : 'fast';
+				p.realtime = false;
+				continue;
+			}
+			p.engine = 'cloud';
+			p.provider_id = coral.id;
+			p.model = 'coral-auto';
+			p.price_per_minute = null;
+			p.realtime = p.purpose === 'live';
+			// The local fallback: base for the live preview, else the current or fast.
+			if (p.purpose === 'live') p.local_model = 'base';
+			else if (!localModels.other.includes(p.local_model)) p.local_model = 'fast';
+		}
+		info = t('stt.hybridApplied');
+		error = '';
 	}
 
 	async function saveProfiles() {
@@ -143,8 +198,10 @@
 		info = '';
 		if (p) {
 			const preset =
-				presets.find((x) => x.id !== 'custom' && x.kind === p.kind && x.url === p.url)?.id ??
-				'custom';
+				p.kind === 'coral'
+					? 'coral'
+					: (presets.find((x) => x.id !== 'custom' && x.kind === p.kind && x.url === p.url)?.id ??
+						'custom');
 			form = { preset, name: p.name, url: p.url, key: '' };
 			editing = p.id;
 		} else {
@@ -170,6 +227,7 @@
 			url: form.url.trim(),
 			key: form.key || null
 		};
+		if (preset.kind === 'coral' && !body.url) body.url = preset.url;
 		try {
 			if (editing) {
 				await api.put<TranscriptionProvider>(`/settings/transcription/providers/${editing}`, body);
@@ -215,9 +273,8 @@
 		error = '';
 		info = '';
 		try {
-			const r = await api.post<{ missing_models: string[] | null; speech_models: string[] }>(
-				`/settings/transcription/providers/${p.id}/test`
-			);
+			const r = await api.post<TranscriptionTest>(`/settings/transcription/providers/${p.id}/test`);
+			if (r.coral) coralStatus = { ...coralStatus, [p.id]: r.coral };
 			info =
 				r.missing_models === null
 					? t('stt.testReachable')
@@ -284,7 +341,8 @@
 									>{/if}
 								<option value="local">{t('stt.engineLocal')}</option>
 								<option value="cloud" disabled={!data.providers.length}
-									>{t('stt.engineCloud')}{data.providers.length
+									>{coralProvider ? t('stt.engineConnection') : t('stt.engineCloud')}{data.providers
+										.length
 										? ''
 										: ` – ${t('stt.noProvider')}`}</option
 								>
@@ -297,7 +355,12 @@
 								</select>
 							{:else if p.engine === 'cloud'}
 								<div class="grid grid-cols-1 gap-2 @lg:grid-cols-2">
-									<select class="input" aria-label={t('stt.provider')} bind:value={p.provider_id}>
+									<select
+										class="input"
+										aria-label={t('stt.provider')}
+										value={p.provider_id}
+										onchange={(e) => setProvider(p, (e.currentTarget as HTMLSelectElement).value)}
+									>
 										{#each data.providers as c (c.id)}<option value={c.id}>{c.name}</option>{/each}
 									</select>
 									<input
@@ -321,36 +384,65 @@
 												setRealtime(p, (e.currentTarget as HTMLInputElement).checked)}
 										/>
 										<span
-											>{t('stt.realtime')}<br /><span class="hint">{t('stt.realtimeHint')}</span
+											>{isCoral(p) ? t('stt.coralRealtime') : t('stt.realtime')}<br /><span
+												class="hint"
+												>{isCoral(p) ? t('stt.coralRealtimeHint') : t('stt.realtimeHint')}</span
 											></span
 										></label
 									>
 								{/if}
-								<div class="flex flex-wrap items-center gap-2 text-sm">
-									<label for={`${id}-price`}>{t('stt.price')}</label>
-									<input
-										id={`${id}-price`}
-										class="input w-28"
-										type="number"
-										min="0"
-										max="10"
-										step="0.0001"
-										bind:value={p.price_per_minute}
-										placeholder={listPrice(p)?.toString() ?? ''}
-									/>
-									<span class="hint"
-										>{listPrice(p) !== null
-											? t('stt.listPrice', { price: money(listPrice(p)!) })
-											: t('stt.noListPrice')}</span
-									>
-								</div>
+								{#if isCoral(p)}
+									{#if purpose === 'live'}
+										<p class="hint" data-testid={`${id}-fallback`}>{t('stt.fallbackLive')}</p>
+									{:else}
+										<div>
+											<label for={`${id}-fallback`} class="text-sm">{t('stt.fallback')}</label>
+											<select
+												id={`${id}-fallback`}
+												class="input"
+												bind:value={p.local_model}
+												data-testid={`${id}-fallback`}
+											>
+												{#each localModels.other as m (m)}
+													<option value={m}>{t(`stt.local.${m}`)}</option>
+												{/each}
+											</select>
+											<p class="hint">{t('stt.fallbackHint')}</p>
+										</div>
+									{/if}
+								{:else}
+									<div class="flex flex-wrap items-center gap-2 text-sm">
+										<label for={`${id}-price`}>{t('stt.price')}</label>
+										<input
+											id={`${id}-price`}
+											class="input w-28"
+											type="number"
+											min="0"
+											max="10"
+											step="0.0001"
+											bind:value={p.price_per_minute}
+											placeholder={listPrice(p)?.toString() ?? ''}
+										/>
+										<span class="hint"
+											>{listPrice(p) !== null
+												? t('stt.listPrice', { price: money(listPrice(p)!) })
+												: t('stt.noListPrice')}</span
+										>
+									</div>
+								{/if}
 							{/if}
 						</div>
 					</div>
 				</fieldset>
 			{/each}
 			<p class="hint">{t('rec.qualityHint')}</p>
-			<div class="flex justify-end">
+			{#if coralProvider}<p class="hint">{t('stt.hybridHint')}</p>{/if}
+			<div class="flex flex-wrap justify-end gap-2">
+				{#if coralProvider}
+					<button type="button" class="btn" onclick={applyHybrid} data-testid="stt-hybrid"
+						>{t('stt.hybrid')}</button
+					>
+				{/if}
 				<button type="button" class="btn btn-primary" onclick={saveProfiles}
 					>{t('stt.saveProfiles')}</button
 				>
@@ -366,7 +458,10 @@
 				{#each data.providers as c (c.id)}
 					<li class="flex flex-wrap items-center gap-2 py-2" data-testid="stt-provider">
 						<div class="min-w-0 basis-full sm:flex-1 sm:basis-auto">
-							<p class="font-medium">{c.name}</p>
+							<p class="font-medium">
+								{c.name}{#if c.kind === 'coral'}<span class="badge ml-2">{t('stt.coralBadge')}</span
+									>{/if}
+							</p>
 							<p class="truncate font-mono text-xs text-slate-500 dark:text-slate-400">
 								{c.url} · {c.has_key ? t('stt.keyStoredShort') : t('stt.keyNone')}
 							</p>
@@ -384,6 +479,49 @@
 						<button type="button" class="btn" onclick={() => removeProvider(c)}
 							>{t('common.delete')}</button
 						>
+						{#if coralStatus[c.id]}
+							{@const h = coralStatus[c.id]}
+							<div
+								class="basis-full rounded-md bg-slate-50 p-2 text-sm dark:bg-slate-800/50"
+								data-testid="stt-coral-status"
+							>
+								<p class="font-medium">
+									{t('stt.coralStatus')}:
+									<span
+										class="badge {h.status === 'ok'
+											? 'badge-ok'
+											: h.status === 'degraded'
+												? 'badge-warn'
+												: 'badge-bad'}">{t(`stt.coralState.${h.status}`)}</span
+									>
+								</p>
+								{#if h.tpus.length}
+									<ul class="mt-1 space-y-0.5">
+										{#each h.tpus as tpu (tpu.id)}
+											<li class="break-words">
+												{t('stt.coralTpu', {
+													id: tpu.id,
+													kind: tpu.kind.toUpperCase(),
+													state: tpu.error ? `${tpu.state} (${tpu.error})` : tpu.state,
+													load: Math.round(tpu.load * 100),
+													models: tpu.models.join(', ') || '–'
+												})}
+											</li>
+										{/each}
+									</ul>
+								{:else}
+									<p class="hint">{t('stt.coralNoTpu')}</p>
+								{/if}
+								<p class="hint">
+									{t('stt.coralQueue', {
+										length: h.queue.length,
+										capacity: h.queue.capacity,
+										sessions: h.queue.sessions,
+										max: h.queue.max_sessions
+									})}
+								</p>
+							</div>
+						{/if}
 					</li>
 				{:else}
 					<li class="py-2 text-sm text-slate-500 dark:text-slate-400">{t('stt.noProvider')}</li>
@@ -414,6 +552,7 @@
 						<label for="stt-name">{t('stt.name')}</label>
 						<input id="stt-name" class="input" maxlength="60" bind:value={form.name} required />
 					</div>
+					{#if form.preset === 'coral'}<p class="hint">{t('stt.coralHint')}</p>{/if}
 					{#if form.preset !== 'openai'}
 						<div>
 							<label for="stt-url">{t('stt.url')}</label>

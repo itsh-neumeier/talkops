@@ -30,6 +30,7 @@ No audio or transcripts are included. The earlier quality gate is still pending.
   It restarts only Coral. Other services and language models stay intact.
 - Custom mounts/model directories require explicit manual installation.
 - Added the helper procedure to both recording handbooks.
+- Set LF endings for Coral shell helpers in `.gitattributes`.
 - Passed `/bin/sh -n` in the cached Coral trial image.
 - Passed an isolated Docker check with a temporary named volume: mount and
   environment discovery, first copy, backup on a second copy, model digest,

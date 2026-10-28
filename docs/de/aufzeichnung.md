@@ -342,6 +342,23 @@ models/coral/langid/model_edgetpu.tflite   models/coral/langid/model.json   (opt
 Ohne das Sprach-ID-Modell laufen für jeden Abschnitt beide Sprachmodelle;
 das verdoppelt die Last auf der TPU.
 
+Ein Update der Anwendung installiert keine Modelldateien. Wenn du das separate
+deutsche Testpaket `coral-de-candidate-20261025.tar.gz` hast, kopiere es und
+[`install-de-candidate.sh`](../../scripts/coral/install-de-candidate.sh) auf
+den Dockerhost. Starte den Coral-Container und führe dann aus:
+
+```sh
+sh install-de-candidate.sh coral-de-candidate-20261025.tar.gz
+```
+
+Der Helfer prüft die Prüfsumme dieses Pakets und ermittelt das benannte Volume
+`models`. Er sichert vorhandene deutsche Modelldateien vor der Installation
+und startet Coral neu. Andere Dienste laufen weiter. Bei mehreren
+Coral-Containern gib den Containernamen als zweites Argument an. Eigene
+Modell-Mounts erfordern eine manuelle Installation. Das Testpaket enthält nur
+Deutsch. Wähle für den Test `coral-ctc-de`. Die Erkennungsqualität in Produktion
+muss noch geprüft werden.
+
 ### Dienst starten
 
 1. In `.env` `coral` zu `COMPOSE_PROFILES` hinzufügen (z. B.

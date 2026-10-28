@@ -90,3 +90,13 @@ merge, validate exact main, tag once, then verify the workflow and all images.
 - New annotated v1.8.13 was pushed once on 4b44cd68580908fb54407898aa01b0dcc4f80954.
 - Tag object: bb676ce7596d88eb7ef17129a506f4174104f7e0. No published tag moved.
 - Release workflow and registry verification pending. Do not report completion yet.
+
+## Published artifact checkpoint
+
+- Stable GitHub release published at 2026-10-28T06:01:09Z; Release40640523707 passed.
+- Registry checks passed for all four images and eight platform configs.
+  All version labels are v1.8.13 and revision labels match exact main.
+  Tags 1.8 and latest have the same platform digests as 1.8.13.
+- Tag CI40640523653 and FreeSWITCH40640523632 passed.
+  Additional tag E2E40640523691 is running; no completion claim for that run.
+- Curated English release notes published. Final audit and merged-branch cleanup pending.

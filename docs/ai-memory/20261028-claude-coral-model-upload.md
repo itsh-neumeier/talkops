@@ -4,8 +4,9 @@
 
 - Date: 2026-10-28
 - Tool: Claude Code
-- Status: Implemented and checked locally; not committed; no PR
+- Status: Implemented and checked locally; PR open, CI pending
 - Branch: claude/coral-model-upload (worktree `.worktrees/claude-coral-model-upload`)
+- PR: https://github.com/itsh-neumeier/talkops/pull/91
 - Base commit: 977528a (origin/main, release 1.8.14)
 - Related: `20261028-claude-coral-german-model-evaluation.md`,
   `20261028-codex-coral-missing-model.md`, ADR 0046, new ADR 0048
@@ -66,6 +67,6 @@ Rust ran in `rust:1-trixie` (no local cargo on this Windows host).
 
 ## Open work
 
-- Commit, PR and release-manager handoff.
+- CI result and release-manager handoff.
 - Check on a Docker host: upload a real package, restart, model active,
   restore. Existing installations need the new compose file (writable volume).

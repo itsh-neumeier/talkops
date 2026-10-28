@@ -5,7 +5,7 @@
 - Task ID: 20261027-codex-release-1.8.12.1
 - Date: 2026-10-27, Europe/Berlin
 - Tool: Codex
-- Status: In progress; publication verification
+- Status: Completed
 - Branch: codex/release-1.8.12.1
 - Base commit: 3603ed56b0073a1dd23646622cf4fb0284644ab7
 - Related PR: https://github.com/itsh-neumeier/talkops/pull/87
@@ -18,7 +18,7 @@ Integrate all ready open PRs and publish the next release requested as 1.8.12.1.
 
 Merged the completed 1.8.12 audit and Codex PR86 without rewriting source history.
 Updated Cargo workspace and npm roots to 1.8.13. PR87 merged on 2026-10-28.
-Exact main: 4b44cd68580908fb54407898aa01b0dcc4f80954. No tag push or release yet.
+Exact main: 4b44cd68580908fb54407898aa01b0dcc4f80954. Stable v1.8.13 is published and verified.
 
 ## Decisions
 
@@ -60,8 +60,7 @@ Coral remains experimental and off by default; physical acceptance is separate.
 
 ## Next action
 
-Validate the final versioned candidate,
-merge, validate exact main, tag once, then verify the workflow and all images.
+None for this release. Preserve draft61 and all other unmerged work.
 
 ## References
 
@@ -100,3 +99,28 @@ merge, validate exact main, tag once, then verify the workflow and all images.
 - Tag CI40640523653 and FreeSWITCH40640523632 passed.
   Additional tag E2E40640523691 is running; no completion claim for that run.
 - Curated English release notes published. Final audit and merged-branch cleanup pending.
+
+## Verified publication
+
+- Exact-main CI40638257180 and E2E40638257242 passed before the tag push.
+- New annotated v1.8.13 points to exact main 4b44cd68580908fb54407898aa01b0dcc4f80954. No tag moved.
+- Release workflow 40640523707, tag CI 40640523653, tag E2E 40640523691 and
+  FreeSWITCH 40640523632 passed. Stable GitHub release published at 10/28/2026 06:01:09.
+- Four manifests, eight platform configs and moving tags 1.8/latest verified.
+  OCI version v1.8.13 and revision labels match the release commit.
+- Release: https://github.com/itsh-neumeier/talkops/releases/tag/v1.8.13
+- Removed only the two unchanged fully merged source/integration remote branches.
+  Preserve draft61, unmerged branches and every foreign worktree. No deployment.
+- Primary checkout remained at 397fc83 with the three untracked Dahua summaries.
+- Physical Coral hardware/quality acceptance remains pending. Coral is opt-in.
+
+| Image | Architecture | Digest |
+| --- | --- | --- |
+| talkops-server | amd64 | sha256:c9d4f7495a98babe386450afc256b979f7c0ae1985fed25d624696484efc3c5c |
+| talkops-server | arm64 | sha256:f2a9bc3842caa05453407458a8dc78cfcfa5f22a600840f46351e536c93dabea |
+| talkops-media-worker | amd64 | sha256:8afb9ce73d9af7c5d7e0fcff839aea6e0f241ef82fe12e206c2e94e0f3581cd5 |
+| talkops-media-worker | arm64 | sha256:52de207369334309bd8ac3273e899e666d3b0f77698f4de12f229e76949778e7 |
+| talkops-freeswitch | amd64 | sha256:9b6577d3c1d45e3553789e28f74ac0df67412c11384bb6ad83d776f82c429217 |
+| talkops-freeswitch | arm64 | sha256:9033cf001aadeeaaadd84dee7727059bca1dddd8a2a42028d16d8ae816fcd6a3 |
+| talkops-coral-stt | amd64 | sha256:1ca9ccd5a88c0c784bb45640f40b6ec7e0642ec6247529e8b45aab6a675a6d78 |
+| talkops-coral-stt | arm64 | sha256:2c9c9d9a8f3ff35b6e8934f0364c8bcb2e22e5381a8762b3c26b6bc8e9319faf |

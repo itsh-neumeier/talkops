@@ -1,11 +1,18 @@
 <script lang="ts">
-	// Leaflet map with one bubble for each area (ADR 0044). Leaflet loads only
+	// Leaflet map with device markers and bundles for nearby groups (ADR 0047). Leaflet loads only
 	// when this component mounts. Without a tile URL the base map is the
 	// shipped country outline file, so the page sends no external request.
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import type { Map as LeafletMap, LayerGroup } from 'leaflet';
 	import type { MapArea } from '#lib/api.ts';
-	import { bubbleSize, shownTotal, type Category, type MapRange } from '#lib/calls/map.ts';
+	import {
+		bubbleGradient,
+		bubbleSize,
+		shownTotal,
+		type Category,
+		type MapRange
+	} from '#lib/calls/map.ts';
+	import { CLUSTER_SIZE, clusterCounts, clusterMarkers } from '#lib/calls/mapClusters.ts';
 	import {
 		decorationsFit,
 		escapeHtml,
@@ -55,10 +62,13 @@
 	let detail: MapDetail | null = $state(null);
 	let failed = $state(false);
 	let previewId = $state<string | null>(null);
+	let previewCluster = $state<MapArea[]>([]);
 	const previewArea = $derived(areas.find((a) => a.id === previewId) ?? null);
 	let closeTimer: ReturnType<typeof setTimeout> | undefined;
 	let zoom = $state(4);
 	let width = $state(0);
+	let height = $state(0);
+	let viewRevision = $state(0);
 	let previewNode: HTMLElement | undefined = $state();
 	let focusMarker: HTMLElement | null = null;
 	let restoringFocus = false;
@@ -69,16 +79,59 @@
 		restoringFocus = false;
 	}
 	function showPreview(id: string, node: HTMLElement) {
+		previewCluster = [];
+		setPreviewSource(node);
+		previewId = id;
+	}
+	function setPreviewSource(node: HTMLElement) {
 		clearTimeout(closeTimer);
 		focusMarker?.removeAttribute('aria-describedby');
 		focusMarker = node;
-		previewId = id;
 		node.setAttribute('aria-describedby', 'call-map-preview-' + (compact ? 'widget' : 'full'));
+	}
+	function showCluster(members: MapArea[], node: HTMLElement) {
+		setPreviewSource(node);
+		previewId = null;
+		previewCluster = members;
+	}
+	async function previewMember(a: MapArea) {
+		previewId = a.id;
+		previewCluster = [];
+		await tick();
+		previewNode?.querySelector<HTMLButtonElement>('button')?.focus();
+	}
+	async function activateCluster(members: MapArea[], node: HTMLElement) {
+		showCluster(members, node);
+		await tick();
+		previewNode?.querySelector<HTMLButtonElement>('button')?.focus();
+	}
+	function zoomCluster(members: MapArea[]) {
+		if (!map || !leaflet) return;
+		const bounds = leaflet.latLngBounds(members.map((a) => [a.lat!, a.lon!]));
+		// At the zoom limit (or for equal positions), the member list remains usable.
+		if (map.getZoom() >= map.getMaxZoom() || bounds.getNorthEast().equals(bounds.getSouthWest()))
+			return;
+		const next = Math.min(
+			map.getMaxZoom(),
+			Math.max(
+				map.getZoom() + 1,
+				Math.min(map.getZoom() + 2, map.getBoundsZoom(bounds, false, leaflet.point(140, 140)))
+			)
+		);
+		map.setView(bounds.getCenter(), next, { animate: false });
+	}
+	function canZoomCluster(members: MapArea[]): boolean {
+		return (
+			!!map &&
+			zoom < map.getMaxZoom() &&
+			members.some((a) => a.lat !== members[0].lat || a.lon !== members[0].lon)
+		);
 	}
 	function closePreview() {
 		clearTimeout(closeTimer);
 		focusMarker?.removeAttribute('aria-describedby');
 		previewId = null;
+		previewCluster = [];
 	}
 	function deferClose() {
 		clearTimeout(closeTimer);
@@ -165,6 +218,9 @@
 				};
 				m.on('zoomend', showZoom);
 				m.on('movestart', closePreview);
+				m.on('moveend resize', () => {
+					viewRevision++;
+				});
 				showZoom();
 				map = m;
 			} catch {
@@ -208,41 +264,92 @@
 		const L = leaflet;
 		void i18n.locale;
 		void zoom;
+		void viewRevision;
 		const mapWidth = width;
+		void height;
 		const dark = theme.dark;
 		const sel = selected;
 		const located = areas.filter((a) => a.lat !== null && a.lon !== null);
 		const counts = located.map((a) => shownTotal(a.counts, shown));
 		if (!m || !L || !bubbles) return;
+		m.invalidateSize({ pan: false });
 		closePreview();
 		bubbles.clearLayers();
 		const max = Math.max(0, ...counts);
-		// Large bubbles first, so small bubbles stay on top and clickable.
+		// Keep call-volume sizes stable before computing screen-space bundles.
 		const order = located
 			.map((a, i) => ({ a, n: counts[i] }))
 			.filter((x) => x.n > 0)
 			.sort((x, y) => y.n - x.n);
-		const offsets = order.map(({ a }) =>
-			a.kind === 'none' &&
-			order.some(({ a: b }) => b.id !== a.id && a.country === b.country && b.kind === 'none')
-				? markerKind(a) === 'mobile'
-					? -40
-					: 40
-				: 0
-		);
-		const points = order.map(({ a }, i) => {
-			const p = m.latLngToContainerPoint([a.lat!, a.lon!]);
-			return { x: p.x + offsets[i], y: p.y };
-		});
-		for (const [i, { a, n }] of order.entries()) {
+		const points = order.map(({ a }) => m.latLngToContainerPoint([a.lat!, a.lon!]));
+		const layouts = order.map(({ a, n }, i) => {
 			const size = bubbleSize(n, max, compact ? 12 : 16, compact ? 26 : 38);
 			const decorated = decorationsFit(points, i, mapWidth, compact);
-			const w = Math.max(44, size + 22) + (decorated ? 48 : 0);
+			const w = Math.max(44, size + 42) + (decorated ? 48 : 0);
 			const h = Math.max(44, size + 42);
+			return { a, n, size, decorated, w, h };
+		});
+		const byId = new Map(layouts.map((l) => [l.a.id, l]));
+		const groups = clusterMarkers(
+			layouts.map((l, i) => ({
+				id: l.a.id,
+				x: points[i].x,
+				y: points[i].y,
+				width: l.decorated || markerKind(l.a) === 'mobile' ? Math.max(180, l.w) : l.w,
+				height: l.h,
+				labelHeight: l.decorated || markerKind(l.a) === 'mobile' ? 20 : 0
+			}))
+		);
+		for (const group of groups) {
+			if (group.members.length > 1) {
+				const members = group.members.map((p) => byId.get(p.id)!.a);
+				const counts = clusterCounts(members);
+				const clusterLabel = t('callMap.clusterLabel', {
+					groups: members.length,
+					count: shownTotal(counts, shown)
+				});
+				const marker = L.marker(m.containerPointToLatLng([group.x, group.y]), {
+					icon: L.divIcon({
+						className: `call-bubble call-map-cluster${members.some((a) => a.id === sel) ? ' call-bubble-selected' : ''}`,
+						iconSize: [CLUSTER_SIZE, CLUSTER_SIZE],
+						iconAnchor: [CLUSTER_SIZE / 2, CLUSTER_SIZE / 2],
+						html: `<span class="call-cluster-pie" aria-hidden="true" style="background:${bubbleGradient(counts, shown, dark)}"><b>${members.length}</b></span>`
+					}),
+					keyboard: true,
+					riseOnHover: true
+				});
+				marker.on('add', () => {
+					const node = marker.getElement();
+					if (!node) return;
+					node.setAttribute('role', 'button');
+					node.setAttribute('aria-label', clusterLabel);
+					node.dataset.clusterMembers = members.map((a) => a.id).join(',');
+					const preview = () => {
+						if (!restoringFocus) showCluster(members, node);
+					};
+					node.addEventListener('pointermove', preview);
+					node.addEventListener('focus', preview);
+					node.addEventListener('pointerleave', deferClose);
+					node.addEventListener('blur', deferClose);
+					node.addEventListener('keydown', (e) => {
+						if (e.key === 'Enter' || e.key === ' ') {
+							e.preventDefault();
+							void activateCluster(members, node);
+						}
+					});
+				});
+				marker.on('click', () => {
+					const node = marker.getElement();
+					if (node) void activateCluster(members, node);
+				});
+				marker.addTo(bubbles);
+				continue;
+			}
+			const { a, n, size, decorated, w, h } = byId.get(group.members[0].id)!;
 			const icon = L.divIcon({
 				className: `call-bubble${a.id === sel ? ' call-bubble-selected' : ''}${a.kind === 'none' ? ' call-bubble-none' : ''}`,
 				iconSize: [w, h],
-				iconAnchor: [w / 2 - offsets[i], h / 2],
+				iconAnchor: [w / 2, h / 2],
 				html: markerHtml(a, shown, size, dark, markerName(a, t('callMap.noLocation')), decorated)
 			});
 			const marker = L.marker([a.lat!, a.lon!], {
@@ -257,6 +364,7 @@
 				if (!node) return;
 				node.setAttribute('aria-label', areaLabel(a, n));
 				node.dataset.markerKind = markerKind(a);
+				node.dataset.areaId = a.id;
 				node.addEventListener('pointerdown', (e) => {
 					touch = e.pointerType === 'touch';
 				});
@@ -308,7 +416,7 @@
 			closePreview();
 	}}
 	onkeydown={(e) => {
-		if (e.key === 'Escape' && previewArea) {
+		if (e.key === 'Escape' && (previewArea || previewCluster.length)) {
 			dismissPreview();
 			e.stopImmediatePropagation();
 		}
@@ -319,33 +427,77 @@
 	<div
 		bind:this={el}
 		bind:clientWidth={width}
+		bind:clientHeight={height}
 		role="region"
 		aria-label={label}
 		class="call-map w-full overflow-hidden rounded-lg {compact
 			? 'h-56'
 			: 'h-[min(32rem,60dvh)] min-h-72'}"
 	></div>
-	{#if previewArea}
+	{#if previewArea || previewCluster.length}
 		<section
 			bind:this={previewNode}
 			id={'call-map-preview-' + (compact ? 'widget' : 'full')}
-			class="call-map-preview absolute right-2 top-2 z-[1000] w-[min(19rem,calc(100%_-_1rem))] rounded-lg border border-slate-200 bg-white p-3 text-slate-900 shadow-lg dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+			class="call-map-preview absolute right-2 top-2 z-[1000] max-h-[calc(100%_-_1rem)] w-[min(19rem,calc(100%_-_1rem))] overflow-y-auto rounded-lg border border-slate-200 bg-white p-3 text-slate-900 shadow-lg dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
 			aria-label={t('callMap.preview')}
 			onpointerenter={() => clearTimeout(closeTimer)}
 			onpointerleave={deferClose}
 			onfocusout={deferClose}
 		>
-			<CallMapPreview
-				area={previewArea}
-				{shown}
-				{range}
-				onclose={dismissPreview}
-				ondetails={() => {
-					const a = previewArea;
-					closePreview();
-					if (a) onselect?.(a);
-				}}
-			/>
+			{#if previewArea}
+				<CallMapPreview
+					area={previewArea}
+					{shown}
+					{range}
+					onclose={dismissPreview}
+					ondetails={() => {
+						const a = previewArea;
+						closePreview();
+						if (a) onselect?.(a);
+					}}
+				/>
+			{:else}
+				<div class="flex items-start justify-between gap-2">
+					<h3 class="font-semibold">
+						{t('callMap.clusterLabel', {
+							groups: previewCluster.length,
+							count: shownTotal(clusterCounts(previewCluster), shown)
+						})}
+					</h3>
+					<button
+						type="button"
+						class="btn btn-sm"
+						aria-label={t('common.close')}
+						onclick={dismissPreview}>✕</button
+					>
+				</div>
+				<p class="my-2 text-xs text-slate-600 dark:text-slate-300">{t('callMap.clusterHint')}</p>
+				<button
+					type="button"
+					class="btn btn-sm"
+					disabled={!canZoomCluster(previewCluster)}
+					onclick={() => zoomCluster(previewCluster)}>{t('callMap.clusterZoom')}</button
+				>
+				<ul class="mt-2 space-y-1">
+					{#each previewCluster as a (a.id)}
+						<li>
+							<button
+								type="button"
+								class="btn w-full justify-between text-left text-sm"
+								onclick={() => previewMember(a)}
+							>
+								<span
+									>{markerName(a, t('callMap.noLocation'))}<span
+										class="block text-xs text-slate-500 dark:text-slate-400"
+										>{a.prefix} · {t(`callMap.marker.${markerKind(a)}`)}</span
+									></span
+								>
+								<span class="font-mono">{shownTotal(a.counts, shown)}</span>
+							</button>
+						</li>
+					{/each}
+				</ul>
+			{/if}
 		</section>
 	{/if}
 	{#if !map && !failed}

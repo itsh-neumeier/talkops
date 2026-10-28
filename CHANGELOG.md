@@ -6,6 +6,21 @@ All notable changes to TalkOps. The format follows
 
 ## [Unreleased]
 
+## [1.8.13] – 2026-10-28
+
+### Fixed
+
+- Prevent phone markers and labels from overlapping on call maps and dashboard
+  maps. Nearby groups form bundles that split on zoom. Each group stays available
+  through keyboard, pointer and touch previews, including equal-position groups.
+
+### Upgrade notes
+
+- Include Codex PR86. No new database migration, dependency or API change.
+  Update server and worker together, then reload the web UI.
+- Coral remains experimental, opt-in and disabled by default. Hardware and
+  transcription quality acceptance remain separate work. No models are shipped.
+
 ## [1.8.12] – 2026-10-27
 
 ### Added

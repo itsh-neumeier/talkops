@@ -210,6 +210,18 @@ touch device, tap for the preview and select **Open details**. Escape closes
 the preview. Category changes and refreshed data update the statistics.
 The dashboard uses the same marker shapes and previews.
 
+Nearby markers form a round bundle when their phones or labels would overlap.
+The bundle pie adds the category counts of its groups. The number in the center
+is the number of groups. It does not count calls or physical locations.
+Hover, focus or tap the bundle to see its groups and call counts. Select
+**Zoom into bundle**, or use the map zoom controls, to separate nearby groups.
+The map checks the marker sizes again after zoom and size changes.
+
+Select a group in the bundle to open its preview, then select **Open details**.
+This also works for groups at the same position and at the maximum zoom level.
+Country groups can share a bundle with local areas. Their country position
+still does not identify a caller location. The dashboard uses the same bundles.
+
 The API adds `marker_kind` (`area`, `mobile`, `unlocated`). New country IDs
 are `DE-mobile` and `DE-unlocated`, for example. Old `DE-none` call-list
 filter links still include both groups. Existing local area IDs stay unchanged.

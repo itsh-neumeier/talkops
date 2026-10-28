@@ -3220,6 +3220,11 @@ const de: Record<keyof typeof en, string> = {
 	'callMap.marker.unlocated': 'Service / sonstige ohne Ortsbezug',
 	'callMap.markerLegend': 'Bedeutung der Markerformen',
 	'callMap.preview': 'Markervorschau',
+	'callMap.clusterLabel': '{groups} Gruppen · {count} Anrufe',
+	'callMap.clusterHint':
+		'Nahe Marker sind gebündelt. Zum Aufteilen hineinzoomen oder eine Gruppe für die Vorschau wählen. Die Zahl im Bündel zählt Gruppen, keine Standorte.',
+	'callMap.clusterZoom': 'Bündel vergrößern',
+	'callMap.clusterLegend': 'Bündel · Anzahl Gruppen',
 	'callMap.previewTotal': 'Anrufe · {range}',
 	'callMap.details': 'Details öffnen',
 	'callMap.areaHint': 'Ortsnetz der Rufnummer, kein bestätigter Aufenthaltsort.',

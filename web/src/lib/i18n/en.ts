@@ -3181,6 +3181,11 @@ export default {
 	'callMap.marker.unlocated': 'Service / other without local area',
 	'callMap.markerLegend': 'Marker shape meanings',
 	'callMap.preview': 'Marker preview',
+	'callMap.clusterLabel': '{groups} groups · {count} calls',
+	'callMap.clusterHint':
+		'Nearby markers are grouped. Zoom in to split them or choose a group for its preview. The bundle number counts groups, not locations.',
+	'callMap.clusterZoom': 'Zoom into bundle',
+	'callMap.clusterLegend': 'Bundle · number of groups',
 	'callMap.previewTotal': 'Calls · {range}',
 	'callMap.details': 'Open details',
 	'callMap.areaHint': 'Number area, not a confirmed caller location.',

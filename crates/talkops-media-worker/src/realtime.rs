@@ -470,10 +470,10 @@ async fn connect(s: &Start, channel: usize) -> anyhow::Result<Socket> {
         &s.cfg.model,
         &s.language,
         &s.vocabulary,
-        s.cfg.is_coral(),
+        s.cfg.is_local(),
         s.coral_stable_preview,
     );
-    if s.cfg.is_coral() {
+    if s.cfg.is_local() {
         let transcription = &mut update["session"]["audio"]["input"]["transcription"];
         transcription["diagnostic_scope"] = json!(s.tenant.to_string());
         transcription["diagnostic_preview"] = json!(s.preview.to_string());
@@ -615,8 +615,8 @@ where
 
 /// Adds sent audio to the usage; returns the samples it covered.
 async fn bill(s: &Start, samples: usize, rate: u32) -> usize {
-    // Coral runs on this server: nothing to bill.
-    if samples == 0 || s.cfg.is_coral() {
+    // Coral and CUDA run on this server: nothing to bill.
+    if samples == 0 || s.cfg.is_local() {
         return samples;
     }
     let seconds = samples as f64 / f64::from(rate);

@@ -174,6 +174,7 @@ jobs:
           docker compose --env-file ci.env -f docker-compose.yml config -q
           docker compose --env-file ci.env -f docker-compose.yml -f docker-compose.dev.yml config -q
           COMPOSE_PROFILES=coral docker compose --env-file ci.env -f docker-compose.yml config -q
+          COMPOSE_PROFILES=cuda docker compose --env-file ci.env -f docker-compose.yml config -q
           TALKOPS_CORAL_TEST_TAG=coral-test-ci COMPOSE_PROFILES=coral docker compose --env-file ci.env -f docker-compose.yml -f docker-compose.coral-test.yml config -q
       - name: Production compose must not build
         run: |
@@ -215,6 +216,11 @@ jobs:
             runner: ubuntu-24.04-arm
             context: .
             dockerfile: docker/coral-stt/Dockerfile
+          - image: talkops-cuda-stt
+            arch: amd64
+            runner: ubuntu-24.04
+            context: .
+            dockerfile: docker/cuda-stt/Dockerfile
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
@@ -232,11 +238,14 @@ jobs:
       - name: Smoke test
         run: docker run --rm ${{ matrix.image }}:ci --version
       - name: Fax storage with a read-only root filesystem
-        if: matrix.image != 'talkops-coral-stt'
+        if: matrix.image != 'talkops-coral-stt' && matrix.image != 'talkops-cuda-stt'
         run: bash tests/fax/storage-image.sh ${{ matrix.image }}:ci
       - name: Coral libraries load and the mock service is healthy
         if: matrix.image == 'talkops-coral-stt'
         run: bash tests/coral/image.sh ${{ matrix.image }}:ci
+      - name: CUDA libraries resolve and the mock service is healthy
+        if: matrix.image == 'talkops-cuda-stt'
+        run: bash tests/cuda/image.sh ${{ matrix.image }}:ci
 
   coral-preview-images:
     name: Coral trial image (${{ matrix.image }}, amd64)

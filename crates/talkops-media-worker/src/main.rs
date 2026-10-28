@@ -340,8 +340,8 @@ struct Ctx {
     coral_backoff: CoralBackoff,
 }
 
-/// After a failure, a Coral connection is not tried again for 30 s (the
-/// backoff of ADR 0024); its local fallback runs at once meanwhile.
+/// After a failure, a Coral or CUDA connection is not tried again for 30 s
+/// (the backoff of ADR 0024); its local fallback runs at once meanwhile.
 #[derive(Debug, Default)]
 pub(crate) struct CoralBackoff(
     std::sync::Mutex<std::collections::HashMap<uuid::Uuid, std::time::Instant>>,

@@ -151,8 +151,8 @@ pub enum Engine {
         coral_stable_preview: bool,
         /// Price per audio minute, if known.
         price: Option<f64>,
-        /// The coral-stt service on this server (ADR 0046): no usage, and
-        /// `fallback` runs when it is not available.
+        /// A speech service on this server, coral-stt (ADR 0046) or cuda-stt
+        /// (ADR 0049): no usage, and `fallback` runs when it is not available.
         coral: bool,
         /// The local model that replaces an unavailable Coral connection.
         /// The live preview always falls back to `base`.
@@ -276,9 +276,12 @@ pub async fn update(
             .bind(p.provider_id)
             .fetch_optional(&mut *tx)
             .await?;
-            if kind.as_deref() != Some("coral") {
+            if !kind
+                .as_deref()
+                .is_some_and(crate::transcription_api::is_local_kind)
+            {
                 return Err(CoreError::Validation(
-                    "complete-word preview requires a Coral connection".into(),
+                    "complete-word preview requires a Coral or CUDA connection".into(),
                 ));
             }
         }
@@ -325,7 +328,10 @@ pub async fn engine(
 fn to_engine(p: &Profile) -> Option<Engine> {
     match (p.engine.as_str(), p.provider_id) {
         ("cloud", Some(provider_id)) => {
-            let coral = p.provider_kind.as_deref() == Some("coral");
+            let coral = p
+                .provider_kind
+                .as_deref()
+                .is_some_and(crate::transcription_api::is_local_kind);
             let fallback = if p.purpose == Purpose::Live.as_str() {
                 TranscriptionQuality::Base
             } else {

@@ -10,7 +10,7 @@
 		type TranscriptionPurpose,
 		type TranscriptionTest
 	} from '#lib/api.ts';
-	import CoralModels from '#lib/components/CoralModels.svelte';
+	import SpeechModels from '#lib/components/SpeechModels.svelte';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
 	import { i18n, t } from '#lib/i18n/index.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
@@ -21,8 +21,10 @@
 		{ id: 'groq', kind: 'compatible', name: 'Groq', url: 'https://api.groq.com/openai/v1' },
 		{ id: 'mistral', kind: 'compatible', name: 'Mistral', url: 'https://api.mistral.ai/v1' },
 		{ id: 'custom', kind: 'compatible', name: '', url: 'http://192.168.1.10:8000/v1' },
-		// coral-stt on this server (ADR 0046): loopback only, no costs.
-		{ id: 'coral', kind: 'coral', name: 'Coral', url: 'http://127.0.0.1:8095/v1' }
+		// coral-stt (ADR 0046) and cuda-stt (ADR 0049) on this server: loopback
+		// only, no costs.
+		{ id: 'coral', kind: 'coral', name: 'Coral', url: 'http://127.0.0.1:8095/v1' },
+		{ id: 'cuda', kind: 'cuda', name: 'GPU', url: 'http://127.0.0.1:8096/v1' }
 	] as const;
 	type PresetId = (typeof presets)[number]['id'];
 
@@ -37,8 +39,11 @@
 		'https://api.mistral.ai/v1': ['voxtral-mini-latest']
 	};
 	const realtimeModels = ['gpt-live-transcribe', 'gpt-realtime-whisper', 'gpt-4o-transcribe'];
-	/** Models of coral-stt: language detection per turn, or one language. */
-	const coralModels = ['coral-auto', 'coral-ctc-de', 'coral-ctc-en'];
+	/** Models of the local services: language detection per turn, or one language. */
+	const serviceModels: Record<'coral' | 'cuda', string[]> = {
+		coral: ['coral-auto', 'coral-ctc-de', 'coral-ctc-en'],
+		cuda: ['cuda-auto', 'cuda-de', 'cuda-en']
+	};
 	const localModels: Record<'live' | 'other', LocalModel[]> = {
 		live: ['base', 'fast'],
 		other: ['fast', 'accurate', 'best', 'german']
@@ -61,13 +66,19 @@
 	let editing = $state<string | null>(null);
 	let form = $state({ preset: 'openai' as PresetId, name: 'OpenAI', url: '', key: '' });
 
-	// Coral runs on this server: no privacy note for it.
-	const anyCloud = $derived(profiles.some((p) => p.engine === 'cloud' && !isCoral(p)));
+	// Coral and CUDA run on this server: no privacy note for them.
+	const anyCloud = $derived(profiles.some((p) => p.engine === 'cloud' && !isLocal(p)));
 	const liveCloud = $derived(
-		profiles.some((p) => p.purpose === 'live' && p.engine === 'cloud' && !isCoral(p))
+		profiles.some((p) => p.purpose === 'live' && p.engine === 'cloud' && !isLocal(p))
 	);
-	const coralProvider = $derived(data?.providers.find((p) => p.kind === 'coral'));
-	/** TPU status of the last Coral connection test, by connection id. */
+	const localProviders = $derived(
+		data?.providers.filter((p) => p.kind === 'coral' || p.kind === 'cuda') ?? []
+	);
+	/** The service for "Apply hybrid": the GPU first, it runs larger models. */
+	const hybridProvider = $derived(
+		localProviders.find((p) => p.kind === 'cuda') ?? localProviders[0]
+	);
+	/** Device status of the last Coral or CUDA connection test, by connection id. */
 	let coralStatus = $state<Record<string, CoralHealth>>({});
 
 	onMount(load);
@@ -85,12 +96,24 @@
 		return data?.providers.find((p) => p.id === id);
 	}
 
-	function isCoral(p: TranscriptionProfile): boolean {
-		return provider(p.provider_id)?.kind === 'coral';
+	/** `coral` or `cuda` for a profile on a speech service of this server. */
+	function localKind(p: TranscriptionProfile): 'coral' | 'cuda' | null {
+		const kind = provider(p.provider_id)?.kind;
+		return kind === 'coral' || kind === 'cuda' ? kind : null;
+	}
+
+	function isLocal(p: TranscriptionProfile): boolean {
+		return localKind(p) !== null;
+	}
+
+	/** `Coral` or `CUDA`, for the texts of a profile or connection. */
+	function serviceName(kind: string | null | undefined): string {
+		return kind === 'cuda' ? 'CUDA' : 'Coral';
 	}
 
 	function suggestions(p: TranscriptionProfile): string[] {
-		if (isCoral(p)) return coralModels;
+		const kind = localKind(p);
+		if (kind) return serviceModels[kind];
 		if (p.realtime) return realtimeModels;
 		return fileModels[provider(p.provider_id)?.url ?? ''] ?? [];
 	}
@@ -124,7 +147,8 @@
 			p.provider_id = data?.providers[0]?.id ?? null;
 		}
 		if (engine === 'cloud' && !p.model) {
-			p.model = isCoral(p) ? 'coral-auto' : 'gpt-transcribe';
+			const kind = localKind(p);
+			p.model = kind ? `${kind}-auto` : 'gpt-transcribe';
 		}
 		if (engine !== 'cloud') {
 			p.realtime = false;
@@ -133,10 +157,11 @@
 	}
 
 	function setProvider(p: TranscriptionProfile, id: string) {
-		const before = isCoral(p);
+		const before = isLocal(p);
 		p.provider_id = id;
-		const after = isCoral(p);
-		if (after && !coralModels.includes(p.model)) p.model = 'coral-auto';
+		const kind = localKind(p);
+		const after = kind !== null;
+		if (kind && !serviceModels[kind].includes(p.model)) p.model = `${kind}-auto`;
 		if (!after && before) {
 			p.coral_stable_preview = false;
 			p.model = 'gpt-transcribe';
@@ -148,15 +173,15 @@
 	function setRealtime(p: TranscriptionProfile, on: boolean) {
 		p.realtime = on;
 		if (!on) p.coral_stable_preview = false;
-		if (isCoral(p)) return;
+		if (isLocal(p)) return;
 		if (on && !realtimeModels.includes(p.model)) p.model = realtimeModels[0];
 		if (!on && realtimeModels.slice(0, 2).includes(p.model)) p.model = 'gpt-transcribe';
 	}
 
-	/** Coral for the live preview (Realtime) and the first passes; local Whisper refines. */
+	/** Coral or CUDA for the live preview (Realtime) and the first passes; local Whisper refines. */
 	function applyHybrid() {
-		const coral = coralProvider;
-		if (!coral) return;
+		const local = hybridProvider;
+		if (!local) return;
 		for (const p of profiles) {
 			if (p.purpose.endsWith('_refine')) {
 				const keep = p.engine === 'local' && localModels.other.includes(p.local_model);
@@ -167,8 +192,8 @@
 				continue;
 			}
 			p.engine = 'cloud';
-			p.provider_id = coral.id;
-			p.model = 'coral-auto';
+			p.provider_id = local.id;
+			p.model = `${local.kind}-auto`;
 			p.price_per_minute = null;
 			p.realtime = p.purpose === 'live';
 			// The local fallback: base for the live preview, else the current or fast.
@@ -205,8 +230,8 @@
 		info = '';
 		if (p) {
 			const preset =
-				p.kind === 'coral'
-					? 'coral'
+				p.kind === 'coral' || p.kind === 'cuda'
+					? p.kind
 					: (presets.find((x) => x.id !== 'custom' && x.kind === p.kind && x.url === p.url)?.id ??
 						'custom');
 			form = { preset, name: p.name, url: p.url, key: '' };
@@ -234,7 +259,7 @@
 			url: form.url.trim(),
 			key: form.key || null
 		};
-		if (preset.kind === 'coral' && !body.url) body.url = preset.url;
+		if ((preset.kind === 'coral' || preset.kind === 'cuda') && !body.url) body.url = preset.url;
 		try {
 			if (editing) {
 				await api.put<TranscriptionProvider>(`/settings/transcription/providers/${editing}`, body);
@@ -348,8 +373,8 @@
 									>{/if}
 								<option value="local">{t('stt.engineLocal')}</option>
 								<option value="cloud" disabled={!data.providers.length}
-									>{coralProvider ? t('stt.engineConnection') : t('stt.engineCloud')}{data.providers
-										.length
+									>{localProviders.length ? t('stt.engineConnection') : t('stt.engineCloud')}{data
+										.providers.length
 										? ''
 										: ` – ${t('stt.noProvider')}`}</option
 								>
@@ -391,14 +416,17 @@
 												setRealtime(p, (e.currentTarget as HTMLInputElement).checked)}
 										/>
 										<span
-											>{isCoral(p) ? t('stt.coralRealtime') : t('stt.realtime')}<br /><span
-												class="hint"
-												>{isCoral(p) ? t('stt.coralRealtimeHint') : t('stt.realtimeHint')}</span
+											>{isLocal(p)
+												? t('stt.coralRealtime', { service: serviceName(localKind(p)) })
+												: t('stt.realtime')}<br /><span class="hint"
+												>{isLocal(p)
+													? t('stt.coralRealtimeHint', { service: serviceName(localKind(p)) })
+													: t('stt.realtimeHint')}</span
 											></span
 										></label
 									>
 								{/if}
-								{#if isCoral(p)}
+								{#if isLocal(p)}
 									{#if purpose === 'live' && p.realtime}
 										<label class="flex items-start gap-2 text-sm">
 											<input
@@ -415,7 +443,9 @@
 										</label>
 									{/if}
 									{#if purpose === 'live'}
-										<p class="hint" data-testid={`${id}-fallback`}>{t('stt.fallbackLive')}</p>
+										<p class="hint" data-testid={`${id}-fallback`}>
+											{t('stt.fallbackLive', { service: serviceName(localKind(p)) })}
+										</p>
 									{:else}
 										<div>
 											<label for={`${id}-fallback`} class="text-sm">{t('stt.fallback')}</label>
@@ -429,7 +459,9 @@
 													<option value={m}>{t(`stt.local.${m}`)}</option>
 												{/each}
 											</select>
-											<p class="hint">{t('stt.fallbackHint')}</p>
+											<p class="hint">
+												{t('stt.fallbackHint', { service: serviceName(localKind(p)) })}
+											</p>
 										</div>
 									{/if}
 								{:else}
@@ -458,9 +490,11 @@
 				</fieldset>
 			{/each}
 			<p class="hint">{t('rec.qualityHint')}</p>
-			{#if coralProvider}<p class="hint">{t('stt.hybridHint')}</p>{/if}
+			{#if hybridProvider}<p class="hint">
+					{t('stt.hybridHint', { service: serviceName(hybridProvider.kind) })}
+				</p>{/if}
 			<div class="flex flex-wrap justify-end gap-2">
-				{#if coralProvider}
+				{#if hybridProvider}
 					<button type="button" class="btn" onclick={applyHybrid} data-testid="stt-hybrid"
 						>{t('stt.hybrid')}</button
 					>
@@ -482,6 +516,7 @@
 						<div class="min-w-0 basis-full sm:flex-1 sm:basis-auto">
 							<p class="font-medium">
 								{c.name}{#if c.kind === 'coral'}<span class="badge ml-2">{t('stt.coralBadge')}</span
+									>{:else if c.kind === 'cuda'}<span class="badge ml-2">{t('stt.cudaBadge')}</span
 									>{/if}
 							</p>
 							<p class="truncate font-mono text-xs text-slate-500 dark:text-slate-400">
@@ -508,7 +543,7 @@
 								data-testid="stt-coral-status"
 							>
 								<p class="font-medium">
-									{t('stt.coralStatus')}:
+									{t('stt.coralStatus', { service: serviceName(c.kind) })}:
 									<span
 										class="badge {h.status === 'ok'
 											? 'badge-ok'
@@ -517,7 +552,33 @@
 												: 'badge-bad'}">{t(`stt.coralState.${h.status}`)}</span
 									>
 								</p>
-								{#if h.tpus.length}
+								{#if c.kind === 'cuda'}
+									{#if h.gpu}
+										<p class="break-words">
+											{t('stt.gpuStatus', {
+												name: h.gpu.name ?? 'GPU',
+												used: h.gpu.memory_used_mib ?? '–',
+												total: h.gpu.memory_total_mib ?? '–',
+												util: h.gpu.utilization_percent ?? '–',
+												temp: h.gpu.temperature_c ?? '–'
+											})}
+										</p>
+									{:else}
+										<p class="hint">{t('stt.gpuNone')}</p>
+									{/if}
+									<ul class="mt-1 space-y-0.5">
+										{#each h.device?.models ?? [] as m (m.slot)}
+											<li class="break-words">
+												{t('stt.gpuModel', {
+													slot: m.slot,
+													name: m.name,
+													state: m.error ? `${m.state} (${m.error})` : m.state,
+													vram: m.vram_mib ?? '–'
+												})}
+											</li>
+										{/each}
+									</ul>
+								{:else if h.tpus?.length}
 									<ul class="mt-1 space-y-0.5">
 										{#each h.tpus as tpu (tpu.id)}
 											<li class="break-words">
@@ -575,6 +636,7 @@
 						<input id="stt-name" class="input" maxlength="60" bind:value={form.name} required />
 					</div>
 					{#if form.preset === 'coral'}<p class="hint">{t('stt.coralHint')}</p>{/if}
+					{#if form.preset === 'cuda'}<p class="hint">{t('stt.cudaHint')}</p>{/if}
 					{#if form.preset !== 'openai'}
 						<div>
 							<label for="stt-url">{t('stt.url')}</label>
@@ -613,7 +675,7 @@
 		{/if}
 	</section>
 
-	{#if coralProvider}<CoralModels providerId={coralProvider.id} />{/if}
+	{#each localProviders as c (c.id)}<SpeechModels provider={c} />{/each}
 
 	<section class="space-y-2 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
 		<h3 class="font-medium">{t('stt.usageTitle')}</h3>

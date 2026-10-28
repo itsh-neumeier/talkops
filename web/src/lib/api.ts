@@ -899,18 +899,18 @@ export interface TranscriptionProfile {
 	price_per_minute: number | null;
 	/** Known list price of the cloud model (read-only). */
 	list_price?: number | null;
-	/** Kind of the connection (read-only); for `coral`, `local_model` is the fallback. */
+	/** Kind of the connection (read-only); for `coral` and `cuda`, `local_model` is the fallback. */
 	provider_kind?: TranscriptionProvider['kind'] | null;
 }
 
 /**
- * Connection: OpenAI, an OpenAI-compatible server or the coral-stt service
- * on this server (key never returned).
+ * Connection: OpenAI, an OpenAI-compatible server, or the coral-stt or
+ * cuda-stt service on this server (key never returned).
  */
 export interface TranscriptionProvider {
 	id: string;
 	name: string;
-	kind: 'openai' | 'compatible' | 'coral';
+	kind: 'openai' | 'compatible' | 'coral' | 'cuda';
 	url: string;
 	has_key: boolean;
 }
@@ -976,7 +976,7 @@ export interface CoralLibraryModel {
 	selected: boolean;
 }
 
-/** `/coral/{id}/models`: slots, library and storage use. */
+/** `/speech-services/{id}/models` of coral-stt: slots, library and storage use. */
 export interface CoralModels {
 	backend: string;
 	slots: CoralSlotStatus[];
@@ -984,14 +984,94 @@ export interface CoralModels {
 	usage: { models: number; bytes: number; max_models: number; max_bytes: number };
 }
 
-/** The `/health` answer of coral-stt. */
+/** The `/health` answer of coral-stt (`tpus`) or cuda-stt (`gpu`, `device`). */
 export interface CoralHealth {
 	status: 'ok' | 'degraded' | 'unavailable';
 	version: string;
 	backend: string;
-	tpus: CoralTpu[];
+	tpus?: CoralTpu[];
+	gpu?: CudaGpu | null;
+	device?: { state: string; error: string | null; models: CudaLoadedModel[] } | null;
 	queue: { length: number; capacity: number; sessions: number; max_sessions: number };
 	models: string[];
+}
+
+/** NVML values of the GPU of cuda-stt. */
+export interface CudaGpu {
+	name: string | null;
+	driver: string | null;
+	memory_total_mib: number | null;
+	memory_used_mib: number | null;
+	utilization_percent: number | null;
+	temperature_c: number | null;
+}
+
+/** A model as cuda-stt loaded it at startup. */
+export interface CudaLoadedModel {
+	slot: CoralSlot;
+	id: string;
+	name: string;
+	family: CudaFamily;
+	state: 'ready' | 'error';
+	vram_mib: number | null;
+	error: string | null;
+}
+
+export type CudaFamily = 'nemo_ctc' | 'nemo_transducer' | 'canary' | 'whisper';
+
+/** `model.json` of a cuda-stt library model (ADR 0049). */
+export interface CudaManifest {
+	name: string;
+	family: CudaFamily;
+	languages: string[];
+	files: Record<string, string>;
+	license: string;
+	source: string;
+	installed_at_unix: number;
+	archive_sha256?: string | null;
+}
+
+export interface CudaLibraryModel {
+	id: string;
+	manifest: CudaManifest;
+	bytes: number;
+	/** Slots that select this model. */
+	slots: CoralSlot[];
+}
+
+export interface CudaSlotStatus {
+	slot: CoralSlot;
+	model_id: string | null;
+	name: string | null;
+	active: boolean;
+	loaded: boolean;
+	error: string | null;
+	vram_mib: number | null;
+}
+
+/** A suggested model (data file presets/stt-models/cuda.json). */
+export interface CudaPreset {
+	id: string;
+	name: string;
+	family: CudaFamily;
+	languages: string;
+	slots: CoralSlot[];
+	license: string;
+	source: string;
+	url: string;
+	sha256: string;
+	bytes: number;
+	precision: 'full' | 'int8';
+}
+
+/** `/speech-services/{id}/models` of cuda-stt. */
+export interface CudaModels {
+	backend: string;
+	families: CudaFamily[];
+	slots: CudaSlotStatus[];
+	library: CudaLibraryModel[];
+	usage: { models: number; bytes: number; max_models: number; max_bytes: number };
+	presets: { note: string; models: CudaPreset[] };
 }
 
 /** Result of a connection test. */

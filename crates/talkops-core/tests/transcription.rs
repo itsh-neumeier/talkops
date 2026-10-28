@@ -433,7 +433,7 @@ async fn coral_connections_and_fallback(pool: PgPool) {
     let cfg = providers::config(&pool, T, None, coral.id, "coral-auto")
         .await
         .unwrap();
-    assert!(cfg.is_coral() && cfg.key.is_none());
+    assert!(cfg.is_local() && cfg.key.is_none());
     assert_eq!(
         cfg.realtime_endpoint(),
         "ws://127.0.0.1:8095/v1/realtime?intent=transcription"
@@ -469,6 +469,68 @@ async fn coral_connections_and_fallback(pool: PgPool) {
         Some(Engine::Cloud {
             realtime: true,
             coral_stable_preview: false,
+            coral: true,
+            fallback: Some(TranscriptionQuality::Base),
+            ..
+        })
+    ));
+}
+
+/// CUDA connections (ADR 0049) work as Coral connections: loopback only,
+/// own default URL, no list price, local fallback, complete-word preview.
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn cuda_connections_and_fallback(pool: PgPool) {
+    let sb = SecretBox::from_hex(KEY).unwrap();
+    let cuda = providers::create(&pool, T, &sb, &input("GPU", "cuda", "", None))
+        .await
+        .unwrap();
+    assert_eq!(
+        (cuda.kind.as_str(), cuda.url.as_str()),
+        ("cuda", providers::CUDA_URL)
+    );
+    let remote = providers::create(
+        &pool,
+        T,
+        &sb,
+        &input("LAN", "cuda", "http://192.168.1.9:8096/v1", None),
+    )
+    .await;
+    assert!(
+        matches!(remote, Err(CoreError::Validation(_))),
+        "{remote:?}"
+    );
+    let cfg = providers::config(&pool, T, None, cuda.id, "cuda-auto")
+        .await
+        .unwrap();
+    assert!(cfg.is_local());
+    assert_eq!(cfg.root(), "http://127.0.0.1:8096");
+
+    let mut live = cloud("live", cuda.id, "cuda-auto");
+    live.realtime = true;
+    live.coral_stable_preview = true;
+    let mut recording = cloud("recording", cuda.id, "cuda-de");
+    recording.price_per_minute = Some(0.5);
+    let saved = profiles::update(&pool, T, &[live, recording])
+        .await
+        .unwrap();
+    let rec = saved.iter().find(|p| p.purpose == "recording").unwrap();
+    assert_eq!(rec.list_price, None);
+    assert!(matches!(
+        profiles::engine(&pool, T, Purpose::Recording)
+            .await
+            .unwrap(),
+        Some(Engine::Cloud {
+            price: None,
+            coral: true,
+            fallback: Some(TranscriptionQuality::Fast),
+            ..
+        })
+    ));
+    assert!(matches!(
+        profiles::engine(&pool, T, Purpose::Live).await.unwrap(),
+        Some(Engine::Cloud {
+            realtime: true,
+            coral_stable_preview: true,
             coral: true,
             fallback: Some(TranscriptionQuality::Base),
             ..

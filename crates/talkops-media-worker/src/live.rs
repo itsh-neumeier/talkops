@@ -1,7 +1,7 @@
 //! Live previews of active calls (ADR 0022, 0024). Reads bounded PCM from
 //! the growing recording without relying on an unfinished WAV data length.
 //!
-//! A Coral realtime preview (ADR 0046) that failed in the last 30 s runs
+//! A Coral or CUDA realtime preview (ADR 0046, 0049) that failed in the last 30 s runs
 //! local Whisper `base` in parts instead; after the backoff the next job
 //! tries the stream again.
 

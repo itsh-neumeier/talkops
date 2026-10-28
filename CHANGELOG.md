@@ -6,6 +6,25 @@ All notable changes to TalkOps. The format follows
 
 ## [Unreleased]
 
+## [1.8.14] – 2026-10-28
+
+### Fixed
+
+- Add a checksum-verified host installation helper for the separate German
+  Coral trial model. Detect the shared named models volume, back up existing
+  German files and restart only Coral. Include English and German instructions.
+
+### Upgrade notes
+
+- Include Codex PR88. No new migration, dependency or application API change.
+- An application update does not install model weights. The trial archive is
+  not included in Git, application images or public release assets. Supply it
+  separately before running scripts/coral/install-de-candidate.sh on the host.
+- Coral remains experimental, opt-in and disabled by default. Model distribution
+  clearance and physical recognition quality acceptance remain separate work.
+- Custom model mounts need manual installation. Update server and worker together
+  and reload the UI. No production model installation is performed by this release.
+
 ## [1.8.13] – 2026-10-28
 
 ### Fixed

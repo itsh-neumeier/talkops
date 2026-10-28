@@ -1,0 +1,46 @@
+[package]
+name = "talkops-cuda-stt"
+description = "Speech recognition on NVIDIA GPUs (sherpa-onnx, CUDA) with an OpenAI-compatible interface"
+version.workspace = true
+edition.workspace = true
+rust-version = "1.88"
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "talkops-cuda-stt"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+axum = { workspace = true, features = ["macros", "multipart", "ws"] }
+bzip2 = "0.6.1"
+clap.workspace = true
+flate2 = "1"
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
+nvml-wrapper = "0.13"
+reqwest = { version = "0.13", default-features = false, features = ["stream", "rustls-no-provider"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+serde.workspace = true
+serde_json.workspace = true
+# sherpa-onnx: the native library and ONNX Runtime are linked as shared
+# libraries. The image sets SHERPA_ONNX_LIB_DIR to the GPU release archive
+# of the same version (ADR 0049); without it the build downloads the CPU
+# archive (CI, development).
+sherpa-onnx = { version = "=1.13.8", default-features = false, features = ["shared"] }
+talkops-stt-service.workspace = true
+tar = "0.4"
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+[dev-dependencies]
+base64 = "0.22.1"
+hound = "3.5.1"
+http-body-util = "0.1"
+tokio-tungstenite = "0.30.0"
+tower.workspace = true
+
+[lints]
+workspace = true

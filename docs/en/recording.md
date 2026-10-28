@@ -333,6 +333,22 @@ models/coral/langid/model_edgetpu.tflite   models/coral/langid/model.json   (opt
 Without the language ID model, both language models run for each turn.
 This doubles the load on the TPU.
 
+An application update does not install model files. If you have the separate
+German candidate package `coral-de-candidate-20261025.tar.gz`, copy it and
+[`install-de-candidate.sh`](../../scripts/coral/install-de-candidate.sh) to
+the Docker host. Start the Coral container, then run:
+
+```sh
+sh install-de-candidate.sh coral-de-candidate-20261025.tar.gz
+```
+
+The helper checks this package's checksum and finds the named `models` volume.
+It saves existing German model files before installation and restarts Coral.
+Other services continue to run. For more than one Coral container, pass the
+container name as a second argument. Custom model mounts need manual installation.
+This candidate contains only German. Select `coral-ctc-de` for the trial.
+Production recognition quality still needs validation.
+
 ### Start the service
 
 1. In `.env`, add `coral` to `COMPOSE_PROFILES` (for example

@@ -30,10 +30,25 @@ contains `license_verified: false`. The base model is NVIDIA
 `stt_de_quartznet15x5`, version `1.0.0rc1`. The current model card refers to
 NGC Terms of Use, not CC-BY-4.0:
 https://catalog.ngc.nvidia.com/orgs/nvidia/nemo/models/stt_de_quartznet15x5
-Checked on 2026-10-28. The terms page did not return readable text in the
-browser tool. Redistribution is not verified. Keep the model out of public
-images and assets until this review is complete. The PR must state that an
-application release alone still does not install weights.
+Checked on 2026-10-28. The user then asked to include the model itself.
+The NGC page loads its terms from the public products API:
+https://api.ngc.nvidia.com/v2/products?show-hidden=true
+The `organization` product points to:
+https://ngc.nvidia.com/legal/consolidated-tou.json
+This document refers to the current Technology Access Terms:
+https://developer.nvidia.com/legal/terms
+The terms are dated 2026-08-20. Section 4 limits the default grant to the
+recipient's use. Section 5(e) requires express authorization in a Product
+Agreement for distribution, including public repositories. The German
+model card refers to NGC terms. The downloaded source checkpoint contains
+only `model_config.yaml` and `model_weights.ckpt`, without a separate
+license or notice. No separate distribution grant was found.
+Redistribution is not verified. Keep this model out of public images and
+assets until a specific grant is available. This is a source check, not a
+legal opinion. The PR must state that an application release alone still
+does not install weights. Common Voice training data does not replace the
+base checkpoint's terms. No local-use or production-use permission was
+established by this check.
 
 ## Changes and checks
 

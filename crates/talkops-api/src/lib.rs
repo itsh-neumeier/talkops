@@ -8,6 +8,7 @@ pub mod backup;
 pub mod backup_targets;
 pub mod callcenter;
 pub mod cdr_spool;
+pub mod cisco_tftp;
 pub mod conference;
 pub mod config;
 pub mod diagnostics;

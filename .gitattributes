@@ -1,6 +1,9 @@
 crates/talkops-provisioning/reference/** -text -whitespace linguist-vendored=true
 crates/talkops-provisioning/templates/fusionpbx/** -text -whitespace linguist-generated=true
 crates/talkops-provisioning/templates/yealink/** text eol=lf
+crates/talkops-provisioning/templates/talkops/** text eol=lf
+crates/talkops-provisioning/profiles/cisco7800.json text eol=lf
+presets/phones/cisco7800.yaml text eol=lf
 crates/talkops-provisioning/profiles/fusionpbx.json text eol=lf
 crates/talkops-provisioning/profiles/functions.json text eol=lf
 presets/phones/*-source.yaml text eol=lf

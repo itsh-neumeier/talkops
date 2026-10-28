@@ -103,3 +103,9 @@ The user explicitly accepted Spectralink as a missing-template entry on
 Wave also has no usable template. Both remain blocked in the library. A later
 implementation needs an actual model and source. These entries do not receive
 an invented configuration.
+
+## Independently authored profiles
+
+Cisco 7800 MPP profiles are separate from this generated library. See
+[Cisco evidence](cisco-7800.md) and [ADR 0048](../adr/0048-authored-provisioning-profiles.md).
+The pinned originals and generated FusionPBX files remain unchanged.

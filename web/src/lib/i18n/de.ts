@@ -225,6 +225,11 @@ const de: Record<keyof typeof en, string> = {
 	'vendor.identityToken': 'App-Geräte-ID',
 	'vendor.identityHint': 'Leer lassen, um eine neue eindeutige ID für diese App zu erzeugen.',
 	'vendor.showMore': 'Weitere Felder anzeigen ({count} verbleibend)',
+	'vendor.ciscoEnterprise':
+		'Experimentelles Enterprise-SIP: ein unabhängiges Konto, TCP und ein optionaler schreibgeschützter TFTP-Dienst. Am Gerät ungetestet; Zielfirmware 14.2(1). Trage unter Modelleinstellungen eine eindeutige feste IPv4-Adresse des Telefons ein und konfiguriere den SIP-Host. Aktiviere die Cisco-TFTP-Bereitstellung nur in einem vertrauenswürdigen LAN. TFTP ist unverschlüsselt und hat keine Authentifizierung. Vorhandene CUCM-Vertrauenslisten können unsignierte Dateien blockieren. Firmware und Vertrauenslisten werden nicht verändert.',
+	'vendor.ciscoEnterpriseIP': 'TFTP-Client-IPv4-Adresse (feste DHCP-Zuordnung)',
+	'vendor.cisco7800':
+		'Nur MPP-/3PCC-Firmware (Dokumentationsbasis 11.3(1)). Am Gerät ungetestet. Enterprise-/CUCM-Firmware benötigt das separate experimentelle Enterprise-Profil und die TFTP-Einrichtung. Trage die vollständige Konfigurationsdatei-URL unter Voice > Provisioning > Profile Rule mit den TalkOps-Provisionierungszugangsdaten ein. Die deutsche Anzeige benötigt ein zur Firmware passendes Wörterbuch. Nur Konten-Leitungszuordnungen sind konfiguriert; BLF und Kontakte sind nicht verfügbar.',
 	'vendor.coverage':
 		'Felder der gewählten Herstellervorlage, nach Funktion gegliedert. Modell- und Firmwaregrenzen gelten. Die Prüfung an Geräten steht aus.',
 	'vendor.search': 'Einstellung, Parameter oder Quelldatei suchen',

@@ -152,6 +152,12 @@ pub fn validate(model: &PhoneModel, overrides: &Overrides) -> Result<(), String>
     )?;
     if let Some(profile) = crate::vendors::profile(&model.id) {
         for (key, value) in &overrides.vendor_settings {
+            if key == "cisco_enterprise_tftp_ip"
+                && !value.is_empty()
+                && crate::vendors::cisco_tftp_ip(value).is_none()
+            {
+                return Err("Cisco TFTP client address must be a unicast IPv4 address".into());
+            }
             if !profile.settings.iter().any(|s| s.key == *key)
                 || value.len() > if value.starts_with("v1:") { 8192 } else { 4096 }
                 || value.chars().any(char::is_control)

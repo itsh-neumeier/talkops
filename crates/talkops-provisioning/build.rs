@@ -56,6 +56,12 @@ fn main() {
             "NATIVE_FILES",
             false,
         ),
+        (
+            "templates/talkops",
+            "authored_files.rs",
+            "AUTHORED_FILES",
+            false,
+        ),
     ] {
         let root = crate_root.join(directory);
         println!("cargo:rerun-if-changed={}", root.display());

@@ -132,6 +132,7 @@ pub fn category(name: &str) -> &'static str {
                 "download",
                 "config_server",
                 "cfg_server",
+                "tftp",
             ],
         ),
         (
@@ -511,8 +512,28 @@ pub fn schema(model: &PhoneModel) -> Result<Vec<Field>, String> {
             .any(|word| lower.contains(word))
                 || lower
                     .split(|c: char| !c.is_ascii_alphanumeric())
-                    .any(|word| word == "pin");
-            let managed = scalar.value.contains("TALKOPS_MANAGED")
+                    .any(|word| word == "pin")
+                // Cisco dictionary scripts can embed URL credentials after `serv=`.
+                || profile.revision == "talkops-cisco7800-v1"
+                    && scalar.parameter.contains("/Dictionary_Server_Script[");
+            // The authored MPP profile only exposes locale fields. Account,
+            // registration and button bindings stay under TalkOps control.
+            let authored_managed = vendors::cisco_enterprise(&model.id)
+                || profile.revision == "talkops-cisco7800-v1"
+                    && ![
+                        "Primary_NTP_Server",
+                        "Time_Zone",
+                        "Daylight_Saving_Time_Enable",
+                        "Daylight_Saving_Time_Rule",
+                        "Dictionary_Server_Script",
+                        "Language_Selection",
+                        "Locale",
+                        "Ignore_DHCP_Time_Offset",
+                    ]
+                    .iter()
+                    .any(|name| scalar.parameter.contains(&format!("/{name}[")));
+            let managed = authored_managed
+                || scalar.value.contains("TALKOPS_MANAGED")
                 || scalar.value.contains("talkops-managed.invalid")
                 || scalar.value.contains("805ec0010203")
                 || [

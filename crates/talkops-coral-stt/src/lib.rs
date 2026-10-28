@@ -8,10 +8,8 @@
 //! models are not in the worker image. It listens on the loopback address
 //! only by default: audio does not leave the server.
 
-pub mod audio;
 pub mod ctc;
 pub mod devices;
-pub mod diagnostics;
 pub mod engine;
 pub mod features;
 mod fft;
@@ -19,7 +17,8 @@ pub mod http;
 pub mod install;
 pub mod mock;
 pub mod models;
-pub mod realtime;
 pub mod recognizer;
 pub mod tflite;
-pub mod turns;
+
+/// Shared with `cuda-stt` (crate `talkops-stt-service`).
+pub use talkops_stt_service::{audio, diagnostics, realtime, turns};

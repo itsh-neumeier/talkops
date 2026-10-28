@@ -15,9 +15,12 @@
 //! service restarts.
 
 use std::path::{Path, PathBuf};
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
+use talkops_stt_service::library::{
+    ID_LEN, dir_bytes, invalid, model_id, now, read_json, remove_dir, sha256, staged, statement,
+};
+pub use talkops_stt_service::library::{InstallError, Usage};
 
 use crate::models::{Catalog, check_slot};
 
@@ -36,22 +39,8 @@ pub const CPU_FILE: &str = "model.tflite";
 const META_FILE: &str = "model.json";
 const INFO_FILE: &str = "install.json";
 const LIBRARY_DIR: &str = "library";
-/// Hex digits of the digest that form a model id.
-const ID_LEN: usize = 12;
 /// The custom operation that `edgetpu_compiler` writes into a model.
 const EDGETPU_OP: &[u8] = b"edgetpu-custom-op";
-
-#[derive(Debug, thiserror::Error)]
-pub enum InstallError {
-    #[error("{0}")]
-    Invalid(String),
-    #[error("model directory: {0}")]
-    Io(#[from] std::io::Error),
-}
-
-fn invalid(message: impl Into<String>) -> InstallError {
-    InstallError::Invalid(message.into())
-}
 
 /// The files and statements of one upload.
 #[derive(Debug, Default)]
@@ -117,28 +106,12 @@ pub struct SlotStatus {
     pub loaded: bool,
 }
 
-#[derive(Debug, Clone, Serialize)]
-pub struct Usage {
-    pub models: usize,
-    pub bytes: u64,
-    pub max_models: usize,
-    pub max_bytes: u64,
-}
-
 /// Slots and library for the admin interface.
 #[derive(Debug, Clone, Serialize)]
 pub struct Overview {
     pub slots: Vec<SlotStatus>,
     pub library: Vec<LibraryModel>,
     pub usage: Usage,
-}
-
-fn sha256(bytes: &[u8]) -> String {
-    use sha2::{Digest, Sha256};
-    Sha256::digest(bytes)
-        .iter()
-        .map(|b| format!("{b:02x}"))
-        .collect()
 }
 
 fn sha256_file(path: &Path) -> Option<String> {
@@ -152,18 +125,6 @@ fn slot(name: &str) -> Result<&'static str, InstallError> {
         .ok_or_else(|| invalid("unknown model slot; use de, en or langid"))
 }
 
-fn model_id(id: &str) -> Result<&str, InstallError> {
-    if id.len() == ID_LEN
-        && id
-            .bytes()
-            .all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase())
-    {
-        Ok(id)
-    } else {
-        Err(invalid("invalid model id"))
-    }
-}
-
 /// A TensorFlow Lite flatbuffer has the identifier `TFL3` at offset 4.
 fn is_tflite(bytes: &[u8]) -> bool {
     bytes.get(4..8) == Some(b"TFL3".as_slice())
@@ -171,16 +132,6 @@ fn is_tflite(bytes: &[u8]) -> bool {
 
 fn has_edgetpu_op(bytes: &[u8]) -> bool {
     bytes.windows(EDGETPU_OP.len()).any(|w| w == EDGETPU_OP)
-}
-
-fn statement(value: &str, field: &str) -> Result<String, InstallError> {
-    let value = value.trim();
-    if value.is_empty() || value.chars().count() > 200 || value.chars().any(char::is_control) {
-        return Err(invalid(format!(
-            "{field}: 1 to 200 characters are required"
-        )));
-    }
-    Ok(value.to_owned())
 }
 
 fn check_files(upload: &Upload) -> Result<(), InstallError> {
@@ -210,38 +161,8 @@ fn check_files(upload: &Upload) -> Result<(), InstallError> {
     Ok(())
 }
 
-fn now() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_or(0, |d| d.as_secs())
-}
-
-fn remove_dir(path: &Path) -> std::io::Result<()> {
-    match std::fs::remove_dir_all(path) {
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
-        other => other,
-    }
-}
-
 fn library(dir: &Path) -> PathBuf {
     dir.join(LIBRARY_DIR)
-}
-
-fn read_json<T: for<'de> Deserialize<'de>>(path: &Path) -> Option<T> {
-    serde_json::from_slice(&std::fs::read(path).ok()?).ok()
-}
-
-fn dir_bytes(path: &Path) -> u64 {
-    std::fs::read_dir(path)
-        .map(|entries| {
-            entries
-                .flatten()
-                .filter_map(|e| e.metadata().ok())
-                .filter(|m| m.is_file())
-                .map(|m| m.len())
-                .sum()
-        })
-        .unwrap_or(0)
 }
 
 /// Library ids on disk, sorted. Staging directories start with a dot.
@@ -270,31 +191,6 @@ fn copy_model(from: &Path, to: &Path) -> std::io::Result<()> {
         }
     }
     Ok(())
-}
-
-/// Writes into `staging`, runs `fill`, then renames it to `target`.
-/// `staging` is removed when something fails.
-fn staged(
-    staging: &Path,
-    target: &Path,
-    fill: impl FnOnce(&Path) -> Result<(), InstallError>,
-) -> Result<(), InstallError> {
-    remove_dir(staging)?;
-    let result = fill(staging).and_then(|()| {
-        // Replace the target only after a complete, checked copy.
-        let old = staging.with_extension("old");
-        remove_dir(&old)?;
-        if target.exists() {
-            std::fs::rename(target, &old)?;
-        }
-        std::fs::rename(staging, target)?;
-        remove_dir(&old)?;
-        Ok(())
-    });
-    if result.is_err() {
-        let _ = remove_dir(staging);
-    }
-    result
 }
 
 /// Adds an upload to the library. Invalid uploads change nothing.

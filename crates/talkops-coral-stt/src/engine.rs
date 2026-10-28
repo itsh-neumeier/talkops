@@ -46,25 +46,7 @@ pub enum Output {
     Probs(Vec<f32>),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Priority {
-    /// Realtime sessions.
-    Live,
-    /// File transcriptions.
-    File,
-}
-
-#[derive(Debug, Clone, PartialEq, thiserror::Error)]
-pub enum EngineError {
-    #[error("all Edge TPUs are busy; try again later")]
-    Overloaded,
-    #[error("no Edge TPU is ready")]
-    Unavailable,
-    #[error("model not available: {0}")]
-    UnknownModel(String),
-    #[error("inference failed: {0}")]
-    Failed(String),
-}
+pub use talkops_stt_service::{EngineError, Priority};
 
 /// A device implementation. `serve` runs on the device thread: it loads the
 /// models, calls [Port::ready], and then works through [Port::next_task] until it

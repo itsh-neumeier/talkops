@@ -1,0 +1,24 @@
+[package]
+name = "talkops-stt-service"
+description = "Shared parts of the TalkOps speech services (coral-stt, cuda-stt): OpenAI-compatible HTTP and realtime interface, audio, turns, diagnostics"
+version.workspace = true
+edition.workspace = true
+# `<[T]>::as_chunks` needs Rust 1.88.
+rust-version = "1.88"
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+axum = { workspace = true, features = ["macros", "multipart", "ws"] }
+base64 = "0.22.1"
+futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
+hound = "3.5.1"
+serde.workspace = true
+serde_json.workspace = true
+sha2 = "0.11.0"
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+
+[lints]
+workspace = true

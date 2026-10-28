@@ -51,6 +51,9 @@ try {
     } else if (path === '/api/v1/settings/transcription/providers/coral1/test') {
       saved.tests++;
       value = { missing_models: [], speech_models: ['coral-auto', 'coral-ctc-de', 'coral-ctc-en'], coral: health };
+    } else if (path === '/api/v1/speech-services/coral1/models') {
+      value = { backend: 'tpu', slots: ['de', 'en', 'langid'].map(slot => ({ slot, installed: slot !== 'langid', model_id: null, name: null, active: slot !== 'langid', loaded: slot !== 'langid' })),
+        library: [], usage: { models: 0, bytes: 0, max_models: 10, max_bytes: 536870912 } };
     } else if (path === '/api/v1/settings/transcription/profiles') {
       saved.profiles = req.postDataJSON();
       profiles = saved.profiles.map(p => ({ ...p, provider_kind: p.provider_id === 'coral1' ? 'coral' : null }));

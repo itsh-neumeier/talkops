@@ -3879,7 +3879,7 @@ dependencies = [
 
 [[package]]
 name = "talkops-cuda-stt"
-version = "1.8.14"
+version = "1.8.15"
 dependencies = [
  "anyhow",
  "axum",
@@ -3974,7 +3974,7 @@ dependencies = [
 
 [[package]]
 name = "talkops-stt-service"
-version = "1.8.14"
+version = "1.8.15"
 dependencies = [
  "axum",
  "base64 0.22.1",

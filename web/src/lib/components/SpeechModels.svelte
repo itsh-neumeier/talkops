@@ -123,9 +123,9 @@
 	const loaded = $derived(cuda ? !!cudaData : !!coralData);
 	const pending = $derived(
 		cuda
-			? (cudaData?.slots.some((s) => (!!s.model_id && !s.active) || (!s.model_id && s.loaded)) ??
+			? (cudaData?.slots?.some((s) => (!!s.model_id && !s.active) || (!s.model_id && s.loaded)) ??
 					false)
-			: (coralData?.slots.some((s) => (s.installed && !s.active) || (!s.installed && s.loaded)) ??
+			: (coralData?.slots?.some((s) => (s.installed && !s.active) || (!s.installed && s.loaded)) ??
 					false)
 	);
 	const full = $derived(!!usage && usage.models >= usage.max_models);
@@ -408,7 +408,7 @@
 			<p class="hint">{t('speechModels.libraryEmpty')}</p>
 		{/if}
 
-		{#if cuda && cudaData?.presets.models.length}
+		{#if cuda && cudaData?.presets?.models?.length}
 			<h4 class="text-sm font-medium">{t('speechModels.presetsTitle')}</h4>
 			<p class="hint">{t('speechModels.presetsHint')}</p>
 			<div class="scroll-x">

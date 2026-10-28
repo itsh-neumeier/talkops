@@ -1,4 +1,4 @@
-"""Exercise the shipped tftpd-hpa policy as an unprivileged user over UDP."""
+"""Exercise the shipped tftpd-hpa policy over UDP, started as root like the sidecar."""
 import os
 import importlib.util
 import pwd
@@ -18,9 +18,12 @@ class CiscoTftpPolicy(unittest.TestCase):
         cls.binary = shutil.which("in.tftpd") or "/usr/sbin/in.tftpd"
         if not Path(cls.binary).exists():
             raise RuntimeError("Install tftpd-hpa before running this protocol test")
+        if os.getuid() != 0:
+            # in.tftpd needs CAP_SETGID to drop to --user for each request.
+            raise RuntimeError("Run this protocol test as root, like the sidecar")
         cls.temp = tempfile.TemporaryDirectory(prefix="talkops-tftp-test-")
         cls.root = Path(cls.temp.name)
-        cls.user = pwd.getpwnam("nobody") if os.getuid() == 0 else pwd.getpwuid(os.getuid())
+        cls.user = pwd.getpwnam("nobody")
         cls.files = {
             "127.0.0.2/SEP805EC0010203.cnf.xml": b"<device>first-private-secret</device>" * 40,
             "127.0.0.2/dialplan.xml": b"<DIALTEMPLATE/>",
@@ -37,20 +40,14 @@ class CiscoTftpPolicy(unittest.TestCase):
         for path in [cls.root, *cls.root.rglob("*")]:
             if path.is_dir():
                 path.chmod(0o700)
-            if os.getuid() == 0:
-                os.chown(path, cls.user.pw_uid, cls.user.pw_gid)
+            os.chown(path, cls.user.pw_uid, cls.user.pw_gid)
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
             probe.bind(("127.0.0.1", 0))
             cls.port = probe.getsockname()[1]
-        def demote():
-            if os.getuid() == 0:
-                os.setgroups([])
-                os.setgid(cls.user.pw_gid)
-                os.setuid(cls.user.pw_uid)
         cls.server = subprocess.Popen([
             cls.binary, "--foreground", "--ipv4", f"--address=127.0.0.1:{cls.port}",
             f"--user={cls.user.pw_name}", "--permissive", f"--map-file={policy}", str(cls.root)
-        ], preexec_fn=demote, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        ], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
         # Wait for an actual TFTP response; process startup is not socket readiness.
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as ready:
             ready.bind(("127.0.0.2", 0))

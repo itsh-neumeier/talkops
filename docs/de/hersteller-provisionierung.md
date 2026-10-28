@@ -242,8 +242,10 @@ authentifizierte HTTP-Provisionierung bleibt unverändert.
    den vorhandenen FreeSWITCH-Medienportbereich.
 
 Der Dienst bildet Host-UDP 69 auf Container-UDP 1069 ab. Übertragungen verwenden
-UDP 30000–30031. Der Container läuft als UID 10001 ohne Linux-Capabilities und
-mit schreibgeschütztem Dateisystem. Docker muss die echte LAN-Client-IP erhalten.
+UDP 30000–30031. tftpd-hpa muss als root starten, um für jede Anfrage die
+Rechte abzugeben. Der Container behält nur die Capabilities `SETUID`, `SETGID`
+und `DAC_READ_SEARCH` und nutzt `no-new-privileges` sowie ein schreibgeschütztes
+Dateisystem. Jede Übertragung läuft als UID 10001. Docker muss die echte LAN-Client-IP erhalten.
 Ein Proxy oder NAT, das alle Clientadressen ersetzt, ist damit nicht vereinbar.
 
 TalkOps exportiert ausschließlich die deklarierte SEP-Konfiguration und

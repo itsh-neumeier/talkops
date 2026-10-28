@@ -140,15 +140,16 @@ hardware test; this reference is not evidence for all 7800 call features.
 The [Debian tftpd-hpa manual](https://manpages.debian.org/trixie/tftpd-hpa/in.tftpd.8.en.html)
 defines source-IP expansion, GET/PUT map constraints and transfer-port ranges.
 The optional sidecar uses those controls with two exact file patterns. It has
-no database access, runs unprivileged and mounts the private tmpfs export root
-read-only. Plaintext TFTP requires a trusted LAN; source-IP mapping cannot stop
+no database access and mounts the private tmpfs export root read-only. It starts
+as root with only `SETUID`, `SETGID` and `DAC_READ_SEARCH`, because tftpd-hpa
+calls `setgroups()` before it serves each request as UID 10001. Plaintext TFTP requires a trusted LAN; source-IP mapping cannot stop
 LAN spoofing or passive capture. Existing HTTP provisioning remains authenticated.
 
 The exporter uses the existing tenant-scoped phone and credential paths.
 It omits duplicates, invalid profiles and phones without a configured SIP host.
 It replaces complete snapshots and revokes stale exports after errors. A
 90-second lease stops the wire service if the exporter crashes. Tests cover
-real unprivileged TFTP transfers, IP separation, malformed filenames, denied
+real TFTP transfers that drop to an unprivileged user, IP separation, malformed filenames, denied
 uploads, private file permissions, duplicate mapping, removal and failure revocation.
 No phone has yet downloaded these files or registered in a hardware test.
 

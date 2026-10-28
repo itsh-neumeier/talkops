@@ -37,6 +37,10 @@ def stop(process):
 
 
 def main():
+    if os.geteuid() != 0:
+        # in.tftpd drops to --user per request and exits silently without
+        # CAP_SETGID, so a non-root start would accept but never answer.
+        sys.exit("cisco-tftp must start as root with SETUID, SETGID and DAC_READ_SEARCH")
     root = Path("/run/talkops-tftp")
     done = threading.Event()
     for sig in [signal.SIGINT, signal.SIGTERM]:

@@ -235,8 +235,10 @@ traffic. Keep the regular authenticated HTTP provisioning service unchanged.
    existing FreeSWITCH media port range.
 
 The sidecar maps host UDP 69 to unprivileged container UDP 1069. Its transfer
-ports use UDP 30000–30031. It runs as UID 10001 with no Linux capabilities and a
-read-only filesystem. Docker must preserve the real LAN client IP. A proxy or
+ports use UDP 30000–30031. tftpd-hpa must start as root to drop privileges for
+each request. The sidecar keeps only the `SETUID`, `SETGID` and `DAC_READ_SEARCH`
+capabilities, uses `no-new-privileges` and a read-only filesystem. Each transfer
+runs as UID 10001. Docker must preserve the real LAN client IP. A proxy or
 NAT that replaces all client addresses cannot use this admission rule.
 
 TalkOps exports only the declared SEP configuration and `dialplan.xml` into a

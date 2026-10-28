@@ -25,7 +25,12 @@ Add one explicit exception to ADR 0039's authenticated HTTP delivery rule.
 An optional tftpd-hpa sidecar serves only these Enterprise artifacts on a
 trusted voice LAN. The default deployment starts no TFTP service. The optional
 Compose file requires a LAN bind address. UDP 69 maps to unprivileged UDP 1069.
-The sidecar and TalkOps both run as UID 10001 with all capabilities dropped.
+TalkOps runs as UID 10001 with all capabilities dropped. tftpd-hpa calls
+`setgroups()` for each request before it drops to its `--user`. Without
+`CAP_SETGID` the request process exits and sends no reply. The sidecar thus
+starts as root with only `SETUID`, `SETGID` and `DAC_READ_SEARCH`, and with
+`no-new-privileges`. tftpd-hpa serves each request as UID 10001.
+`DAC_READ_SEARCH` lets the lease guard read the private export root.
 The sidecar has no database credentials and mounts its export volume read-only.
 
 Use a fixed client IPv4 address per exported phone. The map prefixes requests

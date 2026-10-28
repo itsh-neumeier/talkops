@@ -60,8 +60,10 @@ Dein Ablauf für jeden Integrations- und Release-Auftrag:
    normale CI/E2E; stelle das vor dem Tag-Push sicher. Veröffentliche den
    vereinbarten Umfang erst, wenn alle dafür eingeplanten Beiträge bereit sind.
 7. Verifiziere den Release-Workflow, den GitHub-Release und die versionierten
-   Manifeste von `talkops-server`, `talkops-media-worker` und `talkops-freeswitch`
-   für amd64 und arm64. Prüfe die angezeigte TalkOps-Version, soweit ausführbar,
+   Manifeste von `talkops-server`, `talkops-media-worker`, `talkops-freeswitch`
+   und `talkops-coral-stt` für amd64. Baue und prüfe arm64 nur, wenn ich es für
+   diesen Release ausdrücklich verlange; setze dann vor dem Tag-Push die
+   Repository-Variable `RELEASE_ARM64=true` und entferne sie danach. Prüfe die angezeigte TalkOps-Version, soweit ausführbar,
    und bei stabilen Releases die vom Workflow vorgesehenen beweglichen Tags.
    Melde erst danach den Release als erfolgreich.
 

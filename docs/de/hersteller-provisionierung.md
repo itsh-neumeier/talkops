@@ -253,7 +253,9 @@ Die Exporte werden alle 30 Sekunden erneuert. Doppelte Client-IPs, fehlende
 SIP-Hosts und ungültige Profile werden ausgelassen. Entfernte Kontenzuordnungen
 und Telefone verlieren ihren alten Export beim nächsten Lauf. Datenbankfehler
 sperren den bisherigen Export. Ohne frischen Export stoppt der TFTP-Dienst
-spätestens nach 90 Sekunden, auch nach einem TalkOps-Absturz.
+nach Ablauf des 90-Sekunden-Leases, auch nach einem TalkOps-Absturz. Die Prüfung
+erfolgt jede Sekunde. Nach fünf Sekunden ohne Beendigung wird die gesamte
+TFTP-Prozessgruppe zwangsweise beendet.
 Das Volume liegt getrennt von persistenten Provisionierungs- und Backupdaten.
 Gerätekopien übernehmen die Client-IP nicht.
 

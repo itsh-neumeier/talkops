@@ -244,8 +244,9 @@ private, volatile tmpfs volume. The sidecar mounts that volume read-only.
 Files use mode 0600 and directories use 0700. The exporter refreshes snapshots
 every 30 seconds. Duplicate client IPs, missing SIP hosts and invalid profiles
 are omitted. Removed assignments and phones lose their old export on refresh.
-Database errors revoke the served snapshot. A lease guard stops TFTP after at
-most 90 seconds without a fresh snapshot, including after a TalkOps crash.
+Database errors revoke the served snapshot. The snapshot lease expires after
+90 seconds, including after a TalkOps crash. The guard checks each second and
+allows five seconds for shutdown before it kills the TFTP process group.
 The volume is separate from persistent provisioning storage and backup data.
 The client IP is excluded from phone copies.
 

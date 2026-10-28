@@ -43,8 +43,9 @@ capabilities to the sidecar. Test these rules against the actual daemon.
 TalkOps renders the existing managed configuration into a dedicated tmpfs root.
 Keep files private and exclude the client IP from device copies. Publish
 complete snapshots every 30 seconds. Revoke exports after generation failures.
-A separate lease guard stops the TFTP process group after at most 90 seconds
-without a fresh snapshot. Exported plaintext is not persistent backup data.
+A separate guard checks the 90-second snapshot lease each second. It stops the
+TFTP process group on expiry and forces termination after five seconds if needed.
+Exported plaintext is not persistent backup data.
 The existing encrypted database, preview masking and authenticated HTTP exports
 remain in use. HTTP authentication is not bypassed.
 

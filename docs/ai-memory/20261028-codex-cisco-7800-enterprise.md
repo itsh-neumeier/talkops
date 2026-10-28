@@ -51,7 +51,8 @@ network identifiers are excluded from repository artifacts.
 - Keep the existing Yealink URL in DHCP option 66. Supply the Cisco TFTP IPv4
   address through additional option 150. Do not modify the user's DHCP server.
 - Refresh exports every 30 seconds. Use a private tmpfs volume and revoke
-  exports after errors. Stop TFTP after a maximum 90-second stale lease.
+  exports after errors. Check the 90-second lease each second. Force process-group
+  termination if shutdown does not finish within five seconds.
 
 ## Checks
 

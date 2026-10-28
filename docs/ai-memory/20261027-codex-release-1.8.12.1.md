@@ -5,7 +5,7 @@
 - Task ID: 20261027-codex-release-1.8.12.1
 - Date: 2026-10-27, Europe/Berlin
 - Tool: Codex
-- Status: In progress; final candidate validation
+- Status: In progress; exact-main validation
 - Branch: codex/release-1.8.12.1
 - Base commit: 3603ed56b0073a1dd23646622cf4fb0284644ab7
 - Related PR: https://github.com/itsh-neumeier/talkops/pull/87
@@ -17,7 +17,8 @@ Integrate all ready open PRs and publish the next release requested as 1.8.12.1.
 ## Result
 
 Merged the completed 1.8.12 audit and Codex PR86 without rewriting source history.
-Updated Cargo workspace and npm roots to 1.8.13. No main merge or tag push yet.
+Updated Cargo workspace and npm roots to 1.8.13. PR87 merged on 2026-10-28.
+Exact main: 4b44cd68580908fb54407898aa01b0dcc4f80954. No tag push or release yet.
 
 ## Decisions
 
@@ -69,3 +70,16 @@ merge, validate exact main, tag once, then verify the workflow and all images.
 - docs/ai-memory/20261027-codex-call-map-clusters.md
 - docs/ai-memory/20261027-codex-release-1.8.12.md
 - docs/release-workflow.md
+
+## Final candidate and merge
+
+- Candidate ab0291248f62fc321ab3cbae671aef2af25b5760: 22 required checks passed.
+  Only two branch-only trial publication contexts skipped as designed.
+- PR CI40636023198/E2E40636023232 and push CI40636017716/E2E40636017714 passed.
+- Rust: 558 passed, two model/runtime tests ignored. Web: 91 unit tests and
+  all browser checks passed. Server/worker/Coral smoke reported 1.8.13.
+- Static metadata comparison: only eight workspace and npm root versions changed.
+  All 59 migrations unchanged; 2,829 matching EN/DE keys and placeholders.
+- Fresh premerge confirmed unchanged main, source head, scope and no protection/rulesets.
+- Merge tree equals the tested candidate; source86 is an ancestor.
+- Exact-main CI/E2E must pass before tag creation. No publication yet.

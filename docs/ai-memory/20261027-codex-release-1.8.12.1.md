@@ -1,11 +1,11 @@
-# Release intake for requested 1.8.12.1
+# TalkOps 1.8.13 release (initial request 1.8.12.1)
 
 ## Task state
 
 - Task ID: 20261027-codex-release-1.8.12.1
 - Date: 2026-10-27, Europe/Berlin
 - Tool: Codex
-- Status: In progress; version decision pending
+- Status: In progress; final candidate validation
 - Branch: codex/release-1.8.12.1
 - Base commit: 3603ed56b0073a1dd23646622cf4fb0284644ab7
 - Related PR: https://github.com/itsh-neumeier/talkops/pull/87
@@ -17,7 +17,7 @@ Integrate all ready open PRs and publish the next release requested as 1.8.12.1.
 ## Result
 
 Merged the completed 1.8.12 audit and Codex PR86 without rewriting source history.
-No release version, main branch or published tag changed. No release published.
+Updated Cargo workspace and npm roots to 1.8.13. No main merge or tag push yet.
 
 ## Decisions
 
@@ -28,8 +28,7 @@ No release version, main branch or published tag changed. No release published.
   handoff. Preserve it. No ready Claude Code PR is assigned to this batch.
 - Requested 1.8.12.1 has four numeric components. Cargo and the existing
   SemVer image metadata contract require a valid three-component version.
-  Asked the user to choose stable patch 1.8.13 or preparation only. Await answer
-  before changing release versions, merging main or publishing.
+  On 2026-10-28 the user selected 1.8.13. Do not add fourth-component support.
 - Default target main and merge-commit method verified. No protection/rulesets
   at intake. Latest stable release is 1.8.12 on the recorded base.
 - Primary and all foreign worktrees stay untouched.
@@ -55,12 +54,12 @@ No release version, main branch or published tag changed. No release published.
 
 ## Dependencies and open work
 
-Confirm a valid target version. Draft61 is excluded under the established rule.
+Target version confirmed: 1.8.13. Draft61 is excluded under the established rule.
 Coral remains experimental and off by default; physical acceptance is separate.
 
 ## Next action
 
-Receive the version decision; update metadata, validate the final candidate,
+Validate the final versioned candidate,
 merge, validate exact main, tag once, then verify the workflow and all images.
 
 ## References

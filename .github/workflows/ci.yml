@@ -63,6 +63,15 @@ jobs:
         with:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
+      - name: Install the sherpa-onnx CPU library (cuda-stt, ADR 0049)
+        run: |
+          # Same version as the sherpa-onnx crate; the build does not download it.
+          name=sherpa-onnx-v1.13.8-linux-x64-shared-lib
+          curl -fsSLo /tmp/sherpa.tar.bz2 "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.13.8/$name.tar.bz2"
+          echo "3892d184be41027e18165e67f549cd4e4cdd8dcd73ac5579e97afd55e14e30b6  /tmp/sherpa.tar.bz2" | sha256sum -c -
+          tar xjf /tmp/sherpa.tar.bz2 -C "$RUNNER_TEMP"
+          echo "SHERPA_ONNX_LIB_DIR=$RUNNER_TEMP/$name/lib" >> "$GITHUB_ENV"
+          echo "LD_LIBRARY_PATH=$RUNNER_TEMP/$name/lib" >> "$GITHUB_ENV"
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: Start OpenLDAP for the directory login tests

@@ -5,7 +5,7 @@
 - Task ID: 20261027-codex-release-1.8.12.1
 - Date: 2026-10-27, Europe/Berlin
 - Tool: Codex
-- Status: In progress; exact-main validation
+- Status: In progress; publication verification
 - Branch: codex/release-1.8.12.1
 - Base commit: 3603ed56b0073a1dd23646622cf4fb0284644ab7
 - Related PR: https://github.com/itsh-neumeier/talkops/pull/87
@@ -83,3 +83,10 @@ merge, validate exact main, tag once, then verify the workflow and all images.
 - Fresh premerge confirmed unchanged main, source head, scope and no protection/rulesets.
 - Merge tree equals the tested candidate; source86 is an ancestor.
 - Exact-main CI/E2E must pass before tag creation. No publication yet.
+
+## Publication checkpoint
+
+- Exact-main CI40638257180 and E2E40638257242 passed before publication.
+- New annotated v1.8.13 was pushed once on 4b44cd68580908fb54407898aa01b0dcc4f80954.
+- Tag object: bb676ce7596d88eb7ef17129a506f4174104f7e0. No published tag moved.
+- Release workflow and registry verification pending. Do not report completion yet.

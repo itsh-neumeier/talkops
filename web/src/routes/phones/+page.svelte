@@ -455,6 +455,12 @@
 			<select id="p-model" class="input" bind:value={form.model}>
 				{#each models as m (m.id)}<option value={m.id}>{m.vendor} {m.name}</option>{/each}
 			</select>
+			{#if /^cisco-78(?:11|21|41|61)-mpp$/.test(form.model)}<p class="hint">
+					{t('vendor.cisco7800')}
+				</p>{/if}
+			{#if /^cisco-78(?:11|21|41|61)-enterprise$/.test(form.model)}<p class="hint">
+					{t('vendor.ciscoEnterprise')}
+				</p>{/if}
 			{#if models.find((m) => m.id === form.model)?.layout}<div class="mt-3">
 					<PhoneGraphic model={models.find((m) => m.id === form.model)} />
 				</div>{/if}

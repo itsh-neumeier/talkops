@@ -55,6 +55,9 @@ nächste freie Nummer; überholte ADRs werden nicht gelöscht, sondern auf
 | [0048](0048-coral-model-upload.md) | Coral model library and upload by the administrator | Proposed |
 | [0049](0049-cuda-gpu-speech-recognition.md) | Speech recognition on NVIDIA GPUs (`cuda-stt`) | Proposed |
 
+| [0048](0048-authored-provisioning-profiles.md) | Independently authored provisioning profiles | Accepted |
+
+| [0049](0049-cisco-enterprise-tftp-bootstrap.md) | Optional IP-scoped TFTP bootstrap for Cisco Enterprise SIP | Accepted |
 
 Vorlage: [`template.md`](template.md)
 

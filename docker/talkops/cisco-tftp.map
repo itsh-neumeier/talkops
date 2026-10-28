@@ -1,0 +1,4 @@
+# Deny uploads before any rewrite. Accept two exact read-only artifact names.
+aP .*
+rGe4 ^(SEP[0-9A-F]{12}\.cnf\.xml|dialplan\.xml)$ /run/talkops-tftp/active/\i/\1
+a .*

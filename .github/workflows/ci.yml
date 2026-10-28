@@ -85,6 +85,10 @@ jobs:
           unzip -q /tmp/rclone.zip -d /tmp
           sudo install -m 0755 /tmp/rclone-v1.75.2-linux-amd64/rclone /usr/local/bin/rclone
           rclone version
+      - name: Install and test the optional Cisco TFTP transport
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends tftpd-hpa
+          sudo python3 tests/provisioning/tftp.py
       - run: cargo test --workspace --locked
         env:
           TALKOPS_TEST_PG_BIN_DIR: /usr/lib/postgresql/17/bin
@@ -156,6 +160,7 @@ jobs:
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/phone-keys.mjs
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/provisioning.mjs
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/manufacturer-provisioning.mjs
+          PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/cisco7800.mjs
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/transcriptions.mjs
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/motion.mjs
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/talkops-browser/node_modules/playwright/index.js" node ../tests/browser/call-presentation.mjs
@@ -173,6 +178,7 @@ jobs:
               -e 's/^TALKOPS_XMLCURL_PASSWORD=$/TALKOPS_XMLCURL_PASSWORD=ci/' .env.example > ci.env
           docker compose --env-file ci.env -f docker-compose.yml config -q
           docker compose --env-file ci.env -f docker-compose.yml -f docker-compose.dev.yml config -q
+          TALKOPS_TFTP_BIND_IP=192.0.2.10 docker compose --env-file ci.env -f docker-compose.yml -f docker-compose.cisco-tftp.yml config -q
           COMPOSE_PROFILES=coral docker compose --env-file ci.env -f docker-compose.yml config -q
           COMPOSE_PROFILES=cuda docker compose --env-file ci.env -f docker-compose.yml config -q
           TALKOPS_CORAL_TEST_TAG=coral-test-ci COMPOSE_PROFILES=coral docker compose --env-file ci.env -f docker-compose.yml -f docker-compose.coral-test.yml config -q

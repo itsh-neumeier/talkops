@@ -97,7 +97,7 @@ async fn get_requests(
 #[utoipa::path(get,path="/api/v1/provisioning/library",tag="phones",responses((status=200,body=Value)))]
 async fn get_library(State(state): State<AppState>, auth: AuthUser) -> ApiResult<Json<Value>> {
     auth.require_perm(Permission::PhonesManage)?;
-    let mut profiles=talkops_provisioning::vendors::profiles().iter().filter(|p|p.template_selector.is_none()).map(|p|{
+    let mut profiles=talkops_provisioning::vendors::profiles().iter().filter(|p|p.template_selector.is_none() && p.revision == "20143aec4366afc2755f336d3058243479d49d44").map(|p|{
         let model=if p.vendor=="yealink"{p.source_model.clone()}else{format!("{}/{}",p.vendor,p.source_model)};
         let adapted=state.phone_catalog.get(&p.id).is_some() || (p.vendor=="yealink"&&state.phone_catalog.get(&p.source_model).is_some());
         let prefix=format!("{}/{}/",p.vendor,p.source_model);

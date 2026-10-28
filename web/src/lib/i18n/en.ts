@@ -221,6 +221,11 @@ export default {
 	'vendor.identityToken': 'App device ID',
 	'vendor.identityHint': 'Leave empty to create a new unique ID for this app.',
 	'vendor.showMore': 'Show more fields ({count} remaining)',
+	'vendor.ciscoEnterprise':
+		'Experimental Enterprise SIP: one independent account, TCP and an optional read-only TFTP sidecar. Untested on hardware; target firmware 14.2(1). Set a unique fixed phone IPv4 address in Model settings and configure the SIP host. Enable the Cisco TFTP deployment only on a trusted LAN. TFTP has no encryption or authentication. Existing CUCM trust lists can block unsigned files. No firmware conversion, updates or trust-list changes are performed.',
+	'vendor.ciscoEnterpriseIP': 'TFTP client IPv4 address (fixed DHCP lease)',
+	'vendor.cisco7800':
+		'MPP / 3PCC firmware only (11.3(1) documentation baseline). Untested on hardware. Enterprise / CUCM firmware requires the separate experimental Enterprise profile and TFTP setup. Enter the full configuration file URL in Voice > Provisioning > Profile Rule with the TalkOps provisioning credentials. German display needs a firmware-matched dictionary. Only account line assignments are configured; BLF and contacts are unavailable.',
 	'vendor.coverage':
 		'Fields from the selected manufacturer template, grouped by function. Model and firmware limits apply. Hardware verification is pending.',
 	'vendor.search': 'Find a setting, parameter or source file',

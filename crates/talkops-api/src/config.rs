@@ -121,6 +121,10 @@ pub struct Config {
     #[arg(long, env = "TALKOPS_SIP_PORT", default_value_t = 5060)]
     pub sip_port: u16,
 
+    /// Optional dedicated volatile export directory for the Cisco Enterprise TFTP sidecar.
+    #[arg(long, env = "TALKOPS_CISCO_TFTP_DIR")]
+    pub cisco_tftp_dir: Option<PathBuf>,
+
     /// SIP port for trunks (external profile).
     #[arg(long, env = "TALKOPS_SIP_TRUNK_PORT", default_value_t = 5080)]
     pub sip_trunk_port: u16,

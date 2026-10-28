@@ -333,6 +333,30 @@ models/coral/langid/model_edgetpu.tflite   models/coral/langid/model.json   (opt
 Without the language ID model, both language models run for each turn.
 This doubles the load on the TPU.
 
+#### Upload in the TalkOps UI
+
+You can also install a model in **Settings → Transcription → Coral models**.
+You need the permission "transcription settings".
+
+1. Select the slot: German, English or language detection.
+2. Enter the license of the weights and their source.
+3. Select `model.json` and `model_edgetpu.tflite`. `model.tflite` for the
+   CPU backend is optional. The limit is 64 MiB for each file.
+4. Confirm that the license permits your use, then select **Upload and check**.
+5. Select **Restart Coral service**. Live previews pause for a few seconds.
+
+The service checks the files with the same code that loads them at startup.
+It rejects a model that is not compiled for the Edge TPU and a `model.json`
+without labels. The previous model stays available: **Restore previous**
+swaps the two models. The audit log records each change with the license
+statement and the model digest. TalkOps does not check license statements.
+TalkOps does not include models whose license does not permit
+redistribution, for example NVIDIA NGC models without a redistribution grant.
+
+The upload needs a writable `models` volume in the `coral-stt` service and a
+restart policy. The supplied `docker-compose.yml` has both. To disable the
+upload, set `TALKOPS_CORAL_MODEL_ADMIN=false`.
+
 An application update does not install model files. If you have the separate
 German candidate package `coral-de-candidate-20261025.tar.gz`, copy it and
 [`install-de-candidate.sh`](../../scripts/coral/install-de-candidate.sh) to

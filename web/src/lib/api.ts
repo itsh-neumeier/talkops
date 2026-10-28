@@ -937,6 +937,27 @@ export interface CoralTpu {
 	error: string | null;
 }
 
+/** One model slot of coral-stt (`/coral/{id}/models`, ADR 0048). */
+export interface CoralModelSlot {
+	slot: 'de' | 'en' | 'langid';
+	installed: boolean;
+	candidate?: string | null;
+	/** `license` from model.json. */
+	meta_license?: string | null;
+	/** Statements of the administrator who uploaded the model. */
+	info?: {
+		license: string;
+		source: string;
+		installed_at_unix: number;
+		tpu_sha256: string;
+		cpu_sha256?: string | null;
+	} | null;
+	tpu_sha256?: string | null;
+	/** The running service uses these files. */
+	active: boolean;
+	backup: boolean;
+}
+
 /** The `/health` answer of coral-stt. */
 export interface CoralHealth {
 	status: 'ok' | 'degraded' | 'unavailable';

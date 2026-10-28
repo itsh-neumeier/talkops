@@ -342,6 +342,34 @@ models/coral/langid/model_edgetpu.tflite   models/coral/langid/model.json   (opt
 Ohne das Sprach-ID-Modell laufen für jeden Abschnitt beide Sprachmodelle;
 das verdoppelt die Last auf der TPU.
 
+#### Hochladen in der TalkOps-Oberfläche
+
+Du kannst ein Modell auch unter **Einstellungen → Transkription →
+Coral-Modelle** installieren. Dafür brauchst du die Berechtigung
+„Transkriptionseinstellungen“.
+
+1. Wähle den Platz: Deutsch, Englisch oder Spracherkennung.
+2. Gib die Lizenz der Gewichte und ihre Herkunft an.
+3. Wähle `model.json` und `model_edgetpu.tflite`. `model.tflite` für das
+   CPU-Backend ist optional. Pro Datei sind höchstens 64 MiB erlaubt.
+4. Bestätige, dass die Lizenz deine Nutzung erlaubt, und wähle
+   **Hochladen und prüfen**.
+5. Wähle **Coral-Dienst neu starten**. Live-Vorschauen pausieren einige
+   Sekunden.
+
+Der Dienst prüft die Dateien mit demselben Code, der sie beim Start lädt. Er
+lehnt Modelle ab, die nicht für die Edge TPU kompiliert sind, und eine
+`model.json` ohne Labels. Das vorherige Modell bleibt erhalten:
+**Vorheriges wiederherstellen** tauscht die beiden Modelle. Das Audit-Log
+speichert jede Änderung mit Lizenzangabe und Modell-Prüfsumme. TalkOps prüft
+Lizenzangaben nicht. TalkOps liefert keine Modelle aus, deren Lizenz die
+Weitergabe nicht erlaubt, zum Beispiel NVIDIA-NGC-Modelle ohne
+Weitergabeerlaubnis.
+
+Der Upload braucht ein beschreibbares Volume `models` im Dienst `coral-stt`
+und eine Neustart-Richtlinie. Die mitgelieferte `docker-compose.yml` hat
+beides. Mit `TALKOPS_CORAL_MODEL_ADMIN=false` schaltest du den Upload ab.
+
 Ein Update der Anwendung installiert keine Modelldateien. Wenn du das separate
 deutsche Testpaket `coral-de-candidate-20261025.tar.gz` hast, kopiere es und
 [`install-de-candidate.sh`](../../scripts/coral/install-de-candidate.sh) auf

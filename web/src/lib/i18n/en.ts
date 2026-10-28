@@ -1707,6 +1707,43 @@ export default {
 	'stt.coralStablePreview': 'Publish complete words (experimental)',
 	'stt.coralStablePreviewHint':
 		'Hold unfinished words. Allow about 4–5 seconds; this is not a maximum delay guarantee. The setting applies to the next preview session.',
+	'coralModels.title': 'Coral models',
+	'coralModels.hint':
+		'TalkOps does not include speech models whose license does not permit redistribution. Install a compiled model that you are allowed to use. The service checks the files before it replaces a model and keeps the previous model for a restore.',
+	'coralModels.slot': 'Slot',
+	'coralModels.slot.de': 'German',
+	'coralModels.slot.en': 'English',
+	'coralModels.slot.langid': 'Language detection',
+	'coralModels.model': 'Model',
+	'coralModels.license': 'License',
+	'coralModels.licenseUnknown': 'License unknown',
+	'coralModels.source': 'Source of the weights (URL or description)',
+	'coralModels.state': 'State',
+	'coralModels.active': 'Active',
+	'coralModels.pending': 'Restart required',
+	'coralModels.empty': 'Empty',
+	'coralModels.restore': 'Restore previous',
+	'coralModels.restart': 'Restart Coral service',
+	'coralModels.restartHint':
+		'Changes apply after a restart of the Coral service. Live previews pause for a few seconds.',
+	'coralModels.mockHint':
+		'The service runs with the mock backend: it does not load the installed files.',
+	'coralModels.uploadTitle': 'Install model',
+	'coralModels.uploadHint':
+		'Upload the files of tools/coral/export_nemo.py and compile_model.py: model.json and model_edgetpu.tflite, optionally model.tflite for the CPU backend. At most 64 MiB per file.',
+	'coralModels.optional': 'optional',
+	'coralModels.confirmLicense':
+		'I confirm that the license of these weights permits this use. TalkOps does not check license statements.',
+	'coralModels.install': 'Upload and check',
+	'coralModels.filesRequired': 'Select model.json and model_edgetpu.tflite.',
+	'coralModels.installed': 'Model checked and installed. Restart the Coral service to use it.',
+	'coralModels.restored': 'Previous model restored. Restart the Coral service to use it.',
+	'coralModels.removed': 'Model removed. It stays available as the previous model.',
+	'coralModels.restarted': 'Coral service restarted.',
+	'coralModels.confirmRestore': 'Swap the current {slot} model with the previous one?',
+	'coralModels.confirmRemove': 'Remove the {slot} model? It stays available as the previous model.',
+	'coralModels.confirmRestart':
+		'Restart the Coral service now? Live previews of open calls pause for a few seconds.',
 	'stt.debugTitle': 'Coral transcription diagnostics',
 	'stt.debugHint':
 		'Capture technical events for a test call, then download a JSON report. Includes models, TPU state, queue, processing times and available fallback states. Audio and credentials are excluded. Capture stops after at most 30 minutes; events expire after one hour. The buffer holds at most 5,000 events or 2 MiB, so download promptly.',

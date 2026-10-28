@@ -6,6 +6,9 @@
 //!   or `verbose_json` with segments, times and the detected `language`.
 //! - `GET /v1/realtime?intent=transcription`: see [crate::realtime].
 //!
+//! - `/v1/admin/models[/{slot}[/restore]]`, `POST /v1/admin/restart`:
+//!   model installation by an administrator, see [crate::install].
+//!
 //! An optional key protects `/v1/*` (`Authorization: Bearer <key>`).
 //! Overload answers HTTP 503 with `Retry-After` and the error code
 //! `overloaded`.
@@ -14,16 +17,18 @@ use std::sync::Arc;
 
 use axum::Json;
 use axum::Router;
-use axum::extract::{DefaultBodyLimit, Multipart, Query, State, WebSocketUpgrade};
+use axum::extract::{DefaultBodyLimit, Multipart, Path, Query, State, WebSocketUpgrade};
 use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use std::path::PathBuf;
 
 use crate::audio::{self, MODEL_RATE};
 use crate::ctc::Word;
 use crate::engine::{DeviceStatus, Engine, EngineError, Priority, QueueStatus};
+use crate::install::{self, InstallError, SlotStatus, Upload};
 use crate::models::AUTO;
 use crate::recognizer::{Choice, Turn};
 use crate::turns;
@@ -39,6 +44,17 @@ pub struct AppState {
     pub api_key: Option<String>,
     /// Opt-in complete-word realtime previews. File decoding is unchanged.
     pub stable_preview: bool,
+    /// Model installation; `None` disables `/v1/admin/*`.
+    pub admin: Option<ModelAdmin>,
+}
+
+/// Model directory and restart request of the admin interface.
+#[derive(Clone)]
+pub struct ModelAdmin {
+    pub dir: PathBuf,
+    /// Set to `true` to stop the service; the container restart policy
+    /// starts it again with the installed models.
+    pub restart: Arc<tokio::sync::watch::Sender<bool>>,
 }
 
 /// An error in the OpenAI format.
@@ -115,7 +131,21 @@ pub fn router(state: AppState) -> Router {
             "/v1/diagnostics/capture",
             post(diagnostic_start).delete(diagnostic_stop),
         )
+        .route("/v1/admin/models", get(admin_models))
+        .route(
+            "/v1/admin/models/{slot}",
+            axum::routing::delete(admin_remove),
+        )
+        .route("/v1/admin/models/{slot}/restore", post(admin_restore))
+        .route("/v1/admin/restart", post(admin_restart))
         .layer(DefaultBodyLimit::max(MAX_UPLOAD))
+        .merge(
+            Router::new()
+                .route("/v1/admin/models/{slot}", post(admin_install))
+                .layer(DefaultBodyLimit::max(
+                    2 * install::MAX_MODEL_BYTES + 1024 * 1024,
+                )),
+        )
         .with_state(state)
 }
 
@@ -478,4 +508,131 @@ async fn realtime(
     Ok(upgrade.on_upgrade(move |socket| {
         crate::realtime::session(socket, engine, guard, state.stable_preview)
     }))
+}
+
+impl From<InstallError> for ApiError {
+    fn from(err: InstallError) -> Self {
+        match err {
+            InstallError::Invalid(message) => Self::bad_request(message),
+            InstallError::Io(_) => Self::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "model_directory",
+                // Usually a read-only models volume.
+                format!("{err}; check that the models volume is writable"),
+            ),
+        }
+    }
+}
+
+fn admin(state: &AppState, headers: &HeaderMap) -> Result<ModelAdmin, ApiError> {
+    authorize(state, headers)?;
+    state.admin.clone().ok_or_else(|| {
+        ApiError::new(
+            StatusCode::NOT_FOUND,
+            "admin_disabled",
+            "model installation is disabled",
+        )
+    })
+}
+
+/// Runs blocking file work of the admin interface.
+async fn blocking<T: Send + 'static>(
+    work: impl FnOnce() -> Result<T, InstallError> + Send + 'static,
+) -> Result<T, ApiError> {
+    tokio::task::spawn_blocking(work)
+        .await
+        .map_err(|e| {
+            ApiError::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "model_directory",
+                e.to_string(),
+            )
+        })?
+        .map_err(ApiError::from)
+}
+
+#[derive(Serialize)]
+struct AdminModels {
+    backend: &'static str,
+    models: Vec<SlotStatus>,
+}
+
+async fn admin_models(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Json<AdminModels>, ApiError> {
+    let admin = admin(&state, &headers)?;
+    let catalog = state.engine.catalog.clone();
+    let models = blocking(move || Ok(install::list(&admin.dir, &catalog))).await?;
+    Ok(Json(AdminModels {
+        backend: state.engine.backend_name(),
+        models,
+    }))
+}
+
+/// Multipart fields: `model_json`, `model_edgetpu`, optional `model_cpu`,
+/// `license` and `source`.
+async fn admin_install(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(slot): Path<String>,
+    mut multipart: Multipart,
+) -> Result<Json<SlotStatus>, ApiError> {
+    let admin = admin(&state, &headers)?;
+    let mut upload = Upload::default();
+    let read_error =
+        |e: axum::extract::multipart::MultipartError| ApiError::bad_request(e.body_text());
+    while let Some(field) = multipart.next_field().await.map_err(read_error)? {
+        match field.name() {
+            Some("model_json") => upload.meta = field.bytes().await.map_err(read_error)?.to_vec(),
+            Some("model_edgetpu") => upload.tpu = field.bytes().await.map_err(read_error)?.to_vec(),
+            Some("model_cpu") => {
+                let bytes = field.bytes().await.map_err(read_error)?;
+                upload.cpu = (!bytes.is_empty()).then(|| bytes.to_vec());
+            }
+            Some("license") => upload.license = field.text().await.map_err(read_error)?,
+            Some("source") => upload.source = field.text().await.map_err(read_error)?,
+            _ => {}
+        }
+    }
+    let status = blocking(move || install::install(&admin.dir, &slot, upload)).await?;
+    tracing::info!(slot = status.slot, sha256 = ?status.tpu_sha256, "model installed; active after a restart");
+    Ok(Json(status))
+}
+
+async fn admin_restore(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(slot): Path<String>,
+) -> Result<Json<SlotStatus>, ApiError> {
+    let admin = admin(&state, &headers)?;
+    let status = blocking(move || install::restore(&admin.dir, &slot)).await?;
+    tracing::info!(
+        slot = status.slot,
+        "previous model restored; active after a restart"
+    );
+    Ok(Json(status))
+}
+
+async fn admin_remove(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(slot): Path<String>,
+) -> Result<Json<SlotStatus>, ApiError> {
+    let admin = admin(&state, &headers)?;
+    let status = blocking(move || install::remove(&admin.dir, &slot)).await?;
+    tracing::info!(slot = status.slot, "model removed; kept as backup");
+    Ok(Json(status))
+}
+
+/// Stops the service so the container restart policy starts it again with
+/// the installed models. Open calls lose the Coral preview for a moment.
+async fn admin_restart(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<(StatusCode, Json<serde_json::Value>), ApiError> {
+    let admin = admin(&state, &headers)?;
+    tracing::info!("restart requested through the admin interface");
+    admin.restart.send_replace(true);
+    Ok((StatusCode::ACCEPTED, Json(json!({"restarting": true}))))
 }

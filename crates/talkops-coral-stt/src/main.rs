@@ -9,7 +9,7 @@ use std::time::Duration;
 use anyhow::Context;
 use clap::{Parser, Subcommand, ValueEnum};
 use talkops_coral_stt::engine::{Backend, Engine};
-use talkops_coral_stt::http::{AppState, router};
+use talkops_coral_stt::http::{AppState, ModelAdmin, router};
 use talkops_coral_stt::mock::{self, MockBackend};
 use talkops_coral_stt::models::Catalog;
 use talkops_coral_stt::tflite::TfliteBackend;
@@ -73,6 +73,12 @@ struct Args {
     #[arg(long, env = "TALKOPS_CORAL_STABLE_PREVIEW", default_value_t = false,
           action = clap::ArgAction::Set)]
     stable_preview: bool,
+
+    /// Model installation through `/v1/admin/*` (TalkOps UI upload). Needs a
+    /// writable models directory.
+    #[arg(long, env = "TALKOPS_CORAL_MODEL_ADMIN", default_value_t = true,
+          action = clap::ArgAction::Set)]
+    model_admin: bool,
 
     /// Optional key that clients send as `Authorization: Bearer <key>`.
     #[arg(long, env = "TALKOPS_CORAL_API_KEY", hide_env_values = true)]
@@ -185,18 +191,35 @@ async fn main() -> anyhow::Result<()> {
     };
     tracing::info!(models = ?catalog.ids(), langid = catalog.langid.is_some(), "models");
     let engine = Engine::start(backend, catalog, args.queue, args.sessions_per_tpu);
+    let (restart, mut restart_requested) = tokio::sync::watch::channel(false);
     let state = AppState {
         engine: engine.clone(),
         api_key: args.api_key.filter(|k| !k.is_empty()),
         stable_preview: args.stable_preview,
+        admin: args.model_admin.then(|| ModelAdmin {
+            dir: args.models_dir.clone(),
+            restart: Arc::new(restart),
+        }),
     };
     let listener = tokio::net::TcpListener::bind(args.listen)
         .await
         .with_context(|| format!("listen on {}", args.listen))?;
     tracing::info!(listen = %args.listen, "listening");
-    axum::serve(listener, router(state))
-        .with_graceful_shutdown(shutdown_signal())
-        .await?;
+    let mut drain = restart_requested.clone();
+    let server = axum::serve(listener, router(state)).with_graceful_shutdown(async move {
+        tokio::select! {
+            _ = shutdown_signal() => {},
+            _ = drain.wait_for(|requested| *requested) => {},
+        }
+    });
+    tokio::select! {
+        result = server => result?,
+        // Realtime sessions can keep connections open: do not wait for them.
+        _ = async {
+            let _ = restart_requested.wait_for(|requested| *requested).await;
+            tokio::time::sleep(Duration::from_secs(10)).await;
+        } => tracing::warn!("open connections closed for the requested restart"),
+    }
     engine.shutdown();
     Ok(())
 }

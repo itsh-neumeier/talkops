@@ -1725,6 +1725,46 @@ const de: Record<keyof typeof en, string> = {
 	'stt.coralStablePreview': 'Vollständige Wörter anzeigen (experimentell)',
 	'stt.coralStablePreviewHint':
 		'Angefangene Wörter zurückhalten. Etwa 4–5 Sekunden einplanen; das ist keine garantierte Obergrenze. Die Einstellung gilt für die nächste Vorschau-Sitzung.',
+	'coralModels.title': 'Coral-Modelle',
+	'coralModels.hint':
+		'TalkOps enthält keine Sprachmodelle, deren Lizenz die Weitergabe nicht erlaubt. Installieren Sie ein kompiliertes Modell, das Sie nutzen dürfen. Der Dienst prüft die Dateien, bevor er ein Modell ersetzt, und behält das vorherige Modell zur Wiederherstellung.',
+	'coralModels.slot': 'Platz',
+	'coralModels.slot.de': 'Deutsch',
+	'coralModels.slot.en': 'Englisch',
+	'coralModels.slot.langid': 'Spracherkennung',
+	'coralModels.model': 'Modell',
+	'coralModels.license': 'Lizenz',
+	'coralModels.licenseUnknown': 'Lizenz unbekannt',
+	'coralModels.source': 'Herkunft der Gewichte (URL oder Beschreibung)',
+	'coralModels.state': 'Status',
+	'coralModels.active': 'Aktiv',
+	'coralModels.pending': 'Neustart nötig',
+	'coralModels.empty': 'Leer',
+	'coralModels.restore': 'Vorheriges wiederherstellen',
+	'coralModels.restart': 'Coral-Dienst neu starten',
+	'coralModels.restartHint':
+		'Änderungen gelten nach einem Neustart des Coral-Dienstes. Live-Vorschauen pausieren dabei einige Sekunden.',
+	'coralModels.mockHint':
+		'Der Dienst läuft mit dem Mock-Backend und lädt die installierten Dateien nicht.',
+	'coralModels.uploadTitle': 'Modell installieren',
+	'coralModels.uploadHint':
+		'Laden Sie die Dateien von tools/coral/export_nemo.py und compile_model.py hoch: model.json und model_edgetpu.tflite, optional model.tflite für das CPU-Backend. Höchstens 64 MiB pro Datei.',
+	'coralModels.optional': 'optional',
+	'coralModels.confirmLicense':
+		'Ich bestätige, dass die Lizenz dieser Gewichte diese Nutzung erlaubt. TalkOps prüft Lizenzangaben nicht.',
+	'coralModels.install': 'Hochladen und prüfen',
+	'coralModels.filesRequired': 'Wählen Sie model.json und model_edgetpu.tflite aus.',
+	'coralModels.installed':
+		'Modell geprüft und installiert. Starten Sie den Coral-Dienst neu, um es zu nutzen.',
+	'coralModels.restored':
+		'Vorheriges Modell wiederhergestellt. Starten Sie den Coral-Dienst neu, um es zu nutzen.',
+	'coralModels.removed': 'Modell entfernt. Es bleibt als vorheriges Modell verfügbar.',
+	'coralModels.restarted': 'Coral-Dienst neu gestartet.',
+	'coralModels.confirmRestore': 'Aktuelles Modell ({slot}) mit dem vorherigen tauschen?',
+	'coralModels.confirmRemove':
+		'Modell ({slot}) entfernen? Es bleibt als vorheriges Modell verfügbar.',
+	'coralModels.confirmRestart':
+		'Coral-Dienst jetzt neu starten? Live-Vorschauen offener Gespräche pausieren einige Sekunden.',
 	'stt.debugTitle': 'Coral-Transkriptionsdiagnose',
 	'stt.debugHint':
 		'Technische Ereignisse für einen Testanruf aufzeichnen und danach einen JSON-Bericht herunterladen. Enthält Modelle, TPU-Zustand, Warteschlange, Verarbeitungszeiten und verfügbare Rückfallzustände. Audio und Zugangsdaten sind ausgeschlossen. Die Erfassung endet nach höchstens 30 Minuten; Ereignisse verfallen nach einer Stunde. Der Puffer hält höchstens 5.000 Ereignisse oder 2 MiB, daher zeitnah herunterladen.',

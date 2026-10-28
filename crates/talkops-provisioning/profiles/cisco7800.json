@@ -86,5 +86,141 @@
     ],
     "settings": [],
     "key_groups": []
+  },
+  {
+    "id": "cisco-7811-enterprise",
+    "vendor": "cisco",
+    "source_model": "7811-enterprise",
+    "revision": "talkops-cisco7800-enterprise-v1",
+    "adaptation": "adapted",
+    "device_validation": "not_tested",
+    "reason": null,
+    "accounts": 1,
+    "account_capacity_source": "enterprise_single_digest_identity",
+    "family": "desk",
+    "primary": "SEP{$mac|upper}.cnf.xml",
+    "artifacts": [
+      {
+        "name": "SEP{$mac|upper}.cnf.xml",
+        "template": "cisco7800/enterprise.cnf.xml.jinja",
+        "format": "xml"
+      },
+      {
+        "name": "dialplan.xml",
+        "template": "cisco7800/dialplan.xml.jinja",
+        "format": "xml"
+      }
+    ],
+    "settings": [
+      {
+        "key": "cisco_enterprise_tftp_ip",
+        "label": "TFTP client IPv4 address (fixed DHCP lease)",
+        "kind": "text",
+        "copyable": false
+      }
+    ],
+    "key_groups": []
+  },
+  {
+    "id": "cisco-7821-enterprise",
+    "vendor": "cisco",
+    "source_model": "7821-enterprise",
+    "revision": "talkops-cisco7800-enterprise-v1",
+    "adaptation": "adapted",
+    "device_validation": "not_tested",
+    "reason": null,
+    "accounts": 1,
+    "account_capacity_source": "enterprise_single_digest_identity",
+    "family": "desk",
+    "primary": "SEP{$mac|upper}.cnf.xml",
+    "artifacts": [
+      {
+        "name": "SEP{$mac|upper}.cnf.xml",
+        "template": "cisco7800/enterprise.cnf.xml.jinja",
+        "format": "xml"
+      },
+      {
+        "name": "dialplan.xml",
+        "template": "cisco7800/dialplan.xml.jinja",
+        "format": "xml"
+      }
+    ],
+    "settings": [
+      {
+        "key": "cisco_enterprise_tftp_ip",
+        "label": "TFTP client IPv4 address (fixed DHCP lease)",
+        "kind": "text",
+        "copyable": false
+      }
+    ],
+    "key_groups": []
+  },
+  {
+    "id": "cisco-7841-enterprise",
+    "vendor": "cisco",
+    "source_model": "7841-enterprise",
+    "revision": "talkops-cisco7800-enterprise-v1",
+    "adaptation": "adapted",
+    "device_validation": "not_tested",
+    "reason": null,
+    "accounts": 1,
+    "account_capacity_source": "enterprise_single_digest_identity",
+    "family": "desk",
+    "primary": "SEP{$mac|upper}.cnf.xml",
+    "artifacts": [
+      {
+        "name": "SEP{$mac|upper}.cnf.xml",
+        "template": "cisco7800/enterprise.cnf.xml.jinja",
+        "format": "xml"
+      },
+      {
+        "name": "dialplan.xml",
+        "template": "cisco7800/dialplan.xml.jinja",
+        "format": "xml"
+      }
+    ],
+    "settings": [
+      {
+        "key": "cisco_enterprise_tftp_ip",
+        "label": "TFTP client IPv4 address (fixed DHCP lease)",
+        "kind": "text",
+        "copyable": false
+      }
+    ],
+    "key_groups": []
+  },
+  {
+    "id": "cisco-7861-enterprise",
+    "vendor": "cisco",
+    "source_model": "7861-enterprise",
+    "revision": "talkops-cisco7800-enterprise-v1",
+    "adaptation": "adapted",
+    "device_validation": "not_tested",
+    "reason": null,
+    "accounts": 1,
+    "account_capacity_source": "enterprise_single_digest_identity",
+    "family": "desk",
+    "primary": "SEP{$mac|upper}.cnf.xml",
+    "artifacts": [
+      {
+        "name": "SEP{$mac|upper}.cnf.xml",
+        "template": "cisco7800/enterprise.cnf.xml.jinja",
+        "format": "xml"
+      },
+      {
+        "name": "dialplan.xml",
+        "template": "cisco7800/dialplan.xml.jinja",
+        "format": "xml"
+      }
+    ],
+    "settings": [
+      {
+        "key": "cisco_enterprise_tftp_ip",
+        "label": "TFTP client IPv4 address (fixed DHCP lease)",
+        "kind": "text",
+        "copyable": false
+      }
+    ],
+    "key_groups": []
   }
 ]

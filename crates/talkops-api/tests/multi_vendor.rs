@@ -525,3 +525,106 @@ async fn cisco_mpp_delivery_preview_bounds_and_copy_preserve_device_isolation(db
         );
     }
 }
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn enterprise_tftp_exports_are_opt_in_private_reconciled_and_fail_closed(db: PgPool) {
+    let state = state(db.clone());
+    let router = talkops_api::app(state.clone(), None);
+    let admin = setup_admin(&router).await;
+    let root = tempfile::tempdir().unwrap();
+    let input = json!({"mac":"805ec0010203","name":"Enterprise","model":"cisco-7861-enterprise","provisioning":{"sip_host":"pbx.example","vendor_settings":{"cisco_enterprise_tftp_ip":"127.0.0.2"}}});
+    let (status, phone) = admin.post("/api/v1/phones", input.clone()).await;
+    assert_eq!(status, StatusCode::OK, "{phone}");
+    let id = phone["id"].as_str().unwrap();
+    let (_, ext) = admin
+        .post(
+            "/api/v1/extensions",
+            json!({"number":"178","display_name":"Enterprise office"}),
+        )
+        .await;
+    let (status, credentials) = admin
+        .post(
+            &format!("/api/v1/extensions/{}/devices", ext["id"].as_str().unwrap()),
+            json!({"name":"Enterprise","kind":"desk","phone_id":id,"account_index":1}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{credentials}");
+    let stats = talkops_api::cisco_tftp::refresh(&state, root.path())
+        .await
+        .unwrap();
+    assert_eq!(stats.phones, 1);
+    assert_eq!(stats.files, 2);
+    let path = root.path().join("active/127.0.0.2/SEP805EC0010203.cnf.xml");
+    let body = std::fs::read_to_string(&path).unwrap();
+    assert!(body.contains(credentials["sip_password"].as_str().unwrap()));
+    assert!(body.contains("<transportLayerProtocol>1</transportLayerProtocol>"));
+    assert!(root.path().join("active/127.0.0.2/dialplan.xml").exists());
+    assert!(!root.path().join("active/127.0.0.3").exists());
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        assert_eq!(
+            std::fs::metadata(&path).unwrap().permissions().mode() & 0o777,
+            0o600
+        );
+        assert_eq!(
+            std::fs::metadata(root.path()).unwrap().permissions().mode() & 0o777,
+            0o700
+        );
+    }
+    let (_, copy_preview) = admin
+        .post(&format!("/api/v1/phones/{id}/clone-preview"), json!({}))
+        .await;
+    assert!(
+        copy_preview["configuration"]["provisioning"]["vendor_settings"]
+            .get("cisco_enterprise_tftp_ip")
+            .is_none()
+    );
+    let mut duplicate = input.clone();
+    duplicate["mac"] = json!("805ec0040506");
+    assert_eq!(
+        admin.post("/api/v1/phones", duplicate).await.0,
+        StatusCode::OK
+    );
+    let stats = talkops_api::cisco_tftp::refresh(&state, root.path())
+        .await
+        .unwrap();
+    assert_eq!(stats.phones, 0);
+    assert_eq!(stats.omitted, 2);
+    assert!(!path.exists());
+    let mut disabled = input;
+    disabled["provisioning"]["vendor_settings"] = json!({});
+    assert_eq!(
+        admin.put(&format!("/api/v1/phones/{id}"), disabled).await.0,
+        StatusCode::OK
+    );
+    let stats = talkops_api::cisco_tftp::refresh(&state, root.path())
+        .await
+        .unwrap();
+    assert_eq!(stats.phones, 1);
+    assert!(!path.exists());
+    let unmanaged = tempfile::tempdir().unwrap();
+    std::fs::write(unmanaged.path().join("keep.txt"), "keep").unwrap();
+    assert!(
+        talkops_api::cisco_tftp::refresh(&state, unmanaged.path())
+            .await
+            .is_err()
+    );
+    assert_eq!(
+        std::fs::read_to_string(unmanaged.path().join("keep.txt")).unwrap(),
+        "keep"
+    );
+    // A failed database refresh must revoke the previously exported credentials.
+    state.db.close().await;
+    assert!(
+        talkops_api::cisco_tftp::refresh(&state, root.path())
+            .await
+            .is_err()
+    );
+    assert_eq!(
+        std::fs::read_dir(root.path().join("active"))
+            .unwrap()
+            .count(),
+        1
+    ); // lease only
+}

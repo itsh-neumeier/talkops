@@ -133,6 +133,19 @@ pub fn profiles() -> &'static [Profile] {
 pub fn profile(id: &str) -> Option<&'static Profile> {
     profiles().iter().find(|p| p.id == id)
 }
+pub fn cisco_enterprise(id: &str) -> bool {
+    matches!(
+        id,
+        "cisco-7811-enterprise"
+            | "cisco-7821-enterprise"
+            | "cisco-7841-enterprise"
+            | "cisco-7861-enterprise"
+    )
+}
+pub fn cisco_tftp_ip(value: &str) -> Option<std::net::Ipv4Addr> {
+    let ip = value.parse::<std::net::Ipv4Addr>().ok()?;
+    (!ip.is_unspecified() && !ip.is_multicast() && !ip.is_broadcast()).then_some(ip)
+}
 pub fn sources() -> &'static [(&'static str, &'static [u8])] {
     ALL_REFERENCE
 }
@@ -474,6 +487,7 @@ pub fn context(setup: &PhoneSetup<'_>, common: &Common<'_>) -> Value {
         "cisco_mpp_zone":match common.timezone {"UTC"|"Etc/UTC"=>"UTC","Europe/London"=>"UK",_=>"CET"},
         "cisco_mpp_german":common.language=="de",
         "cisco_mpp_buttons":setup.model.id!="cisco-7811-mpp",
+        "cisco_enterprise_timezone":match common.timezone {"UTC"|"Etc/UTC"=>"Greenwich Standard Time","Europe/London"=>"GMT Standard/Daylight Time",_=>"W. Europe Standard/Daylight Time"},
     });
     ctx["user"] = ctx["account"].clone();
     ctx["web_contacts"] = json!({"contacts":common.contacts.iter().enumerate().map(|(index,entry)|json!({
@@ -608,7 +622,14 @@ pub fn render(
     files: &BTreeMap<String, String>,
 ) -> Result<(String, String), String> {
     let profile = profile(&setup.model.id).ok_or("unsupported native profile")?;
-    if profile.revision == "talkops-cisco7800-v1" {
+    if cisco_enterprise(&setup.model.id)
+        && (setup.model.accounts != 1
+            || setup.accounts.len() > 1
+            || setup.accounts.iter().any(|a| a.index != 1))
+    {
+        return Err("Cisco Enterprise supports one independent SIP account in slot 1".into());
+    }
+    if profile.revision == "talkops-cisco7800-v1" || cisco_enterprise(&setup.model.id) {
         if setup.model.accounts == 0
             || setup.model.accounts > profile.accounts
             || setup
@@ -720,6 +741,29 @@ pub fn render(
     } else if a.format.starts_with("xml") {
         roxmltree::Document::parse(&crate::parameters::inspection_xml(&body))
             .map_err(|e| format!("invalid XML artifact {}: {e}", a.name))?;
+        if cisco_enterprise(&setup.model.id) && profile.primary.as_deref() == Some(&a.name) {
+            let doc = roxmltree::Document::parse(&body).map_err(|_| "invalid Enterprise XML")?;
+            if doc
+                .descendants()
+                .filter(|n| n.has_tag_name("dialTemplate"))
+                .count()
+                != 1
+                || !doc
+                    .descendants()
+                    .any(|n| n.has_tag_name("dialTemplate") && n.text() == Some("dialplan.xml"))
+                || doc.descendants().any(|n| {
+                    matches!(
+                        n.tag_name().name(),
+                        "loadInformation"
+                            | "loadServer"
+                            | "alternateLoadServer"
+                            | "phonePersonalization"
+                    )
+                })
+            {
+                return Err("Enterprise profile must reference its declared dialplan and cannot select firmware".into());
+            }
+        }
     } else if a.format == "json" {
         serde_json::from_str::<serde_json::Value>(&body).map_err(|_| "invalid JSON artifact")?;
     }

@@ -162,7 +162,13 @@ fn mpp_models_bind_sparse_accounts_and_clear_all_hardware_slots() {
             ..Default::default()
         };
         assert!(keys::effective_model(model, &overrides).is_err());
-        assert!(catalog.get(&format!("cisco-{number}-enterprise")).is_none());
+        assert_eq!(
+            catalog
+                .get(&format!("cisco-{number}-enterprise"))
+                .unwrap()
+                .accounts,
+            1
+        );
     }
 }
 
@@ -223,4 +229,66 @@ fn mpp_managed_fields_and_locale_limits_are_explicit() {
     assert!(render(&setup(model), "America/New_York", "en").is_err());
     let uk = render(&setup(model), "Europe/London", "en").unwrap();
     assert!(uk.contains("start=3/-1/7/1;end=10/-1/7/2;save=1"));
+}
+
+#[test]
+fn enterprise_profiles_are_separate_single_identity_tcp_bundles() {
+    let catalog = catalog();
+    for number in ["7811", "7821", "7841", "7861"] {
+        let model = catalog.get(&format!("cisco-{number}-enterprise")).unwrap();
+        assert_eq!(model.accounts, 1);
+        let profile = vendors::profile(&model.id).unwrap();
+        assert_eq!(profile.device_validation, "not_tested");
+        assert_eq!(profile.artifacts.len(), 2);
+        assert_eq!(
+            vendors::delivery_filename(profile, &profile.artifacts[0], "805ec0010203"),
+            "SEP805EC0010203.cnf.xml"
+        );
+        let mut phone = setup(model);
+        phone.accounts = vec![account(1)];
+        let body = render(&phone, "Europe/Berlin", "en").unwrap();
+        let doc = roxmltree::Document::parse(&body).unwrap();
+        assert_eq!(doc.root_element().tag_name().name(), "device");
+        for (name, expected) in [
+            ("name", "time.invalid"),
+            ("deviceProtocol", "SIP"),
+            ("processNodeName", "pbx.invalid"),
+            ("sipPort", "5077"),
+            ("transportLayerProtocol", "1"),
+            ("authName", "user-1"),
+            ("authPassword", "secret-1&<unique>"),
+            ("messagesNumber", "*97"),
+            ("dialTemplate", "dialplan.xml"),
+        ] {
+            assert_eq!(value(&doc, name), expected);
+        }
+        assert!(!body.contains("loadInformation"));
+        assert!(!body.contains("prov-secret"));
+        assert!(vendors::artifact(profile, "SEP805EC0090909.cnf.xml", "805ec0010203").is_none());
+        assert!(
+            vendors::artifact(profile, "SEP805EC0010203.cnf.xml.sgn", "805ec0010203").is_none()
+        );
+        assert!(vendors::artifact(profile, "ITLFile.tlv", "805ec0010203").is_none());
+        let mut fields = parameters::schema(model).unwrap();
+        assert!(fields.iter_mut().all(|f| f.managed && !f.copyable));
+        let mut overrides = keys::Overrides {
+            account_slots: Some(2),
+            ..Default::default()
+        };
+        assert!(keys::effective_model(model, &overrides).is_err());
+        for bad in ["0.0.0.0", "224.0.0.1", "255.255.255.255", "::1", "../other"] {
+            overrides.account_slots = None;
+            overrides
+                .vendor_settings
+                .insert("cisco_enterprise_tftp_ip".into(), bad.into());
+            assert!(keys::validate(model, &overrides).is_err());
+        }
+        phone.accounts.push(account(2));
+        assert!(render(&phone, "UTC", "en").is_err());
+        let mut files = vendors::builtin(model).unwrap();
+        let primary = profile.primary.as_ref().unwrap();
+        let source = files.get_mut(primary).unwrap();
+        *source = source.replace("dialplan.xml", "other.xml");
+        assert!(vendors::validate_for_model(&files, model).is_err());
+    }
 }

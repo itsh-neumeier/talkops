@@ -1,0 +1,46 @@
+# Opt-in Enterprise SIP bootstrap. Use a trusted LAN and fixed DHCP addresses.
+# Linux Docker preserves the LAN client IP. Do not place a NAT/proxy in front.
+services:
+  talkops:
+    environment:
+      TALKOPS_CISCO_TFTP_DIR: /run/talkops-tftp
+    volumes:
+      - cisco-tftp:/run/talkops-tftp
+
+  cisco-tftp:
+    image: ghcr.io/itsh-neumeier/talkops-server:${TALKOPS_VERSION:-latest}
+    restart: unless-stopped
+    user: "10001:10001"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    entrypoint: ["python3", "/usr/share/talkops/cisco-tftp.py"]
+    command:
+      - --foreground
+      - --ipv4
+      - --address=0.0.0.0:1069
+      - --user=talkops
+      - --permissive
+      - --map-file=/usr/share/talkops/cisco-tftp.map
+      - --port-range=30000:30031
+      - /run/talkops-tftp
+    ports:
+      - "${TALKOPS_TFTP_BIND_IP:?set a trusted LAN interface address}:69:1069/udp"
+      - "${TALKOPS_TFTP_BIND_IP:?set a trusted LAN interface address}:30000-30031:30000-30031/udp"
+    volumes:
+      - cisco-tftp:/run/talkops-tftp:ro
+    depends_on:
+      talkops:
+        condition: service_healthy
+    healthcheck:
+      disable: true
+
+volumes:
+  cisco-tftp:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+      o: "uid=10001,gid=10001,mode=0700,size=16m"

@@ -21,4 +21,5 @@ test('manufacturer search includes descriptions and preserves explicit empty ove
 	assert.equal(parameterCategory('snom_admin_password'), 'security');
 	assert.equal(parameterCategory('yealink_time_zone'), 'locale');
 	assert.equal(parameterCategory('grandstream_vlan_id'), 'network');
+	assert.equal(parameterCategory('cisco_enterprise_tftp_ip'), 'provisioning');
 });

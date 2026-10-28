@@ -69,6 +69,9 @@
 	{#if /^cisco-78(?:11|21|41|61)-mpp$/.test(model.id)}<p class="hint">
 			{t('vendor.cisco7800')}
 		</p>{/if}
+	{#if /^cisco-78(?:11|21|41|61)-enterprise$/.test(model.id)}<p class="hint">
+			{t('vendor.ciscoEnterprise')}
+		</p>{/if}
 	<ErrorBox {error} />
 	{#if loading}<p class="hint">{t('common.loading')}</p>{/if}
 	<div class="flex flex-wrap items-end gap-3">
@@ -101,7 +104,11 @@
 						{#each categoryVariables as setting (setting.key)}
 							{@const saved = values.vendor_settings?.[setting.key] === 'REDACTED'}
 							<div class="min-w-0">
-								<label class="break-words" for="var-{setting.key}">{setting.label}</label>
+								<label class="break-words" for="var-{setting.key}"
+									>{setting.key === 'cisco_enterprise_tftp_ip'
+										? t('vendor.ciscoEnterpriseIP')
+										: setting.label}</label
+								>
 								<input
 									id="var-{setting.key}"
 									class="input"

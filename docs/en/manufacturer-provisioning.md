@@ -110,12 +110,9 @@ A `3PCC` PID identifies the MPP product. Check the installed load as well.
 An Enterprise PID alone does not prove which firmware is installed.
 Do not select an MPP profile for Enterprise firmware.
 
-Enterprise firmware is **unsupported** by this integration. Its bootstrap uses
-Cisco configuration and trust services, usually through TFTP or CUCM HTTP
-services. TalkOps does not provide CUCM, CTL/ITL signing or a TFTP server.
-An existing Cisco 8800 template does not prove 7800 Enterprise compatibility.
-A plain authenticated TalkOps file URL does not replace these services.
-No Enterprise profile is selectable. No conversion or firmware update is included.
+Enterprise firmware uses the separate experimental profiles described below.
+Do not use an MPP XML file for an Enterprise phone. Existing Cisco 8800 profiles
+do not establish compatibility with the Enterprise 7800 series.
 
 ### Set up an MPP phone
 
@@ -172,7 +169,7 @@ own access controls; TalkOps device-directory authentication does not apply ther
 Record the exact PID, hardware revision and active load first.
 The available device is `CP-7861-K9= V09`, with active load
 `sip78xx.14-2-1-0001-14` (Enterprise 14.2(1)). Its firmware does not accept this
-MPP profile. Stop the MPP test at the firmware check. A factory reset does not
+MPP profile. Use the Enterprise test below instead. A factory reset does not
 establish MPP compatibility. Do not change firmware as part of this test.
 
 For a phone with a verified MPP load:
@@ -194,3 +191,133 @@ BLF, custom keys, contacts and remote commands are outside this profile test.
 Successful XML rendering is not a hardware test.
 
 See [Cisco evidence and implementation limits](../research/cisco-7800.md).
+
+## Cisco 7800 Enterprise SIP phones (experimental)
+
+The separate `cisco-7811-enterprise`, `cisco-7821-enterprise`,
+`cisco-7841-enterprise` and `cisco-7861-enterprise` profiles target nonsecure
+Enterprise SIP provisioning. The initial firmware target is 14.2(1), including
+`sip78xx.14-2-1-0001-14`. All profiles remain **untested on hardware**.
+These are TalkOps integration profiles, not Cisco certification for FreeSWITCH.
+
+Each Enterprise profile permits **one independent SIP account in slot 1**.
+The phone can have more physical line buttons. Those buttons do not prove
+support for independent digest credentials per line. TalkOps does not share or
+weaken account passwords to add more lines. MPP account limits remain unchanged.
+Custom buttons, BLF, contacts, firmware updates and locale downloads are absent.
+The installed phone language stays unchanged. NTP and the supported UTC,
+Central European and London time zones use the common settings.
+
+### Enable the optional TFTP deployment
+
+Use a Linux Docker host and a server image built from this contribution.
+Older released images do not contain this feature. TFTP has no authentication
+or encryption. Enable this deployment only on a trusted voice LAN. Source-IP
+admission does not prevent an attacker on that LAN from spoofing or observing
+traffic. Keep the regular authenticated HTTP provisioning service unchanged.
+
+1. Reserve a fixed IPv4 DHCP address for the phone.
+2. Add the exact **Enterprise SIP (experimental)** model in TalkOps.
+3. Enter the phone MAC and assign an extension to account 1.
+4. Set the SIP host to the PBX address reachable from the phone.
+5. In **Model settings**, open provisioning and set **TFTP client IPv4 address**
+   to the reserved phone address. Each exported phone needs a unique address.
+6. Set `TALKOPS_TFTP_BIND_IP` in the deployment `.env` to the trusted LAN address
+   of the PBX host. This is the server address, not the phone address.
+7. Start the optional deployment:
+
+   ```sh
+   docker compose -f docker-compose.yml -f docker-compose.cisco-tftp.yml up -d
+   ```
+
+8. Restrict UDP 69 and UDP 30000–30031 to the phone LAN through the host firewall.
+9. Permit SIP TCP on the configured phone SIP port (default 5060) and the
+   existing FreeSWITCH media port range.
+
+The sidecar maps host UDP 69 to unprivileged container UDP 1069. Its transfer
+ports use UDP 30000–30031. It runs as UID 10001 with no Linux capabilities and a
+read-only filesystem. Docker must preserve the real LAN client IP. A proxy or
+NAT that replaces all client addresses cannot use this admission rule.
+
+TalkOps exports only the declared SEP configuration and `dialplan.xml` into a
+private, volatile tmpfs volume. The sidecar mounts that volume read-only.
+Files use mode 0600 and directories use 0700. The exporter refreshes snapshots
+every 30 seconds. Duplicate client IPs, missing SIP hosts and invalid profiles
+are omitted. Removed assignments and phones lose their old export on refresh.
+Database errors revoke the served snapshot. A lease guard stops TFTP after at
+most 90 seconds without a fresh snapshot, including after a TalkOps crash.
+The volume is separate from persistent provisioning storage and backup data.
+The client IP is excluded from phone copies.
+
+### Use DHCP for Yealink and Cisco on the same network
+
+Keep one DHCP server for the voice network. Supply two different options:
+
+| Client | DHCP option | Value |
+| --- | --- | --- |
+| Existing Yealink phones | 66 | Keep the existing HTTP(S) `/provisioning` URL unchanged |
+| Cisco Enterprise phones | 150 | The IPv4 address of the optional TFTP server, without a URL path |
+
+Cisco recommends option 150 for the 7800 series. UniFi permits additional
+custom DHCP options by code. Add option 150 in the voice network's DHCP
+settings. Encode the value as an IPv4 address list, not an ASCII URL or host
+name. Exact field names depend on the UniFi version. Preserve the Yealink
+option lookup order; do not switch those phones to option 150.
+
+After the optional TFTP deployment is running, leave **Alternate TFTP** disabled
+on the Cisco so that DHCP can supply the server. Renew its lease or restart it.
+Check that the phone reports the intended TFTP Server 1 address. Verify a
+Yealink resync as a regression check. If a DHCP server cannot provide separate
+options, use the Cisco manual override below. Do not replace the shared option
+66 URL with a bare TFTP address.
+
+The TFTP client IP reservation is still required for export admission. DHCP
+server discovery and the per-phone file admission rule are separate controls.
+Routing and firewall rules must permit traffic if the phone and PBX use
+different VLANs. TalkOps does not change the DHCP server or gateway settings.
+
+### Set the phone bootstrap address
+
+1. Press **Applications > Admin settings > Network setup > IPv4 setup**.
+2. Set **Alternate TFTP** to **Yes**.
+3. Set **TFTP Server 1** to the LAN IP from `TALKOPS_TFTP_BIND_IP`.
+4. Apply the settings and restart the phone manually.
+
+Menu names depend on the installed firmware. DHCP option 150 can provide the
+same server IP instead of the manual setting. Do not enter an HTTP URL or
+TalkOps provisioning credentials in the TFTP address field.
+
+For example, a phone with MAC `80:5E:C0:01:02:03` requests
+`SEP805EC0010203.cnf.xml` and then `dialplan.xml`. It uses SIP TCP and its own
+TalkOps digest credentials. The HTTP exports and redacted previews still work
+through the normal managed device routes. TFTP downloads do not appear in the
+HTTP provisioning request list. Use phone status messages and SIP registration
+to check the hardware result. Export logs confirm file generation only.
+
+The sidecar refuses uploads, path traversal, other phones' filenames, generic
+fallback profiles, firmware and signed/trust files. Missing CTL/ITL requests
+are not answered with fake files. A phone with an existing CUCM trust list can
+reject unsigned configuration. Stop if that occurs. Use the administrator's
+approved Cisco migration procedure. TalkOps does not clear trust lists or
+replace certificates. This integration does not implement secure CUCM mode,
+CAPF, TLS certificates or a firmware conversion.
+
+### Test the available Enterprise phone
+
+The available test model is `CP-7861-K9= V09`, with Enterprise 14.2(1).
+Its identification alone is not a successful provisioning test.
+
+1. Record the PID, hardware version and active load without publishing the MAC.
+2. Select `cisco-7861-enterprise` and complete the fixed-address setup above.
+3. Preview the configuration and confirm that passwords are masked.
+4. Check a successful TFTP download of the exact SEP file and `dialplan.xml`.
+5. Confirm SIP TCP registration for the assigned account in TalkOps.
+6. Make an outgoing internal call with `**` and receive an incoming call.
+7. Check audio in both directions, DTMF, hold and transfer.
+8. Check voicemail access, time and the assigned line label.
+9. Restart the phone and check configuration retrieval and registration again.
+10. Remove the TFTP client IP, wait for a refresh, and confirm that downloads fail.
+11. Record results and failures before changing any hardware validation status.
+
+Do not change the firmware or trust lists during this test. Registration,
+calling, MWI and feature behavior remain open until this test is performed.

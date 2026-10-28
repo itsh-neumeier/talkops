@@ -50,7 +50,7 @@ LABEL org.opencontainers.image.title="talkops-server" \
       org.opencontainers.image.source="https://github.com/itsh-neumeier/talkops" \
       org.opencontainers.image.licenses="AGPL-3.0-only"
 
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates tzdata postgresql-client python3 \
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates tzdata postgresql-client python3 tftpd-hpa \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --system --gid 10001 talkops \
     && useradd --system --uid 10001 --gid talkops --no-create-home --shell /usr/sbin/nologin talkops \
@@ -63,6 +63,8 @@ COPY --from=build /usr/local/bin/talkops /usr/local/bin/talkops
 COPY --from=rclone /usr/local/bin/rclone /usr/local/bin/rclone
 COPY --from=web /src/web/build /usr/share/talkops/web
 COPY presets/ /usr/share/talkops/presets/
+COPY docker/talkops/cisco-tftp.map /usr/share/talkops/cisco-tftp.map
+COPY docker/talkops/cisco-tftp.py /usr/share/talkops/cisco-tftp.py
 COPY scripts/fax/helper.py /usr/share/talkops/fax/helper.py
 COPY THIRD_PARTY_NOTICES.md /usr/share/doc/talkops/THIRD_PARTY_NOTICES.md
 COPY crates/talkops-provisioning/reference/fusionpbx/MPL-1.1.txt /usr/share/doc/talkops/fusionpbx/MPL-1.1.txt

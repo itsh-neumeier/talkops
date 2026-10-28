@@ -6,7 +6,7 @@
 - Tool: Codex
 - Branch: codex/coral-model-install
 - Base: v1.8.13, commit 4b44cd6
-- Status: Install helper prepared; production installation is user-owned
+- Status: PR preparation for 1.8.14; production installation is user-owned
 
 ## Findings
 
@@ -21,6 +21,18 @@ Its archive SHA-256 is
 `d8f2924d6c826bd0d449b981084315195c18a2cd74f59524e97a186ff1133423`.
 It contains only the compiled model, metadata, checksums and instructions.
 No audio or transcripts are included. The earlier quality gate is still pending.
+
+The user requested a PR for release 1.8.14. Include the install helper and
+handbooks. Do not change release metadata in this development PR.
+The package is not in Git and is not a public release asset. Its metadata
+contains `license_verified: false`. The base model is NVIDIA
+`stt_de_quartznet15x5`, version `1.0.0rc1`. The current model card refers to
+NGC Terms of Use, not CC-BY-4.0:
+https://catalog.ngc.nvidia.com/orgs/nvidia/nemo/models/stt_de_quartznet15x5
+Checked on 2026-10-28. The terms page did not return readable text in the
+browser tool. Redistribution is not verified. Keep the model out of public
+images and assets until this review is complete. The PR must state that an
+application release alone still does not install weights.
 
 ## Changes and checks
 
@@ -42,5 +54,7 @@ No audio or transcripts are included. The earlier quality gate is still pending.
 
 ## Next action
 
-Give the user the package and helper, to copy to the Docker host. Run the
-helper there. Then test the Coral connection and select `coral-ctc-de`.
+Publish the development PR and give its handoff to the release manager.
+For the user-owned trial, copy the separate package and helper to the Docker
+host. Run the helper there. Then test the connection and select `coral-ctc-de`.
+Public model distribution needs the license review and required notices.

@@ -7,6 +7,7 @@
 - Branch: codex/coral-model-install
 - Base: v1.8.13, commit 4b44cd6
 - Status: PR preparation for 1.8.14; production installation is user-owned
+- PR: https://github.com/itsh-neumeier/talkops/pull/88
 
 ## Findings
 

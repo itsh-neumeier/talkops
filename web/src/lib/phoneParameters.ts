@@ -30,7 +30,7 @@ export function parameterCategory(name: string): ParameterCategory {
 			/audio|codec|volume|ringer|ringtone|tone|headset|handset|speaker|microphone|echo|dtmf|noise/
 		],
 		['display', /display|screen|backlight|wallpaper|logo|lcd|brightness|contrast|font|color/],
-		['provisioning', /provision|firmware|upgrade|update|download|config_server/],
+		['provisioning', /provision|firmware|upgrade|update|download|config_server|tftp/],
 		['calls', /forward|dnd|waiting|pickup|dial|transfer|conference|call|voicemail|intercom|paging/],
 		['sip', /sip|account|register|proxy|voip|rtp|transport|expire/],
 		['maintenance', /log|debug|reboot|reset|trace|snmp|web|admin/]

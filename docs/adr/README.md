@@ -53,6 +53,9 @@ nächste freie Nummer; überholte ADRs werden nicht gelöscht, sondern auf
 | [0046](0046-coral-edge-tpu-speech-recognition.md) | Speech recognition on Coral Edge TPUs | Accepted (hardware gate pending) |
 | [0047](0047-call-map-device-markers-and-emergency-alerts.md) | Call map device markers and emergency dialing alerts | Accepted |
 
+| [0048](0048-authored-provisioning-profiles.md) | Independently authored provisioning profiles | Accepted |
+
+| [0049](0049-cisco-enterprise-tftp-bootstrap.md) | Optional IP-scoped TFTP bootstrap for Cisco Enterprise SIP | Accepted |
 
 Vorlage: [`template.md`](template.md)
 

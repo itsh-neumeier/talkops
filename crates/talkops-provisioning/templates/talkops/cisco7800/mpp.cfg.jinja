@@ -1,0 +1,35 @@
+{# Independently authored TalkOps profile. See docs/research/cisco-7800.md. #}
+<?xml version="1.0" encoding="UTF-8"?>
+<flat-profile>
+  <Admin_Password ua="na">{{ admin_password }}</Admin_Password>
+  <Primary_NTP_Server ua="na">{{ ntp_server_primary }}</Primary_NTP_Server>
+  <Ignore_DHCP_Time_Offset ua="na">Yes</Ignore_DHCP_Time_Offset>
+  <Time_Zone ua="na">{% if cisco_mpp_zone == 'CET' %}GMT+01:00{% else %}GMT{% endif %}</Time_Zone>
+  <Daylight_Saving_Time_Enable ua="na">{{ 'No' if cisco_mpp_zone == 'UTC' else 'Yes' }}</Daylight_Saving_Time_Enable>
+  <Daylight_Saving_Time_Rule ua="na">{% if cisco_mpp_zone == 'CET' %}start=3/-1/7/2;end=10/-1/7/3;save=1{% elif cisco_mpp_zone == 'UK' %}start=3/-1/7/1;end=10/-1/7/2;save=1{% endif %}</Daylight_Saving_Time_Rule>
+  <!-- Non-English display needs a separately hosted firmware-matched dictionary. -->
+  <Dictionary_Server_Script ua="na"></Dictionary_Server_Script>
+  <Language_Selection ua="na">{{ 'German' if cisco_mpp_german else 'English-US' }}</Language_Selection>
+  <Locale ua="na">{{ 'de-DE' if cisco_mpp_german else 'en-US' }}</Locale>
+  <Voice_Mail_Number ua="na">{{ voicemail_number }}</Voice_Mail_Number>
+{% for row in lines %}
+{% set n = row.line_number %}
+  <Line_Enable_{{ n }}_ ua="na">{{ 'Yes' if row.enabled else 'No' }}</Line_Enable_{{ n }}_>
+  <Register_{{ n }}_ ua="na">{{ 'Yes' if row.enabled else 'No' }}</Register_{{ n }}_>
+  <Proxy_{{ n }}_ ua="na">{{ row.server_address }}:{{ row.sip_port }}</Proxy_{{ n }}_>
+  <Use_DNS_SRV_{{ n }}_ ua="na">No</Use_DNS_SRV_{{ n }}_>
+  <SIP_Transport_{{ n }}_ ua="na">{{ row.sip_transport | upper }}</SIP_Transport_{{ n }}_>
+  <Display_Name_{{ n }}_ ua="na">{{ row.display_name }}</Display_Name_{{ n }}_>
+  <User_ID_{{ n }}_ ua="na">{{ row.user_id | default('', true) }}</User_ID_{{ n }}_>
+  <Auth_ID_{{ n }}_ ua="na">{{ row.auth_id | default('', true) }}</Auth_ID_{{ n }}_>
+  <Password_{{ n }}_ ua="na">{{ row.password | default('', true) }}</Password_{{ n }}_>
+  <Dial_Plan_{{ n }}_ ua="na">([0-9*#].|+x.)</Dial_Plan_{{ n }}_>
+  <Register_Expires_{{ n }}_ ua="na">{{ row.register_expires }}</Register_Expires_{{ n }}_>
+  <Auth_Resync-Reboot_{{ n }}_ ua="na">Yes</Auth_Resync-Reboot_{{ n }}_>
+{% if cisco_mpp_buttons %}
+  <Extension_{{ n }}_ ua="na">{{ n if row.enabled else 'Disabled' }}</Extension_{{ n }}_>
+  <Short_Name_{{ n }}_ ua="na">{{ row.label }}</Short_Name_{{ n }}_>
+  <Extended_Function_{{ n }}_ ua="na"></Extended_Function_{{ n }}_>
+{% endif %}
+{% endfor %}
+</flat-profile>

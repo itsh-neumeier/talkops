@@ -805,6 +805,8 @@ fn model_upload(tpu: &[u8]) -> (String, Vec<u8>) {
         body.extend_from_slice(data);
         body.extend(b"\r\n");
     };
+    part("slot", None, b"de");
+    part("name", None, b"Test DE");
     part("license", None, b"CC-BY-4.0");
     part("source", None, b"https://example.org/model");
     part(
@@ -828,7 +830,7 @@ async fn admin_installs_models_and_requests_restart() {
 
     let (ctype, body) = model_upload(b"\0\0\0\0TFL3edgetpu-custom-op");
     let req = |key: &str| {
-        Request::post("/v1/admin/models/de")
+        Request::post("/v1/admin/library")
             .header("content-type", ctype.clone())
             .header("authorization", format!("Bearer {key}"))
             .body(Body::from(body.clone()))
@@ -838,12 +840,13 @@ async fn admin_installs_models_and_requests_restart() {
     assert_eq!(status, StatusCode::UNAUTHORIZED);
     let (status, _, out) = call(app.clone(), req("k")).await;
     assert_eq!(status, StatusCode::OK, "{}", String::from_utf8_lossy(&out));
-    let installed: Value = serde_json::from_slice(&out).unwrap();
-    assert_eq!(installed["installed"], true);
-    assert_eq!(installed["info"]["license"], "CC-BY-4.0");
+    let added: Value = serde_json::from_slice(&out).unwrap();
+    assert_eq!(added["info"]["license"], "CC-BY-4.0");
+    assert_eq!(added["selected"], false);
+    let id = added["id"].as_str().unwrap().to_owned();
 
     let (bad_type, bad_body) = model_upload(b"\0\0\0\0TFL3plain");
-    let bad = Request::post("/v1/admin/models/de")
+    let bad = Request::post("/v1/admin/library")
         .header("content-type", bad_type)
         .header("authorization", "Bearer k")
         .body(Body::from(bad_body))
@@ -851,14 +854,25 @@ async fn admin_installs_models_and_requests_restart() {
     let (status, _, _) = call(app.clone(), bad).await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
 
+    let select = Request::put("/v1/admin/slots/de")
+        .header("authorization", "Bearer k")
+        .header("content-type", "application/json")
+        .body(Body::from(json!({"id": id}).to_string()))
+        .unwrap();
+    let (status, _, out) = call(app.clone(), select).await;
+    assert_eq!(status, StatusCode::OK, "{}", String::from_utf8_lossy(&out));
+
     let list = Request::get("/v1/admin/models")
         .header("authorization", "Bearer k")
         .body(Body::empty())
         .unwrap();
     let (_, _, out) = call(app.clone(), list).await;
     let list: Value = serde_json::from_slice(&out).unwrap();
-    assert_eq!(list["models"][0]["slot"], "de");
-    assert_eq!(list["models"][0]["active"], false, "loaded after a restart");
+    assert_eq!(list["slots"][0]["slot"], "de");
+    assert_eq!(list["slots"][0]["model_id"], id.as_str());
+    assert_eq!(list["slots"][0]["active"], false, "loaded after a restart");
+    assert_eq!(list["library"][0]["selected"], true);
+    assert_eq!(list["usage"]["models"], 1);
 
     let restart = Request::post("/v1/admin/restart")
         .header("authorization", "Bearer k")

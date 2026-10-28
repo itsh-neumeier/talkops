@@ -65,6 +65,27 @@ Rust ran in `rust:1-trixie` (no local cargo on this Windows host).
   upload of a real compiled model to a physical TPU.
 - STE review: full standard unavailable; not reviewed.
 
+## Model library (follow-up request)
+
+The user asked for a store of several models with a selection. Changed
+before merge in the same PR:
+
+- `install.rs` is now a library: `models/coral/library/<id>/` (id = first
+  12 hex digits of the Edge TPU file digest), one selected model per slot,
+  copied into the slot directory. Limits 10 models / 512 MiB. Selected
+  models cannot be deleted. Hand-copied slot models are adopted into the
+  library (empty license) before a selection replaces them.
+- The single `.backup` level and the restore endpoint were removed.
+- Endpoints: coral-stt `/v1/admin/models`, `/v1/admin/library[/{id}]`,
+  `/v1/admin/slots/{slot}` (PUT/DELETE), `/v1/admin/restart`; API
+  `/api/v1/coral/{id}/models`, `/library[/{model}]`, `/slots/{slot}`, `/restart`.
+- UI: slot selectors, library table with usage, upload with optional
+  immediate selection. Only one model per slot is active (TPU memory).
+- Checks after the change: fmt and workspace clippy passed; coral-stt
+  25 unit and 8 service tests passed; API HTTP tests (8) with Postgres and
+  the `coral_models` unit test passed; svelte-check 0 errors; web tests 91
+  passed; Prettier passed for changed files.
+
 ## Open work
 
 - CI result and release-manager handoff.

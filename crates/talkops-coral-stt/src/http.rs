@@ -6,8 +6,9 @@
 //!   or `verbose_json` with segments, times and the detected `language`.
 //! - `GET /v1/realtime?intent=transcription`: see [crate::realtime].
 //!
-//! - `/v1/admin/models[/{slot}[/restore]]`, `POST /v1/admin/restart`:
-//!   model installation by an administrator, see [crate::install].
+//! - `/v1/admin/models`, `/v1/admin/library[/{id}]`, `/v1/admin/slots/{slot}`,
+//!   `POST /v1/admin/restart`: model library of the administrator, see
+//!   [crate::install].
 //!
 //! An optional key protects `/v1/*` (`Authorization: Bearer <key>`).
 //! Overload answers HTTP 503 with `Retry-After` and the error code
@@ -28,7 +29,7 @@ use std::path::PathBuf;
 use crate::audio::{self, MODEL_RATE};
 use crate::ctc::Word;
 use crate::engine::{DeviceStatus, Engine, EngineError, Priority, QueueStatus};
-use crate::install::{self, InstallError, SlotStatus, Upload};
+use crate::install::{self, InstallError, LibraryModel, Overview, SlotStatus, Upload};
 use crate::models::AUTO;
 use crate::recognizer::{Choice, Turn};
 use crate::turns;
@@ -133,15 +134,18 @@ pub fn router(state: AppState) -> Router {
         )
         .route("/v1/admin/models", get(admin_models))
         .route(
-            "/v1/admin/models/{slot}",
-            axum::routing::delete(admin_remove),
+            "/v1/admin/library/{id}",
+            axum::routing::delete(admin_delete),
         )
-        .route("/v1/admin/models/{slot}/restore", post(admin_restore))
+        .route(
+            "/v1/admin/slots/{slot}",
+            axum::routing::put(admin_select).delete(admin_clear),
+        )
         .route("/v1/admin/restart", post(admin_restart))
         .layer(DefaultBodyLimit::max(MAX_UPLOAD))
         .merge(
             Router::new()
-                .route("/v1/admin/models/{slot}", post(admin_install))
+                .route("/v1/admin/library", post(admin_add))
                 .layer(DefaultBodyLimit::max(
                     2 * install::MAX_MODEL_BYTES + 1024 * 1024,
                 )),
@@ -554,7 +558,8 @@ async fn blocking<T: Send + 'static>(
 #[derive(Serialize)]
 struct AdminModels {
     backend: &'static str,
-    models: Vec<SlotStatus>,
+    #[serde(flatten)]
+    overview: Overview,
 }
 
 async fn admin_models(
@@ -563,21 +568,20 @@ async fn admin_models(
 ) -> Result<Json<AdminModels>, ApiError> {
     let admin = admin(&state, &headers)?;
     let catalog = state.engine.catalog.clone();
-    let models = blocking(move || Ok(install::list(&admin.dir, &catalog))).await?;
+    let overview = blocking(move || Ok(install::overview(&admin.dir, &catalog))).await?;
     Ok(Json(AdminModels {
         backend: state.engine.backend_name(),
-        models,
+        overview,
     }))
 }
 
 /// Multipart fields: `model_json`, `model_edgetpu`, optional `model_cpu`,
-/// `license` and `source`.
-async fn admin_install(
+/// `slot`, `name`, `license` and `source`.
+async fn admin_add(
     State(state): State<AppState>,
     headers: HeaderMap,
-    Path(slot): Path<String>,
     mut multipart: Multipart,
-) -> Result<Json<SlotStatus>, ApiError> {
+) -> Result<Json<LibraryModel>, ApiError> {
     let admin = admin(&state, &headers)?;
     let mut upload = Upload::default();
     let read_error =
@@ -590,38 +594,56 @@ async fn admin_install(
                 let bytes = field.bytes().await.map_err(read_error)?;
                 upload.cpu = (!bytes.is_empty()).then(|| bytes.to_vec());
             }
+            Some("slot") => upload.slot = field.text().await.map_err(read_error)?,
+            Some("name") => upload.name = field.text().await.map_err(read_error)?,
             Some("license") => upload.license = field.text().await.map_err(read_error)?,
             Some("source") => upload.source = field.text().await.map_err(read_error)?,
             _ => {}
         }
     }
-    let status = blocking(move || install::install(&admin.dir, &slot, upload)).await?;
-    tracing::info!(slot = status.slot, sha256 = ?status.tpu_sha256, "model installed; active after a restart");
+    let model = blocking(move || install::add(&admin.dir, upload)).await?;
+    tracing::info!(id = %model.id, slot = %model.info.slot, "model added to the library");
+    Ok(Json(model))
+}
+
+async fn admin_delete(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> Result<StatusCode, ApiError> {
+    let admin = admin(&state, &headers)?;
+    blocking(move || install::delete(&admin.dir, &id)).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+#[derive(Deserialize)]
+struct SelectInput {
+    id: String,
+}
+
+async fn admin_select(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(slot): Path<String>,
+    Json(input): Json<SelectInput>,
+) -> Result<Json<SlotStatus>, ApiError> {
+    let admin = admin(&state, &headers)?;
+    let status = blocking(move || install::select(&admin.dir, &slot, &input.id)).await?;
+    tracing::info!(slot = status.slot, id = ?status.model_id, "model selected; active after a restart");
     Ok(Json(status))
 }
 
-async fn admin_restore(
+async fn admin_clear(
     State(state): State<AppState>,
     headers: HeaderMap,
     Path(slot): Path<String>,
 ) -> Result<Json<SlotStatus>, ApiError> {
     let admin = admin(&state, &headers)?;
-    let status = blocking(move || install::restore(&admin.dir, &slot)).await?;
+    let status = blocking(move || install::clear(&admin.dir, &slot)).await?;
     tracing::info!(
         slot = status.slot,
-        "previous model restored; active after a restart"
+        "slot emptied; model kept in the library"
     );
-    Ok(Json(status))
-}
-
-async fn admin_remove(
-    State(state): State<AppState>,
-    headers: HeaderMap,
-    Path(slot): Path<String>,
-) -> Result<Json<SlotStatus>, ApiError> {
-    let admin = admin(&state, &headers)?;
-    let status = blocking(move || install::remove(&admin.dir, &slot)).await?;
-    tracing::info!(slot = status.slot, "model removed; kept as backup");
     Ok(Json(status))
 }
 

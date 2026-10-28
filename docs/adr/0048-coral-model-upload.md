@@ -1,4 +1,4 @@
-# 0048 - Coral model upload by the administrator
+# 0048 - Coral model library and upload by the administrator
 
 - Status: Proposed on 2026-10-28.
 - Extends: ADR 0046 (Coral Edge TPU speech recognition).
@@ -17,32 +17,41 @@ hand or with a package-specific script. The volume was read-only in
 
 ## Decision
 
-1. `coral-stt` has admin endpoints under `/v1/admin/`: list, install,
-   restore and remove a model slot (`de`, `en`, `langid`), and restart.
-   The optional service key protects them like all `/v1/*` endpoints.
+1. `coral-stt` keeps a model library in `models/coral/library/<id>/`.
+   The id is the first 12 hex digits of the SHA-256 of the Edge TPU file.
+   Each slot (`de`, `en`, `langid`) uses one library model. The slot
+   directory holds a copy, so the startup loader stays unchanged.
+2. Admin endpoints under `/v1/admin/`: overview, add and delete a library
+   model, select a model for a slot or empty a slot, and restart. The
+   optional service key protects them like all `/v1/*` endpoints.
    `TALKOPS_CORAL_MODEL_ADMIN=false` disables them.
-2. An install writes into a staging directory first. The service checks
-   the files with the startup loading code. It also checks the TFLite
-   identifier and the `edgetpu-custom-op` marker. Only a valid upload
-   replaces the slot. The previous slot moves to `.backup/<slot>`.
-3. The upload must include a license and a source statement. The service
-   stores them in `install.json`. TalkOps does not check them. The UI
-   requires a confirmation that the license permits the use.
-4. The service does not reload models while it runs. A restart request
+3. An upload and a selection write into a staging directory first. The
+   service checks the files with the startup loading code. It also checks
+   the TFLite identifier and the `edgetpu-custom-op` marker. Only a valid
+   copy replaces the target.
+4. The library holds at most 10 models and 512 MiB. A model that a slot
+   uses cannot be deleted. A model that was copied into a slot by hand moves
+   into the library with an empty license before a selection replaces it.
+5. The upload must include a name, a license and a source statement. The
+   service stores them in `install.json`. TalkOps does not check them. The
+   UI requires a confirmation that the license permits the use.
+6. The service does not reload models while it runs. A restart request
    stops the process; the container restart policy starts it again.
    Open connections close after at most ten seconds.
-5. The TalkOps API forwards these requests to the configured Coral
+7. The TalkOps API forwards these requests to the configured Coral
    connection. It requires the `transcription.settings` permission and
-   writes an audit entry with slot, digest, license and source.
-6. The `models` volume is writable in `coral-stt`.
+   writes an audit entry with slot, model id, digest, license and source.
+8. The `models` volume is writable in `coral-stt`.
+9. Only one model per slot is active. Several active models of one language
+   would need more Edge TPU memory and time and are not part of this decision.
 
 ## Consequences
 
-- Administrators can use models that they may use but that TalkOps may not
-  redistribute. Each administrator is responsible for this use.
+- Administrators can keep and compare models that they may use but that
+  TalkOps may not redistribute. Each administrator is responsible for this use.
 - A model change interrupts live previews for a few seconds.
 - An uploaded model that fails on the TPU does not stop the service from
-  starting. The administrator can restore the previous model in the UI.
+  starting. The administrator can select another library model in the UI.
 - Without a restart policy, a restart request stops the service.
-- `coral-stt` can now write to the `models` volume. The upload size is
-  limited to 64 MiB for each model file.
+- `coral-stt` can now write to the `models` volume. A selected model uses
+  the space of its library copy and its slot copy.

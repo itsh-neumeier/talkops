@@ -333,29 +333,36 @@ models/coral/langid/model_edgetpu.tflite   models/coral/langid/model.json   (opt
 Without the language ID model, both language models run for each turn.
 This doubles the load on the TPU.
 
-#### Upload in the TalkOps UI
+#### Model library in the TalkOps UI
 
-You can also install a model in **Settings → Transcription → Coral models**.
+You can also manage models in **Settings → Transcription → Coral models**.
 You need the permission "transcription settings".
 
-1. Select the slot: German, English or language detection.
-2. Enter the license of the weights and their source.
-3. Select `model.json` and `model_edgetpu.tflite`. `model.tflite` for the
+1. Under **Add model**, select the slot: German, English or language
+   detection. Enter a name, the license of the weights and their source.
+2. Select `model.json` and `model_edgetpu.tflite`. `model.tflite` for the
    CPU backend is optional. The limit is 64 MiB for each file.
-4. Confirm that the license permits your use, then select **Upload and check**.
+3. Confirm that the license permits your use, then select **Upload and check**.
+   The model goes into the library. By default it is also selected for its slot.
+4. To change models, select a library model in the list of the slot.
 5. Select **Restart Coral service**. Live previews pause for a few seconds.
 
-The service checks the files with the same code that loads them at startup.
-It rejects a model that is not compiled for the Edge TPU and a `model.json`
-without labels. The previous model stays available: **Restore previous**
-swaps the two models. The audit log records each change with the license
-statement and the model digest. TalkOps does not check license statements.
-TalkOps does not include models whose license does not permit
-redistribution, for example NVIDIA NGC models without a redistribution grant.
+The library holds at most 10 models and 512 MiB. Each slot uses one library
+model. You can delete only models that no slot uses. A model that you copied
+into a slot by hand moves into the library with an unknown license before a
+selection replaces it.
 
-The upload needs a writable `models` volume in the `coral-stt` service and a
-restart policy. The supplied `docker-compose.yml` has both. To disable the
-upload, set `TALKOPS_CORAL_MODEL_ADMIN=false`.
+The service checks each upload and each selection with the same code that
+loads the models at startup. It rejects a model that is not compiled for the
+Edge TPU and a `model.json` without labels. The audit log records each
+change with the license statement and the model digest. TalkOps does not
+check license statements. TalkOps does not include models whose license does
+not permit redistribution, for example NVIDIA NGC models without a
+redistribution grant.
+
+The library needs a writable `models` volume in the `coral-stt` service and
+a restart policy. The supplied `docker-compose.yml` has both. To disable the
+library, set `TALKOPS_CORAL_MODEL_ADMIN=false`.
 
 An application update does not install model files. If you have the separate
 German candidate package `coral-de-candidate-20261025.tar.gz`, copy it and

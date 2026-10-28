@@ -117,7 +117,11 @@ pub enum CatalogError {
     Invalid { path: String, message: String },
 }
 
-fn load_one(dir: &Path, name: &str, file: &str) -> Result<Option<ModelFile>, CatalogError> {
+pub(crate) fn load_one(
+    dir: &Path,
+    name: &str,
+    file: &str,
+) -> Result<Option<ModelFile>, CatalogError> {
     let json = dir.join("model.json");
     let path = dir.join(file);
     if !json.is_file() || !path.is_file() {
@@ -160,6 +164,24 @@ fn load_one(dir: &Path, name: &str, file: &str) -> Result<Option<ModelFile>, Cat
         meta,
         mel,
     }))
+}
+
+/// Checks one model directory as [`Catalog::load`] would load it for `slot`
+/// (`de`, `en` or `langid`). A missing file is an error here.
+pub(crate) fn check_slot(dir: &Path, slot: &str, file: &str) -> Result<ModelFile, CatalogError> {
+    let invalid = |message: &str| CatalogError::Invalid {
+        path: dir.join(file).display().to_string(),
+        message: message.into(),
+    };
+    let model = load_one(dir, slot, file)?.ok_or_else(|| invalid("model file is missing"))?;
+    if slot == "langid" {
+        if model.meta.classes.is_empty() {
+            return Err(invalid("model.json has no classes"));
+        }
+    } else if model.meta.labels.is_empty() {
+        return Err(invalid("model.json has no labels"));
+    }
+    Ok(model)
 }
 
 impl Catalog {

@@ -937,6 +937,53 @@ export interface CoralTpu {
 	error: string | null;
 }
 
+/** Statements stored with a Coral library model (ADR 0048). */
+export interface CoralModelInfo {
+	name: string;
+	slot: CoralSlot;
+	/** Empty for a model that was copied into a slot by hand. */
+	license: string;
+	source: string;
+	installed_at_unix: number;
+	tpu_sha256: string;
+	cpu_sha256?: string | null;
+}
+
+export type CoralSlot = 'de' | 'en' | 'langid';
+
+/** One slot of coral-stt and the library model selected for it. */
+export interface CoralSlotStatus {
+	slot: CoralSlot;
+	installed: boolean;
+	model_id?: string | null;
+	name?: string | null;
+	tpu_sha256?: string | null;
+	/** The running service uses these files. */
+	active: boolean;
+	/** The running service has a model for this slot (maybe another one). */
+	loaded: boolean;
+}
+
+/** One model in the Coral model library. */
+export interface CoralLibraryModel {
+	id: string;
+	info: CoralModelInfo;
+	/** `candidate` and `license` from model.json. */
+	candidate?: string | null;
+	meta_license?: string | null;
+	bytes: number;
+	/** Its slot uses this model. */
+	selected: boolean;
+}
+
+/** `/coral/{id}/models`: slots, library and storage use. */
+export interface CoralModels {
+	backend: string;
+	slots: CoralSlotStatus[];
+	library: CoralLibraryModel[];
+	usage: { models: number; bytes: number; max_models: number; max_bytes: number };
+}
+
 /** The `/health` answer of coral-stt. */
 export interface CoralHealth {
 	status: 'ok' | 'degraded' | 'unavailable';

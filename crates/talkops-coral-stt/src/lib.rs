@@ -16,6 +16,7 @@ pub mod engine;
 pub mod features;
 mod fft;
 pub mod http;
+pub mod install;
 pub mod mock;
 pub mod models;
 pub mod realtime;

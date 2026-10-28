@@ -10,6 +10,7 @@
 		type TranscriptionPurpose,
 		type TranscriptionTest
 	} from '#lib/api.ts';
+	import CoralModels from '#lib/components/CoralModels.svelte';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
 	import { i18n, t } from '#lib/i18n/index.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
@@ -611,6 +612,8 @@
 			{/if}
 		{/if}
 	</section>
+
+	{#if coralProvider}<CoralModels providerId={coralProvider.id} />{/if}
 
 	<section class="space-y-2 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
 		<h3 class="font-medium">{t('stt.usageTitle')}</h3>

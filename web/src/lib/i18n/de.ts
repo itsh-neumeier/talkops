@@ -1725,6 +1725,51 @@ const de: Record<keyof typeof en, string> = {
 	'stt.coralStablePreview': 'Vollständige Wörter anzeigen (experimentell)',
 	'stt.coralStablePreviewHint':
 		'Angefangene Wörter zurückhalten. Etwa 4–5 Sekunden einplanen; das ist keine garantierte Obergrenze. Die Einstellung gilt für die nächste Vorschau-Sitzung.',
+	'coralModels.title': 'Coral-Modelle',
+	'coralModels.hint':
+		'TalkOps enthält keine Sprachmodelle, deren Lizenz die Weitergabe nicht erlaubt. Lade kompilierte Modelle, die du nutzen darfst, in die Bibliothek und wähle pro Platz ein Modell aus. Der Dienst prüft jedes Modell, bevor er es verwendet.',
+	'coralModels.slot': 'Platz',
+	'coralModels.slot.de': 'Deutsch',
+	'coralModels.slot.en': 'Englisch',
+	'coralModels.slot.langid': 'Spracherkennung',
+	'coralModels.none': 'Kein Modell',
+	'coralModels.model': 'Modell',
+	'coralModels.name': 'Name',
+	'coralModels.license': 'Lizenz',
+	'coralModels.licenseUnknown': 'Lizenz unbekannt',
+	'coralModels.source': 'Herkunft der Gewichte (URL oder Beschreibung)',
+	'coralModels.active': 'Aktiv',
+	'coralModels.pending': 'Neustart nötig',
+	'coralModels.empty': 'Leer',
+	'coralModels.inUse': 'Ausgewählt',
+	'coralModels.deleteInUse': 'Wähle zuerst ein anderes Modell für diesen Platz.',
+	'coralModels.libraryTitle': 'Modellbibliothek',
+	'coralModels.libraryEmpty': 'Die Bibliothek ist leer.',
+	'coralModels.usage': '{models} von {max} Modellen, {mib} von {maxMib} MiB',
+	'coralModels.full': 'Die Bibliothek ist voll. Lösche ein Modell, das kein Platz verwendet.',
+	'coralModels.restart': 'Coral-Dienst neu starten',
+	'coralModels.restartHint':
+		'Änderungen gelten nach einem Neustart des Coral-Dienstes. Live-Vorschauen pausieren dabei einige Sekunden.',
+	'coralModels.mockHint':
+		'Der Dienst läuft mit dem Mock-Backend und lädt die ausgewählten Dateien nicht.',
+	'coralModels.uploadTitle': 'Modell hinzufügen',
+	'coralModels.uploadHint':
+		'Lade die Dateien von tools/coral/export_nemo.py und compile_model.py hoch: model.json und model_edgetpu.tflite, optional model.tflite für das CPU-Backend. Höchstens 64 MiB pro Datei.',
+	'coralModels.optional': 'optional',
+	'coralModels.selectNow': 'Modell nach dem Hochladen für seinen Platz auswählen',
+	'coralModels.confirmLicense':
+		'Ich bestätige, dass die Lizenz dieser Gewichte diese Nutzung erlaubt. TalkOps prüft Lizenzangaben nicht.',
+	'coralModels.install': 'Hochladen und prüfen',
+	'coralModels.filesRequired': 'Wähle model.json und model_edgetpu.tflite aus.',
+	'coralModels.added': 'Modell geprüft und zur Bibliothek hinzugefügt.',
+	'coralModels.addedSelected':
+		'Modell geprüft und ausgewählt. Starte den Coral-Dienst neu, um es zu nutzen.',
+	'coralModels.selected': 'Auswahl gespeichert. Starte den Coral-Dienst neu, um sie anzuwenden.',
+	'coralModels.deleted': 'Modell aus der Bibliothek gelöscht.',
+	'coralModels.restarted': 'Coral-Dienst neu gestartet.',
+	'coralModels.confirmClear': 'Modell aus dem Platz {slot} entfernen? Es bleibt in der Bibliothek.',
+	'coralModels.confirmRestart':
+		'Coral-Dienst jetzt neu starten? Live-Vorschauen offener Gespräche pausieren einige Sekunden.',
 	'stt.debugTitle': 'Coral-Transkriptionsdiagnose',
 	'stt.debugHint':
 		'Technische Ereignisse für einen Testanruf aufzeichnen und danach einen JSON-Bericht herunterladen. Enthält Modelle, TPU-Zustand, Warteschlange, Verarbeitungszeiten und verfügbare Rückfallzustände. Audio und Zugangsdaten sind ausgeschlossen. Die Erfassung endet nach höchstens 30 Minuten; Ereignisse verfallen nach einer Stunde. Der Puffer hält höchstens 5.000 Ereignisse oder 2 MiB, daher zeitnah herunterladen.',

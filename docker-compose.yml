@@ -164,6 +164,7 @@ services:
       TALKOPS_CORAL_QUEUE: ${TALKOPS_CORAL_QUEUE:-16}
       TALKOPS_CORAL_SESSIONS_PER_TPU: ${TALKOPS_CORAL_SESSIONS_PER_TPU:-4}
       TALKOPS_CORAL_STABLE_PREVIEW: ${TALKOPS_CORAL_STABLE_PREVIEW:-false}
+      TALKOPS_CORAL_MODEL_ADMIN: ${TALKOPS_CORAL_MODEL_ADMIN:-true}
       TALKOPS_LOG_FORMAT: ${TALKOPS_LOG_FORMAT:-json}
       RUST_LOG: ${RUST_LOG:-info}
       TZ: ${TZ:-Europe/Berlin}
@@ -173,7 +174,8 @@ services:
     # container restart. The group must own the device on the host
     # (plugdev, GID 46 on Debian, set by the libedgetpu udev rule).
     volumes:
-      - models:/var/lib/talkops/models:ro
+      # Writable: administrators install models in the TalkOps UI.
+      - models:/var/lib/talkops/models
       - /dev/bus/usb:/dev/bus/usb
     device_cgroup_rules:
       - "c 189:* rmw"

@@ -428,6 +428,132 @@ available*. TalkOps tries Coral again after 30 seconds.
 | Error about the TensorFlow Lite version | libedgetpu and TensorFlow Lite must match. Use the libraries of the image. |
 | Text of the wrong language | Install the language ID model, or select `coral-ctc-de` / `coral-ctc-en` for one language. |
 
+## NVIDIA GPU (this server)
+
+An NVIDIA GPU in the TalkOps server can run larger speech models than the
+Coral Edge TPU ([ADR 0049](../adr/0049-cuda-gpu-speech-recognition.md)). The
+service `cuda-stt` uses sherpa-onnx with the CUDA execution provider. It has
+the same interface as `coral-stt`: live preview (Realtime), file
+transcription, language per speech turn, the hybrid setup and the local
+fallback work the same way. The service listens on `127.0.0.1` only. Audio
+does not leave the server.
+
+The image contains no models. You install the models in the model library
+of the TalkOps UI. TalkOps does not measure the text quality or the latency
+of a model for you. Test a model with your calls and your GPU before you use
+it in production.
+
+### Prepare the host
+
+1. Install the NVIDIA driver 580 or later (CUDA 13). Check it with
+   `nvidia-smi`.
+2. Install the NVIDIA Container Toolkit and configure Docker:
+
+   ```sh
+   sudo nvidia-ctk runtime configure --runtime=docker
+   sudo systemctl restart docker
+   ```
+
+3. Check that a container can see the GPU:
+   `docker run --rm --gpus all debian:trixie-slim nvidia-smi -L`.
+
+The image is for amd64 only. Docker Desktop with WSL 2 on Windows can run the
+image for tests. It is not a supported production host.
+
+### Start the service
+
+1. In `.env`, add `cuda` to `COMPOSE_PROFILES` (for example
+   `COMPOSE_PROFILES=cuda`). Set `TALKOPS_CUDA_DEVICE` to the GPU index of
+   `nvidia-smi`.
+2. Run `docker compose up -d`.
+3. Check the status: `curl -s http://127.0.0.1:8096/health`. Without models,
+   the service answers `"status": "unavailable"`. This is correct until you
+   install a model.
+
+One service uses one GPU. For a second GPU, copy the service `cuda-stt` in a
+Compose override with another `TALKOPS_CUDA_DEVICE` and another
+`TALKOPS_CUDA_PORT`, and add a second connection. For example, one GPU gives
+the live preview and the other GPU transcribes the recordings.
+
+### Connect TalkOps
+
+1. In *Settings → Call handling → Cloud connections*, select **Add
+   connection** and the type **NVIDIA GPU (this server)**. The URL is
+   `http://127.0.0.1:8096/v1`. A key is optional (`TALKOPS_CUDA_API_KEY`).
+2. Select **Test connection**. TalkOps shows the GPU (name, VRAM, use,
+   temperature), the loaded models with their VRAM and the queue.
+3. Install the models (see the next section).
+4. Select **Apply hybrid**, check the engines, and select **Save engines**.
+   If you have a Coral and a CUDA connection, **Apply hybrid** uses the GPU.
+
+The models are `cuda-auto` (language per turn), `cuda-de` and `cuda-en`. A
+CUDA connection must use a loopback address. TalkOps shows no privacy note
+and no cost for it. The fallback is the same as for Coral (see
+[Fallback](#fallback)).
+
+### Install the models
+
+Open **Settings → Transcription → CUDA models**. You need the permission
+"transcription settings". The slots are German, English and language
+detection. A model for German and English can fill both slots. The service
+stores it once.
+
+To install a suggested model:
+
+1. Under **Suggested models**, select **Use** for a model. TalkOps fills in
+   the URL, the SHA-256, the family, the languages, the license and the source.
+2. Read the license of the model card. Confirm that the license permits your
+   use.
+3. Select **Download and install**. The service downloads the archive, checks
+   the SHA-256, unpacks the model and loads it once on the CPU. A large model
+   needs several minutes.
+4. Select **Restart CUDA service**. Live previews pause for some seconds.
+
+To install another sherpa-onnx model archive (`.tar.bz2`, `.tar.gz` or
+`.tar`), enter the statements and the family yourself. Then use **Download
+and install** with an HTTPS URL and its SHA-256, or upload the archive with
+**Upload and check**. The families are:
+
+| Family | Files in the archive | Examples |
+|---|---|---|
+| `nemo_ctc` | `model.onnx`, `tokens.txt` | FastConformer CTC |
+| `nemo_transducer` | `encoder`, `decoder`, `joiner` ONNX files, `tokens.txt` | FastConformer transducer, Parakeet TDT |
+| `canary` | `encoder`, `decoder` ONNX files, `tokens.txt` | Canary 180M Flash |
+| `whisper` | `encoder`, `decoder` ONNX files, `*tokens.txt` | Whisper; also for language detection |
+
+If an archive has full-precision and int8 files, the service keeps the
+full-precision files. With the CUDA execution provider, some int8 operators
+run on the CPU. Select **int8** only if the GPU memory is too small.
+
+Each model takes GPU memory (VRAM). The status of the connection test and
+the slots show the VRAM of each loaded model. If a model does not load (for
+example, not enough VRAM), its slot shows the error, and the other models
+continue to work. Select a smaller model and restart the service.
+
+The library holds at most 10 models and 20 GiB (`TALKOPS_CUDA_MAX_LIBRARY_MB`).
+The audit log records each installation with the license statement, the
+source and the archive digest. TalkOps does not check license statements and
+does not host model files.
+
+### Live preview
+
+The models are not streaming models. During a speech turn, the service
+recognizes all audio of the turn again after each
+`TALKOPS_CUDA_PARTIAL_INTERVAL_MS` (default 1000 ms) of new audio. A turn
+that is longer than 15 seconds is cut at its quietest point. A shorter
+interval gives text sooner and puts more load on the GPU.
+
+### Troubleshooting
+
+| Symptom | Cause and action |
+|---|---|
+| The container does not start: "could not select device driver" | The NVIDIA Container Toolkit is missing or Docker was not restarted. |
+| `/health`: `"status": "unavailable"`, no models | Install and select models, then restart the service. |
+| A slot shows "Not loaded" | Read the error. Not enough VRAM: select a smaller or int8 model. |
+| `/health` shows no GPU values | NVML is not available in the container. The service works without it. |
+| Many fallbacks, HTTP 503 | The GPU is overloaded. Increase `TALKOPS_CUDA_PARTIAL_INTERVAL_MS`, reduce `TALKOPS_CUDA_SESSIONS`, or use a second GPU. |
+| "CUDA driver version is insufficient" in the log | The host driver is older than 580. Update the driver. |
+
 ## Search
 
 **Search** finds words in all transcripts you have access to – calls and

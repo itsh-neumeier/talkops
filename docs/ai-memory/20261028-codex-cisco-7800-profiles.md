@@ -9,7 +9,8 @@
 - Branch: codex/cisco-7800-profiles
 - Initial checkout: 60aeda917bbe0c2d03911d9155f596d2af9c5ec0
 - Target base: 4b44cd68580908fb54407898aa01b0dcc4f80954 (origin/main)
-- Related commits or PR: Pending
+- Related PR: https://github.com/itsh-neumeier/talkops/pull/89 (draft)
+- Implementation commits: `5772d8c`, `dd7344d`
 
 ## Goal
 
@@ -88,7 +89,8 @@ by this task.
 ## Dependencies and open work
 
 - Real MPP device tests remain pending. Available hardware has Enterprise firmware.
-- Commit, push and draft PR are in progress. The final handoff records the URL.
+- Branch pushed and draft PR 89 created. Remote CI is pending.
+- No merge, release publication or version change occurred.
 - No full workspace runtime test, LDAP/backup service suite, Docker image build
   or SIPp call test was run locally. These are outside the changed runtime paths.
 

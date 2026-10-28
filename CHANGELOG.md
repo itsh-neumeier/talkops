@@ -6,6 +6,35 @@ All notable changes to TalkOps. The format follows
 
 ## [Unreleased]
 
+## [1.8.15] – 2026-10-28
+
+### Added
+
+- Add Cisco 7811, 7821, 7841 and 7861 provisioning profiles. MPP/3PCC firmware
+  uses authenticated HTTP(S) provisioning with 1/2/4/16 accounts.
+- Add experimental Cisco Enterprise SIP profiles for the same models with one
+  account, SIP over TCP, a device SEP XML file and a dialplan.
+- Add an optional TFTP sidecar (`docker-compose.cisco-tftp.yml`) for the
+  Enterprise SIP bootstrap on a trusted LAN. It is disabled by default.
+- Add English and German setup and hardware-test instructions, ADR 0048 and
+  ADR 0049.
+
+### Fixed
+
+- Start the optional TFTP sidecar as root with only the `SETUID`, `SETGID` and
+  `DAC_READ_SEARCH` capabilities. tftpd-hpa must drop privileges for each
+  request; as UID 10001 without capabilities it sent no reply.
+
+### Upgrade notes
+
+- Include Codex PR89 with a Claude Code privilege fix. No new migration,
+  dependency upgrade or breaking API change.
+- All Cisco profiles are hardware-untested. No phone has completed a
+  provisioning, registration or call test with them.
+- The server image now contains tftpd-hpa. The TFTP sidecar starts only when
+  you add `docker-compose.cisco-tftp.yml` and set `TALKOPS_TFTP_BIND_IP`.
+- Update server and worker together and reload the UI.
+
 ## [1.8.14] – 2026-10-28
 
 ### Fixed

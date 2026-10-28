@@ -1,0 +1,90 @@
+[
+  {
+    "id": "cisco-7811-mpp",
+    "vendor": "cisco",
+    "source_model": "7811-mpp",
+    "revision": "talkops-cisco7800-v1",
+    "adaptation": "adapted",
+    "device_validation": "not_tested",
+    "reason": null,
+    "accounts": 1,
+    "account_capacity_source": "cisco_mpp_datasheet",
+    "family": "desk",
+    "primary": "CP-7811-3PCC{$mac}.cfg",
+    "artifacts": [
+      {
+        "name": "CP-7811-3PCC{$mac}.cfg",
+        "template": "cisco7800/mpp.cfg.jinja",
+        "format": "xml"
+      }
+    ],
+    "settings": [],
+    "key_groups": []
+  },
+  {
+    "id": "cisco-7821-mpp",
+    "vendor": "cisco",
+    "source_model": "7821-mpp",
+    "revision": "talkops-cisco7800-v1",
+    "adaptation": "adapted",
+    "device_validation": "not_tested",
+    "reason": null,
+    "accounts": 2,
+    "account_capacity_source": "cisco_mpp_datasheet",
+    "family": "desk",
+    "primary": "CP-7821-3PCC{$mac}.cfg",
+    "artifacts": [
+      {
+        "name": "CP-7821-3PCC{$mac}.cfg",
+        "template": "cisco7800/mpp.cfg.jinja",
+        "format": "xml"
+      }
+    ],
+    "settings": [],
+    "key_groups": []
+  },
+  {
+    "id": "cisco-7841-mpp",
+    "vendor": "cisco",
+    "source_model": "7841-mpp",
+    "revision": "talkops-cisco7800-v1",
+    "adaptation": "adapted",
+    "device_validation": "not_tested",
+    "reason": null,
+    "accounts": 4,
+    "account_capacity_source": "cisco_mpp_datasheet",
+    "family": "desk",
+    "primary": "CP-7841-3PCC{$mac}.cfg",
+    "artifacts": [
+      {
+        "name": "CP-7841-3PCC{$mac}.cfg",
+        "template": "cisco7800/mpp.cfg.jinja",
+        "format": "xml"
+      }
+    ],
+    "settings": [],
+    "key_groups": []
+  },
+  {
+    "id": "cisco-7861-mpp",
+    "vendor": "cisco",
+    "source_model": "7861-mpp",
+    "revision": "talkops-cisco7800-v1",
+    "adaptation": "adapted",
+    "device_validation": "not_tested",
+    "reason": null,
+    "accounts": 16,
+    "account_capacity_source": "cisco_mpp_datasheet",
+    "family": "desk",
+    "primary": "CP-7861-3PCC{$mac}.cfg",
+    "artifacts": [
+      {
+        "name": "CP-7861-3PCC{$mac}.cfg",
+        "template": "cisco7800/mpp.cfg.jinja",
+        "format": "xml"
+      }
+    ],
+    "settings": [],
+    "key_groups": []
+  }
+]

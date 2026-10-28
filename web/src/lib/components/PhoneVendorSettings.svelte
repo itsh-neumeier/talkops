@@ -66,6 +66,9 @@
 <section class="card space-y-4">
 	<h2>{t('vendor.settings')} · {model.vendor} {model.name}</h2>
 	<p class="hint">{t('vendor.coverage')}</p>
+	{#if /^cisco-78(?:11|21|41|61)-mpp$/.test(model.id)}<p class="hint">
+			{t('vendor.cisco7800')}
+		</p>{/if}
 	<ErrorBox {error} />
 	{#if loading}<p class="hint">{t('common.loading')}</p>{/if}
 	<div class="flex flex-wrap items-end gap-3">

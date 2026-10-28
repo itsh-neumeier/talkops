@@ -390,3 +390,138 @@ async fn device_lock_pin_is_encrypted_masked_and_excluded_from_copies(db: PgPool
     assert_eq!(status, StatusCode::OK, "{cfg}");
     assert!(cfg.contains("phone_setting.phone_lock.unlock_pin = 987654321"));
 }
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn cisco_mpp_delivery_preview_bounds_and_copy_preserve_device_isolation(db: PgPool) {
+    let router = router(db.clone());
+    let admin = setup_admin(&router).await;
+    let (_, models) = admin.get("/api/v1/phone-models").await;
+    for (id, accounts) in [
+        ("cisco-7811-mpp", 1),
+        ("cisco-7821-mpp", 2),
+        ("cisco-7841-mpp", 4),
+        ("cisco-7861-mpp", 16),
+    ] {
+        let model = models
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|m| m["id"] == id)
+            .unwrap();
+        assert_eq!(model["accounts"], accounts);
+        assert_eq!(
+            model["provisioning_capabilities"]["device_validation"],
+            "not_tested"
+        );
+    }
+    let (_, library) = admin.get("/api/v1/provisioning/library").await;
+    assert!(
+        !library["profiles"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|p| p["model"] == "cisco/7861-mpp")
+    );
+    let (_, schema) = admin
+        .get("/api/v1/phone-models/cisco-7861-mpp/parameters")
+        .await;
+    let dictionary_key = schema["fields"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|f| {
+            f["parameter"]
+                .as_str()
+                .unwrap()
+                .contains("/Dictionary_Server_Script[")
+        })
+        .unwrap()["key"]
+        .as_str()
+        .unwrap();
+    let dictionary =
+        "serv=https://localeuser:dictionary-secret@locales.invalid/;d1=German;x1=de.xml";
+    let input = json!({"mac":"805ec0010203","name":"Cisco & Office","model":"cisco-7861-mpp", "provisioning":{"parameters":{dictionary_key:dictionary}}});
+    let (status, phone) = admin.post("/api/v1/phones", input.clone()).await;
+    assert_eq!(status, StatusCode::OK, "{phone}");
+    assert_eq!(
+        phone["provisioning"]["parameters"][dictionary_key],
+        "REDACTED"
+    );
+    let stored: Value = sqlx::query_scalar("SELECT provisioning FROM phones WHERE id=$1")
+        .bind(Uuid::parse_str(phone["id"].as_str().unwrap()).unwrap())
+        .fetch_one(&db)
+        .await
+        .unwrap();
+    assert!(!stored.to_string().contains("dictionary-secret"));
+    let id = phone["id"].as_str().unwrap();
+    let (_, ext) = admin
+        .post(
+            "/api/v1/extensions",
+            json!({"number":"116","display_name":"Sixteenth & Office"}),
+        )
+        .await;
+    let extension = format!("/api/v1/extensions/{}/devices", ext["id"].as_str().unwrap());
+    let (status, credentials) = admin
+        .post(
+            &extension,
+            json!({"name":"Cisco","kind":"desk","phone_id":id,"account_index":16}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{credentials}");
+    assert_eq!(
+        admin
+            .post(
+                &extension,
+                json!({"name":"Overflow","kind":"desk","phone_id":id,"account_index":17})
+            )
+            .await
+            .0,
+        StatusCode::UNPROCESSABLE_ENTITY
+    );
+    let (_, info) = admin.get("/api/v1/provisioning").await;
+    let path = "/provisioning/devices/805ec0010203/CP-7861-3PCC805ec0010203.cfg";
+    let response = raw(&router, Request::get(path).body(Body::empty()).unwrap()).await;
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    let (status, config) = fetch(&router, path, &info).await;
+    assert_eq!(status, StatusCode::OK, "{config}");
+    assert!(config.contains(credentials["sip_username"].as_str().unwrap()));
+    assert!(config.contains(credentials["sip_password"].as_str().unwrap()));
+    assert!(config.contains("<Line_Enable_16_ ua=\"na\">Yes</Line_Enable_16_>"));
+    assert!(config.contains("dictionary-secret"));
+    let (status, preview) = admin
+        .post(&format!("/api/v1/phones/{id}/preview"), input)
+        .await;
+    assert_eq!(status, StatusCode::OK, "{preview}");
+    assert!(
+        !preview
+            .to_string()
+            .contains(credentials["sip_password"].as_str().unwrap())
+    );
+    assert!(!preview.to_string().contains("dictionary-secret"));
+    let (_, preview) = admin
+        .post(&format!("/api/v1/phones/{id}/clone-preview"), json!({}))
+        .await;
+    let (status, copy) = admin.post(&format!("/api/v1/phones/{id}/clone"), json!({"source_revision":preview["source_revision"],"name":"Other Cisco","mac":"805ec0040506","assignments":[{"account_index":16,"extension_id":ext["id"]}]})).await;
+    assert_eq!(status, StatusCode::OK, "{copy}");
+    let (status, copied_config) = fetch(
+        &router,
+        "/provisioning/devices/805ec0040506/CP-7861-3PCC805ec0040506.cfg",
+        &info,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{copied_config}");
+    assert!(!copied_config.contains(credentials["sip_password"].as_str().unwrap()));
+    assert!(!copied_config.contains("dictionary-secret"));
+    for bad in [
+        "/provisioning/devices/805ec0010203/CP-7861-3PCC805ec0040506.cfg",
+        "/provisioning/devices/805ec0040506/CP-7861-3PCC805ec0010203.cfg",
+        "/provisioning/devices/805ec0010203/SEP805EC0010203.cnf.xml",
+        "/provisioning/CP-7861-3PCC805ec0010203.cfg",
+    ] {
+        assert_eq!(
+            fetch(&router, bad, &info).await.0,
+            StatusCode::NOT_FOUND,
+            "{bad}"
+        );
+    }
+}

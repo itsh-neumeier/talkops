@@ -7,6 +7,7 @@ use serde_json::json;
 use std::{collections::BTreeMap, sync::OnceLock};
 
 include!(concat!(env!("OUT_DIR"), "/native_files.rs"));
+include!(concat!(env!("OUT_DIR"), "/authored_files.rs"));
 include!(concat!(env!("OUT_DIR"), "/all_reference.rs"));
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -113,8 +114,20 @@ pub struct Profile {
 pub fn profiles() -> &'static [Profile] {
     static PROFILES: OnceLock<Vec<Profile>> = OnceLock::new();
     PROFILES.get_or_init(|| {
-        serde_json::from_str(include_str!("../profiles/fusionpbx.json"))
-            .expect("checked native profiles")
+        let mut profiles: Vec<Profile> =
+            serde_json::from_str(include_str!("../profiles/fusionpbx.json"))
+                .expect("checked native profiles");
+        let authored: Vec<Profile> =
+            serde_json::from_str(include_str!("../profiles/cisco7800.json"))
+                .expect("checked authored profiles");
+        for profile in authored {
+            assert!(
+                !profiles.iter().any(|p| p.id == profile.id),
+                "duplicate profile ID"
+            );
+            profiles.push(profile);
+        }
+        profiles
     })
 }
 pub fn profile(id: &str) -> Option<&'static Profile> {
@@ -132,6 +145,7 @@ pub fn source(path: &str) -> Option<&'static [u8]> {
 pub fn native_source(path: &str) -> Option<&'static str> {
     NATIVE_FILES
         .iter()
+        .chain(AUTHORED_FILES.iter())
         .find(|(name, _)| *name == path)
         .map(|(_, text)| *text)
 }
@@ -406,7 +420,12 @@ pub fn context(setup: &PhoneSetup<'_>, common: &Common<'_>) -> Value {
     );
     let mut accounts = serde_json::Map::new();
     let mut lines = Vec::new();
-    for index in 1..=setup.model.accounts {
+    // Always clear unused MPP slots, including slots above a reduced account count.
+    let capacity = profile(&setup.model.id)
+        .filter(|p| p.revision == "talkops-cisco7800-v1")
+        .map(|p| p.accounts)
+        .unwrap_or(setup.model.accounts);
+    for index in 1..=capacity {
         let a = setup.accounts.iter().find(|a| a.index == index);
         let row = json!({"line_number":index,"enabled":a.is_some(),"user_id":a.map(|a|a.username.as_str()),
             "auth_id":a.map(|a|a.username.as_str()),"password":a.map(|a|a.password.as_str()),"user_password":a.map(|a|a.password.as_str()),
@@ -452,6 +471,9 @@ pub fn context(setup: &PhoneSetup<'_>, common: &Common<'_>) -> Value {
         "smarty":{"get":{"contacts":if setup.model.vendor=="zoiper"{"extensions"}else{"all"}}},"provision_url":base,"artifact_base":authenticated,
         "primary_url":primary_url,"provision_path":endpoint.as_ref().map(|u|u.path()),"provision_host":endpoint.as_ref().and_then(|u|u.host_str()),
         "groundwire_link":primary_url.replacen("https://","provlinkbs://",1).replacen("http://","provlink://",1),
+        "cisco_mpp_zone":match common.timezone {"UTC"|"Etc/UTC"=>"UTC","Europe/London"=>"UK",_=>"CET"},
+        "cisco_mpp_german":common.language=="de",
+        "cisco_mpp_buttons":setup.model.id!="cisco-7811-mpp",
     });
     ctx["user"] = ctx["account"].clone();
     ctx["web_contacts"] = json!({"contacts":common.contacts.iter().enumerate().map(|(index,entry)|json!({
@@ -586,6 +608,40 @@ pub fn render(
     files: &BTreeMap<String, String>,
 ) -> Result<(String, String), String> {
     let profile = profile(&setup.model.id).ok_or("unsupported native profile")?;
+    if profile.revision == "talkops-cisco7800-v1" {
+        if setup.model.accounts == 0
+            || setup.model.accounts > profile.accounts
+            || setup
+                .accounts
+                .iter()
+                .any(|a| a.index == 0 || a.index > setup.model.accounts)
+            || setup.accounts.iter().enumerate().any(|(i, a)| {
+                setup.accounts[..i]
+                    .iter()
+                    .any(|other| other.index == a.index)
+            })
+        {
+            return Err("invalid Cisco MPP account assignment".into());
+        }
+        if !matches!(
+            common.timezone,
+            "UTC"
+                | "Etc/UTC"
+                | "Europe/Berlin"
+                | "Europe/Vienna"
+                | "Europe/Zurich"
+                | "Europe/Paris"
+                | "Europe/Rome"
+                | "Europe/Madrid"
+                | "Europe/Amsterdam"
+                | "Europe/London"
+        ) {
+            return Err(
+                "Cisco MPP time zone mapping supports UTC and the documented European zones only"
+                    .into(),
+            );
+        }
+    }
     if profile.family == "app" && setup.accounts.is_empty() {
         return Err("assign a SIP account before exporting this app profile".into());
     }

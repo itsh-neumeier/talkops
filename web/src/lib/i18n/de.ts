@@ -225,6 +225,8 @@ const de: Record<keyof typeof en, string> = {
 	'vendor.identityToken': 'App-Geräte-ID',
 	'vendor.identityHint': 'Leer lassen, um eine neue eindeutige ID für diese App zu erzeugen.',
 	'vendor.showMore': 'Weitere Felder anzeigen ({count} verbleibend)',
+	'vendor.cisco7800':
+		'Nur MPP-/3PCC-Firmware (Dokumentationsbasis 11.3(1)). Am Gerät ungetestet. Enterprise-/CUCM-Firmware wird nicht unterstützt: Sie benötigt eigene Bootstrap- und Vertrauensdienste. Trage die vollständige Konfigurationsdatei-URL unter Voice > Provisioning > Profile Rule mit den TalkOps-Provisionierungszugangsdaten ein. Die deutsche Anzeige benötigt ein zur Firmware passendes Wörterbuch. Nur Konten-Leitungszuordnungen sind konfiguriert; BLF und Kontakte sind nicht verfügbar.',
 	'vendor.coverage':
 		'Felder der gewählten Herstellervorlage, nach Funktion gegliedert. Modell- und Firmwaregrenzen gelten. Die Prüfung an Geräten steht aus.',
 	'vendor.search': 'Einstellung, Parameter oder Quelldatei suchen',

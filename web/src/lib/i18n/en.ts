@@ -221,6 +221,8 @@ export default {
 	'vendor.identityToken': 'App device ID',
 	'vendor.identityHint': 'Leave empty to create a new unique ID for this app.',
 	'vendor.showMore': 'Show more fields ({count} remaining)',
+	'vendor.cisco7800':
+		'MPP / 3PCC firmware only (11.3(1) documentation baseline). Untested on hardware. Enterprise / CUCM firmware is unsupported: it requires separate bootstrap and trust services. Enter the full configuration file URL in Voice > Provisioning > Profile Rule with the TalkOps provisioning credentials. German display needs a firmware-matched dictionary. Only account line assignments are configured; BLF and contacts are unavailable.',
 	'vendor.coverage':
 		'Fields from the selected manufacturer template, grouped by function. Model and firmware limits apply. Hardware verification is pending.',
 	'vendor.search': 'Find a setting, parameter or source file',

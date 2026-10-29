@@ -8,7 +8,9 @@ You need: Host administration access and a new instance or a recovery plan.
 
 ## Requirements
 
-- Linux host (x86_64 or arm64), e.g. Debian/Ubuntu, Proxmox VM, NAS with Docker
+- Linux host (x86_64/amd64), e.g. Debian/Ubuntu, Proxmox VM, NAS with Docker.
+  Releases publish amd64 images. arm64 images exist only for releases whose
+  notes list arm64; `latest` and `1.8` then can point to amd64-only images.
 - Docker Engine ≥ 24 with the Compose plugin
 - Free ports on the host (TalkOps uses host networking):
 
@@ -31,9 +33,9 @@ a restore assistant.
 
 ```sh
 mkdir talkops && cd talkops
-curl -fLO https://raw.githubusercontent.com/itsh-neumeier/talkops/v1.8.15/docker-compose.yml
-curl -fL -o .env https://raw.githubusercontent.com/itsh-neumeier/talkops/v1.8.15/.env.example
-sed -i 's/^TALKOPS_VERSION=.*/TALKOPS_VERSION=1.8.15/' .env
+curl -fLO https://raw.githubusercontent.com/itsh-neumeier/talkops/v1.8.16/docker-compose.yml
+curl -fL -o .env https://raw.githubusercontent.com/itsh-neumeier/talkops/v1.8.16/.env.example
+sed -i 's/^TALKOPS_VERSION=.*/TALKOPS_VERSION=1.8.16/' .env
 ```
 
 Set the required values in `.env`, for example:
@@ -49,7 +51,7 @@ sed -i "s/^TALKOPS_XMLCURL_PASSWORD=$/TALKOPS_XMLCURL_PASSWORD=$(openssl rand -h
 > credentials. Back it up separately from the database – without it, the
 > credentials cannot be decrypted after a restore.
 
-These files and images use the existing published release 1.8.15. For a later
+These files and images use the existing published release 1.8.16. For a later
 release, select matching configuration and image versions. `latest` is a moving
 stable image tag; it does not pin the configuration files.
 Protect `.env` after generating secrets with `chmod 600 .env`. If you enable

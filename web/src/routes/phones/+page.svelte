@@ -21,7 +21,8 @@
 	import Modal from '#lib/components/Modal.svelte';
 	import PhoneMediaManager from '#lib/components/PhoneMediaManager.svelte';
 	import PhoneSettingsDefaults from '#lib/components/PhoneSettingsDefaults.svelte';
-	import PhoneGraphic from '#lib/components/PhoneGraphic.svelte';
+	import VendorBadge from '#lib/components/VendorBadge.svelte';
+	import { modelLabel, sortModels } from '#lib/vendors.ts';
 	import { formatDateTime, t } from '#lib/i18n/index.svelte.ts';
 	import { can } from '#lib/session.svelte.ts';
 	import { copy, errorMessage } from '#lib/util.ts';
@@ -64,6 +65,10 @@
 	let uploading = $state(false);
 
 	const modelName = (id: string) => models.find((m) => m.id === id)?.name ?? id;
+	const modelFilterName = (id: string) => {
+		const m = models.find((m) => m.id === id);
+		return m ? modelLabel(m) : id;
+	};
 
 	async function load() {
 		try {
@@ -227,7 +232,7 @@
 								bind:value={filter.model}
 							>
 								<option value="">{t('common.all')}</option>
-								{#each usedModels as m (m)}<option value={m}>{modelName(m)}</option>{/each}
+								{#each usedModels as m (m)}<option value={m}>{modelFilterName(m)}</option>{/each}
 							</select></th
 						>
 						<th class="col-opt-lg"
@@ -281,10 +286,9 @@
 							</td>
 							<td
 								><div class="flex items-center gap-2">
-									{#if models.find((m) => m.id === p.model)?.layout}<PhoneGraphic
-											model={models.find((m) => m.id === p.model)}
-											small
-										/>{/if}<span>{modelName(p.model)}</span>
+									<VendorBadge vendor={models.find((m) => m.id === p.model)?.vendor} /><span
+										>{modelName(p.model)}</span
+									>
 								</div></td
 							>
 							<td class="col-opt-lg font-mono text-xs">{p.mac}</td>
@@ -358,7 +362,8 @@
 				<div>
 					<label for="fw-model">{t('phones.model')}</label>
 					<select id="fw-model" class="input" bind:value={fwModel}>
-						{#each models as m (m.id)}<option value={m.id}>{m.name}</option>{/each}
+						{#each sortModels(models) as m (m.id)}<option value={m.id}>{modelLabel(m)}</option
+							>{/each}
 					</select>
 				</div>
 				<div>
@@ -453,7 +458,7 @@
 		<div>
 			<label for="p-model">{t('phones.model')}</label>
 			<select id="p-model" class="input" bind:value={form.model}>
-				{#each models as m (m.id)}<option value={m.id}>{m.vendor} {m.name}</option>{/each}
+				{#each sortModels(models) as m (m.id)}<option value={m.id}>{modelLabel(m)}</option>{/each}
 			</select>
 			{#if /^cisco-78(?:11|21|41|61)-mpp$/.test(form.model)}<p class="hint">
 					{t('vendor.cisco7800')}
@@ -461,8 +466,8 @@
 			{#if /^cisco-78(?:11|21|41|61)-enterprise$/.test(form.model)}<p class="hint">
 					{t('vendor.ciscoEnterprise')}
 				</p>{/if}
-			{#if models.find((m) => m.id === form.model)?.layout}<div class="mt-3">
-					<PhoneGraphic model={models.find((m) => m.id === form.model)} />
+			{#if models.find((m) => m.id === form.model)}<div class="mt-3">
+					<VendorBadge vendor={models.find((m) => m.id === form.model)?.vendor} />
 				</div>{/if}
 		</div>
 		<div>

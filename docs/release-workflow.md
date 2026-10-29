@@ -89,8 +89,11 @@ Use the existing workflows as the validation contract:
 - `.github/workflows/e2e.yml`: SIPp and browser softphone tests.
 - `.github/workflows/freeswitch.yml`: additional FreeSWITCH checks when its
   sources or workflow change.
-- `.github/workflows/release.yml`: version validation, three images for amd64
-  and arm64, multi-architecture manifests and GitHub release creation.
+- `.github/workflows/release.yml`: version validation, the four images for
+  amd64, image manifests and GitHub release creation. Releases build arm64
+  only when the user explicitly requests it for that release
+  ([ADR 0050](adr/0050-release-architectures.md)). Then set the repository
+  variable `RELEASE_ARM64=true` before the tag push and remove it afterwards.
 
 Wait for the applicable checks on the final integration PR revision. Merge the
 integration PR using the repository's permitted merge method and verify the
@@ -104,7 +107,8 @@ run. Use one tag push to trigger the existing publication workflow; do not
 create a competing release or bypass checks through a manual dispatch.
 
 Verify the workflow succeeded, the GitHub release points to the intended tag,
-and all three versioned image manifests contain amd64 and arm64. Check the
+and all four versioned image manifests contain amd64. Verify arm64 only for a
+release with an explicit arm64 request. Check the
 server and worker's reported versions where execution is available; FreeSWITCH
 has its own upstream version. For stable releases, verify the expected moving
 image tags from the workflow as well. Report publication or verification

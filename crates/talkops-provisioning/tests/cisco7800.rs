@@ -259,9 +259,18 @@ fn enterprise_profiles_are_separate_single_identity_tcp_bundles() {
             ("authPassword", "secret-1&<unique>"),
             ("messagesNumber", "*97"),
             ("dialTemplate", "dialplan.xml"),
+            // Without these the 14.2(1) firmware reports "Error Verifying Config Info".
+            ("ethernetPhonePort", "2000"),
+            ("securedSipPort", "5061"),
+            ("remoteCcEnable", "true"),
+            ("remotePartyID", "true"),
+            ("versionStamp", "talkops-cisco7800-enterprise-v2"),
+            ("webAccess", "0"),
         ] {
             assert_eq!(value(&doc, name), expected);
         }
+        assert!(body.starts_with("<?xml"));
+        assert!(doc.descendants().any(|n| n.has_tag_name("commonProfile")));
         assert!(!body.contains("loadInformation"));
         assert!(!body.contains("prov-secret"));
         assert!(vendors::artifact(profile, "SEP805EC0090909.cnf.xml", "805ec0010203").is_none());

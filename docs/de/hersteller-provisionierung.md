@@ -201,7 +201,10 @@ Siehe [Cisco-Quellen und Implementierungsgrenzen](../research/cisco-7800.md).
 Die separaten Profile `cisco-7811-enterprise`, `cisco-7821-enterprise`,
 `cisco-7841-enterprise` und `cisco-7861-enterprise` richten nicht abgesichertes
 Enterprise-SIP ein. Erste Zielfirmware ist 14.2(1), einschließlich
-`sip78xx.14-2-1-0001-14`. Alle Profile bleiben **am Gerät ungetestet**.
+`sip78xx.14-2-1-0001-14`. Ein `CP-7861-K9` mit diesem Load hat am 28.10.2026
+die SEP-Datei und `dialplan.xml` geladen und sich per SIP-TCP registriert.
+Anrufe, Audio, DTMF und Voicemail sind **noch nicht getestet**. 7811, 7821 und
+7841 bleiben **am Gerät ungetestet**.
 Dies sind TalkOps-Integrationsprofile, keine Cisco-Zertifizierung für FreeSWITCH.
 
 Jedes Enterprise-Profil erlaubt **ein unabhängiges SIP-Konto auf Platz 1**.
@@ -319,7 +322,14 @@ CUCM-Betrieb, CAPF, TLS-Zertifikate und Firmwarekonvertierung sind nicht impleme
 ### Vorhandenes Enterprise-Telefon testen
 
 Vorhandenes Testmodell: `CP-7861-K9= V09` mit Enterprise 14.2(1).
-Die Geräteidentifikation ist noch kein erfolgreicher Provisionierungstest.
+Die Schritte 1 bis 5 waren am 28.10.2026 erfolgreich. Die übrigen Schritte sind offen.
+
+Die Statusmeldung „Error Verifying Config Info" bedeutet, dass das Telefon den
+Inhalt der SEP-Datei ablehnt. Releases bis 1.8.15 erzeugen eine solche Datei.
+Verwende ein Release mit der korrigierten Enterprise-Vorlage. Die Vorlage schaltet
+die schreibgeschützten Statusseiten des Telefons unter `http://<Telefon-IP>` ein.
+Unter **Device Logs** steht dort die Ursache von Provisionierungs- oder
+Registrierungsproblemen. SSH bleibt ausgeschaltet.
 
 1. Erfasse PID, Hardwareversion und Active Load, ohne die MAC zu veröffentlichen.
 2. Wähle `cisco-7861-enterprise` und richte die festen Adressen wie oben ein.

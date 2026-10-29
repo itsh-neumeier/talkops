@@ -141,7 +141,9 @@ impl From<&PhoneModel> for PhoneModelInfo {
                 Some(p) => {
                     json!({"native":true,"adaptation":p.adaptation,"device_validation":p.device_validation,
                     "account_capacity_source":p.account_capacity_source,"settings":p.settings,"primary":p.primary,
-                    "files":p.artifacts.iter().map(|a|&a.name).collect::<Vec<_>>(),"resync":false,"reboot":false,
+                    "files":p.artifacts.iter().map(|a|&a.name).collect::<Vec<_>>(),
+                    "resync":talkops_provisioning::vendors::cisco_enterprise(&p.id),"reboot":talkops_provisioning::vendors::cisco_enterprise(&p.id),
+                    "delivery":if talkops_provisioning::vendors::cisco_enterprise(&p.id){"tftp"}else{"http"},
                     "key_groups":p.key_groups,"key_functions":talkops_provisioning::vendors::functions(&p.vendor),
                     "identity_kind":if p.family=="app"{"token"}else{"mac"}})
                 }
@@ -190,6 +192,9 @@ pub struct PhoneDetail {
     pub accounts: Vec<PhoneAccountInfo>,
     pub provisioning_files: Vec<ProvisioningFileInfo>,
     pub provisioning_base: Option<String>,
+    /// How the phone gets its files: `http` (TalkOps provisioning URL) or
+    /// `tftp` (Cisco Enterprise SIP, optional TFTP sidecar, no credentials).
+    pub delivery: String,
 }
 
 #[derive(Serialize, ToSchema)]
@@ -553,7 +558,20 @@ pub async fn get_phone(
         .collect();
     let mut provisioning_files = Vec::new();
     let mut provisioning_base = None;
-    if let Some(profile) = talkops_provisioning::vendors::profile(&phone.model) {
+    let tftp = talkops_provisioning::vendors::cisco_enterprise(&phone.model);
+    if let Some(profile) = talkops_provisioning::vendors::profile(&phone.model).filter(|_| tftp) {
+        provisioning_files = profile
+            .artifacts
+            .iter()
+            .map(|a| ProvisioningFileInfo {
+                artifact: a.name.clone(),
+                format: a.format.clone(),
+                name: talkops_provisioning::vendors::delivery_filename(profile, a, &phone.mac),
+                url: String::new(),
+                primary: Some(&a.name) == profile.primary.as_ref(),
+            })
+            .collect();
+    } else if let Some(profile) = talkops_provisioning::vendors::profile(&phone.model) {
         let base = phone
             .provisioning
             .get("endpoint")
@@ -591,6 +609,7 @@ pub async fn get_phone(
         accounts,
         provisioning_files,
         provisioning_base,
+        delivery: if tftp { "tftp" } else { "http" }.into(),
     }))
 }
 
@@ -734,8 +753,9 @@ pub struct ResyncRequest {
     pub reboot: bool,
 }
 
-/// Asks the phone to fetch its configuration again (SIP NOTIFY check-sync),
-/// optionally restarting it. Admin.
+/// Asks the phone to fetch its configuration again (SIP NOTIFY check-sync;
+/// Cisco Enterprise SIP: service-control restart), optionally restarting it.
+/// Admin.
 #[utoipa::path(post, path = "/api/v1/phones/{id}/resync", tag = "phones", params(("id" = Uuid, Path)), request_body = Option<ResyncRequest>, responses((status = 200, body = ResyncResult)))]
 pub async fn resync_phone(
     State(state): State<AppState>,
@@ -746,13 +766,19 @@ pub async fn resync_phone(
     let reboot = body.map(|Json(b)| b.reboot).unwrap_or_default();
     auth.require_perm(Permission::PhonesManage)?;
     let phone = phones::get(&state.db, auth.tenant, id).await?;
-    if talkops_provisioning::vendors::profile(&phone.model).is_some() {
+    let cisco = talkops_provisioning::vendors::cisco_enterprise(&phone.model);
+    if !cisco && talkops_provisioning::vendors::profile(&phone.model).is_some() {
         return Err(ApiError::BadRequest("this profile has no remote resync adapter; use its configuration download or device menu".into()));
     }
     let mut notified = 0;
     // One NOTIFY per phone is enough; try the accounts until one is reachable.
     for user in phones::device_usernames(&state.db, phone.id).await? {
-        if state.telephony.check_sync(&user, reboot).await {
+        let sent = if cisco {
+            state.telephony.cisco_service_control(&user, reboot).await
+        } else {
+            state.telephony.check_sync(&user, reboot).await
+        };
+        if sent {
             notified += 1;
             break;
         }

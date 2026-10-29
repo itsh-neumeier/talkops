@@ -222,7 +222,13 @@ export default {
 	'vendor.identityHint': 'Leave empty to create a new unique ID for this app.',
 	'vendor.showMore': 'Show more fields ({count} remaining)',
 	'vendor.ciscoEnterprise':
-		'Experimental Enterprise SIP: one independent account, TCP and an optional read-only TFTP sidecar. Untested on hardware; target firmware 14.2(1). Set a unique fixed phone IPv4 address in Model settings and configure the SIP host. Enable the Cisco TFTP deployment only on a trusted LAN. TFTP has no encryption or authentication. Existing CUCM trust lists can block unsigned files. No firmware conversion, updates or trust-list changes are performed.',
+		'Experimental Enterprise SIP: one independent account, TCP and an optional read-only TFTP sidecar. Provisioning and registration passed on a CP-7861 with firmware 14.2(1); calls are not tested yet. Set a unique fixed phone IPv4 address in Model settings and configure the SIP host. Enable the Cisco TFTP deployment only on a trusted LAN. TFTP has no encryption or authentication. Existing CUCM trust lists can block unsigned files. No firmware conversion, updates or trust-list changes are performed.',
+	'vendor.tftpFilesHint':
+		'This phone loads its files over TFTP from the optional Cisco TFTP sidecar, not over HTTPS. Set DHCP option 150 to the TFTP server address (TALKOPS_TFTP_BIND_IP). No provisioning user name or password is necessary. The sidecar admits only the fixed client address below.',
+	'vendor.tftpClient': 'TFTP client IPv4 address',
+	'vendor.tftpClientMissing': 'Not set: set it in Model settings',
+	'vendor.ciscoEnterpriseState':
+		'Provisioning and registration passed on a CP-7861 with firmware 14.2(1). Calls are not tested yet. Resync and restart use SIP NOTIFY (service-control) while the phone is registered.',
 	'vendor.ciscoEnterpriseIP': 'TFTP client IPv4 address (fixed DHCP lease)',
 	'vendor.cisco7800':
 		'MPP / 3PCC firmware only (11.3(1) documentation baseline). Untested on hardware. Enterprise / CUCM firmware requires the separate experimental Enterprise profile and TFTP setup. Enter the full configuration file URL in Voice > Provisioning > Profile Rule with the TalkOps provisioning credentials. German display needs a firmware-matched dictionary. Only account line assignments are configured; BLF and contacts are unavailable.',
@@ -1143,6 +1149,8 @@ export default {
 	'phones.phoneDefault': 'Keep the phone’s own setting',
 	'phones.tooLarge': 'too large for this model',
 	'phones.notSupported': 'Not supported by this model.',
+	'phones.ciscoRingtoneHint':
+		'Cisco Enterprise SIP: the phone gets all uploaded ringtones, with the selected ringtone first. Select it on the phone under Settings → Ringtone. Ringtones longer than 10 seconds are cut.',
 	'phones.personalizeHint':
 		'Upload ringtones and wallpapers under Settings → Phones. The phone downloads them on the next resync.',
 	'phones.phonebookSections': 'Phone book sections on this phone',

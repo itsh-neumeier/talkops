@@ -226,7 +226,13 @@ const de: Record<keyof typeof en, string> = {
 	'vendor.identityHint': 'Leer lassen, um eine neue eindeutige ID für diese App zu erzeugen.',
 	'vendor.showMore': 'Weitere Felder anzeigen ({count} verbleibend)',
 	'vendor.ciscoEnterprise':
-		'Experimentelles Enterprise-SIP: ein unabhängiges Konto, TCP und ein optionaler schreibgeschützter TFTP-Dienst. Am Gerät ungetestet; Zielfirmware 14.2(1). Trage unter Modelleinstellungen eine eindeutige feste IPv4-Adresse des Telefons ein und konfiguriere den SIP-Host. Aktiviere die Cisco-TFTP-Bereitstellung nur in einem vertrauenswürdigen LAN. TFTP ist unverschlüsselt und hat keine Authentifizierung. Vorhandene CUCM-Vertrauenslisten können unsignierte Dateien blockieren. Firmware und Vertrauenslisten werden nicht verändert.',
+		'Experimentelles Enterprise-SIP: ein unabhängiges Konto, TCP und ein optionaler schreibgeschützter TFTP-Dienst. Provisionierung und Registrierung wurden an einem CP-7861 mit Firmware 14.2(1) geprüft; Anrufe sind noch ungetestet. Trage unter Modelleinstellungen eine eindeutige feste IPv4-Adresse des Telefons ein und konfiguriere den SIP-Host. Aktiviere die Cisco-TFTP-Bereitstellung nur in einem vertrauenswürdigen LAN. TFTP ist unverschlüsselt und hat keine Authentifizierung. Vorhandene CUCM-Vertrauenslisten können unsignierte Dateien blockieren. Firmware und Vertrauenslisten werden nicht verändert.',
+	'vendor.tftpFilesHint':
+		'Dieses Telefon lädt seine Dateien per TFTP vom optionalen Cisco-TFTP-Dienst, nicht per HTTPS. Setze DHCP-Option 150 auf die Adresse des TFTP-Servers (TALKOPS_TFTP_BIND_IP). Benutzername und Passwort für die Provisionierung sind nicht nötig. Der Dienst lässt nur die unten stehende feste Client-Adresse zu.',
+	'vendor.tftpClient': 'TFTP-Client-IPv4-Adresse',
+	'vendor.tftpClientMissing': 'Nicht gesetzt: unter Modelleinstellungen eintragen',
+	'vendor.ciscoEnterpriseState':
+		'Provisionierung und Registrierung wurden an einem CP-7861 mit Firmware 14.2(1) geprüft. Anrufe sind noch ungetestet. Resync und Neustart verwenden SIP NOTIFY (service-control), solange das Telefon registriert ist.',
 	'vendor.ciscoEnterpriseIP': 'TFTP-Client-IPv4-Adresse (feste DHCP-Zuordnung)',
 	'vendor.cisco7800':
 		'Nur MPP-/3PCC-Firmware (Dokumentationsbasis 11.3(1)). Am Gerät ungetestet. Enterprise-/CUCM-Firmware benötigt das separate experimentelle Enterprise-Profil und die TFTP-Einrichtung. Trage die vollständige Konfigurationsdatei-URL unter Voice > Provisioning > Profile Rule mit den TalkOps-Provisionierungszugangsdaten ein. Die deutsche Anzeige benötigt ein zur Firmware passendes Wörterbuch. Nur Konten-Leitungszuordnungen sind konfiguriert; BLF und Kontakte sind nicht verfügbar.',
@@ -1157,6 +1163,8 @@ const de: Record<keyof typeof en, string> = {
 	'phones.phoneDefault': 'Einstellung des Telefons behalten',
 	'phones.tooLarge': 'zu groß für dieses Modell',
 	'phones.notSupported': 'Von diesem Modell nicht unterstützt.',
+	'phones.ciscoRingtoneHint':
+		'Cisco Enterprise-SIP: Das Telefon erhält alle hochgeladenen Klingeltöne, der gewählte steht an erster Stelle. Wähle ihn am Telefon unter Einstellungen → Klingelton aus. Klingeltöne über 10 Sekunden werden gekürzt.',
 	'phones.personalizeHint':
 		'Klingeltöne und Hintergründe lädst du unter Einstellungen → Telefone hoch. Das Telefon lädt sie beim nächsten Resync.',
 	'phones.phonebookSections': 'Telefonbuch-Bereiche auf diesem Telefon',

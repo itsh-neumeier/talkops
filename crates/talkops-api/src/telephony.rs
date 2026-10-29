@@ -23,6 +23,9 @@ pub struct Registration {
     pub transport: String,
     pub user_agent: String,
     pub expires: i64,
+    /// SIP Call-ID of the REGISTER dialog (Cisco service-control needs it).
+    #[serde(skip)]
+    pub call_id: String,
 }
 
 #[derive(Debug, Clone, Serialize, utoipa::ToSchema)]
@@ -87,12 +90,14 @@ impl Telephony {
         let this = self.clone();
         tokio::spawn(async move {
             let mut known: HashSet<String> = HashSet::new();
+            let mut contacts: HashMap<String, std::time::Instant> = HashMap::new();
             let mut monitor = crate::notifier::Monitor::default();
             loop {
                 let status = this.poll().await;
                 if !status.connected || status.complete {
                     monitor.observe(&db, observed(&status)).await;
                 }
+                record_cisco_contacts(&db, &status.registrations, &mut contacts).await;
                 let current: HashSet<String> = status
                     .registrations
                     .iter()
@@ -218,6 +223,60 @@ impl Telephony {
             Ok(()) => true,
             Err(err) => {
                 tracing::warn!(user = sip_user, error = %err, "check-sync NOTIFY failed");
+                false
+            }
+        }
+    }
+
+    /// Restarts (`reboot = false`) or resets (`reboot = true`) a Cisco
+    /// Enterprise SIP phone with a SIP NOTIFY `Event: service-control`
+    /// (ADR 0051). A restart reloads all configuration files. The phone
+    /// accepts the NOTIFY only with the Call-ID of its current REGISTER.
+    /// Returns false if no Cisco registration of the user is found.
+    pub async fn cisco_service_control(&self, sip_user: &str, reboot: bool) -> bool {
+        let Some(client) = self.esl.get().await else {
+            return false;
+        };
+        let registrations = match client.api("show registrations as json").await {
+            Ok(json) => parse_registrations(&json),
+            Err(err) => {
+                tracing::warn!(user = sip_user, error = %err, "show registrations failed");
+                return false;
+            }
+        };
+        let Some(call_id) = registrations
+            .iter()
+            .filter(|r| r.user.eq_ignore_ascii_case(sip_user))
+            .filter(|r| r.user_agent.to_ascii_lowercase().contains("cisco"))
+            .map(|r| r.call_id.as_str())
+            .find(|id| valid_call_id(id))
+        else {
+            return false;
+        };
+        let result = if reboot {
+            let body = service_control_body("reset", call_id);
+            let headers = [
+                ("profile", "internal"),
+                ("event-string", "service-control"),
+                ("user", sip_user),
+                ("host", crate::fsxml::SIP_DOMAIN),
+                ("call-id", call_id),
+                ("content-type", "text/plain"),
+            ];
+            client
+                .sendevent_with_body("NOTIFY", &headers, Some(&body))
+                .await
+        } else {
+            // mod_sofia sends `action=restart` with this Call-ID to Cisco user agents.
+            client
+                .api(&format!("sofia profile internal check_sync {call_id}"))
+                .await
+                .map(|_| ())
+        };
+        match result {
+            Ok(()) => true,
+            Err(err) => {
+                tracing::warn!(user = sip_user, error = %err, "Cisco service-control NOTIFY failed");
                 false
             }
         }
@@ -395,6 +454,69 @@ fn parse_valet_slots(xml: &str) -> HashSet<String> {
         .collect()
 }
 
+/// Cisco Enterprise phones fetch their files over TFTP, so TalkOps sees them
+/// only through SIP. Records each Cisco registration as phone contact (last
+/// contact, IP, firmware), at most once a minute per user.
+async fn record_cisco_contacts(
+    db: &PgPool,
+    registrations: &[Registration],
+    recorded: &mut HashMap<String, std::time::Instant>,
+) {
+    let now = std::time::Instant::now();
+    recorded.retain(|_, at| now.duration_since(*at) < Duration::from_secs(60));
+    for r in registrations {
+        if !r.user_agent.to_ascii_lowercase().starts_with("cisco") || r.network_ip.is_empty() {
+            continue;
+        }
+        let user = r.user.to_lowercase();
+        if recorded.contains_key(&user) {
+            continue;
+        }
+        recorded.insert(user, now);
+        let firmware = cisco_firmware(&r.user_agent);
+        if let Err(err) = talkops_core::phones::record_registration(
+            db,
+            &r.user,
+            talkops_provisioning::vendors::CISCO_ENTERPRISE_MODELS,
+            &r.network_ip,
+            firmware,
+        )
+        .await
+        {
+            tracing::debug!(user = r.user, error = %err, "cannot record Cisco registration");
+        }
+    }
+}
+
+/// Firmware version from a Cisco user agent (`Cisco-CP7861/14.2.1`).
+fn cisco_firmware(user_agent: &str) -> Option<&str> {
+    let version = user_agent.rsplit_once('/')?.1.trim();
+    (!version.is_empty()
+        && version.len() <= 32
+        && version
+            .bytes()
+            .all(|c| c.is_ascii_alphanumeric() || b".-_()".contains(&c)))
+    .then_some(version)
+}
+
+/// Accepts a SIP Call-ID that is safe as one FreeSWITCH API argument.
+fn valid_call_id(id: &str) -> bool {
+    !id.is_empty()
+        && id.len() <= 128
+        && id
+            .bytes()
+            .all(|c| c.is_ascii_alphanumeric() || b"-_.@:+".contains(&c))
+}
+
+/// Text body of a Cisco `service-control` NOTIFY. Zero version stamps make
+/// the phone use the action as given.
+fn service_control_body(action: &str, call_id: &str) -> String {
+    format!(
+        "action={action}\nRegisterCallId={{{call_id}}}\nConfigVersionStamp={{0000000000000000}}\n\
+         DialplanVersionStamp={{0000000000000000}}\nSoftkeyVersionStamp={{0000000000000000}}\n"
+    )
+}
+
 fn parse_registrations(json: &str) -> Vec<Registration> {
     let Ok(value) = serde_json::from_str::<serde_json::Value>(json) else {
         return Vec::new();
@@ -417,6 +539,7 @@ fn parse_registrations(json: &str) -> Vec<Registration> {
                     transport: s(row, "network_proto"),
                     user_agent: s(row, "metadata"),
                     expires: s(row, "expires").parse().unwrap_or(0),
+                    call_id: s(row, "token"),
                 })
                 .collect()
         })
@@ -497,12 +620,33 @@ mod tests {
     }
 
     #[test]
+    fn service_control_body_and_call_id() {
+        assert_eq!(
+            service_control_body("reset", "00451d6b-e3270002@192.168.90.18"),
+            "action=reset\nRegisterCallId={00451d6b-e3270002@192.168.90.18}\n\
+             ConfigVersionStamp={0000000000000000}\nDialplanVersionStamp={0000000000000000}\n\
+             SoftkeyVersionStamp={0000000000000000}\n"
+        );
+        assert!(valid_call_id(
+            "00451d6b-e3270002-1a2b3c4d-5e6f7a8b@192.168.90.18"
+        ));
+        assert!(!valid_call_id(""));
+        assert!(!valid_call_id("a b"));
+        assert!(!valid_call_id("a\nb"));
+        assert!(!valid_call_id("a'b"));
+        assert_eq!(cisco_firmware("Cisco-CP7861/14.2.1"), Some("14.2.1"));
+        assert_eq!(cisco_firmware("Cisco-CP7861"), None);
+        assert_eq!(cisco_firmware("Cisco-CP7861/<script>"), None);
+    }
+
+    #[test]
     fn parses_registrations_json() {
-        let json = r#"{"row_count":1,"rows":[{"reg_user":"20-1","realm":"talkops.local","expires":"1791150000","network_ip":"192.168.1.20","network_port":"5060","network_proto":"udp","metadata":"Yealink"}]}"#;
+        let json = r#"{"row_count":1,"rows":[{"reg_user":"20-1","realm":"talkops.local","expires":"1791150000","network_ip":"192.168.1.20","network_port":"5060","network_proto":"udp","metadata":"Yealink","token":"abc@192.168.1.20"}]}"#;
         let regs = parse_registrations(json);
         assert_eq!(regs.len(), 1);
         assert_eq!(regs[0].user, "20-1");
         assert_eq!(regs[0].expires, 1791150000);
+        assert_eq!(regs[0].call_id, "abc@192.168.1.20");
         assert!(parse_registrations("{\"row_count\":0}").is_empty());
         assert!(parse_registrations("-ERR").is_empty());
     }

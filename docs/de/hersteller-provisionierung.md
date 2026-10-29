@@ -211,8 +211,9 @@ Jedes Enterprise-Profil erlaubt **ein unabhängiges SIP-Konto auf Platz 1**.
 Mehr physische Leitungstasten belegen keine Unterstützung unabhängiger
 Digest-Zugangsdaten pro Leitung. TalkOps vereinheitlicht oder schwächt keine
 Kontenpasswörter, um zusätzliche Leitungen einzurichten. Die MPP-Kontengrenzen
-bleiben erhalten. Eigene Tastenbelegung, BLF, Kontakte, Firmwareupdates und
-Sprachpaket-Downloads sind nicht enthalten. Die installierte Telefonsprache
+bleiben erhalten. Eigene Tastenbelegung, BLF, Firmwareupdates und
+Sprachpaket-Downloads sind nicht enthalten. Resync, Neustart, Klingeltöne und
+das Telefonbuch stellt TalkOps bereit (siehe unten). Die installierte Telefonsprache
 bleibt erhalten. NTP und die unterstützten Zeitzonen UTC, Mitteleuropa und
 London verwenden die gemeinsamen Einstellungen.
 
@@ -250,9 +251,9 @@ Rechte abzugeben. Der Container behält nur die Capabilities `SETUID`, `SETGID`
 und `DAC_READ_SEARCH` und nutzt `no-new-privileges` sowie ein schreibgeschütztes
 Dateisystem. Jede Übertragung läuft als UID 10001. Docker muss die echte LAN-Client-IP erhalten.
 Ein Proxy oder NAT, das alle Clientadressen ersetzt, ist damit nicht vereinbar.
-
-TalkOps exportiert ausschließlich die deklarierte SEP-Konfiguration und
-`dialplan.xml` in ein privates flüchtiges tmpfs-Volume. Der TFTP-Dienst bindet es
+TalkOps exportiert ausschließlich die deklarierte SEP-Konfiguration, `dialplan.xml`
+und bei gewähltem Klingelton `Ringlist-wb.xml` mit den `.rwb`-Klingeltönen
+in ein privates flüchtiges tmpfs-Volume. Der TFTP-Dienst bindet es
 schreibgeschützt ein. Dateien erhalten Modus 0600, Verzeichnisse Modus 0700.
 Die Exporte werden alle 30 Sekunden erneuert. Doppelte Client-IPs, fehlende
 SIP-Hosts und ungültige Profile werden ausgelassen. Entfernte Kontenzuordnungen
@@ -319,6 +320,62 @@ diesem Fall und verwende das vom Administrator freigegebene Cisco-Migrationsverf
 TalkOps löscht keine Vertrauenslisten und ersetzt keine Zertifikate. Abgesicherter
 CUCM-Betrieb, CAPF, TLS-Zertifikate und Firmwarekonvertierung sind nicht implementiert.
 
+### Resync, letzter Kontakt, Klingeltöne und Kontakte
+
+**Resync und Neustart.** Die Schaltflächen **Resync** und **Neustarten** auf der
+Telefonseite senden ein SIP NOTIFY mit `Event: service-control` an das
+registrierte Telefon. Resync sendet `action=restart`: Das Telefon lädt alle
+Dateien erneut per TFTP und registriert sich neu. Neustart sendet
+`action=reset`: Das Telefon startet vollständig neu. Das Telefon nimmt das
+NOTIFY nur mit der Call-ID seiner aktuellen Registrierung an. Es muss also
+registriert sein. Sonst zeigt die Seite, dass nichts gesendet wurde. Jede
+Anfrage erzeugt einen Audit-Eintrag.
+
+Jede SEP-Datei enthält einen `versionStamp`, der ein Hash des Dateiinhalts ist.
+Eine geänderte Einstellung ändert damit auch den Stempel.
+
+**Letzter Kontakt.** Das Telefon lädt seine Dateien per TFTP; das sieht
+TalkOps nicht. TalkOps wertet deshalb die SIP-Registrierung eines
+Cisco-Enterprise-Telefons als letzten Kontakt. Telefonseite und Seitenpanel
+zeigen Zeitpunkt, IP-Adresse und die Firmwareversion aus dem User-Agent (zum
+Beispiel `14.2.1`). TalkOps aktualisiert die Werte höchstens einmal pro Minute.
+
+**Klingeltöne.** Lade einen Klingelton unter **Einstellungen → Telefone** hoch
+(WAV, 8 kHz, mono, 16 Bit, höchstens 160 KB). Wähle ihn auf der Telefonseite.
+TalkOps wandelt alle hochgeladenen Klingeltöne in das Cisco-Breitbandformat um
+(`.rwb`, 16 kHz, höchstens 10 Sekunden; längere Töne werden gekürzt). Der
+TFTP-Export enthält `Ringlist-wb.xml` und die `.rwb`-Dateien, der gewählte
+Klingelton steht an erster Stelle. Die Konfigurationsdatei kann keinen eigenen
+Klingelton auswählen. Wähle ihn nach dem nächsten Resync am Telefon unter
+**Einstellungen → Klingelton** aus. Ohne gewählten Klingelton exportiert
+TalkOps keine Klingeltonliste. Pro Telefon werden höchstens 50 Klingeltöne
+und 8 MB exportiert.
+
+**Kontakte.** Die SEP-Datei enthält eine `directoryURL`. Die Taste
+**Verzeichnisse** bzw. **Kontakte** am Telefon zeigt dann das TalkOps-Telefonbuch:
+die aktiven Nebenstellen (Wahl mit `**`), die globalen Kontakte und die Kontakte
+der für dieses Telefon gewählten Telefonbuchbereiche. Die Liste hat Seiten mit
+32 Einträgen und eine Suchtaste.
+
+Das Telefon kann Benutzername und Passwort der Provisionierung nicht senden.
+Die URL enthält deshalb ein Token pro Telefon. **Erzeuge** die
+Provisionierungszugangsdaten **neu**, um alle alten Verzeichnis-URLs ungültig
+zu machen. Die URL enthält kein SIP-Passwort.
+
+TalkOps braucht eine Adresse, die das Telefon erreicht. Der TFTP-Export kennt
+die Adresse von TalkOps nicht. Setze deshalb eine Provisionierungsadresse.
+Ohne diese Adresse enthält die SEP-Datei keine `directoryURL`. Die
+Enterprise-Firmware prüft HTTPS-Zertifikate gegen ihre eigene
+Vertrauensliste. Ein Zertifikat einer öffentlichen CA oder der TalkOps-Domain
+kann deshalb scheitern. Trage im vertrauenswürdigen Sprach-LAN eine einfache
+HTTP-Adresse als **Provisionierungsadresse für Telefone** des Telefons ein,
+zum Beispiel `http://192.168.140.30:8080/provisioning`. HTTP ist unverschlüsselt:
+Telefonbuch und Token sind im LAN sichtbar. Verwende das nur in einem
+vertrauenswürdigen LAN.
+
+**Deutsche Anzeige und Töne** brauchen Cisco-Sprachdateien, die TalkOps nicht
+mitliefert. Sie sind noch nicht verfügbar.
+
 ### Vorhandenes Enterprise-Telefon testen
 
 Vorhandenes Testmodell: `CP-7861-K9= V09` mit Enterprise 14.2(1).
@@ -340,8 +397,13 @@ Registrierungsproblemen. SSH bleibt ausgeschaltet.
 7. Prüfe Audio in beide Richtungen, DTMF, Halten und Vermitteln.
 8. Prüfe Voicemailzugang, Uhrzeit und Leitungsbeschriftung.
 9. Starte das Telefon neu und prüfe Abruf sowie Registrierung erneut.
-10. Entferne die TFTP-Client-IP, warte einen Exportlauf ab und prüfe den verweigerten Abruf.
-11. Protokolliere Erfolge und Fehler vor einer Änderung des Geräteprüfstatus.
+10. Klicke **Resync** und prüfe, dass das Telefon seine Dateien lädt und sich neu registriert.
+11. Klicke **Neustarten** und prüfe, dass das Telefon neu startet.
+12. Prüfe **Letzter Kontakt**, IP-Adresse und Firmware auf der Telefonseite.
+13. Wähle einen Klingelton, löse einen Resync aus und wähle ihn am Telefon unter **Einstellungen → Klingelton**.
+14. Öffne **Kontakte** am Telefon, blättere und suche einen Namen.
+15. Entferne die TFTP-Client-IP, warte einen Exportlauf ab und prüfe den verweigerten Abruf.
+16. Protokolliere Erfolge und Fehler vor einer Änderung des Geräteprüfstatus.
 
 Ändere bei diesem Test weder Firmware noch Vertrauenslisten. Registrierung,
 Telefonie, MWI und Zusatzfunktionen bleiben bis zu diesem Gerätetest offen.

@@ -98,6 +98,8 @@
 			: ['line', 'blf', 'speed_dial', 'none']
 	);
 	const MAX_SECTIONS = 3;
+	/** Fixed client IPv4 address the Cisco TFTP export admits. */
+	const tftpClient = $derived(provisioning.vendor_settings?.cisco_enterprise_tftp_ip ?? '');
 	const ringtones = $derived(media.filter((m) => m.kind === 'ringtone'));
 	const wallpapers = $derived(media.filter((m) => m.kind === 'wallpaper'));
 
@@ -349,17 +351,27 @@
 		{#if phone.provisioning_files?.length}
 			<section class="card space-y-3">
 				<h2>{t('vendor.files')}</h2>
-				<p class="hint">{t('vendor.filesHint')}</p>
-				{#if phone.provisioning_base}<p>
-						{t('vendor.baseAddress')}<code class="block break-all text-xs"
-							>{phone.provisioning_base}</code
+				{#if phone.delivery === 'tftp'}
+					<p class="hint">{t('vendor.tftpFilesHint')}</p>
+					<p>
+						{t('vendor.tftpClient')}<code class="block break-all text-xs"
+							>{tftpClient || t('vendor.tftpClientMissing')}</code
 						>
-					</p>{/if}
-				<p class="hint">{t('vendor.notTested')} · {t('vendor.manualResync')}</p>
+					</p>
+					<p class="hint">{t('vendor.ciscoEnterpriseState')}</p>
+				{:else}
+					<p class="hint">{t('vendor.filesHint')}</p>
+					{#if phone.provisioning_base}<p>
+							{t('vendor.baseAddress')}<code class="block break-all text-xs"
+								>{phone.provisioning_base}</code
+							>
+						</p>{/if}
+					<p class="hint">{t('vendor.notTested')} · {t('vendor.manualResync')}</p>
+				{/if}
 				{#each phone.provisioning_files as file (file.artifact)}
 					<div class="min-w-0 rounded-lg border border-line p-3">
 						<strong>{file.name}{file.primary ? ' ★' : ''}</strong>
-						<code class="block break-all text-xs">{file.url}</code>
+						{#if file.url}<code class="block break-all text-xs">{file.url}</code>{/if}
 						{#if can('phones.manage')}<div class="mt-2 flex flex-wrap gap-2">
 								<button type="button" class="btn" onclick={() => showConfig(file.artifact)}
 									>{t('phones.showConfig')}</button
@@ -538,6 +550,9 @@
 				</div>
 			</div>
 			<p class="hint">{t('phones.personalizeHint')}</p>
+			{#if phone.delivery === 'tftp' && model?.ringtone_max_kb}<p class="hint">
+					{t('phones.ciscoRingtoneHint')}
+				</p>{/if}
 			<fieldset>
 				<legend class="mb-1 text-sm text-slate-600 dark:text-slate-300">
 					{t('phones.phonebookSections')}
@@ -587,6 +602,7 @@
 				disabled={!can('phones.manage')}
 			/><PhoneVendorSettings
 				{model}
+				mac={phone.mac}
 				bind:values={provisioning}
 				disabled={!can('phones.manage')}
 			/><PhoneProvisioningEditor

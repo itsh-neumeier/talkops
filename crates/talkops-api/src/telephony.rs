@@ -139,8 +139,8 @@ impl Telephony {
             return LiveStatus::default();
         };
         let mut complete = true;
-        let registrations = match client.api("show registrations as json").await {
-            Ok(json) => parse_registrations(&json),
+        let registrations = match load_registrations(&client).await {
+            Ok(registrations) => registrations,
             Err(err) => {
                 tracing::debug!(error = %err, "show registrations failed");
                 complete = false;
@@ -237,8 +237,8 @@ impl Telephony {
         let Some(client) = self.esl.get().await else {
             return false;
         };
-        let registrations = match client.api("show registrations as json").await {
-            Ok(json) => parse_registrations(&json),
+        let registrations = match load_registrations(&client).await {
+            Ok(registrations) => registrations,
             Err(err) => {
                 tracing::warn!(user = sip_user, error = %err, "show registrations failed");
                 return false;
@@ -517,6 +517,47 @@ fn service_control_body(action: &str, call_id: &str) -> String {
     )
 }
 
+/// Current registrations with their user agents. The core table of `show
+/// registrations` has no user agent: its `metadata` column is the directory
+/// variable `registration_metadata`. mod_sofia keeps the agent per Call-ID.
+async fn load_registrations(
+    client: &talkops_esl::EslClient,
+) -> Result<Vec<Registration>, talkops_esl::EslError> {
+    let mut registrations = parse_registrations(&client.api("show registrations as json").await?);
+    match client.api("sofia xmlstatus profile internal reg").await {
+        Ok(xml) => {
+            let agents = parse_agents(&xml);
+            for r in &mut registrations {
+                if let Some(agent) = agents.get(&r.call_id) {
+                    r.user_agent.clone_from(agent);
+                }
+            }
+        }
+        Err(err) => tracing::debug!(error = %err, "sofia xmlstatus reg failed"),
+    }
+    Ok(registrations)
+}
+
+/// Call-ID → user agent from `sofia xmlstatus profile <name> reg`.
+fn parse_agents(xml: &str) -> HashMap<String, String> {
+    let Ok(doc) = roxmltree::Document::parse(xml) else {
+        return HashMap::new();
+    };
+    doc.descendants()
+        .filter(|n| n.has_tag_name("registration"))
+        .filter_map(|reg| {
+            let text = |name: &str| {
+                reg.children()
+                    .find(|c| c.has_tag_name(name))
+                    .and_then(|c| c.text())
+                    .map(str::trim)
+                    .filter(|s| !s.is_empty())
+            };
+            Some((text("call-id")?.to_owned(), text("agent")?.to_owned()))
+        })
+        .collect()
+}
+
 fn parse_registrations(json: &str) -> Vec<Registration> {
     let Ok(value) = serde_json::from_str::<serde_json::Value>(json) else {
         return Vec::new();
@@ -637,6 +678,34 @@ mod tests {
         assert_eq!(cisco_firmware("Cisco-CP7861/14.2.1"), Some("14.2.1"));
         assert_eq!(cisco_firmware("Cisco-CP7861"), None);
         assert_eq!(cisco_firmware("Cisco-CP7861/<script>"), None);
+    }
+
+    #[test]
+    fn parses_user_agents_by_call_id() {
+        let xml = r#"<?xml version="1.0" encoding="ISO-8859-1"?>
+<profile>
+  <registrations>
+    <registration>
+        <call-id>00451d6b-e3270002-5c2f1a7e-0d3b6f21@192.168.90.18</call-id>
+        <user>999@talkops.local</user>
+        <contact>&quot;999&quot; &lt;sip:999@192.168.90.18:5060;transport=tcp&gt;</contact>
+        <agent>Cisco-CP7861/14.2.1</agent>
+        <status>Registered(TCP)(unknown) exp(2026-10-29 21:30:00) expsecs(1800)</status>
+        <network-ip>192.168.90.18</network-ip>
+    </registration>
+    <registration>
+        <call-id>abc</call-id>
+        <agent></agent>
+    </registration>
+  </registrations>
+</profile>"#;
+        let agents = parse_agents(xml);
+        assert_eq!(agents.len(), 1);
+        assert_eq!(
+            agents["00451d6b-e3270002-5c2f1a7e-0d3b6f21@192.168.90.18"],
+            "Cisco-CP7861/14.2.1"
+        );
+        assert!(parse_agents("Invalid Profile!").is_empty());
     }
 
     #[test]

@@ -5,7 +5,7 @@
 - Task ID: 20261029-claude-release-1.8.17
 - Date: 2026-10-29
 - Tool: Claude Code (release manager)
-- Status: In progress
+- Status: Completed
 - Branch: codex/release-1.8.17
 - Base commit: 9e9adbf (main, v1.8.16)
 - Related commits or PR: PR98, integration PR pending
@@ -18,8 +18,9 @@ and UI fixes) as stable TalkOps 1.8.17. The user requested the release.
 ## Result
 
 PR98 is merged into the release branch with its history. Release metadata is
-updated. The 1.8.16 summary is marked Completed. No main merge, tag or
-publication yet.
+updated. The 1.8.16 summary is marked Completed. PR99 merged as 45e2b25.
+Tag v1.8.17 is published. All four images (amd64) have the 1.8.17, 1.8 and
+latest tags on one digest. Server and worker report 1.8.17.
 
 ## Decisions and scope
 

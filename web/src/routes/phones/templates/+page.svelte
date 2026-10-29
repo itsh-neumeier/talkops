@@ -13,6 +13,7 @@
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import { can } from '#lib/session.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
+	import { modelLabel, sortModels, vendorName } from '#lib/vendors.ts';
 	type SourceProfile = {
 		model: string;
 		vendor: string;
@@ -157,7 +158,7 @@
 							bind:value={sourceModel}
 							onchange={selectSource}
 							>{#each sources as source}<option value={source.model}
-									>{source.vendor} {source.model}</option
+									>{vendorName(source.vendor)} {source.model}</option
 								>{/each}</select
 						></label
 					><label for="source-file"
@@ -212,7 +213,8 @@
 							aria-label={t('phones.model')}
 							class="input"
 							bind:value={newModel}
-							>{#each models as model}<option value={model.id}>{model.vendor} {model.name}</option
+							>{#each sortModels(models) as model}<option value={model.id}
+									>{modelLabel(model)}</option
 								>{/each}</select
 						></label
 					><button class="btn btn-primary" disabled={busy}>{t('prov.clone')}</button>

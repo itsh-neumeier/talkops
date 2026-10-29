@@ -7,6 +7,7 @@
 		visibleParameters
 	} from '#lib/phoneParameters.ts';
 	import { errorMessage } from '#lib/util.ts';
+	import { modelLabel } from '#lib/vendors.ts';
 	import ErrorBox from './ErrorBox.svelte';
 	let {
 		model,
@@ -64,7 +65,7 @@
 </script>
 
 <section class="card space-y-4">
-	<h2>{t('vendor.settings')} · {model.vendor} {model.name}</h2>
+	<h2>{t('vendor.settings')} · {modelLabel(model)}</h2>
 	<p class="hint">{t('vendor.coverage')}</p>
 	{#if /^cisco-78(?:11|21|41|61)-mpp$/.test(model.id)}<p class="hint">
 			{t('vendor.cisco7800')}

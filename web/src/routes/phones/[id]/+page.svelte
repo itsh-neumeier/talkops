@@ -9,7 +9,8 @@
 	import PhoneNetworkCard from '#lib/components/PhoneNetworkCard.svelte';
 	import PhoneSettingsEditor from '#lib/components/PhoneSettingsEditor.svelte';
 	import PhoneKeyEditor from '#lib/components/PhoneKeyEditor.svelte';
-	import PhoneGraphic from '#lib/components/PhoneGraphic.svelte';
+	import VendorBadge from '#lib/components/VendorBadge.svelte';
+	import { modelLabel, sortModels } from '#lib/vendors.ts';
 	import { assignExtension } from '#lib/phoneAssign.ts';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
@@ -413,10 +414,11 @@
 						value={form.model}
 						onchange={(e) => changeModel(e.currentTarget.value)}
 					>
-						{#each models as m (m.id)}<option value={m.id}>{m.vendor} {m.name}</option>{/each}
+						{#each sortModels(models) as m (m.id)}<option value={m.id}>{modelLabel(m)}</option
+							>{/each}
 					</select>
-					{#if model?.layout}<div class="mt-2 flex items-center gap-2">
-							<PhoneGraphic {model} small /><span class="hint">{model.name}</span>
+					{#if model}<div class="mt-2 flex items-center gap-2">
+							<VendorBadge vendor={model.vendor} /><span class="hint">{model.name}</span>
 						</div>{/if}
 				</div>
 			</div>

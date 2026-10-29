@@ -44,7 +44,10 @@ jobs:
 
   rust:
     name: Rust (fmt, clippy, test)
-    runs-on: ubuntu-24.04
+    # The owner's self-hosted runner (label talkops, host network) takes the
+    # heavy jobs when the repository variable CI_RUNNER is "talkops". Pull
+    # requests from forks always use GitHub-hosted runners.
+    runs-on: ${{ vars.CI_RUNNER == 'talkops' && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON('["self-hosted","talkops"]') || 'ubuntu-24.04' }}
     services:
       postgres:
         image: postgres:17-trixie
@@ -71,6 +74,8 @@ jobs:
           sudo apt-get update -qq
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq slapd ldap-utils
           sudo systemctl stop slapd || true
+          # A reused self-hosted runner keeps the directory of the previous run.
+          sudo rm -rf /var/lib/ldap/talkops-test
           # Under /var/lib/ldap so the AppArmor profile of slapd allows it.
           sudo LDAP_WORK=/var/lib/ldap/talkops-test tests/ldap/start.sh
       - name: Install PostgreSQL 17 client tools (backup tests)
@@ -196,24 +201,22 @@ jobs:
 
   images:
     name: Image build (${{ matrix.image }}, ${{ matrix.arch }})
-    runs-on: ${{ matrix.runner }}
+    # Same runner choice as the rust job.
+    runs-on: ${{ vars.CI_RUNNER == 'talkops' && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON('["self-hosted","talkops"]') || 'ubuntu-24.04' }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - image: talkops-server
             arch: amd64
-            runner: ubuntu-24.04
             context: .
             dockerfile: docker/talkops/Dockerfile
           - image: talkops-media-worker
             arch: amd64
-            runner: ubuntu-24.04
             context: .
             dockerfile: docker/media-worker/Dockerfile
           - image: talkops-coral-stt
             arch: amd64
-            runner: ubuntu-24.04
             context: .
             dockerfile: docker/coral-stt/Dockerfile
     steps:

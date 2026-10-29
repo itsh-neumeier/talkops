@@ -1168,6 +1168,52 @@ async fn phones_accounts_firmware_contacts(pool: PgPool) {
         Some("96.86.0.70")
     );
 
+    // A registration counts as contact only for the listed models.
+    assert_eq!(
+        phones::record_registration(
+            &pool,
+            &d1.sip_username,
+            &["cisco-7861-enterprise"],
+            "10.0.0.6",
+            Some("14.2.1")
+        )
+        .await
+        .unwrap(),
+        0
+    );
+    assert_eq!(
+        phones::record_registration(
+            &pool,
+            &d1.sip_username.to_uppercase(),
+            &["t54w"],
+            "10.0.0.6",
+            None
+        )
+        .await
+        .unwrap(),
+        1
+    );
+    let seen = phones::get(&pool, T, phone.id).await.unwrap();
+    assert_eq!(seen.last_ip.as_deref(), Some("10.0.0.6"));
+    assert_eq!(seen.last_firmware.as_deref(), Some("96.86.0.70"));
+    phones::record_registration(
+        &pool,
+        &d2.sip_username,
+        &["t54w"],
+        "10.0.0.7",
+        Some("14.2.1"),
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        phones::get(&pool, T, phone.id)
+            .await
+            .unwrap()
+            .last_firmware
+            .as_deref(),
+        Some("14.2.1")
+    );
+
     // Deleting the phone keeps the devices (unplaced).
     phones::delete(&pool, T, phone.id).await.unwrap();
     assert_eq!(

@@ -50,4 +50,4 @@ volumes:
     driver_opts:
       type: tmpfs
       device: tmpfs
-      o: "uid=10001,gid=10001,mode=0700,size=16m"
+      o: "uid=10001,gid=10001,mode=0700,size=64m"

@@ -286,6 +286,11 @@ async fn render_phone_config_inner(
     } else {
         base_url(headers)
     };
+    let directory_token = if redacted {
+        "REDACTED".to_owned()
+    } else {
+        cisco_directory_token(&prov.password, phone.id)
+    };
     if redacted {
         prov.password = "REDACTED".into();
         admin_password = "REDACTED".into();
@@ -427,36 +432,12 @@ async fn render_phone_config_inner(
         "pool.ntp.org"
     };
     if talkops_provisioning::vendors::profile(&model.id).is_some() {
-        let mut entries = extensions::list(&state.db, tenant)
-            .await?
-            .into_iter()
-            .filter(|e| e.enabled)
-            .map(|e| Entry {
-                name: e.display_name,
-                numbers: vec![("Extension".into(), format!("**{}", e.number))],
-            })
-            .collect::<Vec<_>>();
-        for contact in phones::list_contacts(&state.db, tenant).await? {
-            if contact
-                .section_id
-                .is_some_and(|id| !phone.phonebook_sections.contains(&id))
-            {
-                continue;
-            }
-            let numbers = [
-                ("Work", &contact.phone_work),
-                ("Mobile", &contact.phone_mobile),
-                ("Other", &contact.phone_other),
-            ]
-            .into_iter()
-            .filter(|(_, n)| !n.is_empty())
-            .map(|(kind, n)| (kind.to_owned(), n.clone()))
-            .collect();
-            entries.push(Entry {
-                name: contact.display_name(),
-                numbers,
-            });
-        }
+        let entries = phone_entries(state, tenant, phone).await?;
+        let directory = if talkops_provisioning::vendors::cisco_enterprise(&model.id) {
+            cisco_directory_url(&prov.base_url, phone.id, &directory_token)
+        } else {
+            String::new()
+        };
         let common = talkops_provisioning::vendors::Common {
             provisioning: &prov,
             admin_password: &admin_password,
@@ -464,6 +445,7 @@ async fn render_phone_config_inner(
             language,
             ntp_server,
             contacts: &entries,
+            directory_url: &directory,
         };
         let profile =
             talkops_provisioning::vendors::profile(&model.id).ok_or(ApiError::NotFound)?;
@@ -480,13 +462,23 @@ async fn render_phone_config_inner(
             talkops_provisioning::vendors::render(&setup, &common, Some(artifact), &templates)
                 .map_err(ApiError::BadRequest)?
                 .0;
-        return talkops_provisioning::parameters::apply(
+        let body = talkops_provisioning::parameters::apply(
             &body,
             artifact,
             format.starts_with("xml"),
             &overrides.parameters,
         )
-        .map_err(ApiError::BadRequest);
+        .map_err(ApiError::BadRequest)?;
+        // Hash again: parameter overrides change the file after rendering.
+        return Ok(
+            if talkops_provisioning::vendors::cisco_enterprise(&model.id)
+                && profile.primary.as_deref() == Some(artifact)
+            {
+                talkops_provisioning::vendors::cisco_version_stamp(&body)
+            } else {
+                body
+            },
+        );
     }
     let device = adapter::render(&setup, &templates).map_err(ApiError::BadRequest)?;
     let mut locale = Locale::new(time_zone, language);
@@ -503,6 +495,65 @@ async fn render_phone_config_inner(
     let body = format!("{common}\n{device}");
     talkops_provisioning::parameters::apply_yealink(&body, model, &overrides.parameters)
         .map_err(ApiError::BadRequest)
+}
+
+/// Phone book entries for a phone: enabled extensions, then the global
+/// contacts and the contacts of the phone's sections.
+async fn phone_entries(state: &AppState, tenant: TenantId, phone: &Phone) -> ApiResult<Vec<Entry>> {
+    let mut entries = extensions::list(&state.db, tenant)
+        .await?
+        .into_iter()
+        .filter(|e| e.enabled)
+        .map(|e| Entry {
+            name: e.display_name,
+            numbers: vec![("Extension".into(), format!("**{}", e.number))],
+        })
+        .collect::<Vec<_>>();
+    for contact in phones::list_contacts(&state.db, tenant).await? {
+        if contact
+            .section_id
+            .is_some_and(|id| !phone.phonebook_sections.contains(&id))
+        {
+            continue;
+        }
+        let numbers = [
+            ("Work", &contact.phone_work),
+            ("Mobile", &contact.phone_mobile),
+            ("Other", &contact.phone_other),
+        ]
+        .into_iter()
+        .filter(|(_, n)| !n.is_empty())
+        .map(|(kind, n)| (kind.to_owned(), n.clone()))
+        .collect();
+        entries.push(Entry {
+            name: contact.display_name(),
+            numbers,
+        });
+    }
+    Ok(entries)
+}
+
+/// Token in the Cisco directory URL. Enterprise phones cannot send the
+/// provisioning credentials, so the URL carries a per-phone value derived
+/// from the provisioning password. Regenerating the credentials changes it.
+pub fn cisco_directory_token(provisioning_password: &str, phone: Uuid) -> String {
+    use sha2::{Digest, Sha256};
+    let digest = Sha256::digest(format!(
+        "talkops-cisco-directory:{phone}:{provisioning_password}"
+    ));
+    hex::encode(&digest[..16])
+}
+
+/// `directoryURL` for a Cisco Enterprise phone; empty if TalkOps has no
+/// reachable address (TFTP export without a configured endpoint).
+fn cisco_directory_url(base: &str, phone: Uuid, token: &str) -> String {
+    let base = base.trim_end_matches('/');
+    match url::Url::parse(base) {
+        Ok(url) if url.host_str().is_some_and(|h| h != "tftp.invalid") => {
+            format!("{base}/cisco/directory/{phone}/{token}")
+        }
+        _ => String::new(),
+    }
 }
 
 /// Comfort setting values from the database (non-strings are ignored).
@@ -617,6 +668,15 @@ async fn serve_inner(
     let limiter_key = format!("prov:{}", ip.as_deref().unwrap_or("unknown"));
     if state.limiter.blocked(&limiter_key) {
         return ApiError::TooManyRequests.into_response();
+    }
+    // Cisco Enterprise phones send no credentials; a per-phone token admits them.
+    if let Some(rest) = path.strip_prefix("cisco/directory/") {
+        return cisco_directory(&state, rest, &query, headers, &limiter_key)
+            .await
+            .unwrap_or_else(|err| match err {
+                ApiError::NotFound => not_found(),
+                other => other.into_response(),
+            });
     }
 
     let (prov, admin_password) = match provisioning(&state, headers).await {
@@ -846,6 +906,67 @@ async fn phone_cfg(
     phones::record_seen(&state.db, phone.id, ip, firmware.as_deref()).await?;
     let body = render_phone_config(state, tenant, &phone, headers).await?;
     Ok(text("text/plain; charset=utf-8", body))
+}
+
+/// `cisco/directory/<phone id>/<token>`: the phone book of one Cisco
+/// Enterprise phone as `CiscoIPPhoneDirectory` (`?page=`, `?search=`).
+async fn cisco_directory(
+    state: &AppState,
+    rest: &str,
+    query: &HashMap<String, String>,
+    headers: &HeaderMap,
+    limiter_key: &str,
+) -> ApiResult<Response> {
+    let (id, token) = rest.split_once('/').ok_or(ApiError::NotFound)?;
+    let id = id.parse::<Uuid>().map_err(|_| ApiError::NotFound)?;
+    let tenant = TenantId::DEFAULT;
+    let secrets = phones::provisioning_secrets(&state.db, tenant, &state.secrets, false).await?;
+    let expected = cisco_directory_token(&secrets.password, id);
+    if !constant_time_eq(token.as_bytes(), expected.as_bytes()) {
+        if !state.limiter.allow(limiter_key) {
+            return Err(ApiError::TooManyRequests);
+        }
+        return Err(ApiError::NotFound);
+    }
+    let phone = phones::get(&state.db, tenant, id).await?;
+    if !talkops_provisioning::vendors::cisco_enterprise(&phone.model) {
+        return Err(ApiError::NotFound);
+    }
+    let endpoint = phone
+        .provisioning
+        .get("endpoint")
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.is_empty())
+        .map(str::to_owned);
+    let base = match endpoint {
+        Some(endpoint) => endpoint,
+        None => configured_base(state, tenant, headers).await?,
+    };
+    let url = cisco_directory_url(&base, phone.id, token);
+    if url.is_empty() {
+        return Err(ApiError::NotFound);
+    }
+    let search = query.get("search").map(|s| s.trim());
+    if search == Some("") {
+        return Ok(text(
+            "text/xml; charset=utf-8",
+            phonebook::cisco_search(&url),
+        ));
+    }
+    let entries = phonebook::search(phone_entries(state, tenant, &phone).await?, search);
+    let encoded = search
+        .map(|s| {
+            percent_encoding::utf8_percent_encode(s, percent_encoding::NON_ALPHANUMERIC).to_string()
+        })
+        .unwrap_or_default();
+    let page = query
+        .get("page")
+        .and_then(|p| p.parse::<usize>().ok())
+        .unwrap_or(1);
+    Ok(text(
+        "text/xml; charset=utf-8",
+        phonebook::cisco_directory("TalkOps", &entries, &url, &encoded, page),
+    ))
 }
 
 async fn internal_phonebook(state: &AppState, search: Option<&String>) -> ApiResult<Response> {

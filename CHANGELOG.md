@@ -6,6 +6,36 @@ All notable changes to TalkOps. The format follows
 
 ## [Unreleased]
 
+## [1.8.17] – 2026-10-29
+
+### Added
+
+- Cisco Enterprise SIP phones: resync and restart from the UI with a SIP
+  NOTIFY `service-control` message (ADR 0051).
+- Cisco Enterprise SIP phones: the selected ringtones are converted to the
+  Cisco `.rwb` format and delivered with `Ringlist-wb.xml` over TFTP.
+- Cisco Enterprise SIP phones: a phone directory over HTTP (`directoryURL`)
+  with a token for each phone. It shows the phonebook scopes of the phone.
+- Cisco Enterprise SIP phones: last contact, IP address and firmware come from
+  the SIP registration.
+
+### Changed
+
+- The Cisco Enterprise `versionStamp` is a hash of the file content, so the
+  phone applies changed settings.
+- The phone page shows TFTP delivery and readable setting names for Cisco
+  Enterprise profiles.
+
+### Upgrade notes
+
+- No new migration and no breaking API change.
+- If you use the Cisco TFTP sidecar, change the size of the `cisco-tftp`
+  volume from `16m` to `64m` in your compose file. Then remove the volume
+  and deploy again, because Docker keeps the old volume options.
+- The new functions are not tested on hardware yet. Provisioning and
+  registration passed on a CP-7861 with 1.8.16.
+- Update server and worker together and reload the UI.
+
 ## [1.8.16] – 2026-10-29
 
 ### Changed

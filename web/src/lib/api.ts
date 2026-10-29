@@ -735,6 +735,8 @@ export interface PhoneDetail extends Phone {
 		url: string;
 		primary: boolean;
 	}[];
+	/** `tftp`: Cisco Enterprise SIP files come from the optional TFTP sidecar. */
+	delivery?: 'http' | 'tftp';
 	accounts: PhoneAccount[];
 }
 
@@ -758,6 +760,7 @@ export interface PhoneModel {
 		files?: string[];
 		resync: boolean;
 		reboot: boolean;
+		delivery?: 'http' | 'tftp';
 		identity_kind: 'mac' | 'token';
 	};
 	key_capabilities?: KeyCapabilities;

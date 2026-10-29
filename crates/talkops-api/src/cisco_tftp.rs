@@ -6,15 +6,29 @@ use crate::{
 };
 use axum::http::{HeaderMap, HeaderValue, header};
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, HashMap},
     path::{Path, PathBuf},
+    sync::Arc,
     time::Duration,
 };
-use talkops_core::{phones, tenant::TenantId};
+use talkops_core::{
+    phones::{self, MediaKind},
+    tenant::TenantId,
+};
 use talkops_provisioning::vendors;
+use uuid::Uuid;
 
 const MARKER: &str = "TalkOps Cisco TFTP export v1\n";
 const OWNED: &[&str] = &[".owner", "active", "next", "previous"];
+/// Wideband ringtone limits: 16 kHz, at most 10 s (160800 samples).
+const RWB_MIN_SAMPLES: usize = 240;
+const RWB_MAX_SAMPLES: usize = 160_800;
+/// Ringtone bytes exported per phone; the sidecar volume is a small tmpfs.
+const RING_EXPORT_LIMIT: usize = 8 * 1024 * 1024;
+
+/// Exported files per client IP. Ringtones share one buffer across phones
+/// and are written once, then hard-linked.
+type Exports = BTreeMap<String, BTreeMap<String, Arc<Vec<u8>>>>;
 
 #[derive(Debug, Default)]
 pub struct ExportResult {
@@ -97,14 +111,13 @@ async fn remove_owned(root: &Path, name: &str) -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn install(
-    root: &Path,
-    files: &BTreeMap<String, BTreeMap<String, String>>,
-) -> anyhow::Result<()> {
+async fn install(root: &Path, files: &Exports) -> anyhow::Result<()> {
     prepare(root).await?;
     remove_owned(root, "next").await?;
     tokio::fs::create_dir(root.join("next")).await?;
     permissions(&root.join("next"), 0o700).await?;
+    // Keyed by buffer address: the same ringtone buffer is linked, not copied.
+    let mut written: HashMap<usize, PathBuf> = HashMap::new();
     for (ip, artifacts) in files {
         anyhow::ensure!(vendors::cisco_tftp_ip(ip).is_some(), "invalid export IP");
         let directory = root.join("next").join(ip);
@@ -116,8 +129,16 @@ async fn install(
                 "invalid export filename"
             );
             let path = directory.join(name);
-            tokio::fs::write(&path, body).await?;
-            permissions(&path, 0o600).await?;
+            let key = Arc::as_ptr(body) as usize;
+            let linked = match written.get(&key) {
+                Some(first) => tokio::fs::hard_link(first, &path).await.is_ok(),
+                None => false,
+            };
+            if !linked {
+                tokio::fs::write(&path, body.as_slice()).await?;
+                permissions(&path, 0o600).await?;
+                written.insert(key, path);
+            }
         }
     }
     let expiry = std::time::SystemTime::now()
@@ -161,9 +182,93 @@ pub async fn refresh(state: &AppState, root: &Path) -> anyhow::Result<ExportResu
     }
 }
 
-async fn collect(
+/// Converts a TalkOps ringtone (WAV, 8 kHz, mono, 16 bit) to a Cisco wideband
+/// `.rwb` file: raw signed 16-bit little-endian PCM, mono, 16 kHz, no header.
+/// Linear interpolation doubles the rate. Longer tones are cut to 10 s.
+pub fn wav_to_rwb(wav: &[u8]) -> anyhow::Result<Vec<u8>> {
+    let mut reader = hound::WavReader::new(std::io::Cursor::new(wav))?;
+    let spec = reader.spec();
+    anyhow::ensure!(
+        spec.sample_rate == 8000
+            && spec.channels == 1
+            && spec.bits_per_sample == 16
+            && spec.sample_format == hound::SampleFormat::Int,
+        "ringtone must be 8 kHz mono 16-bit PCM"
+    );
+    let input = reader
+        .samples::<i16>()
+        .take(RWB_MAX_SAMPLES / 2 + 1)
+        .collect::<Result<Vec<_>, _>>()?;
+    let mut output = Vec::with_capacity(input.len() * 2);
+    for (i, sample) in input.iter().enumerate() {
+        output.push(*sample);
+        let next = input.get(i + 1).copied().unwrap_or(*sample);
+        output.push(((i32::from(*sample) + i32::from(next)) / 2) as i16);
+    }
+    output.truncate(RWB_MAX_SAMPLES);
+    anyhow::ensure!(output.len() >= RWB_MIN_SAMPLES, "ringtone is too short");
+    Ok(output.iter().flat_map(|s| s.to_le_bytes()).collect())
+}
+
+/// Ring list and ringtone files for a phone. The phone's selected ringtone is
+/// first, because the device configuration cannot select a custom tone; the
+/// user selects it on the phone. Without a selected ringtone nothing is added.
+async fn ringtones(
     state: &AppState,
-) -> anyhow::Result<(BTreeMap<String, BTreeMap<String, String>>, ExportResult)> {
+    phone: &phones::Phone,
+    media: &[phones::PhoneMedia],
+    cache: &mut HashMap<Uuid, Option<Arc<Vec<u8>>>>,
+) -> BTreeMap<String, Arc<Vec<u8>>> {
+    let mut files = BTreeMap::new();
+    let Some(selected) = phone.ringtone_id else {
+        return files;
+    };
+    let ordered = media
+        .iter()
+        .filter(|m| m.id == selected)
+        .chain(media.iter().filter(|m| m.id != selected));
+    let mut rings = Vec::new();
+    let mut bytes = 0;
+    for m in ordered {
+        if rings.len() >= vendors::CISCO_RING_LIMIT {
+            break;
+        }
+        let name = vendors::cisco_ring_filename(&m.id.simple().to_string());
+        if files.contains_key(&name) {
+            continue;
+        }
+        let rwb = match cache.get(&m.id) {
+            Some(rwb) => rwb.clone(),
+            None => {
+                let path = provisioning::media_path(state, m.id, &m.filename);
+                let rwb = match tokio::fs::read(&path).await.map(|wav| wav_to_rwb(&wav)) {
+                    Ok(Ok(rwb)) => Some(Arc::new(rwb)),
+                    _ => None,
+                };
+                cache.insert(m.id, rwb.clone());
+                rwb
+            }
+        };
+        let Some(rwb) = rwb else {
+            continue;
+        };
+        if bytes + rwb.len() > RING_EXPORT_LIMIT {
+            break;
+        }
+        bytes += rwb.len();
+        rings.push((m.name.clone(), name.clone()));
+        files.insert(name, rwb);
+    }
+    if !rings.is_empty() {
+        files.insert(
+            "Ringlist-wb.xml".into(),
+            Arc::new(vendors::cisco_ringlist(&rings).into_bytes()),
+        );
+    }
+    files
+}
+
+async fn collect(state: &AppState) -> anyhow::Result<(Exports, ExportResult)> {
     let tenant = TenantId::DEFAULT;
     let phones = phones::list(&state.db, tenant).await?;
     let options = provisioning_admin::options(state, tenant)
@@ -191,6 +296,12 @@ async fn collect(
         candidates.entry(ip.to_string()).or_default().push(phone);
     }
     anyhow::ensure!(candidates.len() <= 100, "too many Cisco TFTP devices");
+    let media: Vec<_> = phones::list_media(&state.db, tenant)
+        .await?
+        .into_iter()
+        .filter(|m| m.kind == MediaKind::Ringtone)
+        .collect();
+    let mut cache = HashMap::new();
     let mut headers = HeaderMap::new();
     headers.insert(header::HOST, HeaderValue::from_static("tftp.invalid"));
     let mut output = BTreeMap::new();
@@ -235,7 +346,7 @@ async fn collect(
             .await
             {
                 Ok(body) => {
-                    artifacts.insert(name, body);
+                    artifacts.insert(name, Arc::new(body.into_bytes()));
                 }
                 // Do not log render errors or template context: these can contain credentials.
                 Err(_) => {
@@ -248,6 +359,7 @@ async fn collect(
             stats.omitted += 1;
             continue;
         }
+        artifacts.extend(ringtones(state, phone, &media, &mut cache).await);
         stats.phones += 1;
         stats.files += artifacts.len();
         output.insert(ip, artifacts);
@@ -284,4 +396,73 @@ pub async fn spawn(state: AppState, root: PathBuf) -> anyhow::Result<()> {
         }
     });
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn wav(samples: &[i16]) -> Vec<u8> {
+        let spec = hound::WavSpec {
+            channels: 1,
+            sample_rate: 8000,
+            bits_per_sample: 16,
+            sample_format: hound::SampleFormat::Int,
+        };
+        let mut out = std::io::Cursor::new(Vec::new());
+        let mut writer = hound::WavWriter::new(&mut out, spec).unwrap();
+        for s in samples {
+            writer.write_sample(*s).unwrap();
+        }
+        writer.finalize().unwrap();
+        out.into_inner()
+    }
+
+    #[test]
+    fn converts_wav_to_wideband_raw() {
+        let samples: Vec<i16> = (0..200).map(|i| (i * 10) as i16).collect();
+        let rwb = wav_to_rwb(&wav(&samples)).unwrap();
+        assert_eq!(rwb.len(), 400 * 2, "rate doubles, no header");
+        let pcm: Vec<i16> = rwb
+            .chunks(2)
+            .map(|b| i16::from_le_bytes([b[0], b[1]]))
+            .collect();
+        assert_eq!(&pcm[..4], &[0, 5, 10, 15]);
+        // 20 s at 8 kHz is cut to 10 s at 16 kHz.
+        let long = vec![1000i16; 160_000];
+        assert_eq!(wav_to_rwb(&wav(&long)).unwrap().len(), RWB_MAX_SAMPLES * 2);
+        assert!(
+            wav_to_rwb(&wav(&[1; 100])).is_err(),
+            "shorter than 240 samples"
+        );
+        assert!(wav_to_rwb(b"not a wav").is_err());
+    }
+
+    #[tokio::test]
+    async fn install_links_shared_files_per_address() {
+        let dir = std::env::temp_dir().join(format!("talkops-tftp-test-{}", Uuid::new_v4()));
+        let ring = Arc::new(vec![1u8, 2, 3, 4]);
+        let mut files = Exports::new();
+        for ip in ["10.0.0.5", "10.0.0.6"] {
+            let mut artifacts = BTreeMap::new();
+            artifacts.insert("dialplan.xml".into(), Arc::new(ip.as_bytes().to_vec()));
+            artifacts.insert("talkops-0123abcd.rwb".into(), ring.clone());
+            files.insert(ip.into(), artifacts);
+        }
+        install(&dir, &files).await.unwrap();
+        for ip in ["10.0.0.5", "10.0.0.6"] {
+            let base = dir.join("active").join(ip);
+            assert_eq!(
+                tokio::fs::read(base.join("talkops-0123abcd.rwb"))
+                    .await
+                    .unwrap(),
+                [1, 2, 3, 4]
+            );
+            assert_eq!(
+                tokio::fs::read(base.join("dialplan.xml")).await.unwrap(),
+                ip.as_bytes()
+            );
+        }
+        tokio::fs::remove_dir_all(&dir).await.unwrap();
+    }
 }

@@ -139,7 +139,7 @@ hardware test; this reference is not evidence for all 7800 call features.
 
 The [Debian tftpd-hpa manual](https://manpages.debian.org/trixie/tftpd-hpa/in.tftpd.8.en.html)
 defines source-IP expansion, GET/PUT map constraints and transfer-port ranges.
-The optional sidecar uses those controls with two exact file patterns. It has
+The optional sidecar uses those controls with exact file patterns (since ADR 0051 also the ring list and `.rwb` files). It has
 no database access and mounts the private tmpfs export root read-only. It starts
 as root with only `SETUID`, `SETGID` and `DAC_READ_SEARCH`, because tftpd-hpa
 calls `setgroups()` before it serves each request as UID 10001. Plaintext TFTP requires a trusted LAN; source-IP mapping cannot stop
@@ -161,6 +161,29 @@ requested `dialplan.xml` and registered over SIP TCP. The template now emits
 these elements. The test did not isolate which single element is required.
 The [usecallmanager.nz SEP file reference](https://usecallmanager.nz/sepmac-cnf-xml.html)
 lists the same elements. Calls and media are not tested yet.
+
+### Service control, ringtones and directory
+
+[ADR 0051](../adr/0051-cisco-enterprise-service-control-ringtones-directory.md)
+records the follow-up decisions. FreeSWITCH 1.10.12 `sofia_reg_send_reboot`
+(`mod_sofia/sofia_reg.c`) sends `Event: service-control` with content type
+`text/plain` and the body `action=restart`, `RegisterCallId={<REGISTER Call-ID>}`
+and zero `ConfigVersionStamp`, `DialplanVersionStamp` and `SoftkeyVersionStamp`
+to user agents that contain "cisco". `sofia profile <name> check_sync <call-id>`
+starts this path for one registration. The same body with `action=reset` is
+the full restart. The [usecallmanager.nz SIPPEER reference](https://usecallmanager.nz/sip-peer-options.html)
+states that restart and reset use the REGISTER Call-ID. No source available to
+this work describes `apply-config` for 14.2(1); TalkOps does not use it.
+
+The [usecallmanager.nz ring tone page](https://usecallmanager.nz/ring-tones.html)
+defines `Ringlist-wb.xml` for the 7800 and 8800 series: at most 50 `Ring`
+entries, display and file names of at most 25 characters, `.rwb` files of raw
+signed 16-bit mono PCM at 16 kHz with 240 to 160800 samples. The device file
+can select only built-in tones (`adminConfigurableRinger`), not a downloaded
+tone. The [phone services page](https://usecallmanager.nz/phone-services.html)
+defines `directoryURL` as the URL for the directories key. The 7800 series
+needs no `CiscoIPPhoneMenu` before the directory list. All three features are
+not tested on the CP-7861 yet.
 
 ### Shared DHCP scope
 

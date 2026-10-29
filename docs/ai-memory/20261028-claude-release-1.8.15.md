@@ -5,10 +5,10 @@
 - Task ID: 20261028-claude-release-1.8.15
 - Date: 2026-10-28
 - Tool: Claude Code (release manager; Codex reached its usage limit)
-- Status: In progress
+- Status: Completed
 - Branch: codex/release-1.8.15
 - Base commit: 977528ab223c449af4f863619d69dcaa49eaca43 (main, v1.8.14)
-- Related commits or PR: https://github.com/itsh-neumeier/talkops/pull/89, integration PR pending
+- Related commits or PR: https://github.com/itsh-neumeier/talkops/pull/89, https://github.com/itsh-neumeier/talkops/pull/92
 
 ## Goal
 
@@ -20,8 +20,12 @@ publish it as stable TalkOps 1.8.15. The user requested this scope.
 PR89 failed CI in the new TFTP protocol test. Root cause and fix are recorded
 in `docs/ai-memory/20261028-claude-cisco-tftp-privileges.md`. The fix is on
 the PR89 branch. The PR89 branch is merged into the release branch with its
-history preserved. Release metadata is updated. No main merge, tag or
-publication yet.
+history preserved. Release metadata is updated.
+
+Published: PR92 merged into main 145f3bc2699f2dbb84f2a9ea1b21dcafd6365597
+(tree equal to candidate 2a8e356; PR89 head 1125e59 is an ancestor). Annotated
+tag v1.8.15 points to that commit. GitHub release "TalkOps 1.8.15" is the
+latest release with curated notes.
 
 ## Decisions and scope
 
@@ -43,6 +47,12 @@ publication yet.
   ADR numbers 0048 and 0049 are free on main.
 - Passed: version strings changed only at the places of the 1.8.14 release
   commit. Cargo.lock changes only the eight talkops workspace packages.
+- Passed: PR89 CI 40759332702 including the fixed TFTP test. Candidate PR92:
+  22 required checks passed, two branch-only Coral trial checks skipped.
+- Passed: exact-main CI 40763029264 and E2E 40763029263.
+- Passed: release workflow 40766975551. All four images have amd64 and arm64
+  manifests; `1.8` and `latest` match the versioned digests. The amd64 server
+  image reports `talkops 1.8.15` and contains in.tftpd, the guard and the map.
 - Not run locally: cargo and npm are not installed on this host. CI on the
   integration PR is the validation contract.
 - STE review: repository writing rules applied; full standard unavailable.
@@ -51,10 +61,12 @@ publication yet.
 
 - All Cisco profiles remain hardware-untested.
 
+- From the next release on, images are amd64 only unless the owner requests
+  arm64 (ADR 0050).
+
 ## Next action
 
-Open the integration PR, wait for CI and E2E, merge, validate exact main, push
-v1.8.15 once and verify the release, images and moving tags.
+None for this release.
 
 ## References
 

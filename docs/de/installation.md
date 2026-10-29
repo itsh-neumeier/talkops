@@ -13,7 +13,9 @@ bietet ebenfalls einen Wiederherstellungsassistenten.
 
 ## Voraussetzungen
 
-- Linux-Host (x86_64 oder arm64), z. B. Debian/Ubuntu, Proxmox-VM, NAS mit Docker
+- Linux-Host (x86_64/amd64), z. B. Debian/Ubuntu, Proxmox-VM, NAS mit Docker.
+  Releases veröffentlichen amd64-Images. arm64-Images gibt es nur für Releases,
+  deren Notes arm64 nennen; `latest` und `1.8` können dann nur amd64 enthalten.
 - Docker Engine ≥ 24 mit Compose-Plugin
 - Freie Ports auf dem Host (TalkOps nutzt Host-Networking):
 

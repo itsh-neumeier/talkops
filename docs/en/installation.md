@@ -8,7 +8,9 @@ You need: Host administration access and a new instance or a recovery plan.
 
 ## Requirements
 
-- Linux host (x86_64 or arm64), e.g. Debian/Ubuntu, Proxmox VM, NAS with Docker
+- Linux host (x86_64/amd64), e.g. Debian/Ubuntu, Proxmox VM, NAS with Docker.
+  Releases publish amd64 images. arm64 images exist only for releases whose
+  notes list arm64; `latest` and `1.8` then can point to amd64-only images.
 - Docker Engine ≥ 24 with the Compose plugin
 - Free ports on the host (TalkOps uses host networking):
 

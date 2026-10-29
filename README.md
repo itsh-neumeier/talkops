@@ -33,7 +33,7 @@ devices, fax delivery and recovery. See the
 
 ## Requirements
 
-Use a Linux x86_64 or arm64 host with Docker Engine 24 or later and the Compose
+Use a Linux x86_64 (amd64) host with Docker Engine 24 or later and the Compose
 plugin. SIP and RTP use host networking. Docker Desktop is outside the supported
 deployment. Reserve the required [ports](docs/en/reference.md#network-defaults).
 Use HTTPS for browser microphone access. Transcription needs additional memory

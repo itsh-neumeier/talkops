@@ -1,12 +1,19 @@
-# Publishes multi-arch images to GHCR and a GitHub release for SemVer tags.
-# arm64 images are built natively on GitHub's arm64 runners (QEMU emulation
-# would take hours for the FreeSWITCH source build).
+# Publishes images to GHCR and a GitHub release for SemVer tags.
+# Releases build amd64 only (ADR 0050). Set the repository variable
+# RELEASE_ARM64=true before the tag push to add arm64; arm64 images are built
+# natively on GitHub's arm64 runners (QEMU emulation would take hours for the
+# FreeSWITCH source build).
 name: Release
 
 on:
   push:
     tags: ["v*.*.*"]
   workflow_dispatch:
+    inputs:
+      arm64:
+        description: Also build arm64 images
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -19,6 +26,8 @@ jobs:
   version:
     name: Tag matches the version in the code
     runs-on: ubuntu-24.04
+    outputs:
+      arches: ${{ steps.arches.outputs.list }}
     steps:
       - uses: actions/checkout@v4
       # The web UI shows the version from Cargo.toml; a tag without raising
@@ -34,11 +43,19 @@ jobs:
             echo "::error::Tag v$tag does not match Cargo.toml ($cargo) / web/package.json ($web). Raise the version first."
             exit 1
           fi
+      - name: Select image architectures
+        id: arches
+        env:
+          ARM64: ${{ vars.RELEASE_ARM64 == 'true' || inputs.arm64 == true }}
+        run: |
+          if [ "$ARM64" = "true" ]; then list='["amd64","arm64"]'; else list='["amd64"]'; fi
+          echo "Architectures: $list"
+          echo "list=$list" >> "$GITHUB_OUTPUT"
 
   build:
     needs: version
     name: ${{ matrix.image }} (${{ matrix.arch }})
-    runs-on: ${{ matrix.runner }}
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
     timeout-minutes: 150
     permissions:
       contents: read
@@ -47,12 +64,10 @@ jobs:
       fail-fast: false
       matrix:
         image: [talkops-server, talkops-media-worker, talkops-freeswitch, talkops-coral-stt]
-        arch: [amd64, arm64]
+        arch: ${{ fromJSON(needs.version.outputs.arches) }}
+        # Only image keys here: an include entry for an architecture that is
+        # not selected would add a job of its own.
         include:
-          - arch: amd64
-            runner: ubuntu-24.04
-          - arch: arm64
-            runner: ubuntu-24.04-arm
           - image: talkops-server
             context: .
             dockerfile: docker/talkops/Dockerfile
@@ -132,7 +147,7 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-') }}
             type=sha,enable=${{ !startsWith(github.ref, 'refs/tags/v') }}
-      - name: Create multi-arch manifest
+      - name: Create image manifest
         working-directory: /tmp/digests
         run: |
           docker buildx imagetools create \

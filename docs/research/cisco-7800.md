@@ -151,7 +151,16 @@ It replaces complete snapshots and revokes stale exports after errors. A
 90-second lease stops the wire service if the exporter crashes. Tests cover
 real TFTP transfers that drop to an unprivileged user, IP separation, malformed filenames, denied
 uploads, private file permissions, duplicate mapping, removal and failure revocation.
-No phone has yet downloaded these files or registered in a hardware test.
+A `CP-7861-K9` with `sip78xx.14-2-1-0001-14` downloaded the files through the
+sidecar on 2026-10-28. The first template version made the phone report "Error
+Verifying Config Info" after a complete download; the phone then repeated the
+CTL, ITL and SEP requests and sent no SIP. A hand-written file with
+`versionStamp`, `sipCallFeatures/remoteCcEnable`, `sipStack/remotePartyID`,
+`ethernetPhonePort`, `securedSipPort` and `commonProfile` was accepted: the phone
+requested `dialplan.xml` and registered over SIP TCP. The template now emits
+these elements. The test did not isolate which single element is required.
+The [usecallmanager.nz SEP file reference](https://usecallmanager.nz/sepmac-cnf-xml.html)
+lists the same elements. Calls and media are not tested yet.
 
 ### Shared DHCP scope
 

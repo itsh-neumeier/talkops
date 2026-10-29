@@ -5,7 +5,7 @@
 - Task ID: 20261029-claude-release-1.8.16
 - Date: 2026-10-29
 - Tool: Claude Code (release manager)
-- Status: In progress
+- Status: Completed
 - Branch: codex/release-1.8.16
 - Base commit: 145f3bc2699f2dbb84f2a9ea1b21dcafd6365597 (main, v1.8.15)
 - Related commits or PR: PR94, PR95, PR96, integration PR pending
@@ -18,7 +18,10 @@ release after PR96.
 ## Result
 
 The three branches are merged into the release branch with their history.
-Release metadata is updated. No main merge, tag or publication yet.
+Release metadata is updated. PR97 merged as 9e9adbf. Tag v1.8.16 is published.
+All four images (amd64 only) have the 1.8.16, 1.8 and latest tags on one
+digest. Server and worker report 1.8.16. The user confirmed that the CP-7861
+provisions and registers with 1.8.16.
 
 ## Decisions and scope
 

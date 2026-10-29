@@ -18,13 +18,13 @@ used directly as a Portainer stack.
 1. **Stacks → Add stack**, name `talkops`.
 2. Build method **Repository** (repository URL
    `https://github.com/itsh-neumeier/talkops`, compose path `docker-compose.yml`)
-   with release reference `refs/tags/v1.8.16`, or **Web editor** and paste the
+   with release reference `refs/tags/v1.8.17`, or **Web editor** and paste the
    contents of `docker-compose.yml` from that release.
 3. Under **Environment variables** → **Advanced mode** paste the contents of
    `.env.example` and fill in the required values (`POSTGRES_PASSWORD`,
    `TALKOPS_SECRET_KEY`, `TALKOPS_ESL_PASSWORD`, `TALKOPS_XMLCURL_PASSWORD`).
    Generate random values e.g. with `openssl rand -hex 32`.
-   Set `TALKOPS_VERSION=1.8.16` to match the configuration release. Keep existing
+   Set `TALKOPS_VERSION=1.8.17` to match the configuration release. Keep existing
    secrets when updating a stack. Use [updates](updates.md) for a later version.
 4. **Deploy the stack**. After about a minute all containers should be healthy.
 

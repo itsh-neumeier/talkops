@@ -13,7 +13,7 @@ nächste freie Nummer; überholte ADRs werden nicht gelöscht, sondern auf
 | [0004](0004-frontend-sveltekit.md) | Frontend: SvelteKit-SPA, ausgeliefert vom Rust-Server | Angenommen |
 | [0005](0005-job-queue-postgres.md) | Job-Queue in PostgreSQL statt eigenem Broker | Angenommen |
 | [0006](0006-steuerung-xml-curl-und-esl.md) | FreeSWITCH-Steuerung über mod_xml_curl und Event Socket | Angenommen |
-| [0007](0007-deployment-und-netzwerk.md) | Deployment: Docker Compose mit Host-Networking | Angenommen |
+| [0007](0007-deployment-und-netzwerk.md) | Deployment: Docker Compose mit Host-Networking | Angenommen (Release-Architekturen ersetzt durch 0050) |
 | [0008](0008-secrets-at-rest.md) | Verschlüsselung von SIP- und Trunk-Zugangsdaten | Angenommen |
 | [0009](0009-basis-images-debian-trixie.md) | Basis-Images: Debian 13 „Trixie“ (FreeSWITCH mit PCRE2-Backport) | Angenommen |
 | [0010](0010-voicemail-und-sprachausgabe.md) | Voicemail in Rust, Sprachausgabe mit Piper, Mail aus dem TalkOps-Dienst | Angenommen |
@@ -52,12 +52,11 @@ nächste freie Nummer; überholte ADRs werden nicht gelöscht, sondern auf
 | [0045](0045-outbound-dialing-permissions.md) | Outbound dialing permissions | Accepted |
 | [0046](0046-coral-edge-tpu-speech-recognition.md) | Speech recognition on Coral Edge TPUs | Accepted (hardware gate pending) |
 | [0047](0047-call-map-device-markers-and-emergency-alerts.md) | Call map device markers and emergency dialing alerts | Accepted |
-| [0048](0048-coral-model-upload.md) | Coral model library and upload by the administrator | Proposed |
-| [0049](0049-cuda-gpu-speech-recognition.md) | Speech recognition on NVIDIA GPUs (`cuda-stt`) | Proposed |
-
 | [0048](0048-authored-provisioning-profiles.md) | Independently authored provisioning profiles | Accepted |
-
 | [0049](0049-cisco-enterprise-tftp-bootstrap.md) | Optional IP-scoped TFTP bootstrap for Cisco Enterprise SIP | Accepted |
+| [0050](0050-release-architectures.md) | Release image architectures: amd64 by default, arm64 on request | Accepted |
+| [0051](0051-coral-model-upload.md) | Coral model library and upload by the administrator | Proposed |
+| [0052](0052-cuda-gpu-speech-recognition.md) | Speech recognition on NVIDIA GPUs (`cuda-stt`) | Proposed |
 
 Vorlage: [`template.md`](template.md)
 

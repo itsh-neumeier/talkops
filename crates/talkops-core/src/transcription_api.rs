@@ -3,7 +3,7 @@
 //! Mistral or a self-hosted Speaches. A tenant can have several. The key is
 //! stored encrypted (ADR 0008) and never returned.
 //!
-//! The kinds `coral` (coral-stt, ADR 0046) and `cuda` (cuda-stt, ADR 0049)
+//! The kinds `coral` (coral-stt, ADR 0046) and `cuda` (cuda-stt, ADR 0052)
 //! are speech services on this server: the same interface, on a loopback
 //! address only, without costs, and with a local fallback when they are not
 //! available.

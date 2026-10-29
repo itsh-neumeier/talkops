@@ -1,5 +1,5 @@
-//! Model library of the speech services on this server: coral-stt (ADR 0048)
-//! and cuda-stt (ADR 0049). The administrator installs models that they may
+//! Model library of the speech services on this server: coral-stt (ADR 0051)
+//! and cuda-stt (ADR 0052). The administrator installs models that they may
 //! use and selects one per slot; TalkOps forwards the requests to the
 //! service, which checks and stores the models.
 

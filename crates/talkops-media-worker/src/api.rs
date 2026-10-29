@@ -13,7 +13,7 @@
 //! the model downloads; the key is passed on stdin, never on the command
 //! line.
 //!
-//! A Coral or CUDA connection (ADR 0046, 0049) gets its `*-auto` model and
+//! A Coral or CUDA connection (ADR 0046, 0052) gets its `*-auto` model and
 //! the tenant language as the preferred one; its answers name the detected
 //! language of each segment, which the lines keep.
 

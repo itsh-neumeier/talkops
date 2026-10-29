@@ -21,7 +21,7 @@ and [changelog](../../CHANGELOG.md), not an unmerged feature branch.
 
 ## Update Docker Compose
 
-The example selects the existing published release 1.8.15. For a later release,
+The example selects the existing published release 1.8.16. For a later release,
 replace the tag and image version together after reading its notes.
 Use your existing deployment directory. Preserve `.env` and every active override.
 
@@ -29,15 +29,15 @@ Use your existing deployment directory. Preserve `.env` and every active overrid
 
    ```sh
    mkdir -p update-review
-   curl -fL -o update-review/docker-compose.yml https://raw.githubusercontent.com/itsh-neumeier/talkops/v1.8.15/docker-compose.yml
-   curl -fL -o update-review/env.example https://raw.githubusercontent.com/itsh-neumeier/talkops/v1.8.15/.env.example
+   curl -fL -o update-review/docker-compose.yml https://raw.githubusercontent.com/itsh-neumeier/talkops/v1.8.16/docker-compose.yml
+   curl -fL -o update-review/env.example https://raw.githubusercontent.com/itsh-neumeier/talkops/v1.8.16/.env.example
    diff -u docker-compose.yml update-review/docker-compose.yml
    ```
 
 2. Incorporate required changes into your deployment files. Preserve custom
    mounts, network values, secrets and data volumes. Review backup/target overrides
    from the same release if used. Do not replace your `.env` with the example.
-3. Set `TALKOPS_VERSION=1.8.15` in `.env`. `latest` follows the moving stable
+3. Set `TALKOPS_VERSION=1.8.16` in `.env`. `latest` follows the moving stable
    image tag; a fixed version makes the intended update explicit.
 4. Validate, pull and start with **all** your existing Compose options:
 

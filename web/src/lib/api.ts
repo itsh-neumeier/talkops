@@ -937,7 +937,7 @@ export interface CoralTpu {
 	error: string | null;
 }
 
-/** Statements stored with a Coral library model (ADR 0048). */
+/** Statements stored with a Coral library model (ADR 0051). */
 export interface CoralModelInfo {
 	name: string;
 	slot: CoralSlot;
@@ -1019,7 +1019,7 @@ export interface CudaLoadedModel {
 
 export type CudaFamily = 'nemo_ctc' | 'nemo_transducer' | 'canary' | 'whisper';
 
-/** `model.json` of a cuda-stt library model (ADR 0049). */
+/** `model.json` of a cuda-stt library model (ADR 0052). */
 export interface CudaManifest {
 	name: string;
 	family: CudaFamily;

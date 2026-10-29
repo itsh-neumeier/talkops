@@ -20,7 +20,7 @@ TalkOps (API, media worker fallback, UI).
 
 ## Result
 
-- ADR 0049 (proposed, implemented; acceptance measurements pending).
+- ADR 0052 (proposed, implemented; acceptance measurements pending).
 - New crate `talkops-stt-service`: audio, turn split, diagnostics, the
   OpenAI-compatible routes, the realtime protocol and library helpers,
   generic over the traits `SpeechEngine` and `SpeechTurn`. `coral-stt`
@@ -44,6 +44,10 @@ TalkOps (API, media worker fallback, UI).
   "NVIDIA GPU (this server)".
 
 ## Decisions
+
+- ADR numbers: `main` took 0048-0050 (release 1.8.16). The Coral model
+  library ADR of PR #91 is now 0051 and the CUDA ADR is 0052 on this branch.
+  PR #91 needs the same renumbering if it merges on its own.
 
 - Runtime sherpa-onnx through the official `sherpa-onnx` crate (`shared`
   feature, `SHERPA_ONNX_LIB_DIR` = GPU archive in the image; CI downloads
@@ -99,7 +103,7 @@ Rust in `rust:1-trixie`, web in `node:22-trixie` (no local toolchains).
 
 - PR #91 (Coral model library) must merge first or together; this branch
   contains its commits.
-- Acceptance measurements (ADR 0049): WER/CER on 200 German telephone clips,
+- Acceptance measurements (ADR 0052): WER/CER on 200 German telephone clips,
   p50/p95 live latency at 1, 2, 4 sessions, VRAM per model, on the T600 and
   the production GPU.
 - Production GPU model and VRAM (ask the operator).
@@ -111,6 +115,6 @@ Review and merge the PR; then run the acceptance measurements on the T600.
 
 ## References
 
-- ADR 0046, ADR 0048, ADR 0049.
+- ADR 0046, ADR 0051, ADR 0052.
 - `20261028-claude-coral-model-upload.md`,
   `20261028-claude-coral-german-model-evaluation.md`.

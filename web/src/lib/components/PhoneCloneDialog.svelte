@@ -4,6 +4,7 @@
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import { can } from '#lib/session.svelte.ts';
 	import { errorMessage } from '#lib/util.ts';
+	import { modelLabel } from '#lib/vendors.ts';
 	import ErrorBox from './ErrorBox.svelte';
 	import Modal from './Modal.svelte';
 	let {
@@ -109,7 +110,7 @@
 		</select>
 		{#if preview}
 			<p class="hint">{t('phoneclone.hint')}</p>
-			<p>{model?.vendor} {model?.name ?? preview.configuration.model}</p>
+			<p>{model ? modelLabel(model) : preview.configuration.model}</p>
 			<details>
 				<summary>{t('phoneclone.copied')}</summary>
 				<pre class="max-h-48 overflow-auto text-xs">{JSON.stringify(

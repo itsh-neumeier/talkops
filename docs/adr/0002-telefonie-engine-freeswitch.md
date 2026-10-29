@@ -52,7 +52,7 @@ und kleine Firmen – Betriebssicherheit ist wichtiger als Eigenbau.
 ## Konsequenzen
 
 - Der FreeSWITCH-Image-Build dauert 10–40 Minuten; CI baut es nur bei
-  Änderungen unter `docker/freeswitch/`, Releases bauen arm64 nativ.
+  Änderungen unter `docker/freeswitch/`, Releases bauen arm64 nativ, wenn ein Release arm64 enthält (ADR 0050).
 - Updates von FreeSWITCH sind bewusste Schritte (Version-Bump + Integrationstest).
 - Lizenz: FreeSWITCH steht unter MPL 1.1; das Image wird unverändert aus den
   Upstream-Quellen gebaut.

@@ -1,5 +1,5 @@
 {
-  "note": "Suggested models for cuda-stt (ADR 0049). TalkOps does not host the files; the service downloads them from the URL and checks the SHA-256. Licenses are from the upstream model cards (checked 2026-10-28); the administrator confirms the license before the install. No WER or latency values are given: measure them on the target GPU.",
+  "note": "Suggested models for cuda-stt (ADR 0052). TalkOps does not host the files; the service downloads them from the URL and checks the SHA-256. Licenses are from the upstream model cards (checked 2026-10-28); the administrator confirms the license before the install. No WER or latency values are given: measure them on the target GPU.",
   "models": [
     {
       "id": "de-fastconformer-transducer",

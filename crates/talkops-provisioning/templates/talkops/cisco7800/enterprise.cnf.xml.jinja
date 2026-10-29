@@ -1,4 +1,7 @@
-{# Independently authored experimental Enterprise profile; no firmware or trust files. #}
+{# Independently authored experimental Enterprise profile; no firmware or trust files.
+   Structure verified on a CP-7861 with sip78xx.14-2-1-0001-14: without versionStamp,
+   remoteCcEnable, remotePartyID, the full port set and commonProfile the firmware
+   reports "Error Verifying Config Info" and never registers. #}
 <?xml version="1.0" encoding="UTF-8"?>
 <device>
   <fullConfig>true</fullConfig>
@@ -7,21 +10,23 @@
     <dateTimeSetting>
       <dateTemplate>D.M.Y</dateTemplate>
       <timeZone>{{ cisco_enterprise_timezone }}</timeZone>
-      <ntps><ntp><name>{{ ntp_server_primary }}</name><ntpMode>Unicast</ntpMode></ntp></ntps>
+      <ntps><ntp><name>{{ ntp_server_primary }}</name><ntpMode>unicast</ntpMode></ntp></ntps>
     </dateTimeSetting>
     <callManagerGroup><members><member priority="0"><callManager>
-      <ports><sipPort>{{ account['1'].sip_port }}</sipPort></ports>
+      <ports>
+        <ethernetPhonePort>2000</ethernetPhonePort>
+        <sipPort>{{ account['1'].sip_port }}</sipPort>
+        <securedSipPort>5061</securedSipPort>
+      </ports>
       <processNodeName>{{ server_address }}</processNodeName>
     </callManager></member></members></callManagerGroup>
   </devicePool>
   <sipProfile>
     <sipProxies><registerWithProxy>true</registerWithProxy></sipProxies>
-    <enableVad>false</enableVad>
+    <sipCallFeatures><remoteCcEnable>true</remoteCcEnable></sipCallFeatures>
+    <sipStack><remotePartyID>true</remotePartyID></sipStack>
     <preferredCodec>g711alaw</preferredCodec>
     <dtmfAvtPayload>101</dtmfAvtPayload>
-    <dtmfOutofBand>avt</dtmfOutofBand>
-    <kpml>0</kpml>
-    <natEnabled>false</natEnabled>
     <phoneLabel>{{ device_label }}</phoneLabel>
     <sipLines>
 {% for row in lines %}{% if row.enabled %}
@@ -33,15 +38,15 @@
         <authName>{{ row.auth_id }}</authName><authPassword>{{ row.password }}</authPassword>
         <contact>{{ row.user_id }}</contact><sharedLine>false</sharedLine>
         <messagesNumber>{{ voicemail_number }}</messagesNumber>
-        <messageWaitingLampPolicy>3</messageWaitingLampPolicy>
-        <ringSettingIdle>4</ringSettingIdle><ringSettingActive>5</ringSettingActive>
-        <maxNumCalls>2</maxNumCalls><busyTrigger>2</busyTrigger>
       </line>
 {% endif %}{% endfor %}
     </sipLines>
     <dialTemplate>dialplan.xml</dialTemplate>
   </sipProfile>
+  <commonProfile><phonePassword></phonePassword></commonProfile>
+  {# Cisco inverts these flags: 0 enables the read-only status web pages, 1 disables SSH. #}
+  <vendorConfig><webAccess>0</webAccess><sshAccess>1</sshAccess></vendorConfig>
+  <versionStamp>talkops-cisco7800-enterprise-v2</versionStamp>
   <deviceSecurityMode>1</deviceSecurityMode>
   <transportLayerProtocol>1</transportLayerProtocol>
-  <vendorConfig><webAccess>1</webAccess><sshAccess>1</sshAccess></vendorConfig>
 </device>

@@ -1,5 +1,5 @@
 //! `cuda-stt`: German and English speech recognition on an NVIDIA GPU
-//! (ADR 0049), with the same subset of the OpenAI transcription interface
+//! (ADR 0052), with the same subset of the OpenAI transcription interface
 //! as `coral-stt` (ADR 0046), so the TalkOps media worker uses both the same
 //! way. sherpa-onnx runs NeMo (CTC, transducer/TDT, Canary) and Whisper
 //! models with the ONNX Runtime CUDA execution provider.

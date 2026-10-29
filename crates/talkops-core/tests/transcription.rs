@@ -476,7 +476,7 @@ async fn coral_connections_and_fallback(pool: PgPool) {
     ));
 }
 
-/// CUDA connections (ADR 0049) work as Coral connections: loopback only,
+/// CUDA connections (ADR 0052) work as Coral connections: loopback only,
 /// own default URL, no list price, local fallback, complete-word preview.
 #[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
 async fn cuda_connections_and_fallback(pool: PgPool) {

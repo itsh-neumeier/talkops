@@ -13,7 +13,8 @@
 	import InfoList from './InfoList.svelte';
 	import Modal from './Modal.svelte';
 	import PanelAction from './PanelAction.svelte';
-	import PhoneGraphic from './PhoneGraphic.svelte';
+	import VendorBadge from './VendorBadge.svelte';
+	import { modelLabel } from '#lib/vendors.ts';
 	import PhoneNetworkCard from './PhoneNetworkCard.svelte';
 	import SidePanel, { type PanelTab } from './SidePanel.svelte';
 	import { ICONS } from './panelIcons.ts';
@@ -143,15 +144,15 @@
 		</p>{/if}
 	{#if phone}
 		{#if tab === 'overview'}
-			{#if model?.layout}
+			{#if model}
 				<div class="flex justify-center rounded-xl bg-slate-50 py-4 dark:bg-slate-800/50">
-					<PhoneGraphic {model} />
+					<VendorBadge vendor={model.vendor} />
 				</div>
 			{/if}
 			<InfoList
 				rows={[
 					[t('phones.extensions'), assigned || t('phones.noneAssigned')],
-					[t('phones.model'), model?.name ?? phone.model],
+					[t('phones.model'), model ? modelLabel(model) : phone.model],
 					[t('phones.mac'), phone.mac],
 					[
 						t('phones.lastSeen'),
@@ -168,7 +169,7 @@
 				<InfoList
 					rows={[
 						[t('common.name'), phone.name],
-						[t('phones.model'), model?.name ?? phone.model],
+						[t('phones.model'), model ? modelLabel(model) : phone.model],
 						[t('phones.mac'), phone.mac]
 					]}
 				/>

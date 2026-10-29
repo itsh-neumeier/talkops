@@ -3776,7 +3776,7 @@ dependencies = [
 
 [[package]]
 name = "talkops-api"
-version = "1.8.15"
+version = "1.8.16"
 dependencies = [
  "age",
  "anyhow",
@@ -3827,7 +3827,7 @@ dependencies = [
 
 [[package]]
 name = "talkops-coral-stt"
-version = "1.8.15"
+version = "1.8.16"
 dependencies = [
  "anyhow",
  "axum",
@@ -3851,7 +3851,7 @@ dependencies = [
 
 [[package]]
 name = "talkops-core"
-version = "1.8.15"
+version = "1.8.16"
 dependencies = [
  "argon2",
  "base64 0.23.1",
@@ -3879,7 +3879,7 @@ dependencies = [
 
 [[package]]
 name = "talkops-cuda-stt"
-version = "1.8.15"
+version = "1.8.16"
 dependencies = [
  "anyhow",
  "axum",
@@ -3908,7 +3908,7 @@ dependencies = [
 
 [[package]]
 name = "talkops-doorbell"
-version = "1.8.15"
+version = "1.8.16"
 dependencies = [
  "axum",
  "bytes",
@@ -3925,7 +3925,7 @@ dependencies = [
 
 [[package]]
 name = "talkops-esl"
-version = "1.8.15"
+version = "1.8.16"
 dependencies = [
  "percent-encoding",
  "thiserror 2.0.21",
@@ -3935,7 +3935,7 @@ dependencies = [
 
 [[package]]
 name = "talkops-media-worker"
-version = "1.8.15"
+version = "1.8.16"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -3958,7 +3958,7 @@ dependencies = [
 
 [[package]]
 name = "talkops-provisioning"
-version = "1.8.15"
+version = "1.8.16"
 dependencies = [
  "chrono",
  "chrono-tz",
@@ -3974,7 +3974,7 @@ dependencies = [
 
 [[package]]
 name = "talkops-stt-service"
-version = "1.8.15"
+version = "1.8.16"
 dependencies = [
  "axum",
  "base64 0.22.1",
@@ -3990,7 +3990,7 @@ dependencies = [
 
 [[package]]
 name = "talkops-unifi"
-version = "1.8.15"
+version = "1.8.16"
 dependencies = [
  "axum",
  "hex",

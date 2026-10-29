@@ -22,7 +22,9 @@ Mapping großer Portbereiche über `docker-proxy` ist langsam bzw. fehleranfäll
 ## Entscheidung
 
 - **Docker Compose**, Images auf GHCR (`ghcr.io/itsh-neumeier/talkops-server`,
-  `-freeswitch`, `-media-worker`), Multi-Arch amd64 + arm64.
+  `-freeswitch`, `-media-worker`), Multi-Arch amd64 + arm64. Die Release-
+  Architekturen ersetzt [ADR 0050](0050-release-architectures.md): amd64,
+  arm64 nur auf ausdrücklichen Wunsch.
 - `freeswitch`, `talkops`, `media-worker` (und optional `caddy`) laufen mit
   **`network_mode: host`**. Dadurch bleiben ESL (`127.0.0.1:8021`) und das
   xml_curl-Ziel (`127.0.0.1:8080`) auf Loopback, ohne gemeinsames

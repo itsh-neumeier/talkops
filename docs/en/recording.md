@@ -431,7 +431,7 @@ available*. TalkOps tries Coral again after 30 seconds.
 ## NVIDIA GPU (this server)
 
 An NVIDIA GPU in the TalkOps server can run larger speech models than the
-Coral Edge TPU ([ADR 0049](../adr/0049-cuda-gpu-speech-recognition.md)). The
+Coral Edge TPU ([ADR 0052](../adr/0052-cuda-gpu-speech-recognition.md)). The
 service `cuda-stt` uses sherpa-onnx with the CUDA execution provider. It has
 the same interface as `coral-stt`: live preview (Realtime), file
 transcription, language per speech turn, the hybrid setup and the local

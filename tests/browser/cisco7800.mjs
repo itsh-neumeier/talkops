@@ -20,9 +20,14 @@ try {
         const hintPattern = enterprise ? (language === 'de' ? /Experimentelles Enterprise-SIP/ : /Experimental Enterprise SIP/) : (language === 'de' ? /Nur MPP-\/3PCC-Firmware/ : /MPP \/ 3PCC firmware only/);
         const context = await browser.newContext({ viewport: { width: 768, height: 1000 } });
         await context.addInitScript(lang => { localStorage.setItem('talkops.locale', lang); }, language);
+        let saved = null;
         await context.route('**/api/v1/**', async route => {
             const path = new URL(route.request().url()).pathname;
             let value = [];
+            if (route.request().method() === 'PUT' && path === '/api/v1/phones/cisco') {
+                saved = route.request().postDataJSON();
+                return route.fulfill({ json: { ...selectedPhone, provisioning: saved.provisioning } });
+            }
             if (path === '/api/v1/auth/me') value = { user: { id: 'admin', username: 'admin', display_name: 'Admin', role: 'admin', enabled: true }, csrf_token: 'fixture', permissions: [] };
             else if (path === '/api/v1/status') value = { version: 'test', database: { ok: true }, freeswitch: { ok: true } };
             else if (path === '/api/v1/phone-models') value = [selectedModel];
@@ -45,6 +50,10 @@ try {
             const ip = page.getByLabel(language === 'de' ? 'TFTP-Client-IPv4-Adresse (feste DHCP-Zuordnung)' : 'TFTP client IPv4 address (fixed DHCP lease)', { exact: true });
             await ip.fill('192.0.2.20');
             assert.equal(await ip.inputValue(), '192.0.2.20');
+            // The TFTP exporter only reads the stored value, so the save request must carry it.
+            await page.getByRole('button', { name: language === 'de' ? 'Speichern' : 'Save', exact: true }).click();
+            for (let i = 0; i < 50 && !saved; i++) await page.waitForTimeout(100);
+            assert.equal(saved?.provisioning?.vendor_settings?.cisco_enterprise_tftp_ip, '192.0.2.20');
         }
         await page.goto(base + '/phones');
         await page.getByRole('button', { name: language === 'de' ? 'Telefon hinzufügen' : 'Add phone', exact: true }).click();
@@ -52,5 +61,5 @@ try {
         await page.getByRole('dialog').getByText(hintPattern).waitFor({timeout:5000}).catch(async error => { console.error((await page.getByRole('dialog').innerText()).slice(-5000)); throw error; });
         await context.close();
     }
-    console.log('Cisco MPP and Enterprise firmware boundaries, untested status and TFTP fields passed in DE and EN.');
+    console.log('Cisco MPP and Enterprise firmware boundaries, untested status and saved TFTP fields passed in DE and EN.');
 } finally { await browser.close(); }

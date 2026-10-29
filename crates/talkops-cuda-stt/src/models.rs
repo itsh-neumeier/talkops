@@ -1,5 +1,5 @@
 //! Model manifests, the slot selection and the catalog that the service
-//! loads at startup (ADR 0049).
+//! loads at startup (ADR 0052).
 //!
 //! ```text
 //! <dir>/library/<id>/model.json   manifest with license and source

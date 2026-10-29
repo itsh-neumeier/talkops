@@ -35,28 +35,32 @@
       "name": "7811 Enterprise SIP (experimental)",
       "family": "desk",
       "accounts": 1,
-      "line_keys": 0
+      "line_keys": 0,
+      "ringtone_max_kb": 160
     },
     {
       "id": "cisco-7821-enterprise",
       "name": "7821 Enterprise SIP (experimental)",
       "family": "desk",
       "accounts": 1,
-      "line_keys": 0
+      "line_keys": 0,
+      "ringtone_max_kb": 160
     },
     {
       "id": "cisco-7841-enterprise",
       "name": "7841 Enterprise SIP (experimental)",
       "family": "desk",
       "accounts": 1,
-      "line_keys": 0
+      "line_keys": 0,
+      "ringtone_max_kb": 160
     },
     {
       "id": "cisco-7861-enterprise",
       "name": "7861 Enterprise SIP (experimental)",
       "family": "desk",
       "accounts": 1,
-      "line_keys": 0
+      "line_keys": 0,
+      "ringtone_max_kb": 160
     }
   ]
 }

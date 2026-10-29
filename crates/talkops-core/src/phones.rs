@@ -348,6 +348,33 @@ pub async fn record_seen(
     Ok(())
 }
 
+/// Records a SIP registration as contact for the phone that carries the
+/// device `sip_username`, if the phone model is one of `models`. Phones that
+/// fetch their files outside TalkOps (TFTP) are seen only this way. Returns
+/// the number of updated phones.
+pub async fn record_registration(
+    pool: &PgPool,
+    sip_username: &str,
+    models: &[&str],
+    ip: &str,
+    firmware: Option<&str>,
+) -> CoreResult<u64> {
+    let models: Vec<String> = models.iter().map(|m| (*m).to_owned()).collect();
+    Ok(sqlx::query(
+        "UPDATE phones p SET last_seen_at = now(), last_ip = $2,
+                             last_firmware = COALESCE($3, p.last_firmware)
+         FROM devices d
+         WHERE d.phone_id = p.id AND lower(d.sip_username) = lower($1) AND p.model = ANY($4)",
+    )
+    .bind(sip_username)
+    .bind(ip)
+    .bind(firmware)
+    .bind(&models)
+    .execute(pool)
+    .await?
+    .rows_affected())
+}
+
 /// Sets (`Some`) or removes (`None`) one comfort setting of a phone and
 /// returns the earlier value. The caller checks the value against the
 /// catalog.

@@ -115,6 +115,11 @@ impl EslClient {
     }
 
     async fn send_raw(&self, command: &str) -> Result<Frame, EslError> {
+        self.send_frame(&format!("{command}\n\n")).await
+    }
+
+    /// Writes one complete frame, including its terminating blank line.
+    async fn send_frame(&self, frame: &str) -> Result<Frame, EslError> {
         let (tx, rx) = oneshot::channel();
         {
             // Register and write under the same lock so replies stay in order.
@@ -123,9 +128,7 @@ impl EslClient {
                 .lock()
                 .expect("pending lock poisoned")
                 .push_back(tx);
-            writer
-                .write_all(format!("{command}\n\n").as_bytes())
-                .await?;
+            writer.write_all(frame.as_bytes()).await?;
         }
         tokio::time::timeout(self.timeout, rx)
             .await
@@ -137,14 +140,19 @@ impl EslClient {
     /// for message-waiting indication. Header names and values must not
     /// contain line breaks.
     pub async fn sendevent(&self, name: &str, headers: &[(&str, &str)]) -> Result<(), EslError> {
-        let mut command = format!("sendevent {name}");
-        for (key, value) in headers {
-            if [key, value].iter().any(|s| s.contains(['\n', '\r'])) || key.contains(':') {
-                return Err(EslError::Protocol("invalid event header".into()));
-            }
-            command.push_str(&format!("\n{key}: {value}"));
-        }
-        let reply = self.send_raw(&command).await?;
+        self.sendevent_with_body(name, headers, None).await
+    }
+
+    /// Like [`Self::sendevent`], with an event body (`Content-Length`
+    /// framing), e.g. the text payload of a SIP NOTIFY.
+    pub async fn sendevent_with_body(
+        &self,
+        name: &str,
+        headers: &[(&str, &str)],
+        body: Option<&str>,
+    ) -> Result<(), EslError> {
+        let frame = sendevent_frame(name, headers, body)?;
+        let reply = self.send_frame(&frame).await?;
         let text = reply.headers.get("Reply-Text").unwrap_or_default();
         if text.starts_with("+OK") {
             Ok(())
@@ -265,11 +273,51 @@ async fn read_loop<R>(
     tracing::info!("ESL connection closed");
 }
 
+/// Builds a `sendevent` frame. Header names and values must not contain line
+/// breaks; an optional body is framed with `content-length`.
+fn sendevent_frame(
+    name: &str,
+    headers: &[(&str, &str)],
+    body: Option<&str>,
+) -> Result<String, EslError> {
+    let mut frame = format!("sendevent {name}");
+    for (key, value) in headers {
+        if [key, value].iter().any(|s| s.contains(['\n', '\r']))
+            || key.contains(':')
+            || key.eq_ignore_ascii_case("content-length")
+        {
+            return Err(EslError::Protocol("invalid event header".into()));
+        }
+        frame.push_str(&format!("\n{key}: {value}"));
+    }
+    match body {
+        Some(body) => frame.push_str(&format!("\ncontent-length: {}\n\n{body}", body.len())),
+        None => frame.push_str("\n\n"),
+    }
+    Ok(frame)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use tokio::io::AsyncBufReadExt;
     use tokio::net::TcpListener;
+
+    #[test]
+    fn sendevent_frames_body_by_length() {
+        let frame =
+            sendevent_frame("NOTIFY", &[("profile", "internal")], Some("action=reset\n")).unwrap();
+        assert_eq!(
+            frame,
+            "sendevent NOTIFY\nprofile: internal\ncontent-length: 13\n\naction=reset\n"
+        );
+        assert_eq!(
+            sendevent_frame("MESSAGE_WAITING", &[("a", "b")], None).unwrap(),
+            "sendevent MESSAGE_WAITING\na: b\n\n"
+        );
+        assert!(sendevent_frame("NOTIFY", &[("content-length", "1")], Some("")).is_err());
+        assert!(sendevent_frame("NOTIFY", &[("a", "b\nc: d")], None).is_err());
+    }
 
     /// Fake FreeSWITCH that accepts `secret`, answers `api status` and emits one event.
     async fn fake_server() -> String {

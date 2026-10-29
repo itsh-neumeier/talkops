@@ -46,7 +46,9 @@
   <commonProfile><phonePassword></phonePassword></commonProfile>
   {# Cisco inverts these flags: 0 enables the read-only status web pages, 1 disables SSH. #}
   <vendorConfig><webAccess>0</webAccess><sshAccess>1</sshAccess></vendorConfig>
-  <versionStamp>talkops-cisco7800-enterprise-v2</versionStamp>
+{% if cisco_directory_url %}  <directoryURL>{{ cisco_directory_url|safe }}</directoryURL>
+{% endif %}  {# TalkOps replaces the stamp with a hash of the rendered file (ADR 0051). #}
+  <versionStamp>talkops-content-hash</versionStamp>
   <deviceSecurityMode>1</deviceSecurityMode>
   <transportLayerProtocol>1</transportLayerProtocol>
 </device>

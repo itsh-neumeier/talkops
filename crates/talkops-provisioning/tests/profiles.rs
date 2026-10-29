@@ -128,6 +128,7 @@ fn native_key_functions_use_vendor_codes_and_reject_a_foreign_function() {
         language: "de",
         ntp_server: "time.invalid",
         contacts: &[],
+        directory_url: "",
     };
     let files = library::builtin_for_model(model).unwrap();
     keys::validate(model, &setup.provisioning).unwrap();

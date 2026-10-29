@@ -51,3 +51,26 @@ export function visibleParameters(
 				`${field.parameter} ${field.description} ${field.artifact}`.toLowerCase().includes(query))
 	);
 }
+/**
+ * Readable label for an XML path parameter such as
+ * `device[0]/devicePool[0]/dateTimeSetting[0]/dateTemplate[0]`: the last two
+ * elements without indexes (`dateTimeSetting › dateTemplate`). Other
+ * parameter names stay unchanged.
+ */
+export function parameterLabel(parameter: string): string {
+	if (!parameter.includes('/')) return parameter;
+	const parts = parameter
+		.split('/')
+		.map((part) => part.replace(/\[0\]$/, '').replace(/\[(\d+)\]$/, ' $1'))
+		.filter(Boolean);
+	return parts.slice(-2).join(' › ');
+}
+/** Delivered file name for an artifact pattern (`SEP{$mac|upper}.cnf.xml`). */
+export function artifactFileName(artifact: string, mac?: string): string {
+	if (!mac) return artifact;
+	return artifact
+		.replaceAll('{$mac|upper}', mac.toUpperCase())
+		.replaceAll('{$mac|lower}', mac.toLowerCase())
+		.replaceAll('{$mac}', mac)
+		.replaceAll('{mac}', mac);
+}

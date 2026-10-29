@@ -2,8 +2,10 @@
 	import { api, type PhoneModel, type PhoneProvisioning, type PhoneParameter } from '#lib/api.ts';
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import {
+		artifactFileName,
 		parameterCategories,
 		parameterCategory,
+		parameterLabel,
 		visibleParameters
 	} from '#lib/phoneParameters.ts';
 	import { errorMessage } from '#lib/util.ts';
@@ -12,8 +14,15 @@
 	let {
 		model,
 		values = $bindable({}),
-		disabled = false
-	}: { model: PhoneModel; values: PhoneProvisioning; disabled?: boolean } = $props();
+		disabled = false,
+		mac = undefined
+	}: {
+		model: PhoneModel;
+		values: PhoneProvisioning;
+		disabled?: boolean;
+		/** Shows the delivered file names instead of the name patterns. */
+		mac?: string;
+	} = $props();
 	let search = $state(''),
 		configuredOnly = $state(false),
 		loading = $state(false),
@@ -137,9 +146,12 @@
 							{@const saved = values.parameters?.[field.key] === 'REDACTED'}
 							{@const configured = Object.hasOwn(values.parameters ?? {}, field.key)}
 							<div class="min-w-0 space-y-1">
-								<label class="block break-all text-sm" for="param-{field.key}"
-									>{field.parameter}</label
+								<label class="block break-words text-sm" for="param-{field.key}"
+									>{parameterLabel(field.parameter)}</label
 								>
+								{#if field.parameter.includes('/')}<code class="hint block break-all"
+										>{field.parameter}</code
+									>{/if}
 								{#if field.description}<p class="hint break-words">{field.description}</p>{/if}
 								{#if field.managed}<p class="hint">{t('vendor.managed')}</p>
 								{:else}
@@ -164,7 +176,7 @@
 										>{/if}
 									{#if !field.copyable}<p class="hint">{t('vendor.notCopied')}</p>{/if}
 								{/if}
-								<p class="hint break-all">{field.artifact}</p>
+								<p class="hint break-all">{artifactFileName(field.artifact, mac)}</p>
 							</div>
 						{/each}
 					</div>

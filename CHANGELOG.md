@@ -6,6 +6,36 @@ All notable changes to TalkOps. The format follows
 
 ## [Unreleased]
 
+## [1.8.16] – 2026-10-29
+
+### Changed
+
+- Show manufacturer names with their correct spelling (for example `Cisco`,
+  `Yealink`, `2N`, `ATCOM`, `VTech`). Model selects show "Manufacturer Model"
+  and are sorted by manufacturer, then by model.
+- Show a small text badge of one size with the manufacturer name in the phone
+  list, the add-phone dialog, the phone detail page and the side panel. The
+  key editor keeps the phone drawing.
+- Release images are built for amd64 only. arm64 images are built only on
+  request (`RELEASE_ARM64` repository variable or the `arm64` dispatch input,
+  ADR 0050).
+
+### Fixed
+
+- The Cisco Enterprise SIP template now emits the elements of a SEP file that
+  a CP-7861 with firmware 14.2(1) accepted: `versionStamp`, `remoteCcEnable`,
+  `remotePartyID`, the full port set and `commonProfile`. Without them the
+  phone reported "Error Verifying Config Info" and did not register.
+
+### Upgrade notes
+
+- No new migration, dependency upgrade or breaking API change.
+- This release has no arm64 images. On arm64 hosts, stay on 1.8.15.
+- Cisco Enterprise phones load the new SEP file at their next reboot.
+  Registration passed on one CP-7861 with an equivalent hand-written file.
+  Calls are not tested.
+- Update server and worker together and reload the UI.
+
 ## [1.8.15] – 2026-10-28
 
 ### Added

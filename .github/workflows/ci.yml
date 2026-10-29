@@ -63,7 +63,7 @@ jobs:
         with:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
-      - name: Install the sherpa-onnx CPU library (cuda-stt, ADR 0052)
+      - name: Install the sherpa-onnx CPU library (cuda-stt, ADR 0053)
         run: |
           # Same version as the sherpa-onnx crate; the build does not download it.
           name=sherpa-onnx-v1.13.8-linux-x64-shared-lib

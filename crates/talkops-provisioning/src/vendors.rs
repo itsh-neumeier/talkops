@@ -133,14 +133,67 @@ pub fn profiles() -> &'static [Profile] {
 pub fn profile(id: &str) -> Option<&'static Profile> {
     profiles().iter().find(|p| p.id == id)
 }
+/// Model IDs of the Cisco Enterprise SIP profiles (ADR 0049).
+pub const CISCO_ENTERPRISE_MODELS: &[&str] = &[
+    "cisco-7811-enterprise",
+    "cisco-7821-enterprise",
+    "cisco-7841-enterprise",
+    "cisco-7861-enterprise",
+];
 pub fn cisco_enterprise(id: &str) -> bool {
-    matches!(
-        id,
-        "cisco-7811-enterprise"
-            | "cisco-7821-enterprise"
-            | "cisco-7841-enterprise"
-            | "cisco-7861-enterprise"
-    )
+    CISCO_ENTERPRISE_MODELS.contains(&id)
+}
+/// Replaces the text of the first `<versionStamp>` element with a hash of the
+/// file with an empty stamp. The phone compares stamps to detect a changed
+/// configuration, so a fixed stamp can hide changes (ADR 0051).
+pub fn cisco_version_stamp(body: &str) -> String {
+    const OPEN: &str = "<versionStamp>";
+    const CLOSE: &str = "</versionStamp>";
+    let Some(start) = body.find(OPEN).map(|i| i + OPEN.len()) else {
+        return body.to_owned();
+    };
+    let Some(end) = body[start..].find(CLOSE).map(|i| start + i) else {
+        return body.to_owned();
+    };
+    let empty = format!("{}{}", &body[..start], &body[end..]);
+    let stamp = format!("talkops-{:x}", Md5::digest(empty.as_bytes()));
+    format!("{}{stamp}{}", &body[..start], &body[end..])
+}
+/// Largest number of entries in a Cisco ring list.
+pub const CISCO_RING_LIMIT: usize = 50;
+/// File name of a TalkOps ringtone on a Cisco Enterprise phone (at most 25
+/// characters; the TFTP map accepts only this form).
+pub fn cisco_ring_filename(media: &str) -> String {
+    let prefix: String = media
+        .chars()
+        .filter(char::is_ascii_hexdigit)
+        .take(8)
+        .collect::<String>()
+        .to_ascii_lowercase();
+    format!("talkops-{prefix:0>8}.rwb")
+}
+/// `Ringlist-wb.xml` for Cisco 7800 phones: (display name, file name) pairs.
+/// Names are cut to 25 characters; at most [`CISCO_RING_LIMIT`] entries.
+pub fn cisco_ringlist(rings: &[(String, String)]) -> String {
+    let esc = |s: &str| {
+        s.chars()
+            .filter(|c| !c.is_control())
+            .take(25)
+            .collect::<String>()
+            .replace('&', "&amp;")
+            .replace('<', "&lt;")
+            .replace('>', "&gt;")
+    };
+    let mut out = String::from("<CiscoIPPhoneRingList>\n");
+    for (name, file) in rings.iter().take(CISCO_RING_LIMIT) {
+        out.push_str(&format!(
+            "  <Ring><DisplayName>{}</DisplayName><FileName>{}</FileName></Ring>\n",
+            esc(name),
+            esc(file)
+        ));
+    }
+    out.push_str("</CiscoIPPhoneRingList>\n");
+    out
 }
 pub fn cisco_tftp_ip(value: &str) -> Option<std::net::Ipv4Addr> {
     let ip = value.parse::<std::net::Ipv4Addr>().ok()?;
@@ -416,6 +469,8 @@ pub struct Common<'a> {
     pub language: &'a str,
     pub ntp_server: &'a str,
     pub contacts: &'a [crate::phonebook::Entry],
+    /// Cisco Enterprise `directoryURL`; empty omits the element.
+    pub directory_url: &'a str,
 }
 pub fn context(setup: &PhoneSetup<'_>, common: &Common<'_>) -> Value {
     let base = format!(
@@ -487,6 +542,8 @@ pub fn context(setup: &PhoneSetup<'_>, common: &Common<'_>) -> Value {
         "cisco_mpp_zone":match common.timezone {"UTC"|"Etc/UTC"=>"UTC","Europe/London"=>"UK",_=>"CET"},
         "cisco_mpp_german":common.language=="de",
         "cisco_mpp_buttons":setup.model.id!="cisco-7811-mpp",
+        // Escaped here and emitted with `safe`: HTML autoescape would also encode `/`.
+        "cisco_directory_url":common.directory_url.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;"),
         "cisco_enterprise_timezone":match common.timezone {"UTC"|"Etc/UTC"=>"Greenwich Standard Time","Europe/London"=>"GMT Standard/Daylight Time",_=>"W. Europe Standard/Daylight Time"},
     });
     ctx["user"] = ctx["account"].clone();
@@ -763,6 +820,10 @@ pub fn render(
             {
                 return Err("Enterprise profile must reference its declared dialplan and cannot select firmware".into());
             }
+            return Ok((
+                cisco_version_stamp(&body),
+                "application/xml; charset=utf-8".into(),
+            ));
         }
     } else if a.format == "json" {
         serde_json::from_str::<serde_json::Value>(&body).map_err(|_| "invalid JSON artifact")?;
@@ -863,6 +924,7 @@ pub fn validate_for_model(
             language: "en",
             ntp_server: "pool.ntp.org",
             contacts: &contacts,
+            directory_url: "",
         };
         if count > 0 {
             setup.provisioning.keys = profile(&model.id)

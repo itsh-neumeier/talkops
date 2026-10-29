@@ -1,4 +1,4 @@
-//! Model library and installation by an administrator (TalkOps UI, ADR 0051).
+//! Model library and installation by an administrator (TalkOps UI, ADR 0052).
 //!
 //! TalkOps does not ship model weights whose license does not permit
 //! redistribution. An administrator uploads compiled models that they are

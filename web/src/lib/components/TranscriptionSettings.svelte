@@ -21,7 +21,7 @@
 		{ id: 'groq', kind: 'compatible', name: 'Groq', url: 'https://api.groq.com/openai/v1' },
 		{ id: 'mistral', kind: 'compatible', name: 'Mistral', url: 'https://api.mistral.ai/v1' },
 		{ id: 'custom', kind: 'compatible', name: '', url: 'http://192.168.1.10:8000/v1' },
-		// coral-stt (ADR 0046) and cuda-stt (ADR 0052) on this server: loopback
+		// coral-stt (ADR 0046) and cuda-stt (ADR 0053) on this server: loopback
 		// only, no costs.
 		{ id: 'coral', kind: 'coral', name: 'Coral', url: 'http://127.0.0.1:8095/v1' },
 		{ id: 'cuda', kind: 'cuda', name: 'GPU', url: 'http://127.0.0.1:8096/v1' }

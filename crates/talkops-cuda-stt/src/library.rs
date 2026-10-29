@@ -1,4 +1,4 @@
-//! The model library of the administrator (ADR 0051, ADR 0052).
+//! The model library of the administrator (ADR 0052, ADR 0053).
 //!
 //! TalkOps does not ship model weights. An administrator installs sherpa-onnx
 //! model archives (`.tar`, `.tar.gz`, `.tar.bz2`) by upload or download and

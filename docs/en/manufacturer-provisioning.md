@@ -207,7 +207,8 @@ Each Enterprise profile permits **one independent SIP account in slot 1**.
 The phone can have more physical line buttons. Those buttons do not prove
 support for independent digest credentials per line. TalkOps does not share or
 weaken account passwords to add more lines. MPP account limits remain unchanged.
-Custom buttons, BLF, contacts, firmware updates and locale downloads are absent.
+Custom buttons, BLF, firmware updates and locale downloads are absent.
+TalkOps supplies resync, restart, ringtones and the phone book (see below).
 The installed phone language stays unchanged. NTP and the supported UTC,
 Central European and London time zones use the common settings.
 
@@ -244,7 +245,8 @@ capabilities, uses `no-new-privileges` and a read-only filesystem. Each transfer
 runs as UID 10001. Docker must preserve the real LAN client IP. A proxy or
 NAT that replaces all client addresses cannot use this admission rule.
 
-TalkOps exports only the declared SEP configuration and `dialplan.xml` into a
+TalkOps exports only the declared SEP configuration, `dialplan.xml` and, with a
+selected ringtone, `Ringlist-wb.xml` and the `.rwb` ringtones into a
 private, volatile tmpfs volume. The sidecar mounts that volume read-only.
 Files use mode 0600 and directories use 0700. The exporter refreshes snapshots
 every 30 seconds. Duplicate client IPs, missing SIP hosts and invalid profiles
@@ -308,6 +310,57 @@ approved Cisco migration procedure. TalkOps does not clear trust lists or
 replace certificates. This integration does not implement secure CUCM mode,
 CAPF, TLS certificates or a firmware conversion.
 
+### Resync, last contact, ringtones and contacts
+
+**Resync and restart.** The **Resync** and **Restart** buttons on the phone
+page send a SIP NOTIFY with `Event: service-control` to the registered phone.
+Resync sends `action=restart`: the phone loads all its files again over TFTP
+and registers again. Restart sends `action=reset`: the phone does a full
+restart. The phone accepts the NOTIFY only with the Call-ID of its current
+REGISTER, so the phone must be registered. If it is not registered, the page
+shows that nothing was sent. Each request writes an audit entry.
+
+Each SEP file contains a `versionStamp` that is a hash of the file content.
+A changed setting thus also changes the stamp.
+
+**Last contact.** The phone loads its files over TFTP, which TalkOps does not
+see. TalkOps thus records the SIP registration of a Cisco Enterprise phone as
+its last contact. The phone page and the side panel show the time, the IP
+address and the firmware version from the user agent (for example `14.2.1`).
+TalkOps updates these values at most once a minute.
+
+**Ringtones.** Upload a ringtone under **Settings → Phones** (WAV, 8 kHz,
+mono, 16 bit, at most 160 KB). Select it on the phone page. TalkOps converts
+all uploaded ringtones into the Cisco wideband format (`.rwb`, 16 kHz, at most
+10 seconds; longer tones are cut). The TFTP export adds `Ringlist-wb.xml` and
+the `.rwb` files, with the selected ringtone first. The configuration file
+cannot select a custom ringtone. Select it on the phone under
+**Settings → Ringtone** after the next resync. Without a selected ringtone,
+TalkOps exports no ring list. At most 50 ringtones and 8 MB per phone are
+exported.
+
+**Contacts.** The SEP file contains a `directoryURL`. The **Directories** or
+**Contacts** key on the phone then shows the TalkOps phone book: the enabled
+extensions (dial with `**`), the global contacts and the contacts of the
+phone book sections selected for this phone. The list has pages of 32
+entries and a search key.
+
+The phone cannot send the provisioning user name and password. The URL thus
+contains a per-phone token instead. **Regenerate** the provisioning credentials
+to make all old directory URLs invalid. The URL contains no SIP password.
+
+TalkOps needs an address that the phone can reach. The TFTP export does not
+know the address of TalkOps, so set a phone provisioning URL. Without this
+URL, the SEP file has no `directoryURL`. Enterprise firmware checks HTTPS
+certificates against its own trust list. A certificate of a public CA or of
+the TalkOps domain can thus fail. Use a plain HTTP endpoint on the trusted
+voice LAN, for example `http://192.168.140.30:8080/provisioning`, in the
+phone's **Phone provisioning URL** setting. HTTP is not encrypted: the phone
+book and the token are visible on the LAN. Use this only on a trusted LAN.
+
+**German display and tones** need Cisco locale files that TalkOps does not
+supply. They are not available yet.
+
 ### Test the available Enterprise phone
 
 The available test model is `CP-7861-K9= V09`, with Enterprise 14.2(1).
@@ -328,8 +381,13 @@ there to find the cause of a provisioning or registration problem. SSH stays off
 7. Check audio in both directions, DTMF, hold and transfer.
 8. Check voicemail access, time and the assigned line label.
 9. Restart the phone and check configuration retrieval and registration again.
-10. Remove the TFTP client IP, wait for a refresh, and confirm that downloads fail.
-11. Record results and failures before changing any hardware validation status.
+10. Click **Resync** and check that the phone loads its files and registers again.
+11. Click **Restart** and check that the phone restarts.
+12. Check **Last contact**, IP address and firmware on the phone page.
+13. Select a ringtone, resync, and select it on the phone under **Settings → Ringtone**.
+14. Open **Contacts** on the phone, page through the list and search a name.
+15. Remove the TFTP client IP, wait for a refresh, and confirm that downloads fail.
+16. Record results and failures before changing any hardware validation status.
 
 Do not change the firmware or trust lists during this test. Registration,
 calling, MWI and feature behavior remain open until this test is performed.

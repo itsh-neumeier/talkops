@@ -1,0 +1,16 @@
+name: Runner-Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: [self-hosted, talkops]
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          echo "Läuft auf: $(hostname)"
+          uname -a
+          docker version || echo "kein Docker-Zugriff"
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo --version

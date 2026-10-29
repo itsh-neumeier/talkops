@@ -152,7 +152,7 @@ pub enum Engine {
         /// Price per audio minute, if known.
         price: Option<f64>,
         /// A speech service on this server, coral-stt (ADR 0046) or cuda-stt
-        /// (ADR 0052): no usage, and `fallback` runs when it is not available.
+        /// (ADR 0053): no usage, and `fallback` runs when it is not available.
         coral: bool,
         /// The local model that replaces an unavailable Coral connection.
         /// The live preview always falls back to `base`.

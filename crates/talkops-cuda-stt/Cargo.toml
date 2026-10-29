@@ -25,7 +25,7 @@ serde.workspace = true
 serde_json.workspace = true
 # sherpa-onnx: the native library and ONNX Runtime are linked as shared
 # libraries. The image sets SHERPA_ONNX_LIB_DIR to the GPU release archive
-# of the same version (ADR 0052); without it the build downloads the CPU
+# of the same version (ADR 0053); without it the build downloads the CPU
 # archive (CI, development).
 sherpa-onnx = { version = "=1.13.8", default-features = false, features = ["shared"] }
 talkops-stt-service.workspace = true

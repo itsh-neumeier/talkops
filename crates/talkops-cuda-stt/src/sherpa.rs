@@ -1,5 +1,5 @@
 //! The sherpa-onnx backend: ONNX Runtime with the CUDA (or CPU) execution
-//! provider through the safe `sherpa-onnx` crate (ADR 0052).
+//! provider through the safe `sherpa-onnx` crate (ADR 0053).
 //!
 //! Each language slot gets its own recognizer. A language-agnostic model
 //! (NeMo CTC or transducer) that fills both language slots is loaded once.

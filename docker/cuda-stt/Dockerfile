@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 #
 # TalkOps cuda-stt: German and English speech recognition on an NVIDIA GPU
-# (ADR 0052). sherpa-onnx runs the models with the ONNX Runtime CUDA
+# (ADR 0053). sherpa-onnx runs the models with the ONNX Runtime CUDA
 # execution provider. The CUDA libraries and the models stay out of the
 # media worker image. Models are not part of the image: administrators
 # install them in the TalkOps UI (docs/en/recording.md).

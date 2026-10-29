@@ -1147,3 +1147,144 @@ async fn codec_profiles_set_the_phone_codecs(db: PgPool) {
     let (_, cfg) = prov_get(&router, "/provisioning/249ad8000077.cfg", Some(creds)).await;
     assert!(!cfg.contains(".codec."), "{cfg}");
 }
+
+/// GET without credentials, as a Cisco Enterprise phone requests its directory.
+async fn plain_get(router: &axum::Router, path: &str) -> (StatusCode, String) {
+    let res = raw(
+        router,
+        Request::get(path)
+            .header(header::HOST, "192.0.2.1:8080")
+            .body(Body::empty())
+            .unwrap(),
+    )
+    .await;
+    let status = res.status();
+    (status, body_string(res).await)
+}
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn cisco_enterprise_directory_resync_and_ringtones(db: PgPool) {
+    let state = state(db);
+    let router = talkops_api::app(state.clone(), None);
+    let admin = setup_admin(&router).await;
+    let (status, ring) = upload_media(
+        &router,
+        &admin,
+        "ringtone",
+        "Bells & Co",
+        &wav(8000, 1, 800),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{ring}");
+    let (_, other) = upload_media(&router, &admin, "ringtone", "Chime", &wav(8000, 1, 400)).await;
+    let input = json!({"mac":"00451d6be327","name":"Cisco desk","model":"cisco-7861-enterprise",
+        "ringtone_id": ring["id"],
+        "provisioning":{"sip_host":"192.0.2.1","endpoint":"http://192.0.2.1:8080/provisioning",
+            "vendor_settings":{"cisco_enterprise_tftp_ip":"127.0.0.2"}}});
+    let (status, phone) = admin.post("/api/v1/phones", input).await;
+    assert_eq!(status, StatusCode::OK, "{phone}");
+    let id = phone["id"].as_str().unwrap();
+    let (_, ext) = admin
+        .post(
+            "/api/v1/extensions",
+            json!({"number":"999","display_name":"Cisco & Co"}),
+        )
+        .await;
+    let (status, device) = admin
+        .post(
+            &format!("/api/v1/extensions/{}/devices", ext["id"].as_str().unwrap()),
+            json!({"name":"Cisco","kind":"desk","phone_id":id,"account_index":1}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{device}");
+    for i in 0..40 {
+        admin
+            .post(
+                "/api/v1/contacts",
+                json!({"name": format!("Contact {i:02}"), "phone_work": format!("0301{i:04}")}),
+            )
+            .await;
+    }
+
+    // Enterprise profiles have resync and TFTP delivery; files have no HTTP URL.
+    let (_, models) = admin.get("/api/v1/phone-models").await;
+    let model = models
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|m| m["id"] == "cisco-7861-enterprise")
+        .unwrap();
+    let caps = &model["provisioning_capabilities"];
+    assert_eq!(
+        (caps["resync"].as_bool(), caps["reboot"].as_bool()),
+        (Some(true), Some(true))
+    );
+    assert_eq!(caps["delivery"], "tftp");
+    assert_eq!(model["ringtone_max_kb"], 160);
+    let (_, detail) = admin.get(&format!("/api/v1/phones/{id}")).await;
+    assert_eq!(detail["delivery"], "tftp");
+    assert!(detail["provisioning_base"].is_null());
+    let files = detail["provisioning_files"].as_array().unwrap();
+    assert_eq!(files[0]["name"], "SEP00451D6BE327.cnf.xml");
+    assert!(files.iter().all(|f| f["url"] == ""));
+    // Without a registration nothing is sent, but the request is accepted and audited.
+    let (status, result) = admin
+        .post(
+            &format!("/api/v1/phones/{id}/resync"),
+            json!({"reboot": true}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{result}");
+    assert_eq!(result["notified"], 0);
+
+    // The export carries the ring list, ringtones and the directory URL.
+    let root = tempfile::tempdir().unwrap();
+    let stats = talkops_api::cisco_tftp::refresh(&state, root.path())
+        .await
+        .unwrap();
+    assert_eq!((stats.phones, stats.files), (1, 5));
+    let dir = root.path().join("active/127.0.0.2");
+    let ringlist = std::fs::read_to_string(dir.join("Ringlist-wb.xml")).unwrap();
+    let selected = format!(
+        "talkops-{}.rwb",
+        &ring["id"].as_str().unwrap().replace('-', "")[..8]
+    );
+    let second = format!(
+        "talkops-{}.rwb",
+        &other["id"].as_str().unwrap().replace('-', "")[..8]
+    );
+    assert!(
+        ringlist.find(&selected).unwrap() < ringlist.find(&second).unwrap(),
+        "selected ringtone first: {ringlist}"
+    );
+    assert!(ringlist.contains("<DisplayName>Bells &amp; Co</DisplayName>"));
+    assert_eq!(std::fs::read(dir.join(&selected)).unwrap().len(), 1600 * 2);
+    let sep = std::fs::read_to_string(dir.join("SEP00451D6BE327.cnf.xml")).unwrap();
+    let start = sep.find("<directoryURL>").unwrap() + "<directoryURL>".len();
+    let url = &sep[start..start + sep[start..].find("</directoryURL>").unwrap()];
+    let path = url.strip_prefix("http://192.0.2.1:8080").expect(url);
+    assert!(path.starts_with(&format!("/provisioning/cisco/directory/{id}/")));
+    assert!(sep.contains("<versionStamp>talkops-"));
+
+    // The directory needs the token, not the provisioning credentials.
+    let (status, page) = plain_get(&router, path).await;
+    assert_eq!(status, StatusCode::OK, "{page}");
+    assert!(page.contains("<CiscoIPPhoneDirectory>"));
+    assert!(page.contains("<Name>Cisco &amp; Co</Name><Telephone>**999</Telephone>"));
+    assert!(page.contains("<Prompt>1/2</Prompt>"));
+    assert!(!page.contains(device["sip_password"].as_str().unwrap()));
+    let (_, page2) = plain_get(&router, &format!("{path}?page=2")).await;
+    assert!(page2.contains("<Name>Contact 39</Name>"));
+    let (_, search) = plain_get(&router, &format!("{path}?search=Contact+07")).await;
+    assert_eq!(search.matches("<DirectoryEntry>").count(), 1);
+    let (_, form) = plain_get(&router, &format!("{path}?search=")).await;
+    assert!(form.contains("<CiscoIPPhoneInput>"));
+    let wrong = format!("/provisioning/cisco/directory/{id}/{}", "0".repeat(32));
+    assert_eq!(plain_get(&router, &wrong).await.0, StatusCode::NOT_FOUND);
+    // Regenerated provisioning credentials revoke the old directory URL.
+    let (status, _) = admin
+        .post("/api/v1/provisioning/regenerate", json!({}))
+        .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(plain_get(&router, path).await.0, StatusCode::NOT_FOUND);
+}

@@ -40,6 +40,14 @@ fn account(index: u16) -> Account {
     }
 }
 fn render(setup: &PhoneSetup<'_>, zone: &str, language: &str) -> Result<String, String> {
+    render_with(setup, zone, language, "")
+}
+fn render_with(
+    setup: &PhoneSetup<'_>,
+    zone: &str,
+    language: &str,
+    directory_url: &str,
+) -> Result<String, String> {
     let provisioning = Provisioning {
         base_url: setup.asset_base.clone(),
         username: "prov-user".into(),
@@ -54,6 +62,7 @@ fn render(setup: &PhoneSetup<'_>, zone: &str, language: &str) -> Result<String, 
             language,
             ntp_server: "time.invalid",
             contacts: &[],
+            directory_url,
         },
         None,
         &BTreeMap::new(),
@@ -264,12 +273,16 @@ fn enterprise_profiles_are_separate_single_identity_tcp_bundles() {
             ("securedSipPort", "5061"),
             ("remoteCcEnable", "true"),
             ("remotePartyID", "true"),
-            ("versionStamp", "talkops-cisco7800-enterprise-v2"),
             ("webAccess", "0"),
         ] {
             assert_eq!(value(&doc, name), expected);
         }
         assert!(body.starts_with("<?xml"));
+        assert!(value(&doc, "versionStamp").starts_with("talkops-"));
+        assert!(
+            !body.contains("directoryURL"),
+            "no address without endpoint"
+        );
         assert!(doc.descendants().any(|n| n.has_tag_name("commonProfile")));
         assert!(!body.contains("loadInformation"));
         assert!(!body.contains("prov-secret"));
@@ -300,4 +313,70 @@ fn enterprise_profiles_are_separate_single_identity_tcp_bundles() {
         *source = source.replace("dialplan.xml", "other.xml");
         assert!(vendors::validate_for_model(&files, model).is_err());
     }
+}
+
+#[test]
+fn enterprise_version_stamp_follows_content_and_directory_url_is_escaped() {
+    let catalog = catalog();
+    let model = catalog.get("cisco-7861-enterprise").unwrap();
+    let mut phone = setup(model);
+    phone.accounts = vec![account(1)];
+    let stamp = |body: &str| {
+        let doc = roxmltree::Document::parse(body).unwrap();
+        value(&doc, "versionStamp").to_owned()
+    };
+    let first = render(&phone, "Europe/Berlin", "en").unwrap();
+    assert_eq!(
+        render(&phone, "Europe/Berlin", "en").unwrap(),
+        first,
+        "stable"
+    );
+    assert_eq!(stamp(&first).len(), "talkops-".len() + 32);
+    // Hashing a stamped file again keeps the stamp (the API hashes after overrides).
+    assert_eq!(vendors::cisco_version_stamp(&first), first);
+    phone.accounts[0].password = "changed".into();
+    let changed = render(&phone, "Europe/Berlin", "en").unwrap();
+    assert_ne!(stamp(&changed), stamp(&first), "content change, new stamp");
+
+    let url = "http://pbx.invalid/provisioning/cisco/directory/id/token?a=1&b=<2>";
+    let body = render_with(&phone, "Europe/Berlin", "en", url).unwrap();
+    let doc = roxmltree::Document::parse(&body).unwrap();
+    let directory = doc
+        .descendants()
+        .find(|n| n.has_tag_name("directoryURL"))
+        .unwrap();
+    assert_eq!(directory.parent().unwrap().tag_name().name(), "device");
+    assert_eq!(directory.text(), Some(url));
+    assert!(body.contains(
+        "<directoryURL>http://pbx.invalid/provisioning/cisco/directory/id/token?a=1&amp;b=&lt;2&gt;</directoryURL>"
+    ));
+    assert_ne!(stamp(&body), stamp(&changed));
+}
+
+#[test]
+fn cisco_ring_list_limits_names_and_entries() {
+    assert_eq!(
+        vendors::cisco_ring_filename("0123abcd-ef01-2345-6789-abcdef012345"),
+        "talkops-0123abcd.rwb"
+    );
+    assert!(vendors::cisco_ring_filename("0123ABCD").len() <= 25);
+    let rings: Vec<(String, String)> = (0..60)
+        .map(|i| {
+            (
+                format!("Ring & <{i}> with a very long display name"),
+                format!("talkops-{i:08x}.rwb"),
+            )
+        })
+        .collect();
+    let xml = vendors::cisco_ringlist(&rings);
+    let doc = roxmltree::Document::parse(&xml).unwrap();
+    assert_eq!(doc.root_element().tag_name().name(), "CiscoIPPhoneRingList");
+    let names: Vec<_> = doc
+        .descendants()
+        .filter(|n| n.has_tag_name("DisplayName"))
+        .map(|n| n.text().unwrap().to_owned())
+        .collect();
+    assert_eq!(names.len(), vendors::CISCO_RING_LIMIT);
+    assert_eq!(names[0], "Ring & <0> with a very lo");
+    assert!(names.iter().all(|n| n.chars().count() <= 25));
 }

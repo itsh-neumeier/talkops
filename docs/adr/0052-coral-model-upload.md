@@ -1,4 +1,4 @@
-# 0051 - Coral model library and upload by the administrator
+# 0052 - Coral model library and upload by the administrator
 
 - Status: Proposed on 2026-10-28.
 - Extends: ADR 0046 (Coral Edge TPU speech recognition).

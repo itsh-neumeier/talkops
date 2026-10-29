@@ -735,6 +735,8 @@ export interface PhoneDetail extends Phone {
 		url: string;
 		primary: boolean;
 	}[];
+	/** `tftp`: Cisco Enterprise SIP files come from the optional TFTP sidecar. */
+	delivery?: 'http' | 'tftp';
 	accounts: PhoneAccount[];
 }
 
@@ -758,6 +760,7 @@ export interface PhoneModel {
 		files?: string[];
 		resync: boolean;
 		reboot: boolean;
+		delivery?: 'http' | 'tftp';
 		identity_kind: 'mac' | 'token';
 	};
 	key_capabilities?: KeyCapabilities;
@@ -937,7 +940,7 @@ export interface CoralTpu {
 	error: string | null;
 }
 
-/** Statements stored with a Coral library model (ADR 0051). */
+/** Statements stored with a Coral library model (ADR 0052). */
 export interface CoralModelInfo {
 	name: string;
 	slot: CoralSlot;
@@ -1019,7 +1022,7 @@ export interface CudaLoadedModel {
 
 export type CudaFamily = 'nemo_ctc' | 'nemo_transducer' | 'canary' | 'whisper';
 
-/** `model.json` of a cuda-stt library model (ADR 0052). */
+/** `model.json` of a cuda-stt library model (ADR 0053). */
 export interface CudaManifest {
 	name: string;
 	family: CudaFamily;

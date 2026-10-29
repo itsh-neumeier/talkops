@@ -28,6 +28,9 @@ class CiscoTftpPolicy(unittest.TestCase):
             "127.0.0.2/SEP805EC0010203.cnf.xml": b"<device>first-private-secret</device>" * 40,
             "127.0.0.2/dialplan.xml": b"<DIALTEMPLATE/>",
             "127.0.0.3/SEP805EC0040506.cnf.xml": b"<device>second-private-secret</device>",
+            "127.0.0.2/Ringlist-wb.xml": b"<CiscoIPPhoneRingList/>",
+            "127.0.0.2/talkops-0123abcd.rwb": b"\x01\x00" * 600,
+            "127.0.0.3/talkops-89abcdef.rwb": b"\x02\x00" * 300,
         }
         for name, data in cls.files.items():
             target = cls.root / "active" / name
@@ -95,6 +98,14 @@ class CiscoTftpPolicy(unittest.TestCase):
             self.assertEqual(code, 3)
             self.assertEqual(body, self.files["127.0.0.2/" + filename])
 
+    def test_ring_list_ringtones_and_leading_slash_names(self):
+        for filename in ["Ringlist-wb.xml", "talkops-0123abcd.rwb", "/dialplan.xml", "/talkops-0123abcd.rwb"]:
+            code, body = self.request("127.0.0.2", filename)
+            self.assertEqual(code, 3, filename)
+            self.assertEqual(body, self.files["127.0.0.2/" + filename.lstrip("/")])
+        for name in ["talkops-89abcdef.rwb", "talkops-0123ABCD.rwb", "talkops-0123abc.rwb", "ringlist-wb.xml", "Ringlist.xml", "//dialplan.xml"]:
+            self.assertEqual(self.request("127.0.0.2", name)[0], 5, name)
+
     def test_other_phone_unknown_source_signed_and_trust_files_are_denied(self):
         for source, name in [
             ("127.0.0.2", "SEP805EC0040506.cnf.xml"),
@@ -111,7 +122,7 @@ class CiscoTftpPolicy(unittest.TestCase):
             self.assertEqual(self.request("127.0.0.2", name)[0], 5, name)
 
     def test_uploads_cannot_overwrite_even_an_existing_own_file(self):
-        for name in ["SEP805EC0010203.cnf.xml", "new.xml", "dialplan.xml"]:
+        for name in ["SEP805EC0010203.cnf.xml", "new.xml", "dialplan.xml", "talkops-0123abcd.rwb", "/Ringlist-wb.xml"]:
             self.assertEqual(self.request("127.0.0.2", name, opcode=2)[0], 5)
         self.assertEqual((self.root / "active/127.0.0.2/dialplan.xml").read_bytes(), b"<DIALTEMPLATE/>")
 

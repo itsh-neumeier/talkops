@@ -490,6 +490,7 @@ pub fn schema(model: &PhoneModel) -> Result<Vec<Field>, String> {
         language: "en",
         ntp_server: "pool.ntp.org",
         contacts: &[],
+        directory_url: "",
     };
     let files = vendors::builtin(&native)?;
     let mut fields = vec![];

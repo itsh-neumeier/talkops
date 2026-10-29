@@ -1,9 +1,9 @@
-# 0052 - Speech recognition on NVIDIA GPUs (`cuda-stt`)
+# 0053 - Speech recognition on NVIDIA GPUs (`cuda-stt`)
 
 - Status: Proposed on 2026-10-28. Implemented; the acceptance measurements
   are pending (see "Acceptance measurements").
 - Supplements: ADR 0024 (transcription engines per purpose), ADR 0046
-  (Coral Edge TPU speech recognition), ADR 0051 (Coral model library).
+  (Coral Edge TPU speech recognition), ADR 0052 (Coral model library).
 - Related: ADR 0009 (Debian 13 base images).
 
 ## Context
@@ -19,7 +19,7 @@ The operator wants a service with the same functions on an NVIDIA GPU:
 - The same OpenAI-compatible interface, so the media worker, the fallback
   and the UI work as with Coral.
 - The same administrator model library with license and source statements
-  (ADR 0051). TalkOps must not ship models without a redistribution grant
+  (ADR 0052). TalkOps must not ship models without a redistribution grant
   (for example NVIDIA NGC `stt_de_quartznet15x5`).
 
 Known hardware:
@@ -149,7 +149,7 @@ The numbers come from measurements on the target hardware (see
 
 ### Interface
 
-7. The interface is the same as `coral-stt` (ADR 0046, 0051). Only the
+7. The interface is the same as `coral-stt` (ADR 0046, 0052). Only the
    names differ:
    - Listen address `127.0.0.1:8096` by default (loopback; a warning is
      logged for other addresses).
@@ -186,7 +186,7 @@ The numbers come from measurements on the target hardware (see
 10. Code that does not depend on the accelerator moves into a new library
     crate `crates/talkops-stt-service`: audio decoding and resampling, turn
     split, diagnostics capture, API key check, error responses, the
-    realtime event protocol, and the library store of ADR 0051 (ids,
+    realtime event protocol, and the library store of ADR 0052 (ids,
     `install.json`, statements, usage, limits). `coral-stt` and `cuda-stt`
     implement a recognizer trait and a model check. The move does not
     change the Coral interface. The Coral tests stay and must pass.
@@ -235,7 +235,7 @@ The numbers come from measurements on the target hardware (see
     a preset; the administrator still confirms the license.
 16. Limits (environment, with defaults): one model at most 4 GiB unpacked,
     the library at most 20 GiB and 10 models. Selected models cannot be
-    deleted. A model change needs a restart (ADR 0051).
+    deleted. A model change needs a restart (ADR 0052).
 
 ### VRAM
 
@@ -295,7 +295,7 @@ The numbers come from measurements on the target hardware (see
 24. The "Apply hybrid" action works with a `cuda` connection as with Coral.
 25. API: the model library routes become generic for local speech services
     (`/api/v1/speech-services/{id}/...`) and accept connections of kind
-    `coral` and `cuda`. The Coral routes of ADR 0051 were not released; they
+    `coral` and `cuda`. The Coral routes of ADR 0052 were not released; they
     are replaced, not kept as aliases. `POST .../library/download` is for
     `cuda` only. Permission `transcription.settings`, audit entries as ADR
     0048 (with the URL for downloads). The upload route streams the body to

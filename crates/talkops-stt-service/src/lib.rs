@@ -1,5 +1,5 @@
 //! Shared parts of the TalkOps speech services `coral-stt` (ADR 0046) and
-//! `cuda-stt` (ADR 0052).
+//! `cuda-stt` (ADR 0053).
 //!
 //! Both services offer the same subset of the OpenAI transcription interface
 //! and the same realtime events, so the media worker uses them like any

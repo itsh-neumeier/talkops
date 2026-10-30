@@ -346,9 +346,14 @@ async fn serve(config: Config) -> anyhow::Result<()> {
         state.telephony.esl.clone(),
     );
     spawn_session_cleanup(db);
-    if let Some(root) = config.cisco_tftp_dir {
-        talkops_api::cisco_tftp::spawn(state.clone(), root).await?;
-    }
+    let state = match config.cisco_tftp_dir {
+        Some(root) => {
+            let state = state.with_cisco_tftp(root);
+            talkops_api::cisco_tftp::spawn(state.clone()).await?;
+            state
+        }
+        None => state,
+    };
     let router = app(state, Some(&config.web_dir));
 
     let listener = tokio::net::TcpListener::bind(config.listen)

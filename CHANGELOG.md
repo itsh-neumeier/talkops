@@ -6,6 +6,13 @@ All notable changes to TalkOps. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Cisco Enterprise SIP phones: a **Resync** right after a change delivered the
+  previous SEP file. The TFTP export ran only every 30 seconds. A resync now
+  exports the saved state before it signals the phone. Phone, account, settings
+  and ringtone changes also start an export at once.
+
 ## [1.8.19] – 2026-10-30
 
 ### Fixed

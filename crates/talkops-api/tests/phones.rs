@@ -1288,3 +1288,48 @@ async fn cisco_enterprise_directory_resync_and_ringtones(db: PgPool) {
     assert_eq!(status, StatusCode::OK);
     assert_eq!(plain_get(&router, path).await.0, StatusCode::NOT_FOUND);
 }
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn cisco_enterprise_resync_exports_the_saved_state_first(db: PgPool) {
+    let root = tempfile::tempdir().unwrap();
+    let state = state(db).with_cisco_tftp(root.path().to_owned());
+    let router = talkops_api::app(state.clone(), None);
+    let admin = setup_admin(&router).await;
+    let input = json!({"mac":"00451d6be327","name":"Cisco desk","model":"cisco-7861-enterprise",
+        "provisioning":{"sip_host":"192.0.2.1","endpoint":"http://192.0.2.1:8080/provisioning",
+            "vendor_settings":{"cisco_enterprise_tftp_ip":"127.0.0.2"}}});
+    let (status, phone) = admin.post("/api/v1/phones", input).await;
+    assert_eq!(status, StatusCode::OK, "{phone}");
+    let id = phone["id"].as_str().unwrap();
+    let (_, ext) = admin
+        .post(
+            "/api/v1/extensions",
+            json!({"number":"999","display_name":"Before"}),
+        )
+        .await;
+    let ext_id = ext["id"].as_str().unwrap();
+    let (status, device) = admin
+        .post(
+            &format!("/api/v1/extensions/{ext_id}/devices"),
+            json!({"name":"Cisco","kind":"desk","phone_id":id,"account_index":1}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{device}");
+    let sep = root.path().join("active/127.0.0.2/SEP00451D6BE327.cnf.xml");
+    let resync = format!("/api/v1/phones/{id}/resync");
+    assert_eq!(admin.post(&resync, json!({})).await.0, StatusCode::OK);
+    assert!(std::fs::read_to_string(&sep).unwrap().contains("Before"));
+
+    // The timer runs every 30 s; a resync right after a save must not
+    // deliver the previous file.
+    let (status, saved) = admin
+        .put(
+            &format!("/api/v1/extensions/{ext_id}"),
+            json!({"number":"999","display_name":"After"}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{saved}");
+    assert_eq!(admin.post(&resync, json!({})).await.0, StatusCode::OK);
+    let body = std::fs::read_to_string(&sep).unwrap();
+    assert!(body.contains("After") && !body.contains("Before"), "{body}");
+}

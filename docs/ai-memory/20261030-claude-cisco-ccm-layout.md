@@ -52,7 +52,8 @@ Device tests with temporary files on the TFTP volume:
 ## Checks
 
 - Passed: device test 4 on the user's CP-7861 (Unified CM1 192.168.140.30 Active).
-- Pending: provisioning tests in a rust:1-trixie container; CI.
+- Passed: `cargo fmt --all --check` and `cargo test -p talkops-provisioning` in a rust:1-trixie container (32 tests).
+- Pending: CI.
 - STE review: manual review of the new text.
 
 ## Dependencies and open work

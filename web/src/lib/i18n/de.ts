@@ -1015,6 +1015,13 @@ const de: Record<keyof typeof en, string> = {
 	'panel.noExtensions': 'Keine Nebenstellen.',
 	'phones.neverSeen': 'nie',
 	'phones.firmware': 'Firmware',
+	'ciscoLocale.title': 'Cisco-Enterprise-Sprachen',
+	'ciscoLocale.hint':
+		'Lade ein Cisco-Locale-Installer-Paket (po-locale-de_DE-….cop.sha512) aus deinem Cisco-Download hoch. TalkOps liest nur die Telefondateien und führt das Paket nicht aus. Cisco-Enterprise-Telefone mit passender Gerätesprache zeigen ihre Menüs dann in dieser Sprache.',
+	'ciscoLocale.file': 'Sprachpaket',
+	'ciscoLocale.name': 'Sprache',
+	'ciscoLocale.language': 'Sprachcode',
+	'ciscoLocale.version': 'Version',
 	'phones.account': 'Konto',
 	'phones.accounts': 'Konten auf diesem Telefon',
 	'common.filter': 'Filter',

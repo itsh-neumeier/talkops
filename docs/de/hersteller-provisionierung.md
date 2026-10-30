@@ -373,8 +373,19 @@ zum Beispiel `http://192.168.140.30:8080/provisioning`. HTTP ist unverschlüssel
 Telefonbuch und Token sind im LAN sichtbar. Verwende das nur in einem
 vertrauenswürdigen LAN.
 
-**Deutsche Anzeige und Töne** brauchen Cisco-Sprachdateien, die TalkOps nicht
-mitliefert. Sie sind noch nicht verfügbar.
+**Deutsche Anzeige** braucht das Cisco-Paket für die Benutzersprache. TalkOps
+liefert keine Cisco-Dateien mit. Lade `po-locale-de_DE-<Version>.cop.sha512`
+aus deinem Cisco-Download für den CUCM-Locale-Installer herunter und lade es
+unter **Telefone → Cisco-Enterprise-Sprachen** hoch. TalkOps liest nur die
+Telefondateien (`usr/local/cm/tftp/<Sprache>/`) und führt keine Skripte des
+Pakets aus. Ein Cisco-Enterprise-Telefon mit der Gerätesprache Deutsch erhält
+dann einen `userLocale`-Eintrag in seiner SEP-Datei und lädt `sp-sip.jar` per
+TFTP. Starte einen Resync. Das Telefon lädt die Sprache und startet seine
+Oberfläche neu.
+
+Deutsche Rufsignaltöne sind nicht im Paket für die Benutzersprache enthalten.
+Sie brauchen das separate Netzwerk-Locale-Paket. TalkOps unterstützt es noch
+nicht.
 
 ### Vorhandenes Enterprise-Telefon testen
 

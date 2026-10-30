@@ -358,8 +358,17 @@ voice LAN, for example `http://192.168.140.30:8080/provisioning`, in the
 phone's **Phone provisioning URL** setting. HTTP is not encrypted: the phone
 book and the token are visible on the LAN. Use this only on a trusted LAN.
 
-**German display and tones** need Cisco locale files that TalkOps does not
-supply. They are not available yet.
+**German display text** needs the Cisco user locale package. TalkOps does
+not supply Cisco files. Get `po-locale-de_DE-<version>.cop.sha512` from your
+Cisco download for the CUCM locale installer. Upload it under **Phones →
+Cisco Enterprise languages**. TalkOps reads only the phone files
+(`usr/local/cm/tftp/<locale>/`) and does not run the package scripts. A
+Cisco Enterprise phone with the device language German then gets a
+`userLocale` entry in its SEP file and loads `sp-sip.jar` over TFTP. Do a
+resync. The phone downloads the locale and restarts its user interface.
+
+The user locale package does not contain German call progress tones. These
+need the separate network locale package. TalkOps does not support it yet.
 
 ### Test the available Enterprise phone
 

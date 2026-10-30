@@ -438,7 +438,16 @@ async fn render_phone_config_inner(
         } else {
             String::new()
         };
+        let cisco_locales = if talkops_provisioning::vendors::cisco_enterprise(&model.id) {
+            crate::cisco_locale::list(&state.provisioning_dir).await
+        } else {
+            Vec::new()
+        };
         let common = talkops_provisioning::vendors::Common {
+            cisco_locale: talkops_provisioning::vendors::select_cisco_locale(
+                &cisco_locales,
+                language,
+            ),
             provisioning: &prov,
             admin_password: &admin_password,
             timezone: time_zone,

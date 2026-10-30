@@ -1008,6 +1008,13 @@ export default {
 	'panel.noExtensions': 'No extensions.',
 	'phones.neverSeen': 'never',
 	'phones.firmware': 'Firmware',
+	'ciscoLocale.title': 'Cisco Enterprise languages',
+	'ciscoLocale.hint':
+		'Upload a Cisco locale installer package (po-locale-de_DE-….cop.sha512) from your Cisco download. TalkOps reads only the phone files and does not run the package. Cisco Enterprise phones with the matching device language then show their menus in that language.',
+	'ciscoLocale.file': 'Locale package',
+	'ciscoLocale.name': 'Locale',
+	'ciscoLocale.language': 'Language code',
+	'ciscoLocale.version': 'Version',
 	'phones.account': 'Account',
 	'phones.accounts': 'Accounts on this phone',
 	'common.filter': 'Filter',

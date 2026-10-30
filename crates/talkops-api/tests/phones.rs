@@ -1333,3 +1333,91 @@ async fn cisco_enterprise_resync_exports_the_saved_state_first(db: PgPool) {
     let body = std::fs::read_to_string(&sep).unwrap();
     assert!(body.contains("After") && !body.contains("Before"), "{body}");
 }
+
+/// A Cisco locale installer package with the real layout: signature header,
+/// gzip tar, inner tar with the phone TFTP files.
+fn cisco_locale_package() -> Vec<u8> {
+    fn add(builder: &mut tar::Builder<Vec<u8>>, path: &str, body: &[u8]) {
+        let mut header = tar::Header::new_gnu();
+        header.set_size(body.len() as u64);
+        header.set_mode(0o644);
+        header.set_cksum();
+        builder.append_data(&mut header, path, body).unwrap();
+    }
+    let mut inner = tar::Builder::new(Vec::new());
+    add(
+        &mut inner,
+        "usr/local/cm/tftp/german_germany/sp-sip.jar",
+        b"locale-jar",
+    );
+    add(
+        &mut inner,
+        "usr/local/cm/application_locale/localeinstaller/german_germany/localeversion.txt",
+        b"User Locale Version : 14.3(1.9900)DEU\n",
+    );
+    let mut outer = tar::Builder::new(Vec::new());
+    add(
+        &mut outer,
+        "po-locale-de_DE-14.3.1.5000-1.tar",
+        &inner.into_inner().unwrap(),
+    );
+    let mut gz = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::fast());
+    std::io::Write::write_all(&mut gz, &outer.into_inner().unwrap()).unwrap();
+    let mut out = b"\x01\x00\x02PT=ccmPatch_cop3\x00".to_vec();
+    out.extend(gz.finish().unwrap());
+    out
+}
+
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn cisco_locale_upload_reaches_the_sep_file_and_the_export(db: PgPool) {
+    let root = tempfile::tempdir().unwrap();
+    let state = state(db).with_cisco_tftp(root.path().to_owned());
+    let router = talkops_api::app(state.clone(), None);
+    let admin = setup_admin(&router).await;
+    let input = json!({"mac":"00451d6be327","name":"Cisco desk","model":"cisco-7861-enterprise",
+        "provisioning":{"sip_host":"192.0.2.1","endpoint":"http://192.0.2.1:8080/provisioning",
+            "language":"de","vendor_settings":{"cisco_enterprise_tftp_ip":"127.0.0.2"}}});
+    let (status, phone) = admin.post("/api/v1/phones", input).await;
+    assert_eq!(status, StatusCode::OK, "{phone}");
+    let id = phone["id"].as_str().unwrap();
+
+    let (ct, body) = multipart_fields(&[], "po-locale.cop.sha512", &cisco_locale_package());
+    let res = raw(
+        &router,
+        Request::post("/api/v1/phone-locales/cisco")
+            .header(header::COOKIE, &admin.cookie)
+            .header("x-requested-with", "TalkOps")
+            .header("x-csrf-token", &admin.csrf)
+            .header(header::CONTENT_TYPE, ct)
+            .body(Body::from(body))
+            .unwrap(),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let (_, list) = admin.get("/api/v1/phone-locales/cisco").await;
+    assert_eq!(
+        list,
+        json!([{"name":"German_Germany","lang_code":"de_DE","version":"14.3(1.9900)"}])
+    );
+
+    let resync = format!("/api/v1/phones/{id}/resync");
+    assert_eq!(admin.post(&resync, json!({})).await.0, StatusCode::OK);
+    let dir = root.path().join("active/127.0.0.2");
+    let sep = std::fs::read_to_string(dir.join("SEP00451D6BE327.cnf.xml")).unwrap();
+    assert!(sep.contains("<name>German_Germany</name>"), "{sep}");
+    assert!(sep.contains("<langCode>de_DE</langCode>"), "{sep}");
+    assert_eq!(
+        std::fs::read(dir.join("sp-sip.jar")).unwrap(),
+        b"locale-jar"
+    );
+
+    // Removing the locale removes it from the SEP file and the export.
+    let (status, _) = admin
+        .call("DELETE", "/api/v1/phone-locales/cisco/German_Germany", None)
+        .await;
+    assert_eq!(status, StatusCode::NO_CONTENT);
+    assert_eq!(admin.post(&resync, json!({})).await.0, StatusCode::OK);
+    let sep = std::fs::read_to_string(dir.join("SEP00451D6BE327.cnf.xml")).unwrap();
+    assert!(!sep.contains("userLocale"), "{sep}");
+    assert!(!dir.join("sp-sip.jar").exists());
+}

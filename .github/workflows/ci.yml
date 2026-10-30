@@ -80,6 +80,9 @@ jobs:
           sudo LDAP_WORK=/var/lib/ldap/talkops-test tests/ldap/start.sh
       - name: Install PostgreSQL 17 client tools (backup tests)
         run: |
+          # GitHub-hosted images ship postgresql-common; the self-hosted runner does not.
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq postgresql-common
           sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq postgresql-client-17
       - name: Install rclone (backup target tests)
@@ -87,7 +90,7 @@ jobs:
           # Same pinned release and checksum as docker/talkops/Dockerfile.
           curl -fsSLo /tmp/rclone.zip https://downloads.rclone.org/v1.75.2/rclone-v1.75.2-linux-amd64.zip
           echo "349ac8fba6ff65d6247043f1750cdcb518ec5d500ef91463a10d37c0ccdf3702  /tmp/rclone.zip" | sha256sum -c -
-          unzip -q /tmp/rclone.zip -d /tmp
+          unzip -oq /tmp/rclone.zip -d /tmp  # -o: the self-hosted runner keeps /tmp between jobs
           sudo install -m 0755 /tmp/rclone-v1.75.2-linux-amd64/rclone /usr/local/bin/rclone
           rclone version
       - name: Install and test the optional Cisco TFTP transport

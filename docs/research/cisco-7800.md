@@ -159,6 +159,15 @@ CTL, ITL and SEP requests and sent no SIP. A hand-written file with
 `ethernetPhonePort`, `securedSipPort` and `commonProfile` was accepted: the phone
 requested `dialplan.xml` and registered over SIP TCP. The template now emits
 these elements. The test did not isolate which single element is required.
+A second device test on 2026-10-30 found a layout requirement. The template
+wrote `callManagerGroup`, `members`, `member` and `callManager` on one line
+without whitespace between the tags. The Java layer read the call manager, but
+the SIP stack did not: the log had no `ccm0=` line and showed `Admin has not
+configured a valid cucm for cucm index=PRIMARY_CCM=1`, then
+`SIP_REG_FAILURE_CANNOT_ESTABLISH_CONNECTION_WITH_UCM`. The same file with one
+element per line in that block registered at once. The escaped time zone
+(`&#x2f;`), `messagesNumber` and `phonePassword` had no effect. The template now
+writes one element per line in that block, and a test keeps that layout.
 The [usecallmanager.nz SEP file reference](https://usecallmanager.nz/sepmac-cnf-xml.html)
 lists the same elements. Calls and media are not tested yet.
 

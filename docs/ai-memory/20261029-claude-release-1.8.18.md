@@ -5,10 +5,10 @@
 - Task ID: 20261029-claude-release-1.8.18
 - Date: 2026-10-29
 - Tool: Claude Code (release manager)
-- Status: In progress
+- Status: Completed
 - Branch: codex/release-1.8.18
 - Base commit: 45e2b25 (main, v1.8.17)
-- Related commits or PR: PR102, integration PR pending
+- Related commits or PR: PR102, PR103 (merge b7e46ad), tag v1.8.18
 
 ## Goal
 
@@ -45,8 +45,7 @@ publication yet.
 
 ## Next action
 
-Open the integration PR, wait for CI, merge, check main, push v1.8.18 once and
-verify the release and images.
+None. Published by the Cisco session; release and images checked on 2026-10-30.
 
 ## References
 

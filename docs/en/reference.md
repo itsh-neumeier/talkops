@@ -33,7 +33,7 @@ Use the files from the same release as the images.
 
 | Variable group | Important values |
 | --- | --- |
-| Image version | `TALKOPS_VERSION`; image tag such as `1.8.22`, not Git tag `v1.8.22`. |
+| Image version | `TALKOPS_VERSION`; image tag such as `1.8.23`, not Git tag `v1.8.23`. |
 | Database | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_PORT`. |
 | Required secrets | `TALKOPS_SECRET_KEY` (64 hexadecimal characters), `TALKOPS_ESL_PASSWORD`, `TALKOPS_XMLCURL_PASSWORD`. |
 | Web and SIP ports | `TALKOPS_LISTEN`, `TALKOPS_HTTP_PORT`, `TALKOPS_ESL_PORT`, `TALKOPS_SIP_PORT`, `TALKOPS_SIP_TRUNK_PORT`, `TALKOPS_RTP_START_PORT`, `TALKOPS_RTP_END_PORT`. |

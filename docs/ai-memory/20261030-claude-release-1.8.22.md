@@ -5,10 +5,10 @@
 - Task ID: 20261030-claude-release-1.8.22
 - Date: 2026-10-30
 - Tool: Claude Code (release manager)
-- Status: In progress
+- Status: Completed
 - Branch: codex/release-1.8.22
 - Base commit: main, v1.8.21
-- Related commits or PR: PR111, integration PR pending
+- Related commits or PR: PR111, PR112, tag v1.8.22
 
 ## Goal
 
@@ -34,17 +34,16 @@ updated. The 1.8.21 summary is marked Completed.
 
 - Passed: clean merge. No new migrations.
 - Passed: version strings changed at the places of the 1.8.21 release commit.
-- Pending: CI and E2E on the integration PR and on main.
+- Passed: CI and E2E on the integration PR and on main.
 - STE review: repository writing rules applied; full standard unavailable.
 
 ## Dependencies and open work
 
-- Device test on the CP-7861: resync and check the German menus.
+- Device test on the CP-7861: passed. The German menus show after resync.
 
 ## Next action
 
-Open the integration PR, wait for CI, merge, check main, push v1.8.22 once and
-verify the release and images.
+None. v1.8.22 is published. The 1.8.23 release continues the Cisco work.
 
 ## References
 

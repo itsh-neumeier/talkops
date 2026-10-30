@@ -717,6 +717,34 @@ async fn serve_inner(
             .into_response();
     }
 
+    // An admin-stored file replaces the generated file at this path (ADR 0052).
+    match talkops_core::provisioning_files::http_file(
+        &state.db,
+        &state.secrets,
+        TenantId::DEFAULT,
+        &path,
+    )
+    .await
+    {
+        Ok(Some(body)) => {
+            let content_type = match path.rsplit_once('.').map(|(_, ext)| ext) {
+                Some("xml") => "text/xml; charset=utf-8",
+                Some("cfg" | "txt" | "conf" | "ini") => "text/plain; charset=utf-8",
+                _ => "application/octet-stream",
+            };
+            return (
+                [
+                    (header::CONTENT_TYPE, content_type),
+                    (header::CACHE_CONTROL, "no-store"),
+                ],
+                body,
+            )
+                .into_response();
+        }
+        Ok(None) => {}
+        Err(err) => return ApiError::from(err).into_response(),
+    }
+
     let user_agent = headers
         .get(header::USER_AGENT)
         .and_then(|v| v.to_str().ok())

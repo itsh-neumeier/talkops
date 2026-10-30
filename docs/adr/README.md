@@ -56,6 +56,7 @@ nächste freie Nummer; überholte ADRs werden nicht gelöscht, sondern auf
 | [0049](0049-cisco-enterprise-tftp-bootstrap.md) | Optional IP-scoped TFTP bootstrap for Cisco Enterprise SIP | Accepted |
 | [0050](0050-release-architectures.md) | Release image architectures: amd64 by default, arm64 on request | Accepted |
 | [0051](0051-cisco-enterprise-service-control-ringtones-directory.md) | Cisco Enterprise SIP resync, contact status, ringtones and directory | Accepted |
+| [0052](0052-admin-provisioning-files.md) | Admin-edited provisioning files | Accepted |
 
 Vorlage: [`template.md`](template.md)
 

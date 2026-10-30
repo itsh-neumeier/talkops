@@ -21,6 +21,8 @@
 	import Modal from '#lib/components/Modal.svelte';
 	import PhoneMediaManager from '#lib/components/PhoneMediaManager.svelte';
 	import CiscoLocaleManager from '#lib/components/CiscoLocaleManager.svelte';
+	import ProvisioningFileExplorer from '#lib/components/ProvisioningFileExplorer.svelte';
+	import Tabs from '#lib/components/Tabs.svelte';
 	import PhoneSettingsDefaults from '#lib/components/PhoneSettingsDefaults.svelte';
 	import VendorBadge from '#lib/components/VendorBadge.svelte';
 	import { modelLabel, sortModels } from '#lib/vendors.ts';
@@ -58,6 +60,20 @@
 	let info = $state<ProvisioningInfo | null>(null);
 	let error = $state('');
 	let addOpen = $state(false);
+	/** Page section; admins see the provisioning sections as tabs (`?tab=`). */
+	type Section = 'phones' | 'general' | 'cisco' | 'advanced';
+	const sections: Section[] = ['phones', 'general', 'cisco', 'advanced'];
+	let tab = $state<Section>('phones');
+	onMount(() => {
+		const wanted = new URLSearchParams(location.search).get('tab') as Section | null;
+		if (wanted && sections.includes(wanted)) tab = wanted;
+	});
+	function selectTab(id: Section) {
+		const url = new URL(location.href);
+		if (id === 'phones') url.searchParams.delete('tab');
+		else url.searchParams.set('tab', id);
+		history.replaceState(history.state, '', url);
+	}
 	let cloneOpen = $state(false),
 		cloneSource = $state('');
 	let form = $state({ mac: '', model: 't54w', name: '' });
@@ -190,130 +206,145 @@
 			{/if}
 		{/snippet}
 	</PageHeader>
+	{#if can('phones.manage')}
+		<Tabs
+			label={t('nav.phones')}
+			tabs={[
+				{ id: 'phones', label: t('phones.tabPhones') },
+				{ id: 'general', label: t('phones.tabGeneral') },
+				{ id: 'cisco', label: t('phones.tabCisco') },
+				{ id: 'advanced', label: t('phones.tabAdvanced') }
+			]}
+			bind:value={tab}
+			onchange={selectTab}
+		/>
+	{/if}
 	<ErrorBox {error} />
-	{#if network?.state === 'error'}
-		<p class="text-sm text-amber-700 dark:text-amber-400">{t('phones.network.errorShort')}</p>
+	{#if tab === 'phones'}
+		{#if network?.state === 'error'}
+			<p class="text-sm text-amber-700 dark:text-amber-400">{t('phones.network.errorShort')}</p>
+		{/if}
+
+		<div class="card scroll-x">
+			{#if phones.length === 0 && net.settled}
+				<p class="text-sm text-slate-500">{t('phones.none')}</p>
+			{:else}
+				<table class="table">
+					<thead>
+						<tr
+							><th>{t('common.name')}</th><th>{t('phones.extensions')}</th><th
+								>{t('phones.model')}</th
+							><th class="col-opt-lg">{t('phones.mac')}</th><th class="col-opt"
+								>{t('phones.lastSeen')}</th
+							><th class="col-opt-lg">{t('phones.firmware')}</th>{#if showNetwork}<th
+									class="col-opt">{t('phones.network.column')}</th
+								>{/if}</tr
+						>
+						<tr class="filters">
+							<th
+								><input
+									class="input input-sm"
+									aria-label="{t('common.filter')}: {t('common.name')}"
+									placeholder={t('common.filter')}
+									bind:value={filter.name}
+								/></th
+							>
+							<th
+								><input
+									class="input input-sm"
+									aria-label="{t('common.filter')}: {t('phones.extensions')}"
+									placeholder={t('common.filter')}
+									bind:value={filter.ext}
+								/></th
+							>
+							<th
+								><select
+									class="input input-sm"
+									aria-label="{t('common.filter')}: {t('phones.model')}"
+									bind:value={filter.model}
+								>
+									<option value="">{t('common.all')}</option>
+									{#each usedModels as m (m)}<option value={m}>{modelFilterName(m)}</option>{/each}
+								</select></th
+							>
+							<th class="col-opt-lg"
+								><input
+									class="input input-sm font-mono"
+									aria-label="{t('common.filter')}: {t('phones.mac')}"
+									placeholder={t('common.filter')}
+									bind:value={filter.mac}
+								/></th
+							>
+							<th class="col-opt"
+								><input
+									class="input input-sm"
+									aria-label="{t('common.filter')}: {t('phones.lastSeen')}"
+									placeholder={t('common.filter')}
+									bind:value={filter.seen}
+								/></th
+							>
+							<th class="col-opt-lg"
+								><input
+									class="input input-sm font-mono"
+									aria-label="{t('common.filter')}: {t('phones.firmware')}"
+									placeholder={t('common.filter')}
+									bind:value={filter.firmware}
+								/></th
+							>
+							{#if showNetwork}<th class="col-opt"></th>{/if}
+						</tr>
+					</thead>
+					<tbody>
+						{#each filtered as p (p.id)}
+							<tr
+								class="cursor-pointer {panel === p.id ? 'bg-teal-50 dark:bg-teal-950/40' : ''}"
+								onclick={(e) => rowClick(e, () => openPanel(p.id))}
+							>
+								<td
+									><a
+										class="font-medium hover:underline"
+										href="/phones/{p.id}"
+										data-panel-link
+										aria-current={panel === p.id ? 'true' : undefined}>{p.name}</a
+									></td
+								>
+								<td class="text-sm">
+									{#each p.extensions as e, i (i)}<span class="whitespace-nowrap"
+											><span class="font-mono">{e.number}</span> {e.display_name}</span
+										>{#if i < p.extensions.length - 1}<br />{/if}{:else}<a
+											class="text-slate-500 hover:underline"
+											href="/phones/{p.id}">{t('phones.noneAssigned')}</a
+										>{/each}
+								</td>
+								<td
+									><div class="flex items-center gap-2">
+										<VendorBadge vendor={models.find((m) => m.id === p.model)?.vendor} /><span
+											>{modelName(p.model)}</span
+										>
+									</div></td
+								>
+								<td class="col-opt-lg font-mono text-xs">{p.mac}</td>
+								<td class="col-opt text-sm">{seen(p)}{p.last_ip ? ` · ${p.last_ip}` : ''}</td>
+								<td class="col-opt-lg font-mono text-xs">{p.last_firmware ?? '—'}</td>
+								{#if showNetwork}<td class="col-opt" data-testid="phone-network-cell"
+										><PhoneNetworkCell data={networkByPhone.get(p.id)} /></td
+									>{/if}
+							</tr>
+						{:else}
+							{#if !net.settled}<SkeletonRows
+									cols={showNetwork ? 7 : 6}
+								/>{:else if filtering}<EmptyRow
+									cols={showNetwork ? 7 : 6}
+									text={t('common.noMatches')}
+								/>{/if}
+						{/each}
+					</tbody>
+				</table>
+			{/if}
+		</div>
 	{/if}
 
-	<div class="card scroll-x">
-		{#if phones.length === 0 && net.settled}
-			<p class="text-sm text-slate-500">{t('phones.none')}</p>
-		{:else}
-			<table class="table">
-				<thead>
-					<tr
-						><th>{t('common.name')}</th><th>{t('phones.extensions')}</th><th>{t('phones.model')}</th
-						><th class="col-opt-lg">{t('phones.mac')}</th><th class="col-opt"
-							>{t('phones.lastSeen')}</th
-						><th class="col-opt-lg">{t('phones.firmware')}</th>{#if showNetwork}<th class="col-opt"
-								>{t('phones.network.column')}</th
-							>{/if}</tr
-					>
-					<tr class="filters">
-						<th
-							><input
-								class="input input-sm"
-								aria-label="{t('common.filter')}: {t('common.name')}"
-								placeholder={t('common.filter')}
-								bind:value={filter.name}
-							/></th
-						>
-						<th
-							><input
-								class="input input-sm"
-								aria-label="{t('common.filter')}: {t('phones.extensions')}"
-								placeholder={t('common.filter')}
-								bind:value={filter.ext}
-							/></th
-						>
-						<th
-							><select
-								class="input input-sm"
-								aria-label="{t('common.filter')}: {t('phones.model')}"
-								bind:value={filter.model}
-							>
-								<option value="">{t('common.all')}</option>
-								{#each usedModels as m (m)}<option value={m}>{modelFilterName(m)}</option>{/each}
-							</select></th
-						>
-						<th class="col-opt-lg"
-							><input
-								class="input input-sm font-mono"
-								aria-label="{t('common.filter')}: {t('phones.mac')}"
-								placeholder={t('common.filter')}
-								bind:value={filter.mac}
-							/></th
-						>
-						<th class="col-opt"
-							><input
-								class="input input-sm"
-								aria-label="{t('common.filter')}: {t('phones.lastSeen')}"
-								placeholder={t('common.filter')}
-								bind:value={filter.seen}
-							/></th
-						>
-						<th class="col-opt-lg"
-							><input
-								class="input input-sm font-mono"
-								aria-label="{t('common.filter')}: {t('phones.firmware')}"
-								placeholder={t('common.filter')}
-								bind:value={filter.firmware}
-							/></th
-						>
-						{#if showNetwork}<th class="col-opt"></th>{/if}
-					</tr>
-				</thead>
-				<tbody>
-					{#each filtered as p (p.id)}
-						<tr
-							class="cursor-pointer {panel === p.id ? 'bg-teal-50 dark:bg-teal-950/40' : ''}"
-							onclick={(e) => rowClick(e, () => openPanel(p.id))}
-						>
-							<td
-								><a
-									class="font-medium hover:underline"
-									href="/phones/{p.id}"
-									data-panel-link
-									aria-current={panel === p.id ? 'true' : undefined}>{p.name}</a
-								></td
-							>
-							<td class="text-sm">
-								{#each p.extensions as e, i (i)}<span class="whitespace-nowrap"
-										><span class="font-mono">{e.number}</span> {e.display_name}</span
-									>{#if i < p.extensions.length - 1}<br />{/if}{:else}<a
-										class="text-slate-500 hover:underline"
-										href="/phones/{p.id}">{t('phones.noneAssigned')}</a
-									>{/each}
-							</td>
-							<td
-								><div class="flex items-center gap-2">
-									<VendorBadge vendor={models.find((m) => m.id === p.model)?.vendor} /><span
-										>{modelName(p.model)}</span
-									>
-								</div></td
-							>
-							<td class="col-opt-lg font-mono text-xs">{p.mac}</td>
-							<td class="col-opt text-sm">{seen(p)}{p.last_ip ? ` · ${p.last_ip}` : ''}</td>
-							<td class="col-opt-lg font-mono text-xs">{p.last_firmware ?? '—'}</td>
-							{#if showNetwork}<td class="col-opt" data-testid="phone-network-cell"
-									><PhoneNetworkCell data={networkByPhone.get(p.id)} /></td
-								>{/if}
-						</tr>
-					{:else}
-						{#if !net.settled}<SkeletonRows
-								cols={showNetwork ? 7 : 6}
-							/>{:else if filtering}<EmptyRow
-								cols={showNetwork ? 7 : 6}
-								text={t('common.noMatches')}
-							/>{/if}
-					{/each}
-				</tbody>
-			</table>
-		{/if}
-	</div>
-
-	{#if can('phones.manage')}
-		<a class="btn" href="/phones/templates">{t('prov.libraryTitle')}</a>
+	{#if can('phones.manage') && tab === 'general'}
 		<ProvisioningTransport />
 		<section class="card space-y-3">
 			<h2>{t('phones.provisioning')}</h2>
@@ -414,9 +445,16 @@
 			{/if}
 		</section>
 
-		<CiscoLocaleManager />
 		<PhoneMediaManager />
 		<PhoneSettingsDefaults />
+	{:else if can('phones.manage') && tab === 'cisco'}
+		<CiscoLocaleManager />
+	{:else if can('phones.manage') && tab === 'advanced'}
+		<ProvisioningFileExplorer {phones} />
+		<section class="card space-y-3">
+			<h2>{t('prov.libraryTitle')}</h2>
+			<a class="btn" href="/phones/templates">{t('prov.libraryTitle')}</a>
+		</section>
 	{/if}
 </div>
 

@@ -36,6 +36,7 @@ pub mod phones;
 pub mod portainer;
 pub mod presets;
 pub mod prompts;
+pub mod provisioning_files;
 pub mod queues;
 pub mod recordings;
 pub mod ring_groups;

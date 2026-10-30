@@ -6,6 +6,21 @@ All notable changes to TalkOps. The format follows
 
 ## [Unreleased]
 
+## [1.8.18] – 2026-10-29
+
+### Fixed
+
+- Cisco Enterprise SIP phones: **Resync** and **Restart** reported "not
+  registered", and last contact, IP address and firmware stayed empty.
+  TalkOps read the user agent from the `show registrations` metadata column,
+  which FreeSWITCH fills with `registration_metadata`, not the SIP User-Agent.
+  TalkOps now reads the user agent from the mod_sofia registration list. The
+  live status shows real user agents, too.
+
+### Upgrade notes
+
+- No new migration and no breaking API change.
+
 ## [1.8.17] – 2026-10-29
 
 ### Added

@@ -8,7 +8,7 @@
 - Status: In progress
 - Branch: claude/cisco-locale
 - Base commit: main, v1.8.20
-- Related commits or PR: to be added
+- Related commits or PR: PR109, release 1.8.21
 
 ## Goal
 

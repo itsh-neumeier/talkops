@@ -12,14 +12,22 @@
       <timeZone>{{ cisco_enterprise_timezone }}</timeZone>
       <ntps><ntp><name>{{ ntp_server_primary }}</name><ntpMode>unicast</ntpMode></ntp></ntps>
     </dateTimeSetting>
-    <callManagerGroup><members><member priority="0"><callManager>
-      <ports>
-        <ethernetPhonePort>2000</ethernetPhonePort>
-        <sipPort>{{ account['1'].sip_port }}</sipPort>
-        <securedSipPort>5061</securedSipPort>
-      </ports>
-      <processNodeName>{{ server_address }}</processNodeName>
-    </callManager></member></members></callManagerGroup>
+    {# Keep one element per line: the 14.2(1) SIP stack ignores a callManager
+       nested without whitespace and then reports no valid CUCM. #}
+    <callManagerGroup>
+      <members>
+        <member priority="0">
+          <callManager>
+            <ports>
+              <ethernetPhonePort>2000</ethernetPhonePort>
+              <sipPort>{{ account['1'].sip_port }}</sipPort>
+              <securedSipPort>5061</securedSipPort>
+            </ports>
+            <processNodeName>{{ server_address }}</processNodeName>
+          </callManager>
+        </member>
+      </members>
+    </callManagerGroup>
   </devicePool>
   <sipProfile>
     <sipProxies><registerWithProxy>true</registerWithProxy></sipProxies>

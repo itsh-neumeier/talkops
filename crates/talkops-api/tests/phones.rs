@@ -1267,7 +1267,16 @@ async fn cisco_enterprise_directory_resync_and_ringtones(db: PgPool) {
     assert!(sep.contains("<versionStamp>talkops-"));
 
     // The directory needs the token, not the provisioning credentials.
-    let (status, page) = plain_get(&router, path).await;
+    // The bare URL (as the phone requests it) is a menu.
+    let (status, menu) = plain_get(
+        &router,
+        &format!("{path}?locale=German_Germany&name=SEP00451D6BE327"),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{menu}");
+    assert!(menu.contains("<CiscoIPPhoneMenu>"), "{menu}");
+    assert!(menu.contains(&format!("{url}?page=1</URL>")), "{menu}");
+    let (status, page) = plain_get(&router, &format!("{path}?page=1")).await;
     assert_eq!(status, StatusCode::OK, "{page}");
     assert!(page.contains("<CiscoIPPhoneDirectory>"));
     assert!(page.contains("<Name>Cisco &amp; Co</Name><Telephone>**999</Telephone>"));

@@ -6,6 +6,13 @@ All notable changes to TalkOps. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Cisco Enterprise SIP phones: the contacts stayed on "Requesting". The
+  `directoryURL` returned a directory page, but a CP-7861 on 14.2(1) expects a
+  `CiscoIPPhoneMenu` there. The bare URL now returns a menu with the phone book
+  and the search form.
+
 ## [1.8.22] – 2026-10-30
 
 ### Fixed

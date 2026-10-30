@@ -962,6 +962,14 @@ async fn cisco_directory(
             phonebook::cisco_search(&url),
         ));
     }
+    // The phone opens the bare URL (it appends `locale` and `name`); answer
+    // with the menu, which links to the pages and the search form.
+    if search.is_none() && !query.contains_key("page") {
+        return Ok(text(
+            "text/xml; charset=utf-8",
+            phonebook::cisco_menu("TalkOps", &url),
+        ));
+    }
     let entries = phonebook::search(phone_entries(state, tenant, &phone).await?, search);
     let encoded = search
         .map(|s| {

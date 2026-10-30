@@ -30,6 +30,23 @@ const RING_EXPORT_LIMIT: usize = 8 * 1024 * 1024;
 /// and are written once, then hard-linked.
 type Exports = BTreeMap<String, BTreeMap<String, Arc<Vec<u8>>>>;
 
+/// Export root plus a lock: the timer, saves and resyncs all swap the same
+/// `next`/`active` directories, so refreshes must not overlap.
+#[derive(Debug, Clone)]
+pub struct Exporter {
+    root: Arc<PathBuf>,
+    lock: Arc<tokio::sync::Mutex<()>>,
+}
+
+impl Exporter {
+    pub fn new(root: PathBuf) -> Self {
+        Self {
+            root: Arc::new(root),
+            lock: Arc::default(),
+        }
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct ExportResult {
     pub phones: usize,
@@ -367,11 +384,51 @@ async fn collect(state: &AppState) -> anyhow::Result<(Exports, ExportResult)> {
     Ok((output, stats))
 }
 
-pub async fn spawn(state: AppState, root: PathBuf) -> anyhow::Result<()> {
+/// Refreshes the export now, if enabled. A resync awaits this so the phone
+/// never fetches a file that is older than the last save.
+pub async fn refresh_now(state: &AppState) -> bool {
+    let Some(exporter) = &state.cisco_tftp else {
+        return false;
+    };
+    let _guard = exporter.lock.lock().await;
+    match refresh(state, &exporter.root).await {
+        Ok(stats) => {
+            if stats.omitted > 0 {
+                tracing::warn!(
+                    omitted = stats.omitted,
+                    "Cisco TFTP devices omitted: check unique client IP, SIP host and profile settings"
+                );
+            }
+            true
+        }
+        Err(_) => {
+            tracing::error!("Cisco TFTP refresh failed; check export root and sidecar");
+            false
+        }
+    }
+}
+
+/// Starts a refresh in the background after a change that affects exports.
+pub fn schedule(state: &AppState) {
+    if state.cisco_tftp.is_some() {
+        let state = state.clone();
+        tokio::spawn(async move { refresh_now(&state).await });
+    }
+}
+
+pub async fn spawn(state: AppState) -> anyhow::Result<()> {
+    let exporter = state
+        .cisco_tftp
+        .clone()
+        .ok_or_else(|| anyhow::anyhow!("Cisco TFTP export is not configured"))?;
+    let root = exporter.root.as_path();
     // A restart removes the served generation before any database operation.
-    prepare(&root).await?;
-    remove_owned(&root, "active").await?;
-    let stats = refresh(&state, &root).await?;
+    prepare(root).await?;
+    remove_owned(root, "active").await?;
+    let stats = {
+        let _guard = exporter.lock.lock().await;
+        refresh(&state, root).await?
+    };
     tracing::info!(
         phones = stats.phones,
         files = stats.files,
@@ -383,16 +440,7 @@ pub async fn spawn(state: AppState, root: PathBuf) -> anyhow::Result<()> {
         timer.tick().await;
         loop {
             timer.tick().await;
-            match refresh(&state, &root).await {
-                Ok(stats) if stats.omitted > 0 => tracing::warn!(
-                    omitted = stats.omitted,
-                    "Cisco TFTP devices omitted: check unique client IP, SIP host and profile settings"
-                ),
-                Ok(_) => {}
-                Err(_) => {
-                    tracing::error!("Cisco TFTP refresh failed; check export root and sidecar")
-                }
-            }
+            refresh_now(&state).await;
         }
     });
     Ok(())

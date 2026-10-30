@@ -86,6 +86,19 @@ The public directory URL returned 307 from the reverse proxy (also with a bad
 token). TalkOps returns 200 on `http://192.168.140.30:8095`. The user set that
 provisioning address on the phone.
 
+## Device test on 1.8.22
+
+German menus work. The contacts stayed on "Requesting". A capture showed
+`GET <directoryURL>?locale=German_Germany&name=SEP…` with a complete 200
+`CiscoIPPhoneDirectory` answer (32 entries). Community reports say the 78xx
+expects a `CiscoIPPhoneMenu` at `directoryURL`. The bare URL (no `page`, no
+`search`) now returns a menu that links to `?page=1` and `?search=`.
+
+Open user requests: Cisco ringtones, Cisco key layout, the phone language list
+from the uploaded Cisco locales, and a TFTP/provisioning file explorer with
+editor in a regrouped provisioning page (General, Cisco Enterprise,
+Debug/Advanced).
+
 ## Next action
 
 Open the PR, then release and do the device test when the user asks.

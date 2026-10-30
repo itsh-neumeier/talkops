@@ -1259,6 +1259,17 @@ async fn cisco_enterprise_directory_resync_and_ringtones(db: PgPool) {
     );
     assert!(ringlist.contains("<DisplayName>Bells &amp; Co</DisplayName>"));
     assert_eq!(std::fs::read(dir.join(&selected)).unwrap().len(), 1600 * 2);
+    // Without a selected ringtone the phone still gets all ringtones.
+    sqlx::query("UPDATE phones SET ringtone_id=NULL")
+        .execute(&state.db)
+        .await
+        .unwrap();
+    talkops_api::cisco_tftp::refresh(&state, root.path())
+        .await
+        .unwrap();
+    let ringlist = std::fs::read_to_string(dir.join("Ringlist-wb.xml")).unwrap();
+    assert!(ringlist.contains("Bells &amp; Co") && ringlist.contains("Chime"));
+    assert!(dir.join(&second).exists());
     let sep = std::fs::read_to_string(dir.join("SEP00451D6BE327.cnf.xml")).unwrap();
     let start = sep.find("<directoryURL>").unwrap() + "<directoryURL>".len();
     let url = &sep[start..start + sep[start..].find("</directoryURL>").unwrap()];
@@ -1267,7 +1278,16 @@ async fn cisco_enterprise_directory_resync_and_ringtones(db: PgPool) {
     assert!(sep.contains("<versionStamp>talkops-"));
 
     // The directory needs the token, not the provisioning credentials.
-    let (status, page) = plain_get(&router, path).await;
+    // The bare URL (as the phone requests it) is a menu.
+    let (status, menu) = plain_get(
+        &router,
+        &format!("{path}?locale=German_Germany&name=SEP00451D6BE327"),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{menu}");
+    assert!(menu.contains("<CiscoIPPhoneMenu>"), "{menu}");
+    assert!(menu.contains(&format!("{url}?page=1</URL>")), "{menu}");
+    let (status, page) = plain_get(&router, &format!("{path}?page=1")).await;
     assert_eq!(status, StatusCode::OK, "{page}");
     assert!(page.contains("<CiscoIPPhoneDirectory>"));
     assert!(page.contains("<Name>Cisco &amp; Co</Name><Telephone>**999</Telephone>"));

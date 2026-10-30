@@ -446,6 +446,10 @@ async fn render_phone_config_inner(
         let common = talkops_provisioning::vendors::Common {
             cisco_locale: talkops_provisioning::vendors::select_cisco_locale(
                 &cisco_locales,
+                overrides
+                    .vendor_settings
+                    .get("cisco_enterprise_locale")
+                    .map_or("", String::as_str),
                 language,
             ),
             provisioning: &prov,
@@ -717,6 +721,34 @@ async fn serve_inner(
             .into_response();
     }
 
+    // An admin-stored file replaces the generated file at this path (ADR 0052).
+    match talkops_core::provisioning_files::http_file(
+        &state.db,
+        &state.secrets,
+        TenantId::DEFAULT,
+        &path,
+    )
+    .await
+    {
+        Ok(Some(body)) => {
+            let content_type = match path.rsplit_once('.').map(|(_, ext)| ext) {
+                Some("xml") => "text/xml; charset=utf-8",
+                Some("cfg" | "txt" | "conf" | "ini") => "text/plain; charset=utf-8",
+                _ => "application/octet-stream",
+            };
+            return (
+                [
+                    (header::CONTENT_TYPE, content_type),
+                    (header::CACHE_CONTROL, "no-store"),
+                ],
+                body,
+            )
+                .into_response();
+        }
+        Ok(None) => {}
+        Err(err) => return ApiError::from(err).into_response(),
+    }
+
     let user_agent = headers
         .get(header::USER_AGENT)
         .and_then(|v| v.to_str().ok())
@@ -960,6 +992,14 @@ async fn cisco_directory(
         return Ok(text(
             "text/xml; charset=utf-8",
             phonebook::cisco_search(&url),
+        ));
+    }
+    // The phone opens the bare URL (it appends `locale` and `name`); answer
+    // with the menu, which links to the pages and the search form.
+    if search.is_none() && !query.contains_key("page") {
+        return Ok(text(
+            "text/xml; charset=utf-8",
+            phonebook::cisco_menu("TalkOps", &url),
         ));
     }
     let entries = phonebook::search(phone_entries(state, tenant, &phone).await?, search);

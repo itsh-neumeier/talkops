@@ -13,6 +13,7 @@ use std::{
 };
 use talkops_core::{
     phones::{self, MediaKind},
+    provisioning_files,
     tenant::TenantId,
 };
 use talkops_provisioning::vendors;
@@ -263,7 +264,8 @@ pub fn wav_to_rwb(wav: &[u8]) -> anyhow::Result<Vec<u8>> {
 
 /// Ring list and ringtone files for a phone. The phone's selected ringtone is
 /// first, because the device configuration cannot select a custom tone; the
-/// user selects it on the phone. Without a selected ringtone nothing is added.
+/// user selects it on the phone. Without a selected ringtone the list has
+/// all ringtones in upload order.
 async fn ringtones(
     state: &AppState,
     phone: &phones::Phone,
@@ -271,13 +273,11 @@ async fn ringtones(
     cache: &mut HashMap<Uuid, Option<Arc<Vec<u8>>>>,
 ) -> BTreeMap<String, Arc<Vec<u8>>> {
     let mut files = BTreeMap::new();
-    let Some(selected) = phone.ringtone_id else {
-        return files;
-    };
+    let selected = phone.ringtone_id;
     let ordered = media
         .iter()
-        .filter(|m| m.id == selected)
-        .chain(media.iter().filter(|m| m.id != selected));
+        .filter(|m| Some(m.id) == selected)
+        .chain(media.iter().filter(|m| Some(m.id) != selected));
     let mut rings = Vec::new();
     let mut bytes = 0;
     for m in ordered {
@@ -412,6 +412,16 @@ async fn collect(state: &AppState) -> anyhow::Result<(Exports, ExportResult)> {
             continue;
         }
         artifacts.extend(ringtones(state, phone, &media, &mut cache).await);
+        // Admin-stored files replace generated files or add files (ADR 0052).
+        match provisioning_files::tftp_files(&state.db, &state.secrets, tenant, phone.id).await {
+            Ok(files) => {
+                artifacts.extend(files.into_iter().map(|(name, body)| (name, Arc::new(body))))
+            }
+            Err(_) => {
+                stats.omitted += 1;
+                continue;
+            }
+        }
         let sep = format!("SEP{}.cnf.xml", phone.mac.to_ascii_uppercase());
         if let Some(name) = artifacts.get(&sep).and_then(|b| user_locale(b)) {
             artifacts.extend(locale_files(state, &name, &mut locales).await);

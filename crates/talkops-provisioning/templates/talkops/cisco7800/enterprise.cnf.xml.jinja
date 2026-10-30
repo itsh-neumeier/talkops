@@ -38,7 +38,7 @@
     <phoneLabel>{{ device_label }}</phoneLabel>
     <sipLines>
 {% for row in lines %}{% if row.enabled %}
-      <line button="1" lineIndex="1">
+      <line button="{{ loop.index }}" lineIndex="{{ loop.index }}">
         <featureID>9</featureID>
         <featureLabel>{{ row.label }}</featureLabel>
         <proxy>USECALLMANAGER</proxy><port>{{ row.sip_port }}</port>
@@ -48,6 +48,14 @@
         <messagesNumber>{{ voicemail_number }}</messagesNumber>
       </line>
 {% endif %}{% endfor %}
+{# Button 1 is the line. Other keys are speed dials: the busy lamp needs CUCM presence. #}
+{% if keys.line is mapping %}{% for id, key in keys.line|dictsort %}{% if key.device_key_id > 1 and key.device_key_type != "disabled" and key.device_key_value %}
+      <line button="{{ key.device_key_id }}">
+        <featureID>21</featureID>
+        <featureLabel>{{ key.device_key_label or key.device_key_value }}</featureLabel>
+        <speedDialNumber>{{ key.device_key_value }}</speedDialNumber>
+      </line>
+{% endif %}{% endfor %}{% endif %}
     </sipLines>
     <dialTemplate>dialplan.xml</dialTemplate>
   </sipProfile>

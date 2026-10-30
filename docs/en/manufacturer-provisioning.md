@@ -57,6 +57,24 @@ A phone that requires TFTP needs a separate delivery service. Swissvoice has
 no directory artifact in the source. Its directory URL fields start empty.
 Use a compatible external directory if required. Firmware files are not bundled.
 
+### Edit or add provisioning files
+
+The phones page has the tabs **Phones**, **General**, **Cisco Enterprise**
+and **Debug / advanced**. Use **Debug / advanced → Provisioning files** to
+look at, replace or add files:
+
+1. Select a phone. The table shows the files that the phone gets.
+2. Use **Show generated** to look at a generated file.
+3. Use **Edit** to start a stored copy of the file. Save it. The phone then
+   gets the stored file instead of the generated file.
+4. Use **New file** to add a file. TFTP files are for Cisco Enterprise phones,
+   for one phone or for all phones. HTTP files use the path below
+   `/provisioning/` and apply to all phones.
+5. Use **Remove** to use the generated file again.
+
+A stored copy does not change when you change the phone in TalkOps. TalkOps
+encrypts stored files. Each file can have 1 MiB.
+
 ## Copy a phone
 
 1. Select **Use settings from a phone**.
@@ -207,9 +225,9 @@ Each Enterprise profile permits **one independent SIP account in slot 1**.
 The phone can have more physical line buttons. Those buttons do not prove
 support for independent digest credentials per line. TalkOps does not share or
 weaken account passwords to add more lines. MPP account limits remain unchanged.
-Custom buttons, BLF, firmware updates and locale downloads are absent.
-TalkOps supplies resync, restart, ringtones and the phone book (see below).
-The installed phone language stays unchanged. NTP and the supported UTC,
+Firmware updates and BLF busy lamps are absent. TalkOps supplies resync,
+restart, ringtones, speed dial keys, uploaded user locales and the phone book
+(see below). NTP and the supported UTC,
 Central European and London time zones use the common settings.
 
 ### Enable the optional TFTP deployment
@@ -245,8 +263,8 @@ capabilities, uses `no-new-privileges` and a read-only filesystem. Each transfer
 runs as UID 10001. Docker must preserve the real LAN client IP. A proxy or
 NAT that replaces all client addresses cannot use this admission rule.
 
-TalkOps exports only the declared SEP configuration, `dialplan.xml` and, with a
-selected ringtone, `Ringlist-wb.xml` and the `.rwb` ringtones into a
+TalkOps exports only the declared SEP configuration, `dialplan.xml` and, with
+uploaded ringtones, `Ringlist-wb.xml` and the `.rwb` ringtones into a
 private, volatile tmpfs volume. The sidecar mounts that volume read-only.
 Files use mode 0600 and directories use 0700. The exporter refreshes snapshots
 every 30 seconds. Duplicate client IPs, missing SIP hosts and invalid profiles
@@ -336,8 +354,20 @@ all uploaded ringtones into the Cisco wideband format (`.rwb`, 16 kHz, at most
 the `.rwb` files, with the selected ringtone first. The configuration file
 cannot select a custom ringtone. Select it on the phone under
 **Settings → Ringtone** after the next resync. Without a selected ringtone,
-TalkOps exports no ring list. At most 50 ringtones and 8 MB per phone are
-exported.
+the ring list has all ringtones in upload order. TalkOps does not supply
+Cisco's own ringtones. At most 50 ringtones and 8 MB per phone are exported.
+
+**Keys.** The 7821, 7841 and 7861 profiles have the key group **line**.
+Button 1 is the SIP line. Keys 2 and higher become speed dials
+(`featureID` 21) with the key label and number. A BLF key also becomes a
+speed dial: the busy lamp needs Cisco Unified CM presence. Without a label,
+the phone shows the number.
+
+**Language package per phone.** The **Language and time** block of a Cisco
+Enterprise phone has the field **Cisco language package**. *Automatic* uses
+the uploaded package that matches the phone language. Select a package to use
+it, for example Dutch, although TalkOps offers only German and English as
+phone language.
 
 **Contacts.** The SEP file contains a `directoryURL`. The **Directories** or
 **Contacts** key on the phone then shows the TalkOps phone book: the enabled

@@ -117,6 +117,12 @@
         "label": "TFTP client IPv4 address (fixed DHCP lease)",
         "kind": "text",
         "copyable": false
+      },
+      {
+        "key": "cisco_enterprise_locale",
+        "label": "Cisco user locale (empty: from the phone language)",
+        "kind": "text",
+        "copyable": true
       }
     ],
     "key_groups": []
@@ -151,9 +157,15 @@
         "label": "TFTP client IPv4 address (fixed DHCP lease)",
         "kind": "text",
         "copyable": false
+      },
+      {
+        "key": "cisco_enterprise_locale",
+        "label": "Cisco user locale (empty: from the phone language)",
+        "kind": "text",
+        "copyable": true
       }
     ],
-    "key_groups": []
+    "key_groups": ["line"]
   },
   {
     "id": "cisco-7841-enterprise",
@@ -185,9 +197,15 @@
         "label": "TFTP client IPv4 address (fixed DHCP lease)",
         "kind": "text",
         "copyable": false
+      },
+      {
+        "key": "cisco_enterprise_locale",
+        "label": "Cisco user locale (empty: from the phone language)",
+        "kind": "text",
+        "copyable": true
       }
     ],
-    "key_groups": []
+    "key_groups": ["line"]
   },
   {
     "id": "cisco-7861-enterprise",
@@ -219,8 +237,14 @@
         "label": "TFTP client IPv4 address (fixed DHCP lease)",
         "kind": "text",
         "copyable": false
+      },
+      {
+        "key": "cisco_enterprise_locale",
+        "label": "Cisco user locale (empty: from the phone language)",
+        "kind": "text",
+        "copyable": true
       }
     ],
-    "key_groups": []
+    "key_groups": ["line"]
   }
 ]

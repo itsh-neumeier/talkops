@@ -6,6 +6,19 @@ All notable changes to TalkOps. The format follows
 
 ## [Unreleased]
 
+## [1.8.22] – 2026-10-30
+
+### Fixed
+
+- Cisco Enterprise SIP phones: the uploaded user locale had no effect. The
+  phone requests the locale file in the locale directory
+  (`German_Germany/sp-sip.jar`), and the TFTP rule accepted only the root.
+  The rule now accepts one locale directory level.
+
+### Upgrade notes
+
+- No new migration and no breaking API change. Only `TALKOPS_VERSION` changes.
+
 ## [1.8.21] – 2026-10-30
 
 ### Added

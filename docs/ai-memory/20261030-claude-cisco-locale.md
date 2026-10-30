@@ -8,7 +8,7 @@
 - Status: In progress
 - Branch: claude/cisco-locale
 - Base commit: main, v1.8.20
-- Related commits or PR: PR109, release 1.8.21
+- Related commits or PR: PR109, release 1.8.21, locale directory fix
 
 ## Goal
 
@@ -73,6 +73,18 @@ files, with `sp-sip.jar`) and
 
 - Device test on the CP-7861 after a release.
 - Network locale support when the user supplies the package.
+
+## Device test on 1.8.21
+
+The phone stayed English. A TFTP capture on the host showed
+`RRQ "German_Germany/sp-sip.jar"` and `RRQ "/g3-tones.xml"`. The map rule
+accepted only root names, so the phone got an error. The fix accepts one
+locale directory level (`[A-Za-z][A-Za-z_]{0,63}/`) and maps it to the flat
+per-phone export. The `/sp-sip.jar` root request seen earlier stays allowed.
+
+The public directory URL returned 307 from the reverse proxy (also with a bad
+token). TalkOps returns 200 on `http://192.168.140.30:8095`. The user set that
+provisioning address on the phone.
 
 ## Next action
 

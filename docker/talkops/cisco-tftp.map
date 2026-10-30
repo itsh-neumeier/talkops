@@ -2,6 +2,7 @@
 # with or without a leading slash (the phone requests some files as "/name").
 aP .*
 rGe4 ^/?(SEP[0-9A-F]{12}\.cnf\.xml|dialplan\.xml|Ringlist-wb\.xml|talkops-[0-9a-f]{8}\.rwb)$ /run/talkops-tftp/active/\i/\1
-# Uploaded Cisco locale files; the phone requests them from the root (/sp-sip.jar).
-rGe4 ^/?([A-Za-z0-9][A-Za-z0-9_-]{0,62}(\.utf-8)?\.(jar|xml|dat))$ /run/talkops-tftp/active/\i/\1
+# Uploaded Cisco locale files. The phone requests them in the locale directory
+# (German_Germany/sp-sip.jar) or from the root; the export keeps them flat.
+rGe4 ^/?([A-Za-z][A-Za-z_]{0,63}/)?([A-Za-z0-9][A-Za-z0-9_-]{0,62}(\.utf-8)?\.(jar|xml|dat))$ /run/talkops-tftp/active/\i/\2
 a .*

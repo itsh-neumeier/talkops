@@ -5,10 +5,10 @@
 - Task ID: 20261030-claude-release-1.8.21
 - Date: 2026-10-30
 - Tool: Claude Code (release manager)
-- Status: In progress
+- Status: Completed
 - Branch: codex/release-1.8.21
 - Base commit: 2bc991a (main, v1.8.20)
-- Related commits or PR: PR109, integration PR pending
+- Related commits or PR: PR109, PR110, tag v1.8.21
 
 ## Goal
 
@@ -46,8 +46,9 @@ updated. The 1.8.20 summary is marked Completed.
 
 ## Next action
 
-Open the integration PR, wait for CI, merge, check main, push v1.8.21 once and
-verify the release and images.
+None. v1.8.21 is published (amd64 only; tags 1.8.21, 1.8 and latest share one
+digest). The first E2E run on main failed in the attendant scenario; the rerun
+passed.
 
 ## References
 

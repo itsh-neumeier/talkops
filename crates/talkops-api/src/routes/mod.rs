@@ -35,6 +35,7 @@ pub mod recovery;
 pub mod roles;
 pub mod security;
 pub mod settings;
+pub mod speech_models;
 pub mod storage_targets;
 pub mod time_conditions;
 pub mod transcription;

@@ -1,4 +1,5 @@
-//! Permission-checked, tenant-scoped Coral capture and support report.
+//! Permission-checked, tenant-scoped capture and support report of the
+//! speech services on this server (coral-stt and cuda-stt).
 use axum::{
     Json,
     extract::{Path, Query, State},
@@ -30,6 +31,8 @@ pub fn router() -> OpenApiRouter<AppState> {
 pub struct Connection {
     pub id: Uuid,
     pub name: String,
+    /// `coral` or `cuda`.
+    pub kind: String,
 }
 
 #[utoipa::path(get, path = "/api/v1/diagnostics/coral", tag = "system", responses((status = 200, body = [Connection])))]
@@ -42,10 +45,11 @@ pub async fn connections(
         transcription_api::list(&state.db, auth.tenant)
             .await?
             .into_iter()
-            .filter(|p| p.kind == "coral")
+            .filter(|p| transcription_api::is_local_kind(&p.kind))
             .map(|p| Connection {
                 id: p.id,
                 name: p.name,
+                kind: p.kind,
             })
             .collect(),
     ))
@@ -94,8 +98,10 @@ async fn config(
     auth.require_perm(Permission::DiagnosticsManage)?;
     let cfg =
         transcription_api::config(&state.db, auth.tenant, Some(&state.secrets), id, "").await?;
-    if !cfg.is_coral() {
-        return Err(ApiError::BadRequest("select a Coral connection".into()));
+    if !cfg.is_local() {
+        return Err(ApiError::BadRequest(
+            "select a Coral or CUDA connection".into(),
+        ));
     }
     Ok(cfg)
 }
@@ -103,25 +109,23 @@ async fn config(
 async fn read_response(mut response: reqwest::Response) -> ApiResult<Value> {
     if !response.status().is_success() {
         return Err(ApiError::BadRequest(format!(
-            "Coral diagnostics returned HTTP {}",
+            "speech service diagnostics returned HTTP {}",
             response.status().as_u16()
         )));
     }
     let mut bytes = Vec::new();
-    while let Some(chunk) = response
-        .chunk()
-        .await
-        .map_err(|_| ApiError::BadRequest("Coral diagnostics response interrupted".into()))?
-    {
+    while let Some(chunk) = response.chunk().await.map_err(|_| {
+        ApiError::BadRequest("speech service diagnostics response interrupted".into())
+    })? {
         if bytes.len() + chunk.len() > 4 * 1024 * 1024 {
             return Err(ApiError::BadRequest(
-                "Coral diagnostics response exceeds 4 MiB".into(),
+                "speech service diagnostics response exceeds 4 MiB".into(),
             ));
         }
         bytes.extend_from_slice(&chunk);
     }
     serde_json::from_slice(&bytes)
-        .map_err(|_| ApiError::BadRequest("Coral diagnostics response is not JSON".into()))
+        .map_err(|_| ApiError::BadRequest("speech service diagnostics response is not JSON".into()))
 }
 
 fn request(
@@ -140,7 +144,7 @@ fn request(
 async fn send(req: reqwest::RequestBuilder) -> ApiResult<Value> {
     read_response(
         req.send().await.map_err(|_| {
-            ApiError::BadRequest("Coral diagnostics service is not reachable".into())
+            ApiError::BadRequest("speech service diagnostics are not reachable".into())
         })?,
     )
     .await
@@ -273,7 +277,7 @@ pub async fn download(
         Err(ApiError::BadRequest(message)) => (Value::Null, Some(message)),
         Err(_) => (
             Value::Null,
-            Some("Coral diagnostic report unavailable".to_owned()),
+            Some("speech service diagnostic report unavailable".to_owned()),
         ),
     };
     let profiles = transcription_profiles::list(&state.db, auth.tenant).await?;

@@ -179,8 +179,8 @@ pub struct ApiTest {
     pub missing_models: Option<Vec<String>>,
     /// Models that look like speech recognition (whisper, transcribe, voxtral).
     pub speech_models: Vec<String>,
-    /// Coral connections: the `/health` answer of coral-stt (status, TPUs
-    /// with kind, state, load and loaded models, queue).
+    /// Coral and CUDA connections: the `/health` answer of coral-stt or
+    /// cuda-stt (status, TPUs or GPU, loaded models, queue).
     #[schema(value_type = Option<Object>)]
     pub coral: Option<serde_json::Value>,
 }
@@ -219,23 +219,24 @@ pub async fn test_provider(
     auth.require_perm(Permission::TranscriptionSettings)?;
     let cfg =
         transcription_api::config(&state.db, auth.tenant, Some(&state.secrets), id, "").await?;
-    // coral-stt answers /health with 503 while no TPU is ready; the body
-    // still tells why.
-    let coral =
-        if cfg.is_coral() {
-            let res = client()
-                .get(format!("{}/health", cfg.root()))
-                .send()
-                .await
-                .map_err(|e| {
-                    ApiError::BadRequest(format!("Coral service not reachable: {}", root_cause(&e)))
-                })?;
-            Some(res.json::<serde_json::Value>().await.map_err(|_| {
-                ApiError::BadRequest("the Coral service gave no health status".into())
-            })?)
-        } else {
-            None
-        };
+    // coral-stt and cuda-stt answer /health with 503 while no device or
+    // model is ready; the body still tells why.
+    let coral = if cfg.is_local() {
+        let res = client()
+            .get(format!("{}/health", cfg.root()))
+            .send()
+            .await
+            .map_err(|e| {
+                ApiError::BadRequest(format!("speech service not reachable: {}", root_cause(&e)))
+            })?;
+        Some(
+            res.json::<serde_json::Value>().await.map_err(|_| {
+                ApiError::BadRequest("the speech service gave no health status".into())
+            })?,
+        )
+    } else {
+        None
+    };
     let mut req = client().get(format!("{}/models", cfg.url.trim_end_matches('/')));
     if let Some(key) = &cfg.key {
         req = req.bearer_auth(key);
@@ -285,9 +286,16 @@ pub async fn test_provider(
         .iter()
         .filter(|id| {
             let id = id.to_ascii_lowercase();
-            ["whisper", "transcribe", "voxtral", "parakeet", "coral"]
-                .iter()
-                .any(|w| id.contains(w))
+            [
+                "whisper",
+                "transcribe",
+                "voxtral",
+                "parakeet",
+                "coral",
+                "cuda",
+            ]
+            .iter()
+            .any(|w| id.contains(w))
         })
         .cloned()
         .collect();

@@ -10,9 +10,8 @@
 //!   `conversation.item.input_audio_transcription.delta`, `.completed`
 //!   (with the extra field `language`), `.failed` and `error`.
 //!
-//! The client detects the turns and commits them. The service runs the
-//! windows of a turn while the audio arrives and sends the stable text as
-//! deltas. Overload or a device failure ends the session with an `error`
+//! The client detects the turns and commits them. The service recognizes
+//! a turn while the audio arrives and sends the new text as deltas. Overload or a device failure ends the session with an `error`
 //! event (code `overloaded`, `unavailable` or `inference_failed`), so the
 //! client can fall back.
 
@@ -26,29 +25,27 @@ use futures_util::{SinkExt, StreamExt};
 use serde_json::{Value, json};
 
 use crate::audio::{self, MODEL_RATE, StreamResampler};
-use crate::engine::{Engine, EngineError, Priority, SessionGuard};
+use crate::engine::{Choice, EngineError, Priority, SpeechEngine, SpeechTurn};
 use crate::http::{choice, normalize_language};
-use crate::models::AUTO;
-use crate::recognizer::{Choice, Turn};
 
 const DEFAULT_RATE: u32 = 24_000;
 
-struct Open {
+struct Open<T> {
     item: String,
-    turn: Turn,
+    turn: T,
     /// Text already sent as deltas.
     sent: String,
     started: Instant,
     samples: usize,
 }
 
-struct Session {
-    engine: Arc<Engine>,
+struct Session<E: SpeechEngine> {
+    engine: Arc<E>,
     choice: Choice,
     model: String,
     rate: u32,
     resampler: StreamResampler,
-    open: Option<Open>,
+    open: Option<Open<E::Turn>>,
     items: u64,
     previous: Option<String>,
     stable_preview: bool,
@@ -63,15 +60,6 @@ static NEXT_SESSION: AtomicU64 = AtomicU64::new(1);
 
 fn error_event(code: &str, message: &str) -> Value {
     json!({"type": "error", "error": {"type": "server_error", "code": code, "message": message}})
-}
-
-fn engine_code(err: &EngineError) -> &'static str {
-    match err {
-        EngineError::Overloaded => "overloaded",
-        EngineError::Unavailable => "unavailable",
-        EngineError::UnknownModel(_) => "model_not_found",
-        EngineError::Failed(_) => "inference_failed",
-    }
 }
 
 fn check_prefix(sent: &str, text: &str) -> Result<(), EngineError> {
@@ -89,13 +77,14 @@ fn check_prefix(sent: &str, text: &str) -> Result<(), EngineError> {
     }
 }
 
-impl Session {
-    fn new(engine: Arc<Engine>, stable_preview: bool) -> Self {
-        let languages = engine.catalog.languages();
+impl<E: SpeechEngine> Session<E> {
+    fn new(engine: Arc<E>, stable_preview: bool) -> Self {
+        let languages = engine.languages();
+        let model = engine.auto_model().into();
         Self {
             engine,
             choice: Choice::Auto(languages),
-            model: AUTO.into(),
+            model,
             rate: DEFAULT_RATE,
             resampler: StreamResampler::new(DEFAULT_RATE, MODEL_RATE),
             open: None,
@@ -195,7 +184,7 @@ impl Session {
             languages.insert(0, l.to_owned());
         }
         let model = t["model"].as_str().unwrap_or(&self.model).to_owned();
-        match choice(&self.engine, &model, &languages) {
+        match choice(self.engine.as_ref(), &model, &languages) {
             Ok(Choice::Fixed(l)) => {
                 self.choice = Choice::Fixed(l);
                 self.model = model;
@@ -238,7 +227,7 @@ impl Session {
         let samples = self.resampler.push(&audio::pcm16(&bytes));
         if self.open.is_none() {
             let item = self.new_item();
-            let turn = Turn::new(self.engine.clone(), self.choice.clone(), Priority::Live)?;
+            let turn = self.engine.turn(self.choice.clone(), Priority::Live)?;
             self.open = Some(Open {
                 item,
                 turn,
@@ -276,7 +265,7 @@ impl Session {
                 "type": "conversation.item.input_audio_transcription.delta",
                 "item_id": open.item, "content_index": 0, "delta": delta,
             }));
-            self.engine.diagnostics.record(&self.diagnostic_scope, &self.diagnostic_session, "preview_latency",
+            self.engine.diagnostics().record(&self.diagnostic_scope, &self.diagnostic_session, "preview_latency",
                 json!({"preview": self.diagnostic_preview, "channel": self.diagnostic_channel,
                     "first_output": open.sent.is_empty(), "turn_elapsed_ms": open.started.elapsed().as_secs_f64() * 1000.0,
                     "available_audio_secs": open.samples as f64 / f64::from(MODEL_RATE)}), None);
@@ -293,7 +282,7 @@ impl Session {
             Some(open) => open,
             None => Open {
                 item: self.new_item(),
-                turn: Turn::new(self.engine.clone(), self.choice.clone(), Priority::Live)?,
+                turn: self.engine.turn(self.choice.clone(), Priority::Live)?,
                 sent: String::new(),
                 started: Instant::now(),
                 samples: 0,
@@ -353,12 +342,12 @@ impl Session {
             "worker_build_revision": self.diagnostic_worker_revision,
             "model": self.model, "rate": self.rate, "stable_preview": self.stable_preview,
             "processing_ms": started.elapsed().as_secs_f64() * 1000.0});
-        details["queue"] = json!(self.engine.queue_status());
+        details["queue"] = self.engine.queue_status();
         if let Err(error) = &result {
-            details["error_code"] = json!(engine_code(error));
+            details["error_code"] = json!(error.code());
             details["error"] = json!(error.to_string().chars().take(512).collect::<String>());
         }
-        self.engine.diagnostics.record(
+        self.engine.diagnostics().record(
             &self.diagnostic_scope,
             &self.diagnostic_session,
             event_type,
@@ -370,7 +359,7 @@ impl Session {
                 let text = event["transcript"]
                     .as_str()
                     .or_else(|| event["delta"].as_str());
-                self.engine.diagnostics.record(&self.diagnostic_scope, &self.diagnostic_session, "server_event",
+                self.engine.diagnostics().record(&self.diagnostic_scope, &self.diagnostic_session, "server_event",
                     json!({"preview": self.diagnostic_preview, "channel": self.diagnostic_channel,
                         "type": event["type"], "item_id": event["item_id"], "language": event["language"],
                         "characters": text.map(str::len), "error_code": event["error"]["code"]}), text);
@@ -381,10 +370,10 @@ impl Session {
 }
 
 /// Runs one session until the client closes it or an engine error ends it.
-pub async fn session(
+pub async fn session<E: SpeechEngine>(
     socket: WebSocket,
-    engine: Arc<Engine>,
-    guard: SessionGuard,
+    engine: Arc<E>,
+    guard: E::Session,
     stable_preview: bool,
 ) {
     let (mut tx, mut rx) = socket.split();
@@ -407,7 +396,7 @@ pub async fn session(
             Ok(events) => (events, false),
             Err(err) => {
                 tracing::warn!(error = %err, "realtime session ended");
-                (vec![error_event(engine_code(&err), &err.to_string())], true)
+                (vec![error_event(err.code(), &err.to_string())], true)
             }
         };
         for event in events {

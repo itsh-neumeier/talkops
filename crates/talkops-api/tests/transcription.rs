@@ -298,7 +298,154 @@ async fn coral_connection(db: PgPool) {
         t["message"]
             .as_str()
             .unwrap()
-            .contains("Coral service not reachable"),
+            .contains("speech service not reachable"),
         "{t}"
     );
+}
+
+/// A fake cuda-stt service: `/health` with the GPU, `/v1/models` and the
+/// model library routes. The upload answer echoes the bytes it received.
+async fn fake_cuda() -> String {
+    use axum::routing::post;
+    let app = Router::new()
+        .route(
+            "/health",
+            get(|| async {
+                axum::Json(json!({"status": "ok", "backend": "cuda", "version": "1",
+                    "gpu": {"name": "NVIDIA T600", "memory_total_mib": 4096},
+                    "device": {"state": "ready", "models": [{"slot": "de", "state": "ready", "vram_mib": 700}]},
+                    "queue": {"length": 0, "capacity": 32, "sessions": 0, "max_sessions": 8},
+                    "models": ["cuda-de", "cuda-auto"]}))
+            }),
+        )
+        .route(
+            "/v1/models",
+            get(|| async { axum::Json(json!({"data": [{"id": "cuda-de"}, {"id": "cuda-auto"}]})) }),
+        )
+        .route(
+            "/v1/admin/models",
+            get(|| async { axum::Json(json!({"backend": "cuda", "slots": [], "library": []})) }),
+        )
+        .route(
+            "/v1/admin/library",
+            post(|headers: HeaderMap, body: axum::body::Bytes| async move {
+                let multipart = headers["content-type"].to_str().unwrap().starts_with("multipart/form-data");
+                axum::Json(json!({"id": "0123456789ab", "slots": ["de"], "received": body.len(),
+                    "multipart": multipart, "manifest": {"name": "FC", "family": "nemo_transducer",
+                    "archive_sha256": "ab", "license": "CC-BY-4.0", "source": "hf"}}))
+            }),
+        )
+        .route(
+            "/v1/admin/library/download",
+            post(|axum::Json(v): axum::Json<serde_json::Value>| async move {
+                axum::Json(json!({"id": "0123456789ac", "slots": [], "manifest": {"name": v["name"],
+                    "archive_sha256": v["sha256"], "license": v["license"], "source": v["source"]}}))
+            }),
+        );
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+    format!("http://127.0.0.1:{port}/v1")
+}
+
+/// A CUDA connection (ADR 0054): loopback only, health in the test, and
+/// the model library through `/api/v1/speech-services/{id}`.
+#[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
+async fn cuda_connection_and_model_library(db: PgPool) {
+    use axum::body::Body;
+    use axum::http::{Request, header};
+    let router = router(db.clone());
+    let admin = setup_admin(&router).await;
+    let (status, body) = admin
+        .post(
+            "/api/v1/settings/transcription/providers",
+            json!({"name": "GPU", "kind": "cuda", "url": "http://10.0.0.5:8096/v1"}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{body}");
+    let url = fake_cuda().await;
+    let (status, p) = admin
+        .post(
+            "/api/v1/settings/transcription/providers",
+            json!({"name": "GPU", "kind": "cuda", "url": url}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::CREATED, "{p}");
+    let id = p["id"].as_str().unwrap().to_owned();
+    let (status, t) = admin
+        .post(
+            &format!("/api/v1/settings/transcription/providers/{id}/test"),
+            json!({}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{t}");
+    assert_eq!(t["coral"]["gpu"]["name"], "NVIDIA T600");
+    assert!(
+        t["speech_models"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|m| m == "cuda-auto")
+    );
+
+    let (status, m) = admin
+        .get(&format!("/api/v1/speech-services/{id}/models"))
+        .await;
+    assert_eq!(status, StatusCode::OK, "{m}");
+    assert_eq!(m["backend"], "cuda");
+
+    // The upload body reaches the service unchanged.
+    let boundary = "b";
+    let body = format!(
+        "--{boundary}\r\nContent-Disposition: form-data; name=\"archive\"; filename=\"m.tar\"\r\n\r\n{}\r\n--{boundary}--\r\n",
+        "x".repeat(100_000)
+    );
+    let length = body.len();
+    let req = Request::post(format!("/api/v1/speech-services/{id}/library"))
+        .header(header::COOKIE, &admin.cookie)
+        .header("x-requested-with", "TalkOps")
+        .header("x-csrf-token", &admin.csrf)
+        .header(
+            header::CONTENT_TYPE,
+            format!("multipart/form-data; boundary={boundary}"),
+        )
+        .body(Body::from(body))
+        .unwrap();
+    let res = raw(&router, req).await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let added = body_json(res).await;
+    assert_eq!(added["received"], length);
+    assert_eq!(added["multipart"], true);
+
+    let (status, d) = admin
+        .post(
+            &format!("/api/v1/speech-services/{id}/library/download"),
+            json!({"url": "https://example.org/m.tar.bz2", "sha256": "ab", "name": "FC", "family": "nemo_transducer",
+                   "languages": "de", "license": "CC-BY-4.0", "source": "hf", "slot": "xx"}),
+        )
+        .await;
+    assert_eq!(
+        status,
+        StatusCode::UNPROCESSABLE_ENTITY,
+        "unknown slot: {d}"
+    );
+    let (status, d) = admin
+        .post(
+            &format!("/api/v1/speech-services/{id}/library/download"),
+            json!({"url": "https://example.org/m.tar.bz2", "sha256": "ab", "name": "FC", "family": "nemo_transducer",
+                   "languages": "de", "license": "CC-BY-4.0", "source": "hf"}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{d}");
+    assert_eq!(d["id"], "0123456789ac");
+    let details: Vec<serde_json::Value> = sqlx::query_scalar(
+        "SELECT details FROM audit_log WHERE action IN ('add_speech_model', 'download_speech_model') ORDER BY id",
+    )
+    .fetch_all(&db)
+    .await
+    .unwrap();
+    assert_eq!(details.len(), 2);
+    assert_eq!(details[0]["sha256"], "ab");
+    assert_eq!(details[0]["license"], "CC-BY-4.0");
+    assert_eq!(details[1]["url"], "https://example.org/m.tar.bz2");
 }

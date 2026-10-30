@@ -164,6 +164,7 @@ services:
       TALKOPS_CORAL_QUEUE: ${TALKOPS_CORAL_QUEUE:-16}
       TALKOPS_CORAL_SESSIONS_PER_TPU: ${TALKOPS_CORAL_SESSIONS_PER_TPU:-4}
       TALKOPS_CORAL_STABLE_PREVIEW: ${TALKOPS_CORAL_STABLE_PREVIEW:-false}
+      TALKOPS_CORAL_MODEL_ADMIN: ${TALKOPS_CORAL_MODEL_ADMIN:-true}
       TALKOPS_LOG_FORMAT: ${TALKOPS_LOG_FORMAT:-json}
       RUST_LOG: ${RUST_LOG:-info}
       TZ: ${TZ:-Europe/Berlin}
@@ -173,7 +174,8 @@ services:
     # container restart. The group must own the device on the host
     # (plugdev, GID 46 on Debian, set by the libedgetpu udev rule).
     volumes:
-      - models:/var/lib/talkops/models:ro
+      # Writable: administrators install models in the TalkOps UI.
+      - models:/var/lib/talkops/models
       - /dev/bus/usb:/dev/bus/usb
     device_cgroup_rules:
       - "c 189:* rmw"
@@ -185,6 +187,46 @@ services:
     #   - /dev/apex_0:/dev/apex_0
     # group_add:
     #   - "998"
+
+  # Optional speech recognition on an NVIDIA GPU in this server (ADR 0054).
+  # Needs an NVIDIA driver 580 or later (CUDA 13) and the NVIDIA Container
+  # Toolkit on the host. Enable with COMPOSE_PROFILES=cuda, then add the
+  # connection "NVIDIA GPU (this server)" in Settings > Calls > Transcription
+  # and install models in its model library. The service listens on
+  # 127.0.0.1 only: audio does not leave the server. One service uses one
+  # GPU (TALKOPS_CUDA_DEVICE); for a second GPU, copy the service with
+  # another device and port and add a second connection.
+  cuda-stt:
+    image: ghcr.io/itsh-neumeier/talkops-cuda-stt:${TALKOPS_VERSION:-latest}
+    profiles: ["cuda"]
+    restart: unless-stopped
+    network_mode: host
+    <<: *hardened
+    read_only: true
+    tmpfs:
+      - /tmp
+    environment:
+      TALKOPS_CUDA_LISTEN: 127.0.0.1:${TALKOPS_CUDA_PORT:-8096}
+      TALKOPS_CUDA_API_KEY: ${TALKOPS_CUDA_API_KEY:-}
+      TALKOPS_CUDA_QUEUE: ${TALKOPS_CUDA_QUEUE:-32}
+      TALKOPS_CUDA_SESSIONS: ${TALKOPS_CUDA_SESSIONS:-8}
+      TALKOPS_CUDA_PARTIAL_INTERVAL_MS: ${TALKOPS_CUDA_PARTIAL_INTERVAL_MS:-1000}
+      TALKOPS_CUDA_STABLE_PREVIEW: ${TALKOPS_CUDA_STABLE_PREVIEW:-false}
+      TALKOPS_CUDA_MODEL_ADMIN: ${TALKOPS_CUDA_MODEL_ADMIN:-true}
+      TALKOPS_CUDA_MAX_LIBRARY_MB: ${TALKOPS_CUDA_MAX_LIBRARY_MB:-20480}
+      TALKOPS_LOG_FORMAT: ${TALKOPS_LOG_FORMAT:-json}
+      RUST_LOG: ${RUST_LOG:-info}
+      TZ: ${TZ:-Europe/Berlin}
+    volumes:
+      # Writable: administrators install models in the TalkOps UI.
+      - models:/var/lib/talkops/models
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${TALKOPS_CUDA_DEVICE:-0}"]
+              capabilities: [gpu]
 
   # Optional TURN relay for the browser softphone (media over one port, e.g.
   # from outside without VPN or through strict firewalls). Enable with

@@ -342,6 +342,43 @@ models/coral/langid/model_edgetpu.tflite   models/coral/langid/model.json   (opt
 Ohne das Sprach-ID-Modell laufen für jeden Abschnitt beide Sprachmodelle;
 das verdoppelt die Last auf der TPU.
 
+#### Modellbibliothek in der TalkOps-Oberfläche
+
+Du kannst Modelle auch unter **Einstellungen → Transkription →
+Coral-Modelle** verwalten. Dafür brauchst du die Berechtigung
+„Transkriptionseinstellungen“.
+
+1. Wähle unter **Modell hinzufügen** den Platz: Deutsch, Englisch oder
+   Spracherkennung. Gib einen Namen, die Lizenz der Gewichte und ihre
+   Herkunft an.
+2. Wähle `model.json` und `model_edgetpu.tflite`. `model.tflite` für das
+   CPU-Backend ist optional. Pro Datei sind höchstens 64 MiB erlaubt.
+3. Bestätige, dass die Lizenz deine Nutzung erlaubt, und wähle
+   **Hochladen und prüfen**. Das Modell kommt in die Bibliothek.
+   Standardmäßig wird es auch für seinen Platz ausgewählt.
+4. Zum Wechseln wählst du in der Liste des Platzes ein Modell aus der
+   Bibliothek.
+5. Wähle **Coral-Dienst neu starten**. Live-Vorschauen pausieren einige
+   Sekunden.
+
+Die Bibliothek hält höchstens 10 Modelle und 512 MiB. Jeder Platz nutzt ein
+Modell aus der Bibliothek. Löschen kannst du nur Modelle, die kein Platz
+verwendet. Ein Modell, das du von Hand in einen Platz kopiert hast, kommt mit
+unbekannter Lizenz in die Bibliothek, bevor eine Auswahl es ersetzt.
+
+Der Dienst prüft jeden Upload und jede Auswahl mit demselben Code, der die
+Modelle beim Start lädt. Er lehnt Modelle ab, die nicht für die Edge TPU
+kompiliert sind, und eine `model.json` ohne Labels. Das Audit-Log speichert
+jede Änderung mit Lizenzangabe und Modell-Prüfsumme. TalkOps prüft
+Lizenzangaben nicht. TalkOps liefert keine Modelle aus, deren Lizenz die
+Weitergabe nicht erlaubt, zum Beispiel NVIDIA-NGC-Modelle ohne
+Weitergabeerlaubnis.
+
+Die Bibliothek braucht ein beschreibbares Volume `models` im Dienst
+`coral-stt` und eine Neustart-Richtlinie. Die mitgelieferte
+`docker-compose.yml` hat beides. Mit `TALKOPS_CORAL_MODEL_ADMIN=false`
+schaltest du die Bibliothek ab.
+
 Ein Update der Anwendung installiert keine Modelldateien. Wenn du das separate
 deutsche Testpaket `coral-de-candidate-20261025.tar.gz` hast, kopiere es und
 [`install-de-candidate.sh`](../../scripts/coral/install-de-candidate.sh) auf
@@ -407,6 +444,137 @@ verfügbar war*. Nach 30 Sekunden versucht TalkOps Coral erneut.
 | Viele Fallbacks, HTTP 503 | Die TPU ist überlastet. Weniger gleichzeitige Live-Vorschauen, eine weitere TPU oder `TALKOPS_CORAL_QUEUE` erhöhen (mehr Verzögerung). |
 | Fehler zur TensorFlow-Lite-Version | libedgetpu und TensorFlow Lite müssen zusammenpassen. Die Bibliotheken des Images verwenden. |
 | Text in der falschen Sprache | Sprach-ID-Modell installieren oder `coral-ctc-de` bzw. `coral-ctc-en` für eine Sprache wählen. |
+
+## NVIDIA-GPU (dieser Server)
+
+Eine NVIDIA-GPU im TalkOps-Server kann größere Sprachmodelle ausführen als
+die Coral Edge TPU ([ADR 0054](../adr/0054-cuda-gpu-speech-recognition.md)).
+Der Dienst `cuda-stt` nutzt sherpa-onnx mit dem CUDA-Execution-Provider. Er
+hat dieselbe Schnittstelle wie `coral-stt`: Live-Vorschau (Realtime),
+Dateitranskription, Sprache pro Sprechabschnitt, die Hybrid-Einstellung und
+das lokale Fallback funktionieren gleich. Der Dienst lauscht nur auf
+`127.0.0.1`. Das Audio verlässt den Server nicht.
+
+Das Image enthält keine Modelle. Du installierst die Modelle in der
+Modellbibliothek der TalkOps-Oberfläche. TalkOps misst Textqualität und
+Latenz eines Modells nicht für dich. Teste ein Modell mit deinen Gesprächen
+und deiner GPU, bevor du es produktiv nutzt.
+
+### Host vorbereiten
+
+1. Installiere den NVIDIA-Treiber 580 oder neuer (CUDA 13). Prüfe ihn mit
+   `nvidia-smi`.
+2. Installiere das NVIDIA Container Toolkit und richte Docker ein:
+
+   ```sh
+   sudo nvidia-ctk runtime configure --runtime=docker
+   sudo systemctl restart docker
+   ```
+
+3. Prüfe, ob ein Container die GPU sieht:
+   `docker run --rm --gpus all debian:trixie-slim nvidia-smi -L`.
+
+Das Image gibt es nur für amd64. Docker Desktop mit WSL 2 unter Windows kann
+das Image für Tests ausführen. Es ist kein unterstützter Produktivhost.
+
+### Dienst starten
+
+1. Ergänze in `.env` `cuda` in `COMPOSE_PROFILES` (zum Beispiel
+   `COMPOSE_PROFILES=cuda`). Setze `TALKOPS_CUDA_DEVICE` auf den GPU-Index aus
+   `nvidia-smi`.
+2. Führe `docker compose up -d` aus.
+3. Prüfe den Status: `curl -s http://127.0.0.1:8096/health`. Ohne Modelle
+   antwortet der Dienst mit `"status": "unavailable"`. Das ist richtig, bis du
+   ein Modell installierst.
+
+Ein Dienst nutzt eine GPU. Für eine zweite GPU kopierst du den Dienst
+`cuda-stt` in einer Compose-Override-Datei mit anderem `TALKOPS_CUDA_DEVICE`
+und anderem `TALKOPS_CUDA_PORT` und legst eine zweite Verbindung an. Zum
+Beispiel liefert eine GPU die Live-Vorschau und die andere transkribiert die
+Aufzeichnungen.
+
+### TalkOps verbinden
+
+1. Wähle in *Einstellungen → Anrufbehandlung → Cloud-Verbindungen* **Verbindung
+   hinzufügen** und den Typ **NVIDIA-GPU (dieser Server)**. Die URL ist
+   `http://127.0.0.1:8096/v1`. Ein Schlüssel ist optional
+   (`TALKOPS_CUDA_API_KEY`).
+2. Wähle **Verbindung testen**. TalkOps zeigt die GPU (Name, VRAM, Last,
+   Temperatur), die geladenen Modelle mit ihrem VRAM und die Warteschlange.
+3. Installiere die Modelle (siehe nächster Abschnitt).
+4. Wähle **Hybrid übernehmen**, prüfe die Engines und wähle **Engines
+   speichern**. Mit einer Coral- und einer CUDA-Verbindung nutzt **Hybrid
+   übernehmen** die GPU.
+
+Die Modelle heißen `cuda-auto` (Sprache pro Abschnitt), `cuda-de` und
+`cuda-en`. Eine CUDA-Verbindung muss eine Loopback-Adresse nutzen. TalkOps
+zeigt dafür keinen Datenschutzhinweis und keine Kosten. Das Fallback ist
+dasselbe wie bei Coral (siehe [Fallback](#fallback)).
+
+### Modelle installieren
+
+Öffne **Einstellungen → Transkription → CUDA-Modelle**. Du brauchst die
+Berechtigung „Transkriptionseinstellungen“. Die Plätze sind Deutsch, Englisch
+und Spracherkennung. Ein Modell für Deutsch und Englisch kann beide Plätze
+belegen. Der Dienst speichert es nur einmal.
+
+So installierst du ein vorgeschlagenes Modell:
+
+1. Wähle unter **Vorgeschlagene Modelle** bei einem Modell **Übernehmen**.
+   TalkOps füllt URL, SHA-256, Familie, Sprachen, Lizenz und Quelle aus.
+2. Lies die Lizenz in der Modellkarte. Bestätige, dass die Lizenz deine
+   Nutzung erlaubt.
+3. Wähle **Herunterladen und installieren**. Der Dienst lädt das Archiv
+   herunter, prüft SHA-256, entpackt das Modell und lädt es einmal auf der
+   CPU. Ein großes Modell braucht einige Minuten.
+4. Wähle **CUDA-Dienst neu starten**. Live-Vorschauen pausieren einige
+   Sekunden.
+
+Für ein anderes sherpa-onnx-Modellarchiv (`.tar.bz2`, `.tar.gz` oder `.tar`)
+trägst du Angaben und Familie selbst ein. Nutze dann **Herunterladen und
+installieren** mit einer HTTPS-URL und ihrem SHA-256 oder lade das Archiv mit
+**Hochladen und prüfen** hoch. Die Familien sind:
+
+| Familie | Dateien im Archiv | Beispiele |
+|---|---|---|
+| `nemo_ctc` | `model.onnx`, `tokens.txt` | FastConformer CTC |
+| `nemo_transducer` | ONNX-Dateien `encoder`, `decoder`, `joiner`, `tokens.txt` | FastConformer-Transducer, Parakeet TDT |
+| `canary` | ONNX-Dateien `encoder`, `decoder`, `tokens.txt` | Canary 180M Flash |
+| `whisper` | ONNX-Dateien `encoder`, `decoder`, `*tokens.txt` | Whisper; auch für die Spracherkennung |
+
+Enthält ein Archiv Dateien in voller Genauigkeit und in int8, behält der
+Dienst die Dateien in voller Genauigkeit. Mit dem CUDA-Execution-Provider
+laufen einige int8-Operatoren auf der CPU. Wähle **int8** nur, wenn der
+GPU-Speicher nicht reicht.
+
+Jedes Modell belegt GPU-Speicher (VRAM). Der Status des Verbindungstests und
+die Plätze zeigen den VRAM jedes geladenen Modells. Lädt ein Modell nicht
+(zum Beispiel zu wenig VRAM), zeigt sein Platz den Fehler, und die anderen
+Modelle arbeiten weiter. Wähle ein kleineres Modell und starte den Dienst neu.
+
+Die Bibliothek fasst höchstens 10 Modelle und 20 GiB
+(`TALKOPS_CUDA_MAX_LIBRARY_MB`). Das Audit-Protokoll speichert jede
+Installation mit Lizenzangabe, Quelle und Archiv-Prüfsumme. TalkOps prüft
+Lizenzangaben nicht und hostet keine Modelldateien.
+
+### Live-Vorschau
+
+Die Modelle sind keine Streaming-Modelle. Während eines Sprechabschnitts
+erkennt der Dienst das ganze Audio des Abschnitts erneut, sobald
+`TALKOPS_CUDA_PARTIAL_INTERVAL_MS` (Standard 1000 ms) neues Audio vorliegt.
+Ein Abschnitt über 15 Sekunden wird an seiner leisesten Stelle geteilt. Ein
+kürzeres Intervall zeigt Text früher und belastet die GPU stärker.
+
+### Fehlersuche
+
+| Symptom | Ursache und Maßnahme |
+|---|---|
+| Container startet nicht: „could not select device driver“ | Das NVIDIA Container Toolkit fehlt oder Docker wurde nicht neu gestartet. |
+| `/health`: `"status": "unavailable"`, keine Modelle | Installiere und wähle Modelle, dann starte den Dienst neu. |
+| Ein Platz zeigt „Nicht geladen“ | Lies den Fehler. Zu wenig VRAM: Wähle ein kleineres oder ein int8-Modell. |
+| `/health` zeigt keine GPU-Werte | NVML ist im Container nicht verfügbar. Der Dienst arbeitet ohne. |
+| Viele Fallbacks, HTTP 503 | Die GPU ist überlastet. Erhöhe `TALKOPS_CUDA_PARTIAL_INTERVAL_MS`, verringere `TALKOPS_CUDA_SESSIONS` oder nutze eine zweite GPU. |
+| „CUDA driver version is insufficient“ im Log | Der Host-Treiber ist älter als 580. Aktualisiere den Treiber. |
 
 ## Suche
 

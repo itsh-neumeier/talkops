@@ -1,0 +1,96 @@
+{
+  "note": "Suggested models for cuda-stt (ADR 0054). TalkOps does not host the files; the service downloads them from the URL and checks the SHA-256. Licenses are from the upstream model cards (checked 2026-10-28); the administrator confirms the license before the install. No WER or latency values are given: measure them on the target GPU.",
+  "models": [
+    {
+      "id": "de-fastconformer-transducer",
+      "name": "NVIDIA FastConformer German, transducer (fp32)",
+      "family": "nemo_transducer",
+      "languages": "de",
+      "slots": ["de"],
+      "license": "CC-BY-4.0",
+      "source": "https://huggingface.co/nvidia/stt_de_fastconformer_hybrid_large_pc (ONNX: k2-fsa/sherpa-onnx)",
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-nemo-transducer-stt_de_fastconformer_hybrid_large_pc.tar.bz2",
+      "sha256": "aa546032ec8ae5570cde463f4f92bb74fbb7e0118b49e43c2d4750d43fda3b4f",
+      "bytes": 449137707,
+      "precision": "full"
+    },
+    {
+      "id": "de-fastconformer-transducer-int8",
+      "name": "NVIDIA FastConformer German, transducer (int8)",
+      "family": "nemo_transducer",
+      "languages": "de",
+      "slots": ["de"],
+      "license": "CC-BY-4.0",
+      "source": "https://huggingface.co/nvidia/stt_de_fastconformer_hybrid_large_pc (ONNX: k2-fsa/sherpa-onnx)",
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-nemo-transducer-stt_de_fastconformer_hybrid_large_pc-int8.tar.bz2",
+      "sha256": "73b3cce9f94a19fc04bc54b55abd576b622e3925a84ddd554a95e5984bc11677",
+      "bytes": 108124747,
+      "precision": "int8"
+    },
+    {
+      "id": "de-fastconformer-ctc",
+      "name": "NVIDIA FastConformer German, CTC (fp32)",
+      "family": "nemo_ctc",
+      "languages": "de",
+      "slots": ["de"],
+      "license": "CC-BY-4.0",
+      "source": "https://huggingface.co/nvidia/stt_de_fastconformer_hybrid_large_pc (ONNX: k2-fsa/sherpa-onnx)",
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-nemo-stt_de_fastconformer_hybrid_large_pc.tar.bz2",
+      "sha256": "46485cc2b24b51fdd29b88634dcae4f122798ea4ea28358854cced3ce768d817",
+      "bytes": 430887716,
+      "precision": "full"
+    },
+    {
+      "id": "parakeet-tdt-0.6b-v3-int8",
+      "name": "NVIDIA Parakeet TDT 0.6B v3, 25 languages (int8)",
+      "family": "nemo_transducer",
+      "languages": "de,en",
+      "slots": ["de", "en"],
+      "license": "CC-BY-4.0",
+      "source": "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3 (ONNX: k2-fsa/sherpa-onnx)",
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8.tar.bz2",
+      "sha256": "5793d0fd397c5778d2cf2126994d58e9d56b1be7c04d13c7a15bb1b4eafb16bf",
+      "bytes": 487170055,
+      "precision": "int8"
+    },
+    {
+      "id": "canary-180m-flash",
+      "name": "NVIDIA Canary 180M Flash, de/en/es/fr (fp32)",
+      "family": "canary",
+      "languages": "de,en",
+      "slots": ["de", "en"],
+      "license": "CC-BY-4.0",
+      "source": "https://huggingface.co/nvidia/canary-180m-flash (ONNX: k2-fsa/sherpa-onnx)",
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-nemo-canary-180m-flash-en-es-de-fr.tar.bz2",
+      "sha256": "0b4a0a2630d6dccbf15ffc14ff2b6b446872bfdf7509d0ad602fe78bd8efc29d",
+      "bytes": 717064890,
+      "precision": "full"
+    },
+    {
+      "id": "canary-180m-flash-int8",
+      "name": "NVIDIA Canary 180M Flash, de/en/es/fr (int8)",
+      "family": "canary",
+      "languages": "de,en",
+      "slots": ["de", "en"],
+      "license": "CC-BY-4.0",
+      "source": "https://huggingface.co/nvidia/canary-180m-flash (ONNX: k2-fsa/sherpa-onnx)",
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-nemo-canary-180m-flash-en-es-de-fr-int8.tar.bz2",
+      "sha256": "7a38ed8b13f014ad632b09ff8d22e0c6f1359dd046af9235d281dfae841b9ab9",
+      "bytes": 153692328,
+      "precision": "int8"
+    },
+    {
+      "id": "whisper-tiny",
+      "name": "OpenAI Whisper tiny, multilingual (language ID)",
+      "family": "whisper",
+      "languages": "de,en",
+      "slots": ["langid"],
+      "license": "MIT",
+      "source": "https://github.com/openai/whisper (ONNX: k2-fsa/sherpa-onnx)",
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-whisper-tiny.tar.bz2",
+      "sha256": "c46116994e539aa165266d96b325252728429c12535eb9d8b6a2b10f129e66b1",
+      "bytes": 116204861,
+      "precision": "full"
+    }
+  ]
+}

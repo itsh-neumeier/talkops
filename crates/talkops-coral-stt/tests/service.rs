@@ -12,7 +12,7 @@ use futures_util::{SinkExt, StreamExt};
 use http_body_util::BodyExt;
 use serde_json::{Value, json};
 use talkops_coral_stt::engine::Engine;
-use talkops_coral_stt::http::{AppState, router};
+use talkops_coral_stt::http::{AppState, ModelAdmin, router};
 use talkops_coral_stt::mock::{self, MockBackend};
 use tokio_tungstenite::tungstenite::Message;
 use tower::ServiceExt;
@@ -82,6 +82,7 @@ fn app(engine: &Arc<Engine>, key: Option<&str>) -> axum::Router {
         engine: engine.clone(),
         api_key: key.map(str::to_owned),
         stable_preview: false,
+        admin: None,
     })
 }
 
@@ -450,6 +451,7 @@ async fn serve_with_preview(engine: &Arc<Engine>, stable_preview: bool) -> u16 {
         engine: engine.clone(),
         api_key: None,
         stable_preview,
+        admin: None,
     });
     tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
     port
@@ -768,4 +770,116 @@ async fn a_failing_tpu_ends_the_session_with_an_error() {
     engine.rescan();
     assert!(engine.wait_ready(Duration::from_secs(5)).await);
     engine.shutdown();
+}
+
+fn admin_app(
+    engine: &Arc<Engine>,
+    dir: &std::path::Path,
+) -> (axum::Router, tokio::sync::watch::Receiver<bool>) {
+    let (restart, requested) = tokio::sync::watch::channel(false);
+    let app = router(AppState {
+        engine: engine.clone(),
+        api_key: Some("k".into()),
+        stable_preview: false,
+        admin: Some(ModelAdmin {
+            dir: dir.to_owned(),
+            restart: Arc::new(restart),
+        }),
+    });
+    (app, requested)
+}
+
+fn model_upload(tpu: &[u8]) -> (String, Vec<u8>) {
+    let boundary = "coral-model-boundary";
+    let mut body = Vec::new();
+    let mut part = |name: &str, file: Option<&str>, data: &[u8]| {
+        let filename = file
+            .map(|f| format!("; filename=\"{f}\""))
+            .unwrap_or_default();
+        body.extend(
+            format!(
+                "--{boundary}\r\nContent-Disposition: form-data; name=\"{name}\"{filename}\r\n\r\n"
+            )
+            .bytes(),
+        );
+        body.extend_from_slice(data);
+        body.extend(b"\r\n");
+    };
+    part("slot", None, b"de");
+    part("name", None, b"Test DE");
+    part("license", None, b"CC-BY-4.0");
+    part("source", None, b"https://example.org/model");
+    part(
+        "model_json",
+        Some("model.json"),
+        json!({"labels": [" ", "a"], "window_frames": 256, "candidate": "test"})
+            .to_string()
+            .as_bytes(),
+    );
+    part("model_edgetpu", Some("model_edgetpu.tflite"), tpu);
+    body.extend(format!("--{boundary}--\r\n").bytes());
+    (format!("multipart/form-data; boundary={boundary}"), body)
+}
+
+#[tokio::test]
+async fn admin_installs_models_and_requests_restart() {
+    let (engine, _) = start(1, 0, 16, 4).await;
+    let dir = std::env::temp_dir().join(format!("coral-admin-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    let (app, requested) = admin_app(&engine, &dir);
+
+    let (ctype, body) = model_upload(b"\0\0\0\0TFL3edgetpu-custom-op");
+    let req = |key: &str| {
+        Request::post("/v1/admin/library")
+            .header("content-type", ctype.clone())
+            .header("authorization", format!("Bearer {key}"))
+            .body(Body::from(body.clone()))
+            .unwrap()
+    };
+    let (status, _, _) = call(app.clone(), req("wrong")).await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+    let (status, _, out) = call(app.clone(), req("k")).await;
+    assert_eq!(status, StatusCode::OK, "{}", String::from_utf8_lossy(&out));
+    let added: Value = serde_json::from_slice(&out).unwrap();
+    assert_eq!(added["info"]["license"], "CC-BY-4.0");
+    assert_eq!(added["selected"], false);
+    let id = added["id"].as_str().unwrap().to_owned();
+
+    let (bad_type, bad_body) = model_upload(b"\0\0\0\0TFL3plain");
+    let bad = Request::post("/v1/admin/library")
+        .header("content-type", bad_type)
+        .header("authorization", "Bearer k")
+        .body(Body::from(bad_body))
+        .unwrap();
+    let (status, _, _) = call(app.clone(), bad).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+
+    let select = Request::put("/v1/admin/slots/de")
+        .header("authorization", "Bearer k")
+        .header("content-type", "application/json")
+        .body(Body::from(json!({"id": id}).to_string()))
+        .unwrap();
+    let (status, _, out) = call(app.clone(), select).await;
+    assert_eq!(status, StatusCode::OK, "{}", String::from_utf8_lossy(&out));
+
+    let list = Request::get("/v1/admin/models")
+        .header("authorization", "Bearer k")
+        .body(Body::empty())
+        .unwrap();
+    let (_, _, out) = call(app.clone(), list).await;
+    let list: Value = serde_json::from_slice(&out).unwrap();
+    assert_eq!(list["slots"][0]["slot"], "de");
+    assert_eq!(list["slots"][0]["model_id"], id.as_str());
+    assert_eq!(list["slots"][0]["active"], false, "loaded after a restart");
+    assert_eq!(list["library"][0]["selected"], true);
+    assert_eq!(list["usage"]["models"], 1);
+
+    let restart = Request::post("/v1/admin/restart")
+        .header("authorization", "Bearer k")
+        .body(Body::empty())
+        .unwrap();
+    let (status, _, _) = call(app, restart).await;
+    assert_eq!(status, StatusCode::ACCEPTED);
+    assert!(*requested.borrow());
+    std::fs::remove_dir_all(dir).unwrap();
 }

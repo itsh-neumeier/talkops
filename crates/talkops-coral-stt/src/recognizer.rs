@@ -8,7 +8,7 @@
 
 use std::sync::Arc;
 
-use crate::ctc::{self, Matrix, Word};
+use crate::ctc::{self, Matrix};
 use crate::engine::{Engine, EngineError, Output, Priority, Task, TaskKind};
 use crate::models::ModelFile;
 
@@ -18,23 +18,7 @@ const LANGID_MIN: f32 = 0.6;
 /// language.
 const CONFIDENCE_MARGIN: f32 = 0.05;
 
-/// How the language of a turn is chosen.
-#[derive(Debug, Clone, PartialEq)]
-pub enum Choice {
-    Fixed(String),
-    /// Languages in order of preference; the first is the tenant language.
-    Auto(Vec<String>),
-}
-
-/// The text of a turn.
-#[derive(Debug, Clone, PartialEq)]
-pub struct Decoded {
-    pub text: String,
-    /// Word times from the start of the turn.
-    pub words: Vec<Word>,
-    pub confidence: f32,
-    pub language: Option<String>,
-}
+pub use talkops_stt_service::{Choice, Decoded};
 
 fn window_task(model: &ModelFile, samples: &[f32], kind: TaskKind) -> Task {
     let frames = model.meta.window_frames;
@@ -379,6 +363,27 @@ impl Turn {
             .or_else(|| results.iter().position(|d| d.confidence == best))
             .unwrap_or(0);
         Ok(results.swap_remove(pick))
+    }
+}
+
+impl talkops_stt_service::SpeechTurn for Turn {
+    fn push(
+        &mut self,
+        samples: &[f32],
+    ) -> impl std::future::Future<Output = Result<(), EngineError>> + Send {
+        Turn::push(self, samples)
+    }
+
+    fn partial(&self) -> Option<String> {
+        Turn::partial(self)
+    }
+
+    fn stable_partial(&self) -> Option<String> {
+        Turn::stable_partial(self)
+    }
+
+    fn finish(self) -> impl std::future::Future<Output = Result<Decoded, EngineError>> + Send {
+        Turn::finish(self)
     }
 }
 

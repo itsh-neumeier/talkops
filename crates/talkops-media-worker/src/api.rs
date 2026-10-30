@@ -13,9 +13,9 @@
 //! the model downloads; the key is passed on stdin, never on the command
 //! line.
 //!
-//! A Coral connection (ADR 0046) gets the model `coral-auto` and the tenant
-//! language as the preferred one; its answers name the detected language
-//! of each segment, which the lines keep.
+//! A Coral or CUDA connection (ADR 0046, 0054) gets its `*-auto` model and
+//! the tenant language as the preferred one; its answers name the detected
+//! language of each segment, which the lines keep.
 
 use std::path::Path;
 use std::sync::Mutex;
@@ -83,7 +83,7 @@ pub async fn transcribe(
     }
     let mut segments = to_lines(&parties);
     let mut language = None;
-    if cfg.is_coral() {
+    if cfg.is_local() {
         let spans = request.languages.into_inner().unwrap_or_default();
         let speakers: Vec<&str> = parties.iter().map(|p| p.0).collect();
         label_languages(&mut segments, &speakers, &spans);

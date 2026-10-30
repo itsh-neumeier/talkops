@@ -87,13 +87,7 @@ pub fn argmax(row: &[f32]) -> usize {
     best
 }
 
-/// A recognised word with its time in seconds from the start of the audio.
-#[derive(Debug, Clone, PartialEq, serde::Serialize)]
-pub struct Word {
-    pub word: String,
-    pub start: f32,
-    pub end: f32,
-}
+pub use talkops_stt_service::Word;
 
 /// Greedy CTC on the best label of each frame: collapse repeats, drop
 /// blanks. A space label separates words; sentencepiece labels mark a word

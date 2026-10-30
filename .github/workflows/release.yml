@@ -63,8 +63,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        image: [talkops-server, talkops-media-worker, talkops-freeswitch, talkops-coral-stt]
+        image: [talkops-server, talkops-media-worker, talkops-freeswitch, talkops-coral-stt, talkops-cuda-stt]
         arch: ${{ fromJSON(needs.version.outputs.arches) }}
+        exclude:
+          # The CUDA libraries of the image exist for amd64 only.
+          - image: talkops-cuda-stt
+            arch: arm64
         # Only image keys here: an include entry for an architecture that is
         # not selected would add a job of its own.
         include:
@@ -80,6 +84,9 @@ jobs:
           - image: talkops-coral-stt
             context: .
             dockerfile: docker/coral-stt/Dockerfile
+          - image: talkops-cuda-stt
+            context: .
+            dockerfile: docker/cuda-stt/Dockerfile
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
@@ -106,6 +113,9 @@ jobs:
       - name: Verify Coral runtime on the native architecture
         if: matrix.image == 'talkops-coral-stt'
         run: bash tests/coral/image.sh '${{ env.NAMESPACE }}/${{ matrix.image }}@${{ steps.build.outputs.digest }}'
+      - name: Verify CUDA runtime libraries
+        if: matrix.image == 'talkops-cuda-stt'
+        run: bash tests/cuda/image.sh '${{ env.NAMESPACE }}/${{ matrix.image }}@${{ steps.build.outputs.digest }}'
       - name: Export digest
         run: |
           mkdir -p /tmp/digests
@@ -125,7 +135,7 @@ jobs:
       packages: write
     strategy:
       matrix:
-        image: [talkops-server, talkops-media-worker, talkops-freeswitch, talkops-coral-stt]
+        image: [talkops-server, talkops-media-worker, talkops-freeswitch, talkops-coral-stt, talkops-cuda-stt]
     steps:
       - uses: actions/download-artifact@v4
         with:

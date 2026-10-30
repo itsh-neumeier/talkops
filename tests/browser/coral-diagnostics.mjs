@@ -27,10 +27,10 @@ try {
   });
   await page.goto(`${BASE}/settings?section=system&tab=diagnostics`);
   const card = page.getByTestId('coral-diagnostics');
-  await card.getByRole('button', { name: 'Coral-Erfassung starten' }).waitFor();
+  await card.getByRole('button', { name: 'Erfassung starten' }).waitFor();
   assert.equal(await card.getByRole('checkbox').isChecked(), false);
-  await card.getByRole('button', { name: 'Coral-Erfassung starten' }).click();
-  await card.getByRole('status').getByText('Coral-Erfassung aktiv bis', { exact: false }).waitFor();
+  await card.getByRole('button', { name: 'Erfassung starten' }).click();
+  await card.getByRole('status').getByText('Erfassung aktiv bis', { exact: false }).waitFor();
   assert.deepEqual(requests[0], { minutes: 5, include_text: false });
   await card.getByRole('checkbox').check();
   const downloaded = page.waitForEvent('download');

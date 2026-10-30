@@ -3,9 +3,10 @@
 //! Mistral or a self-hosted Speaches. A tenant can have several. The key is
 //! stored encrypted (ADR 0008) and never returned.
 //!
-//! The kind `coral` is the coral-stt service on this server (ADR 0046): the
-//! same interface, on a loopback address only, without costs, and with a
-//! local fallback when it is not available.
+//! The kinds `coral` (coral-stt, ADR 0046) and `cuda` (cuda-stt, ADR 0054)
+//! are speech services on this server: the same interface, on a loopback
+//! address only, without costs, and with a local fallback when they are not
+//! available.
 
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, PgPool};
@@ -19,13 +20,20 @@ use crate::tenant::TenantId;
 pub const OPENAI_URL: &str = "https://api.openai.com/v1";
 /// The default base URL of connections of kind `coral`.
 pub const CORAL_URL: &str = "http://127.0.0.1:8095/v1";
+/// The default base URL of connections of kind `cuda`.
+pub const CUDA_URL: &str = "http://127.0.0.1:8096/v1";
+
+/// A speech service on this server (`coral` or `cuda`).
+pub fn is_local_kind(kind: &str) -> bool {
+    matches!(kind, "coral" | "cuda")
+}
 
 /// A connection as shown in the UI (without the key).
 #[derive(Debug, Clone, FromRow, Serialize, utoipa::ToSchema)]
 pub struct Provider {
     pub id: Uuid,
     pub name: String,
-    /// `openai`, `compatible` or `coral`.
+    /// `openai`, `compatible`, `coral` or `cuda`.
     pub kind: String,
     /// Base URL including the version, e.g. `https://api.openai.com/v1`.
     pub url: String,
@@ -35,9 +43,9 @@ pub struct Provider {
 #[derive(Debug, Clone, Deserialize, utoipa::ToSchema)]
 pub struct ProviderInput {
     pub name: String,
-    /// `openai` (URL is fixed), `compatible` or `coral`.
+    /// `openai` (URL is fixed), `compatible`, `coral` or `cuda`.
     pub kind: String,
-    /// Ignored for `openai`; empty means [CORAL_URL] for `coral`.
+    /// Ignored for `openai`; empty means [CORAL_URL] or [CUDA_URL].
     #[serde(default)]
     pub url: String,
     /// New key; `null` keeps the stored one, `""` removes it.
@@ -49,7 +57,7 @@ pub struct ProviderInput {
 #[derive(Debug, Clone)]
 pub struct ApiConfig {
     pub name: String,
-    /// `openai`, `compatible` or `coral`.
+    /// `openai`, `compatible`, `coral` or `cuda`.
     pub kind: String,
     pub url: String,
     pub model: String,
@@ -77,12 +85,13 @@ impl ApiConfig {
         format!("{}/{}", self.name, self.model)
     }
 
-    /// The coral-stt service on this server.
-    pub fn is_coral(&self) -> bool {
-        self.kind == "coral"
+    /// A speech service on this server (coral-stt or cuda-stt).
+    pub fn is_local(&self) -> bool {
+        is_local_kind(&self.kind)
     }
 
-    /// The base URL without the API version (`/health` of coral-stt).
+    /// The base URL without the API version (`/health` of coral-stt and
+    /// cuda-stt).
     pub fn root(&self) -> String {
         let url = self.url.trim_end_matches('/');
         url.strip_suffix("/v1").unwrap_or(url).to_owned()
@@ -90,7 +99,7 @@ impl ApiConfig {
 }
 
 /// A loopback host: `127.x.x.x`, `localhost` or `[::1]`. Audio for a
-/// `coral` connection does not leave the server.
+/// `coral` or `cuda` connection does not leave the server.
 pub fn is_loopback_url(url: &str) -> bool {
     let rest = url
         .strip_prefix("http://")
@@ -170,13 +179,14 @@ fn check(secrets: &SecretBox, input: &ProviderInput) -> CoreResult<Checked> {
     let url = match input.kind.as_str() {
         "openai" => OPENAI_URL.to_owned(),
         "compatible" => input.url.trim().trim_end_matches('/').to_owned(),
-        "coral" => match input.url.trim().trim_end_matches('/') {
-            "" => CORAL_URL.to_owned(),
+        kind @ ("coral" | "cuda") => match input.url.trim().trim_end_matches('/') {
+            "" if kind == "coral" => CORAL_URL.to_owned(),
+            "" => CUDA_URL.to_owned(),
             url => url.to_owned(),
         },
         _ => {
             return Err(CoreError::Validation(
-                "kind must be openai, compatible or coral".into(),
+                "kind must be openai, compatible, coral or cuda".into(),
             ));
         }
     };
@@ -185,9 +195,10 @@ fn check(secrets: &SecretBox, input: &ProviderInput) -> CoreResult<Checked> {
             "API URL must start with http:// or https://".into(),
         ));
     }
-    if input.kind == "coral" && !is_loopback_url(&url) {
+    if is_local_kind(&input.kind) && !is_loopback_url(&url) {
         return Err(CoreError::Validation(
-            "a Coral connection must use a loopback address (127.0.0.1, localhost or [::1])".into(),
+            "a Coral or CUDA connection must use a loopback address (127.0.0.1, localhost or [::1])"
+                .into(),
         ));
     }
     let key_enc = match input.key.as_deref().map(str::trim) {
@@ -359,10 +370,12 @@ mod tests {
             cfg.realtime_endpoint(),
             "ws://10.0.0.5:8000/v1/realtime?intent=transcription"
         );
-        assert!(!cfg.is_coral());
+        assert!(!cfg.is_local());
         cfg.url = CORAL_URL.into();
         cfg.kind = "coral".into();
-        assert!(cfg.is_coral());
+        assert!(cfg.is_local());
+        cfg.kind = "cuda".into();
+        assert!(cfg.is_local());
         assert_eq!(cfg.root(), "http://127.0.0.1:8095");
         assert_eq!(
             cfg.realtime_endpoint(),

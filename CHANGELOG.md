@@ -6,6 +6,15 @@ All notable changes to TalkOps. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Cisco Enterprise SIP phones: upload a Cisco user locale package
+  (`po-locale-xx_YY-….cop.sha512`) under **Phones → Cisco Enterprise
+  languages**. TalkOps extracts only the phone TFTP files and never runs the
+  package scripts. Phones with a matching device language get a `userLocale`
+  entry in the SEP file and load the locale files over TFTP. Network locales
+  (call progress tones) are not supported yet.
+
 ## [1.8.20] – 2026-10-30
 
 ### Fixed

@@ -20,6 +20,7 @@
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
 	import Modal from '#lib/components/Modal.svelte';
 	import PhoneMediaManager from '#lib/components/PhoneMediaManager.svelte';
+	import CiscoLocaleManager from '#lib/components/CiscoLocaleManager.svelte';
 	import PhoneSettingsDefaults from '#lib/components/PhoneSettingsDefaults.svelte';
 	import VendorBadge from '#lib/components/VendorBadge.svelte';
 	import { modelLabel, sortModels } from '#lib/vendors.ts';
@@ -413,6 +414,7 @@
 			{/if}
 		</section>
 
+		<CiscoLocaleManager />
 		<PhoneMediaManager />
 		<PhoneSettingsDefaults />
 	{/if}

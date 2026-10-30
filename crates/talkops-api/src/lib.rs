@@ -8,6 +8,7 @@ pub mod backup;
 pub mod backup_targets;
 pub mod callcenter;
 pub mod cdr_spool;
+pub mod cisco_locale;
 pub mod cisco_tftp;
 pub mod conference;
 pub mod config;
@@ -288,6 +289,7 @@ pub fn api_router() -> (Router<AppState>, utoipa::openapi::OpenApi) {
         .merge(routes::transcription::router())
         .merge(routes::transcription_jobs::router())
         .merge(routes::phones::router())
+        .merge(routes::cisco_locales::router())
         .merge(routes::provisioning_admin::router())
         .merge(routes::voicemail::router())
         .merge(routes::mail::router())

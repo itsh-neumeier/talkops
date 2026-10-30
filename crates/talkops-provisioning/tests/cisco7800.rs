@@ -63,6 +63,7 @@ fn render_with(
             ntp_server: "time.invalid",
             contacts: &[],
             directory_url,
+            cisco_locale: None,
         },
         None,
         &BTreeMap::new(),

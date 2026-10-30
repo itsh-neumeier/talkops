@@ -462,6 +462,55 @@ pub fn environment(
     Ok(env)
 }
 
+/// User locale from a Cisco locale package that the administrator uploaded.
+/// TalkOps does not ship Cisco locale files.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct CiscoLocale {
+    /// Cisco name, such as `German_Germany`.
+    pub name: String,
+    /// Language code, such as `de_DE`.
+    pub lang_code: String,
+    /// Package version, such as `14.3(1.9900)`.
+    pub version: String,
+}
+
+impl CiscoLocale {
+    /// True if all values are safe for the SEP file and TFTP paths.
+    pub fn is_valid(&self) -> bool {
+        let name = !self.name.is_empty()
+            && self.name.len() <= 64
+            && self
+                .name
+                .chars()
+                .all(|c| c.is_ascii_alphabetic() || c == '_');
+        let code = self.lang_code.len() == 5
+            && self.lang_code.as_bytes()[2] == b'_'
+            && self.lang_code[..2].chars().all(|c| c.is_ascii_lowercase())
+            && self.lang_code[3..].chars().all(|c| c.is_ascii_uppercase());
+        let version = !self.version.is_empty()
+            && self.version.len() <= 32
+            && self
+                .version
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || "().-".contains(c));
+        name && code && version
+    }
+}
+
+/// Picks the installed user locale for a TalkOps language such as `de`.
+/// `de_DE` wins over other `de_*` locales; ties sort by name.
+pub fn select_cisco_locale<'a>(
+    locales: &'a [CiscoLocale],
+    language: &str,
+) -> Option<&'a CiscoLocale> {
+    let language = language.split(['-', '_']).next().unwrap_or_default();
+    let preferred = format!("{language}_{}", language.to_ascii_uppercase());
+    locales
+        .iter()
+        .filter(|l| l.lang_code.split('_').next() == Some(language))
+        .min_by_key(|l| (l.lang_code != preferred, l.name.clone()))
+}
+
 pub struct Common<'a> {
     pub provisioning: &'a crate::yealink::Provisioning,
     pub admin_password: &'a str,
@@ -471,6 +520,8 @@ pub struct Common<'a> {
     pub contacts: &'a [crate::phonebook::Entry],
     /// Cisco Enterprise `directoryURL`; empty omits the element.
     pub directory_url: &'a str,
+    /// Cisco Enterprise `userLocale`; `None` keeps the installed language.
+    pub cisco_locale: Option<&'a CiscoLocale>,
 }
 pub fn context(setup: &PhoneSetup<'_>, common: &Common<'_>) -> Value {
     let base = format!(
@@ -544,6 +595,7 @@ pub fn context(setup: &PhoneSetup<'_>, common: &Common<'_>) -> Value {
         "cisco_mpp_buttons":setup.model.id!="cisco-7811-mpp",
         // Escaped here and emitted with `safe`: HTML autoescape would also encode `/`.
         "cisco_directory_url":common.directory_url.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;"),
+        "cisco_user_locale":common.cisco_locale.filter(|l|l.is_valid()),
         "cisco_enterprise_timezone":match common.timezone {"UTC"|"Etc/UTC"=>"Greenwich Standard Time","Europe/London"=>"GMT Standard/Daylight Time",_=>"W. Europe Standard/Daylight Time"},
     });
     ctx["user"] = ctx["account"].clone();
@@ -925,6 +977,7 @@ pub fn validate_for_model(
             ntp_server: "pool.ntp.org",
             contacts: &contacts,
             directory_url: "",
+            cisco_locale: None,
         };
         if count > 0 {
             setup.provisioning.keys = profile(&model.id)

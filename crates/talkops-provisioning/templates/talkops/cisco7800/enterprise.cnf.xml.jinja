@@ -57,6 +57,14 @@
 {% if cisco_directory_url %}  <directoryURL>{{ cisco_directory_url|safe }}</directoryURL>
 {% endif %}  {# TalkOps replaces the stamp with a hash of the rendered file (ADR 0051). #}
   <versionStamp>talkops-content-hash</versionStamp>
-  <deviceSecurityMode>1</deviceSecurityMode>
+{% if cisco_user_locale %}  {# The phone then requests sp-sip.jar from its TFTP export directory. #}
+  <userLocale>
+    <name>{{ cisco_user_locale.name }}</name>
+    <uid>1</uid>
+    <langCode>{{ cisco_user_locale.lang_code }}</langCode>
+    <version>{{ cisco_user_locale.version }}</version>
+    <winCharSet>utf-8</winCharSet>
+  </userLocale>
+{% endif %}  <deviceSecurityMode>1</deviceSecurityMode>
   <transportLayerProtocol>1</transportLayerProtocol>
 </device>

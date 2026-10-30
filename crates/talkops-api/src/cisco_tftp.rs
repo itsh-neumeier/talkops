@@ -199,6 +199,40 @@ pub async fn refresh(state: &AppState, root: &Path) -> anyhow::Result<ExportResu
     }
 }
 
+/// The `userLocale` name in a rendered SEP file, such as `German_Germany`.
+fn user_locale(sep: &[u8]) -> Option<String> {
+    let text = std::str::from_utf8(sep).ok()?;
+    let block = &text[text.find("<userLocale>")?..];
+    let start = block.find("<name>")? + "<name>".len();
+    let name = &block[start..start + block[start..].find("</name>")?];
+    (!name.is_empty() && name.chars().all(|c| c.is_ascii_alphabetic() || c == '_'))
+        .then(|| name.to_owned())
+}
+
+/// The files of an uploaded Cisco locale, loaded once per refresh. The phone
+/// requests them from the TFTP root, for example `/sp-sip.jar`.
+async fn locale_files(
+    state: &AppState,
+    name: &str,
+    cache: &mut HashMap<String, BTreeMap<String, Arc<Vec<u8>>>>,
+) -> BTreeMap<String, Arc<Vec<u8>>> {
+    if !cache.contains_key(name) {
+        let files = match crate::cisco_locale::files(&state.provisioning_dir, name).await {
+            Ok(files) => files
+                .into_iter()
+                .filter(|(file, _)| vendors::valid_path(file) && !file.contains('/'))
+                .map(|(file, body)| (file, Arc::new(body)))
+                .collect(),
+            Err(_) => {
+                tracing::warn!(locale = name, "Cisco locale files are missing");
+                BTreeMap::new()
+            }
+        };
+        cache.insert(name.to_owned(), files);
+    }
+    cache[name].clone()
+}
+
 /// Converts a TalkOps ringtone (WAV, 8 kHz, mono, 16 bit) to a Cisco wideband
 /// `.rwb` file: raw signed 16-bit little-endian PCM, mono, 16 kHz, no header.
 /// Linear interpolation doubles the rate. Longer tones are cut to 10 s.
@@ -319,6 +353,7 @@ async fn collect(state: &AppState) -> anyhow::Result<(Exports, ExportResult)> {
         .filter(|m| m.kind == MediaKind::Ringtone)
         .collect();
     let mut cache = HashMap::new();
+    let mut locales = HashMap::new();
     let mut headers = HeaderMap::new();
     headers.insert(header::HOST, HeaderValue::from_static("tftp.invalid"));
     let mut output = BTreeMap::new();
@@ -377,6 +412,10 @@ async fn collect(state: &AppState) -> anyhow::Result<(Exports, ExportResult)> {
             continue;
         }
         artifacts.extend(ringtones(state, phone, &media, &mut cache).await);
+        let sep = format!("SEP{}.cnf.xml", phone.mac.to_ascii_uppercase());
+        if let Some(name) = artifacts.get(&sep).and_then(|b| user_locale(b)) {
+            artifacts.extend(locale_files(state, &name, &mut locales).await);
+        }
         stats.phones += 1;
         stats.files += artifacts.len();
         output.insert(ip, artifacts);

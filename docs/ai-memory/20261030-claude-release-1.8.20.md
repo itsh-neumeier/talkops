@@ -5,10 +5,10 @@
 - Task ID: 20261030-claude-release-1.8.20
 - Date: 2026-10-30
 - Tool: Claude Code (release manager)
-- Status: In progress
+- Status: Completed
 - Branch: codex/release-1.8.20
 - Base commit: 3bbdb31 (main, v1.8.19)
-- Related commits or PR: PR107, integration PR pending
+- Related commits or PR: PR107, PR108, tag v1.8.20
 
 ## Goal
 
@@ -44,8 +44,8 @@ updated. The 1.8.19 summary is marked Completed.
 
 ## Next action
 
-Open the integration PR, wait for CI, merge, check main, push v1.8.20 once and
-verify the release and images.
+None. v1.8.20 is published (amd64 only; tags 1.8.20, 1.8 and latest share one
+digest).
 
 ## References
 

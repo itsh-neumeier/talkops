@@ -1259,6 +1259,17 @@ async fn cisco_enterprise_directory_resync_and_ringtones(db: PgPool) {
     );
     assert!(ringlist.contains("<DisplayName>Bells &amp; Co</DisplayName>"));
     assert_eq!(std::fs::read(dir.join(&selected)).unwrap().len(), 1600 * 2);
+    // Without a selected ringtone the phone still gets all ringtones.
+    sqlx::query("UPDATE phones SET ringtone_id=NULL")
+        .execute(&state.db)
+        .await
+        .unwrap();
+    talkops_api::cisco_tftp::refresh(&state, root.path())
+        .await
+        .unwrap();
+    let ringlist = std::fs::read_to_string(dir.join("Ringlist-wb.xml")).unwrap();
+    assert!(ringlist.contains("Bells &amp; Co") && ringlist.contains("Chime"));
+    assert!(dir.join(&second).exists());
     let sep = std::fs::read_to_string(dir.join("SEP00451D6BE327.cnf.xml")).unwrap();
     let start = sep.find("<directoryURL>").unwrap() + "<directoryURL>".len();
     let url = &sep[start..start + sep[start..].find("</directoryURL>").unwrap()];

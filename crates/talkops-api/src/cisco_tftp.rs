@@ -263,7 +263,8 @@ pub fn wav_to_rwb(wav: &[u8]) -> anyhow::Result<Vec<u8>> {
 
 /// Ring list and ringtone files for a phone. The phone's selected ringtone is
 /// first, because the device configuration cannot select a custom tone; the
-/// user selects it on the phone. Without a selected ringtone nothing is added.
+/// user selects it on the phone. Without a selected ringtone the list has
+/// all ringtones in upload order.
 async fn ringtones(
     state: &AppState,
     phone: &phones::Phone,
@@ -271,13 +272,11 @@ async fn ringtones(
     cache: &mut HashMap<Uuid, Option<Arc<Vec<u8>>>>,
 ) -> BTreeMap<String, Arc<Vec<u8>>> {
     let mut files = BTreeMap::new();
-    let Some(selected) = phone.ringtone_id else {
-        return files;
-    };
+    let selected = phone.ringtone_id;
     let ordered = media
         .iter()
-        .filter(|m| m.id == selected)
-        .chain(media.iter().filter(|m| m.id != selected));
+        .filter(|m| Some(m.id) == selected)
+        .chain(media.iter().filter(|m| Some(m.id) != selected));
     let mut rings = Vec::new();
     let mut bytes = 0;
     for m in ordered {

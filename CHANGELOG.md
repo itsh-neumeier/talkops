@@ -6,6 +6,21 @@ All notable changes to TalkOps. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Cisco Enterprise SIP phones (7821, 7841, 7861): keys 2 and higher in the key
+  group **line** become speed dials. BLF keys also become speed dials; the
+  busy lamp needs Cisco Unified CM.
+- Cisco Enterprise SIP phones: the field **Cisco language package** in
+  **Language and time** selects an uploaded locale per phone, also a language
+  that TalkOps does not offer as phone language.
+
+### Fixed
+
+- Cisco Enterprise SIP phones: without a selected ringtone the TFTP export had
+  no ring list, so the phone offered no uploaded ringtones. The list now has all
+  uploaded ringtones.
+
 ## [1.8.22] – 2026-10-30
 
 ### Fixed

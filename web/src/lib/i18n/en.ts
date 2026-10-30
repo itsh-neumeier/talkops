@@ -251,6 +251,10 @@ export default {
 	'vendor.category.maintenance': 'Maintenance',
 	'vendor.category.security': 'Security and access',
 	'vendor.category.other': 'Other manufacturer settings',
+	'prov.ciscoLocale': 'Cisco language package',
+	'prov.ciscoLocaleAuto': 'Automatic (phone language)',
+	'prov.ciscoLocaleNone':
+		'No Cisco language packages. Upload them under Phones → Cisco Enterprise.',
 	'prov.localeTitle': 'Language and time',
 	'prov.localeHint': 'Empty values use the server defaults. A phone can override each value.',
 	'prov.language': 'Phone language',

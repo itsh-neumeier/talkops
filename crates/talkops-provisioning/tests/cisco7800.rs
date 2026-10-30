@@ -390,3 +390,99 @@ fn cisco_ring_list_limits_names_and_entries() {
     assert_eq!(names[0], "Ring & <0> with a very lo");
     assert!(names.iter().all(|n| n.chars().count() <= 25));
 }
+
+#[test]
+fn cisco_locale_from_setting_or_language() {
+    use talkops_provisioning::vendors::{CiscoLocale, select_cisco_locale};
+    let locale = |name: &str, code: &str| CiscoLocale {
+        name: name.into(),
+        lang_code: code.into(),
+        version: "14.3(1.9900)".into(),
+    };
+    let all = [
+        locale("Dutch_Netherlands", "nl_NL"),
+        locale("English_United_Kingdom", "en_GB"),
+        locale("German_Austria", "de_AT"),
+        locale("German_Germany", "de_DE"),
+    ];
+    let name = |l: Option<&CiscoLocale>| l.map(|l| l.name.clone());
+    assert_eq!(
+        name(select_cisco_locale(&all, "", "de")).as_deref(),
+        Some("German_Germany")
+    );
+    assert_eq!(
+        name(select_cisco_locale(&all, "Dutch_Netherlands", "de")).as_deref(),
+        Some("Dutch_Netherlands")
+    );
+    // A removed locale falls back to the language.
+    assert_eq!(
+        name(select_cisco_locale(&all, "French_France", "en")).as_deref(),
+        Some("English_United_Kingdom")
+    );
+    assert_eq!(select_cisco_locale(&all, "", "fr"), None);
+    assert_eq!(select_cisco_locale(&[], "German_Germany", "de"), None);
+}
+
+#[test]
+fn enterprise_keys_after_the_line_are_speed_dials() {
+    let catalog = catalog();
+    let model = catalog.get("cisco-7861-enterprise").unwrap();
+    let mut phone = setup(model);
+    phone.accounts = vec![account(1)];
+    let key = |key: u16, value: &str, label: &str| keys::Key {
+        native_function: None,
+        group: "line".into(),
+        key,
+        kind: talkops_provisioning::yealink::KeyType::Blf,
+        value: value.into(),
+        label: label.into(),
+        account: 1,
+        history_type: 0,
+        phonebook: 0,
+    };
+    phone.provisioning.keys = vec![
+        key(1, "100", "Ignored"),
+        key(2, "101", "Office & Entry"),
+        key(10, "**102", ""),
+    ];
+    assert!(keys::validate(model, &phone.provisioning).is_ok());
+    let body = render(&phone, "Europe/Berlin", "de").unwrap();
+    let doc = roxmltree::Document::parse(&body).unwrap();
+    let buttons: Vec<_> = doc
+        .descendants()
+        .filter(|n| n.has_tag_name("line"))
+        .map(|n| {
+            let text = |tag: &str| {
+                n.children()
+                    .find(|c| c.has_tag_name(tag))
+                    .and_then(|c| c.text())
+                    .unwrap_or_default()
+                    .to_owned()
+            };
+            (
+                n.attribute("button").unwrap().to_owned(),
+                text("featureID"),
+                text("featureLabel"),
+                text("speedDialNumber"),
+            )
+        })
+        .collect();
+    assert_eq!(
+        buttons,
+        [
+            (
+                "1".into(),
+                "9".into(),
+                "Line 1 & <label>".into(),
+                String::new()
+            ),
+            ("10".into(), "21".into(), "**102".into(), "**102".into()),
+            (
+                "2".into(),
+                "21".into(),
+                "Office & Entry".into(),
+                "101".into()
+            ),
+        ]
+    );
+}

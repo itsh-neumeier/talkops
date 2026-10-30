@@ -497,12 +497,20 @@ impl CiscoLocale {
     }
 }
 
-/// Picks the installed user locale for a TalkOps language such as `de`.
-/// `de_DE` wins over other `de_*` locales; ties sort by name.
+/// Picks the installed user locale: the locale that the phone setting
+/// `cisco_enterprise_locale` names, else the locale for the TalkOps language
+/// such as `de`. `de_DE` wins over other `de_*` locales; ties sort by name.
 pub fn select_cisco_locale<'a>(
     locales: &'a [CiscoLocale],
+    chosen: &str,
     language: &str,
 ) -> Option<&'a CiscoLocale> {
+    if let Some(locale) = locales
+        .iter()
+        .find(|l| !chosen.is_empty() && l.name == chosen)
+    {
+        return Some(locale);
+    }
     let language = language.split(['-', '_']).next().unwrap_or_default();
     let preferred = format!("{language}_{}", language.to_ascii_uppercase());
     locales

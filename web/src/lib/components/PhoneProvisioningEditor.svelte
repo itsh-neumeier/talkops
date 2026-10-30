@@ -197,7 +197,12 @@
 </script>
 
 <section class="card space-y-4">
-	<DeviceLocaleFields prefix="device-locale" bind:values {disabled} />
+	<DeviceLocaleFields
+		prefix="device-locale"
+		bind:values
+		{disabled}
+		ciscoLocale={model.vendor === 'cisco' && model.id.endsWith('-enterprise')}
+	/>
 	<h2>{t('prov.deviceTitle')}</h2>
 	<p class="hint">{t('prov.deviceHint')}</p>
 	<div class="grid grid-cols-1 gap-3 @lg:grid-cols-2">

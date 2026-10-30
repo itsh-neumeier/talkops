@@ -446,6 +446,10 @@ async fn render_phone_config_inner(
         let common = talkops_provisioning::vendors::Common {
             cisco_locale: talkops_provisioning::vendors::select_cisco_locale(
                 &cisco_locales,
+                overrides
+                    .vendor_settings
+                    .get("cisco_enterprise_locale")
+                    .map_or("", String::as_str),
                 language,
             ),
             provisioning: &prov,

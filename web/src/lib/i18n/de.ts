@@ -256,6 +256,10 @@ const de: Record<keyof typeof en, string> = {
 	'vendor.category.maintenance': 'Wartung',
 	'vendor.category.security': 'Sicherheit und Zugang',
 	'vendor.category.other': 'Weitere Herstellereinstellungen',
+	'prov.ciscoLocale': 'Cisco-Sprachpaket',
+	'prov.ciscoLocaleAuto': 'Automatisch (Telefonsprache)',
+	'prov.ciscoLocaleNone':
+		'Keine Cisco-Sprachpakete. Lade sie unter Telefone → Cisco Enterprise hoch.',
 	'prov.localeTitle': 'Sprache und Uhrzeit',
 	'prov.localeHint':
 		'Leere Werte verwenden die Servervorgaben. Jedes Telefon kann die Werte einzeln überschreiben.',

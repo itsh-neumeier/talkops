@@ -6,14 +6,21 @@ All notable changes to TalkOps. The format follows
 
 ## [Unreleased]
 
+## [1.8.23] – 2026-10-30
+
 ### Added
 
 - Phones: the page has the tabs **Phones**, **General**, **Cisco Enterprise**
   and **Debug / advanced**.
 - Provisioning files (ADR 0052): look at the files that a phone gets, replace a
   generated file with an edited copy or add files, over HTTP or the Cisco TFTP
-  export. TalkOps stores the files encrypted. New migration
-  `20261114000001_provisioning_files`.
+  export. TalkOps stores the files encrypted.
+- Cisco Enterprise SIP phones (7821, 7841, 7861): keys 2 and higher in the key
+  group **line** become speed dials. BLF keys also become speed dials; the
+  busy lamp needs Cisco Unified CM.
+- Cisco Enterprise SIP phones: the field **Cisco language package** in
+  **Language and time** selects an uploaded locale per phone, also a language
+  that TalkOps does not offer as phone language.
 
 ### Fixed
 
@@ -21,6 +28,14 @@ All notable changes to TalkOps. The format follows
   `directoryURL` returned a directory page, but a CP-7861 on 14.2(1) expects a
   `CiscoIPPhoneMenu` there. The bare URL now returns a menu with the phone book
   and the search form.
+- Cisco Enterprise SIP phones: without a selected ringtone the TFTP export had
+  no ring list, so the phone offered no uploaded ringtones. The list now has all
+  uploaded ringtones.
+
+### Upgrade notes
+
+- New migration `20261114000001_provisioning_files`. TalkOps applies it at
+  start. No breaking API change.
 
 ## [1.8.22] – 2026-10-30
 

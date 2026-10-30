@@ -36,4 +36,12 @@ matrix. The manifest job publishes the digests that the build jobs produced.
   An arm64 host that pulls such a tag gets no matching image. Operators on
   arm64 must pin a release whose notes list arm64.
 - Release notes state the published architectures.
-- CI still checks the Coral image on arm64. That check is unchanged.
+- CI builds and tests images on amd64 only. An arm64 release request builds
+  the arm64 images for the first time in the release workflow. Before such a
+  release, add the arm64 CI entry again in a pull request and let CI pass.
+
+## Amendment 2026-10-29
+
+The first version of this ADR kept the arm64 Coral image build in CI. The
+owner decided on 2026-10-29 to remove it, because arm64 is not a default
+target. The consequence above replaces the earlier statement.

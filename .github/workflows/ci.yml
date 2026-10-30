@@ -216,11 +216,6 @@ jobs:
             runner: ubuntu-24.04
             context: .
             dockerfile: docker/coral-stt/Dockerfile
-          - image: talkops-coral-stt
-            arch: arm64
-            runner: ubuntu-24.04-arm
-            context: .
-            dockerfile: docker/coral-stt/Dockerfile
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3

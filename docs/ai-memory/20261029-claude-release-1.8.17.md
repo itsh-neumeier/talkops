@@ -22,6 +22,8 @@ updated. The 1.8.16 summary is marked Completed. PR99 merged as 45e2b25.
 Tag v1.8.17 is published (GitHub release 2026-10-29T20:08:26Z). The user ran
 1.8.17 on the CP-7861: **Resync** reported "not registered". PR102 fixes the
 cause in 1.8.18.
+All four images (amd64) have the 1.8.17, 1.8 and latest tags on one digest.
+Server and worker report 1.8.17.
 
 ## Decisions and scope
 

@@ -6,6 +6,19 @@ All notable changes to TalkOps. The format follows
 
 ## [Unreleased]
 
+## [1.8.20] – 2026-10-30
+
+### Fixed
+
+- Cisco Enterprise SIP phones: a **Resync** right after a change delivered the
+  previous SEP file. The TFTP export ran only every 30 seconds. A resync now
+  exports the saved state before it signals the phone. Phone, account, settings
+  and ringtone changes also start an export at once.
+
+### Upgrade notes
+
+- No new migration and no breaking API change. Only `TALKOPS_VERSION` changes.
+
 ## [1.8.19] – 2026-10-30
 
 ### Fixed

@@ -88,6 +88,8 @@ pub struct AppState {
     pub spam: Arc<spam::SpamCheck>,
     /// Number geolocation for the call map (ADR 0044); empty without data.
     pub geo: Arc<talkops_core::geo::GeoIndex>,
+    /// Optional Cisco Enterprise TFTP export (`TALKOPS_CISCO_TFTP_DIR`).
+    pub cisco_tftp: Option<cisco_tftp::Exporter>,
 }
 
 /// TURN servers handed to browser softphones.
@@ -132,6 +134,7 @@ impl AppState {
             diagnostics: Arc::default(),
             spam,
             geo: Arc::default(),
+            cisco_tftp: None,
         }
     }
 }
@@ -172,6 +175,11 @@ impl AppState {
 
     pub fn with_media(mut self, media: MediaPaths) -> Self {
         self.media = Arc::new(media);
+        self
+    }
+
+    pub fn with_cisco_tftp(mut self, root: std::path::PathBuf) -> Self {
+        self.cisco_tftp = Some(cisco_tftp::Exporter::new(root));
         self
     }
 

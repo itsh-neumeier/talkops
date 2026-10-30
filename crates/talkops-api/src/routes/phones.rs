@@ -530,6 +530,7 @@ pub async fn create_phone(
         json!({"mac": phone.mac, "model": phone.model}),
     )
     .await?;
+    crate::cisco_tftp::schedule(&state);
     Ok(Json(phone))
 }
 
@@ -672,6 +673,7 @@ pub async fn update_phone(
         json!({"mac": phone.mac, "model": phone.model}),
     )
     .await?;
+    crate::cisco_tftp::schedule(&state);
     Ok(Json(phone))
 }
 
@@ -694,6 +696,7 @@ pub async fn delete_phone(
         json!({"mac": phone.mac}),
     )
     .await?;
+    crate::cisco_tftp::schedule(&state);
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -737,6 +740,7 @@ pub async fn update_phone_account(
                "phone_display_name": device.phone_display_name}),
     )
     .await?;
+    crate::cisco_tftp::schedule(&state);
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -769,6 +773,11 @@ pub async fn resync_phone(
     let cisco = talkops_provisioning::vendors::cisco_enterprise(&phone.model);
     if !cisco && talkops_provisioning::vendors::profile(&phone.model).is_some() {
         return Err(ApiError::BadRequest("this profile has no remote resync adapter; use its configuration download or device menu".into()));
+    }
+    if cisco {
+        // The timer refreshes every 30 s; export the saved state before the
+        // phone is told to fetch it.
+        crate::cisco_tftp::refresh_now(&state).await;
     }
     let mut notified = 0;
     // One NOTIFY per phone is enough; try the accounts until one is reachable.
@@ -974,6 +983,7 @@ pub async fn update_phone_settings(
         json!({"values": input.values}),
     )
     .await?;
+    crate::cisco_tftp::schedule(&state);
     Ok(Json(phone_settings_view(&state, auth.tenant).await?))
 }
 
@@ -1297,6 +1307,7 @@ pub async fn upload_media(
         json!({"kind": kind.as_str(), "name": media.name, "size_bytes": media.size_bytes}),
     )
     .await?;
+    crate::cisco_tftp::schedule(&state);
     Ok(Json(media))
 }
 
@@ -1339,6 +1350,7 @@ pub async fn delete_media(
         json!({"kind": m.kind.as_str(), "name": m.name}),
     )
     .await?;
+    crate::cisco_tftp::schedule(&state);
     Ok(StatusCode::NO_CONTENT)
 }
 

@@ -13,6 +13,7 @@ use std::{
 };
 use talkops_core::{
     phones::{self, MediaKind},
+    provisioning_files,
     tenant::TenantId,
 };
 use talkops_provisioning::vendors;
@@ -412,6 +413,16 @@ async fn collect(state: &AppState) -> anyhow::Result<(Exports, ExportResult)> {
             continue;
         }
         artifacts.extend(ringtones(state, phone, &media, &mut cache).await);
+        // Admin-stored files replace generated files or add files (ADR 0052).
+        match provisioning_files::tftp_files(&state.db, &state.secrets, tenant, phone.id).await {
+            Ok(files) => {
+                artifacts.extend(files.into_iter().map(|(name, body)| (name, Arc::new(body))))
+            }
+            Err(_) => {
+                stats.omitted += 1;
+                continue;
+            }
+        }
         let sep = format!("SEP{}.cnf.xml", phone.mac.to_ascii_uppercase());
         if let Some(name) = artifacts.get(&sep).and_then(|b| user_locale(b)) {
             artifacts.extend(locale_files(state, &name, &mut locales).await);

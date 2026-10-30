@@ -59,6 +59,26 @@ Die Swissvoice-Vorlagen enthalten keine Telefonbuchdatei. Die URL-Felder
 bleiben zunächst leer und können auf ein kompatibles externes Telefonbuch
 verweisen. Firmwaredateien werden nicht mitgeliefert.
 
+### Provisionierungsdateien bearbeiten oder hinzufügen
+
+Die Telefonseite hat die Reiter **Telefone**, **Allgemein**,
+**Cisco Enterprise** und **Debug / Erweitert**. Unter
+**Debug / Erweitert → Provisionierungsdateien** siehst, ersetzt oder ergänzt
+du Dateien:
+
+1. Wähle ein Telefon. Die Tabelle zeigt die Dateien, die das Telefon erhält.
+2. **Erzeugte anzeigen** zeigt eine erzeugte Datei.
+3. **Bearbeiten** startet eine gespeicherte Kopie der Datei. Speichere sie.
+   Das Telefon erhält dann die gespeicherte statt der erzeugten Datei.
+4. **Neue Datei** fügt eine Datei hinzu. TFTP-Dateien gelten für
+   Cisco-Enterprise-Telefone, für ein Telefon oder für alle. HTTP-Dateien
+   verwenden den Pfad unter `/provisioning/` und gelten für alle Telefone.
+5. **Entfernen** verwendet wieder die erzeugte Datei.
+
+Eine gespeicherte Kopie ändert sich nicht, wenn du das Telefon in TalkOps
+änderst. TalkOps speichert die Dateien verschlüsselt. Jede Datei darf 1 MiB
+groß sein.
+
 ## Telefon kopieren
 
 1. Wähle **Einstellungen von einem Telefon übernehmen**.

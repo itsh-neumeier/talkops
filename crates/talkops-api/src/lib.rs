@@ -290,6 +290,7 @@ pub fn api_router() -> (Router<AppState>, utoipa::openapi::OpenApi) {
         .merge(routes::transcription_jobs::router())
         .merge(routes::phones::router())
         .merge(routes::cisco_locales::router())
+        .merge(routes::provisioning_files::router())
         .merge(routes::provisioning_admin::router())
         .merge(routes::voicemail::router())
         .merge(routes::mail::router())

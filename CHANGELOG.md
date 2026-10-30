@@ -6,6 +6,15 @@ All notable changes to TalkOps. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Phones: the page has the tabs **Phones**, **General**, **Cisco Enterprise**
+  and **Debug / advanced**.
+- Provisioning files (ADR 0052): look at the files that a phone gets, replace a
+  generated file with an edited copy or add files, over HTTP or the Cisco TFTP
+  export. TalkOps stores the files encrypted. New migration
+  `20261114000001_provisioning_files`.
+
 ### Fixed
 
 - Cisco Enterprise SIP phones: the contacts stayed on "Requesting". The

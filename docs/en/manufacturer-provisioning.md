@@ -57,6 +57,24 @@ A phone that requires TFTP needs a separate delivery service. Swissvoice has
 no directory artifact in the source. Its directory URL fields start empty.
 Use a compatible external directory if required. Firmware files are not bundled.
 
+### Edit or add provisioning files
+
+The phones page has the tabs **Phones**, **General**, **Cisco Enterprise**
+and **Debug / advanced**. Use **Debug / advanced → Provisioning files** to
+look at, replace or add files:
+
+1. Select a phone. The table shows the files that the phone gets.
+2. Use **Show generated** to look at a generated file.
+3. Use **Edit** to start a stored copy of the file. Save it. The phone then
+   gets the stored file instead of the generated file.
+4. Use **New file** to add a file. TFTP files are for Cisco Enterprise phones,
+   for one phone or for all phones. HTTP files use the path below
+   `/provisioning/` and apply to all phones.
+5. Use **Remove** to use the generated file again.
+
+A stored copy does not change when you change the phone in TalkOps. TalkOps
+encrypts stored files. Each file can have 1 MiB.
+
 ## Copy a phone
 
 1. Select **Use settings from a phone**.

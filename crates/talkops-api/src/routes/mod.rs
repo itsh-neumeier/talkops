@@ -28,6 +28,7 @@ pub mod phone_network;
 pub mod phones;
 pub mod provisioning;
 pub mod provisioning_admin;
+pub mod provisioning_files;
 pub mod queues;
 pub mod recordings;
 pub mod recovery;

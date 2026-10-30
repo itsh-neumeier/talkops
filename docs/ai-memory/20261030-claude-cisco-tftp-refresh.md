@@ -8,7 +8,7 @@
 - Status: In progress
 - Branch: claude/cisco-tftp-refresh
 - Base commit: 3bbdb31 (main, v1.8.19)
-- Related commits or PR: Pending
+- Related commits or PR: PR107, release 1.8.20
 
 ## Goal
 

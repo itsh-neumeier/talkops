@@ -5,10 +5,10 @@
 - Task ID: 20261030-claude-release-1.8.19
 - Date: 2026-10-30
 - Tool: Claude Code (release manager)
-- Status: In progress
+- Status: Completed
 - Branch: codex/release-1.8.19
 - Base commit: 2fdf037 (main)
-- Related commits or PR: PR104, PR105, integration PR pending
+- Related commits or PR: PR104, PR105, PR106 (merge 3bbdb31), tag v1.8.19
 
 ## Goal
 
@@ -49,8 +49,7 @@ Release metadata is updated. The 1.8.18 summary is marked Completed.
 
 ## Next action
 
-Open the integration PR, wait for CI, merge, check main, push v1.8.19 once and
-verify the release and images.
+None. Published; images checked. The CP-7861 registered on 1.8.19 on 2026-10-30.
 
 ## References
 

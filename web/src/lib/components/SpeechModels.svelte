@@ -16,8 +16,8 @@
 	import { errorMessage } from '#lib/util.ts';
 
 	/**
-	 * Model library of a speech service on this server: coral-stt (ADR 0052)
-	 * or cuda-stt (ADR 0053). The service stores and checks the models.
+	 * Model library of a speech service on this server: coral-stt (ADR 0053)
+	 * or cuda-stt (ADR 0054). The service stores and checks the models.
 	 */
 	let { provider }: { provider: TranscriptionProvider } = $props();
 

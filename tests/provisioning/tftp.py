@@ -31,6 +31,8 @@ class CiscoTftpPolicy(unittest.TestCase):
             "127.0.0.2/Ringlist-wb.xml": b"<CiscoIPPhoneRingList/>",
             "127.0.0.2/talkops-0123abcd.rwb": b"\x01\x00" * 600,
             "127.0.0.3/talkops-89abcdef.rwb": b"\x02\x00" * 300,
+            "127.0.0.2/sp-sip.jar": b"PK-locale" * 100,
+            "127.0.0.3/gp-sip.jar": b"PK-other",
         }
         for name, data in cls.files.items():
             target = cls.root / "active" / name
@@ -104,6 +106,19 @@ class CiscoTftpPolicy(unittest.TestCase):
             self.assertEqual(code, 3, filename)
             self.assertEqual(body, self.files["127.0.0.2/" + filename.lstrip("/")])
         for name in ["talkops-89abcdef.rwb", "talkops-0123ABCD.rwb", "talkops-0123abc.rwb", "ringlist-wb.xml", "Ringlist.xml", "//dialplan.xml"]:
+            self.assertEqual(self.request("127.0.0.2", name)[0], 5, name)
+
+    def test_uploaded_locale_files_from_the_locale_directory_or_root(self):
+        # A CP-7861 on 14.2(1) requests "German_Germany/sp-sip.jar".
+        for filename in ["German_Germany/sp-sip.jar", "/German_Germany/sp-sip.jar", "sp-sip.jar", "/sp-sip.jar"]:
+            code, body = self.request("127.0.0.2", filename)
+            self.assertEqual(code, 3, filename)
+            self.assertEqual(body, self.files["127.0.0.2/sp-sip.jar"])
+        for name in [
+            "gp-sip.jar", "German_Germany/gp-sip.jar", "sp-sip.jar.sgn", "../127.0.0.3/gp-sip.jar",
+            "German_Germany/../127.0.0.3/gp-sip.jar", "a/b/sp-sip.jar", "German-Germany/sp-sip.jar",
+            "German_Germany//sp-sip.jar", "1German/sp-sip.jar",
+        ]:
             self.assertEqual(self.request("127.0.0.2", name)[0], 5, name)
 
     def test_other_phone_unknown_source_signed_and_trust_files_are_denied(self):

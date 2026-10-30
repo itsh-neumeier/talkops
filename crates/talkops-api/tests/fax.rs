@@ -347,6 +347,12 @@ async fn read_only_fax_directory_rejects_upload_without_queueing(pool: PgPool) {
     };
     admin.router = talkops_api::app(s.with_media(media), None);
     std::fs::set_permissions(root.path(), std::fs::Permissions::from_mode(0o555)).unwrap();
+    // Root ignores directory modes (self-hosted CI runner); nothing to test there.
+    if std::fs::write(root.path().join("probe"), b"").is_ok() {
+        std::fs::set_permissions(root.path(), std::fs::Permissions::from_mode(0o700)).unwrap();
+        eprintln!("skipped: directory permissions are not enforced for this user");
+        return;
+    }
     let response = admin.post("/api/v1/faxes", json!({"destination":"+49654321","number_id":number,"files":[{"name":"one.png","data":"iVBORw0KGgo="}]})).await;
     std::fs::set_permissions(root.path(), std::fs::Permissions::from_mode(0o700)).unwrap();
     assert_eq!(

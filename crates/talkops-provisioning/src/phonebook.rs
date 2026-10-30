@@ -130,6 +130,25 @@ pub fn cisco_directory(
     out
 }
 
+/// Entry menu at the Cisco `directoryURL`. Enterprise 78xx phones expect a
+/// `CiscoIPPhoneMenu` there and keep "Requesting" on a directory page.
+pub fn cisco_menu(title: &str, url: &str) -> String {
+    format!(
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+<CiscoIPPhoneMenu>
+  <Title>{}</Title>
+           <Prompt></Prompt>
+  <MenuItem><Name>{}</Name><URL>{}</URL></MenuItem>
+           <MenuItem><Name>Search</Name><URL>{}</URL></MenuItem>
+</CiscoIPPhoneMenu>
+",
+        esc(&clip(title, 32)),
+        esc(&clip(title, 32)),
+        esc(&format!("{url}?page=1")),
+        esc(&format!("{url}?search="))
+    )
+}
+
 /// Search form for the Cisco directory. The phone sends the entered text as
 /// `search` to `url`.
 pub fn cisco_search(url: &str) -> String {
@@ -179,6 +198,10 @@ mod tests {
         assert!(cisco_directory("T", &[], url, "", 1).contains("<Prompt>1/1</Prompt>"));
         let form = cisco_search(url);
         roxmltree::Document::parse(&form).unwrap();
+        let menu = cisco_menu("TalkOps", url);
+        roxmltree::Document::parse(&menu).unwrap();
+        assert!(menu.contains("<URL>http://pbx/provisioning/cisco/directory/x/y?page=1</URL>"));
+        assert!(menu.contains("<URL>http://pbx/provisioning/cisco/directory/x/y?search=</URL>"));
         assert!(form.contains("<QueryStringParam>search</QueryStringParam>"));
     }
 

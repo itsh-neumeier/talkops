@@ -1,4 +1,4 @@
--- Speech recognition on an NVIDIA GPU (ADR 0053).
+-- Speech recognition on an NVIDIA GPU (ADR 0054).
 
 -- A connection to the cuda-stt service on this server. Like `coral`, it
 -- uses a loopback URL, has no costs and falls back to local Whisper.

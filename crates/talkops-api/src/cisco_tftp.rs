@@ -13,6 +13,7 @@ use std::{
 };
 use talkops_core::{
     phones::{self, MediaKind},
+    provisioning_files,
     tenant::TenantId,
 };
 use talkops_provisioning::vendors;
@@ -29,6 +30,23 @@ const RING_EXPORT_LIMIT: usize = 8 * 1024 * 1024;
 /// Exported files per client IP. Ringtones share one buffer across phones
 /// and are written once, then hard-linked.
 type Exports = BTreeMap<String, BTreeMap<String, Arc<Vec<u8>>>>;
+
+/// Export root plus a lock: the timer, saves and resyncs all swap the same
+/// `next`/`active` directories, so refreshes must not overlap.
+#[derive(Debug, Clone)]
+pub struct Exporter {
+    root: Arc<PathBuf>,
+    lock: Arc<tokio::sync::Mutex<()>>,
+}
+
+impl Exporter {
+    pub fn new(root: PathBuf) -> Self {
+        Self {
+            root: Arc::new(root),
+            lock: Arc::default(),
+        }
+    }
+}
 
 #[derive(Debug, Default)]
 pub struct ExportResult {
@@ -182,6 +200,40 @@ pub async fn refresh(state: &AppState, root: &Path) -> anyhow::Result<ExportResu
     }
 }
 
+/// The `userLocale` name in a rendered SEP file, such as `German_Germany`.
+fn user_locale(sep: &[u8]) -> Option<String> {
+    let text = std::str::from_utf8(sep).ok()?;
+    let block = &text[text.find("<userLocale>")?..];
+    let start = block.find("<name>")? + "<name>".len();
+    let name = &block[start..start + block[start..].find("</name>")?];
+    (!name.is_empty() && name.chars().all(|c| c.is_ascii_alphabetic() || c == '_'))
+        .then(|| name.to_owned())
+}
+
+/// The files of an uploaded Cisco locale, loaded once per refresh. The phone
+/// requests them from the TFTP root, for example `/sp-sip.jar`.
+async fn locale_files(
+    state: &AppState,
+    name: &str,
+    cache: &mut HashMap<String, BTreeMap<String, Arc<Vec<u8>>>>,
+) -> BTreeMap<String, Arc<Vec<u8>>> {
+    if !cache.contains_key(name) {
+        let files = match crate::cisco_locale::files(&state.provisioning_dir, name).await {
+            Ok(files) => files
+                .into_iter()
+                .filter(|(file, _)| vendors::valid_path(file) && !file.contains('/'))
+                .map(|(file, body)| (file, Arc::new(body)))
+                .collect(),
+            Err(_) => {
+                tracing::warn!(locale = name, "Cisco locale files are missing");
+                BTreeMap::new()
+            }
+        };
+        cache.insert(name.to_owned(), files);
+    }
+    cache[name].clone()
+}
+
 /// Converts a TalkOps ringtone (WAV, 8 kHz, mono, 16 bit) to a Cisco wideband
 /// `.rwb` file: raw signed 16-bit little-endian PCM, mono, 16 kHz, no header.
 /// Linear interpolation doubles the rate. Longer tones are cut to 10 s.
@@ -212,7 +264,8 @@ pub fn wav_to_rwb(wav: &[u8]) -> anyhow::Result<Vec<u8>> {
 
 /// Ring list and ringtone files for a phone. The phone's selected ringtone is
 /// first, because the device configuration cannot select a custom tone; the
-/// user selects it on the phone. Without a selected ringtone nothing is added.
+/// user selects it on the phone. Without a selected ringtone the list has
+/// all ringtones in upload order.
 async fn ringtones(
     state: &AppState,
     phone: &phones::Phone,
@@ -220,13 +273,11 @@ async fn ringtones(
     cache: &mut HashMap<Uuid, Option<Arc<Vec<u8>>>>,
 ) -> BTreeMap<String, Arc<Vec<u8>>> {
     let mut files = BTreeMap::new();
-    let Some(selected) = phone.ringtone_id else {
-        return files;
-    };
+    let selected = phone.ringtone_id;
     let ordered = media
         .iter()
-        .filter(|m| m.id == selected)
-        .chain(media.iter().filter(|m| m.id != selected));
+        .filter(|m| Some(m.id) == selected)
+        .chain(media.iter().filter(|m| Some(m.id) != selected));
     let mut rings = Vec::new();
     let mut bytes = 0;
     for m in ordered {
@@ -302,6 +353,7 @@ async fn collect(state: &AppState) -> anyhow::Result<(Exports, ExportResult)> {
         .filter(|m| m.kind == MediaKind::Ringtone)
         .collect();
     let mut cache = HashMap::new();
+    let mut locales = HashMap::new();
     let mut headers = HeaderMap::new();
     headers.insert(header::HOST, HeaderValue::from_static("tftp.invalid"));
     let mut output = BTreeMap::new();
@@ -360,6 +412,20 @@ async fn collect(state: &AppState) -> anyhow::Result<(Exports, ExportResult)> {
             continue;
         }
         artifacts.extend(ringtones(state, phone, &media, &mut cache).await);
+        // Admin-stored files replace generated files or add files (ADR 0052).
+        match provisioning_files::tftp_files(&state.db, &state.secrets, tenant, phone.id).await {
+            Ok(files) => {
+                artifacts.extend(files.into_iter().map(|(name, body)| (name, Arc::new(body))))
+            }
+            Err(_) => {
+                stats.omitted += 1;
+                continue;
+            }
+        }
+        let sep = format!("SEP{}.cnf.xml", phone.mac.to_ascii_uppercase());
+        if let Some(name) = artifacts.get(&sep).and_then(|b| user_locale(b)) {
+            artifacts.extend(locale_files(state, &name, &mut locales).await);
+        }
         stats.phones += 1;
         stats.files += artifacts.len();
         output.insert(ip, artifacts);
@@ -367,11 +433,51 @@ async fn collect(state: &AppState) -> anyhow::Result<(Exports, ExportResult)> {
     Ok((output, stats))
 }
 
-pub async fn spawn(state: AppState, root: PathBuf) -> anyhow::Result<()> {
+/// Refreshes the export now, if enabled. A resync awaits this so the phone
+/// never fetches a file that is older than the last save.
+pub async fn refresh_now(state: &AppState) -> bool {
+    let Some(exporter) = &state.cisco_tftp else {
+        return false;
+    };
+    let _guard = exporter.lock.lock().await;
+    match refresh(state, &exporter.root).await {
+        Ok(stats) => {
+            if stats.omitted > 0 {
+                tracing::warn!(
+                    omitted = stats.omitted,
+                    "Cisco TFTP devices omitted: check unique client IP, SIP host and profile settings"
+                );
+            }
+            true
+        }
+        Err(_) => {
+            tracing::error!("Cisco TFTP refresh failed; check export root and sidecar");
+            false
+        }
+    }
+}
+
+/// Starts a refresh in the background after a change that affects exports.
+pub fn schedule(state: &AppState) {
+    if state.cisco_tftp.is_some() {
+        let state = state.clone();
+        tokio::spawn(async move { refresh_now(&state).await });
+    }
+}
+
+pub async fn spawn(state: AppState) -> anyhow::Result<()> {
+    let exporter = state
+        .cisco_tftp
+        .clone()
+        .ok_or_else(|| anyhow::anyhow!("Cisco TFTP export is not configured"))?;
+    let root = exporter.root.as_path();
     // A restart removes the served generation before any database operation.
-    prepare(&root).await?;
-    remove_owned(&root, "active").await?;
-    let stats = refresh(&state, &root).await?;
+    prepare(root).await?;
+    remove_owned(root, "active").await?;
+    let stats = {
+        let _guard = exporter.lock.lock().await;
+        refresh(&state, root).await?
+    };
     tracing::info!(
         phones = stats.phones,
         files = stats.files,
@@ -383,16 +489,7 @@ pub async fn spawn(state: AppState, root: PathBuf) -> anyhow::Result<()> {
         timer.tick().await;
         loop {
             timer.tick().await;
-            match refresh(&state, &root).await {
-                Ok(stats) if stats.omitted > 0 => tracing::warn!(
-                    omitted = stats.omitted,
-                    "Cisco TFTP devices omitted: check unique client IP, SIP host and profile settings"
-                ),
-                Ok(_) => {}
-                Err(_) => {
-                    tracing::error!("Cisco TFTP refresh failed; check export root and sidecar")
-                }
-            }
+            refresh_now(&state).await;
         }
     });
     Ok(())

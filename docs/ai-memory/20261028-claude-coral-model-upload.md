@@ -9,7 +9,7 @@
 - PR: https://github.com/itsh-neumeier/talkops/pull/91
 - Base commit: 977528a (origin/main, release 1.8.14)
 - Related: `20261028-claude-coral-german-model-evaluation.md`,
-  `20261028-codex-coral-missing-model.md`, ADR 0046, new ADR 0052
+  `20261028-codex-coral-missing-model.md`, ADR 0046, new ADR 0053
 
 ## Goal
 
@@ -21,7 +21,7 @@ weights is still a redistribution and was not done.
 ## Decisions
 
 - `coral-stt` stores and checks models, not the API server. It owns the
-  model format and the startup loader. See ADR 0052.
+  model format and the startup loader. See ADR 0053.
 - Staging directory, check with `models::check_slot` (startup code), TFLite
   `TFL3` identifier and `edgetpu-custom-op` marker, then swap. One backup
   level in `.backup/<slot>`.
@@ -42,7 +42,7 @@ weights is still a redistribution and was not done.
 - `crates/talkops-api/src/routes/coral_models.rs` (new), `routes/mod.rs`, `lib.rs`.
 - `web/src/lib/components/CoralModels.svelte` (new),
   `TranscriptionSettings.svelte`, `api.ts`, `i18n/en.ts`, `i18n/de.ts`.
-- `docker-compose.yml`, `.env.example`, `docs/adr/0052-coral-model-upload.md`,
+- `docker-compose.yml`, `.env.example`, `docs/adr/0053-coral-model-upload.md`,
   `docs/adr/README.md`, `docs/en/recording.md`, `docs/de/aufzeichnung.md`.
 
 ## Checks

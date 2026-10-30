@@ -44,7 +44,10 @@ jobs:
 
   rust:
     name: Rust (fmt, clippy, test)
-    runs-on: ubuntu-24.04
+    # The owner's self-hosted runner (label talkops, host network) takes the
+    # heavy jobs when the repository variable CI_RUNNER is "talkops". Pull
+    # requests from forks always use GitHub-hosted runners.
+    runs-on: ${{ vars.CI_RUNNER == 'talkops' && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON('["self-hosted","talkops"]') || 'ubuntu-24.04' }}
     services:
       postgres:
         image: postgres:17-trixie
@@ -63,7 +66,7 @@ jobs:
         with:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
-      - name: Install the sherpa-onnx CPU library (cuda-stt, ADR 0053)
+      - name: Install the sherpa-onnx CPU library (cuda-stt, ADR 0054)
         run: |
           # Same version as the sherpa-onnx crate; the build does not download it.
           name=sherpa-onnx-v1.13.8-linux-x64-shared-lib
@@ -80,10 +83,15 @@ jobs:
           sudo apt-get update -qq
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq slapd ldap-utils
           sudo systemctl stop slapd || true
+          # A reused self-hosted runner keeps the directory of the previous run.
+          sudo rm -rf /var/lib/ldap/talkops-test
           # Under /var/lib/ldap so the AppArmor profile of slapd allows it.
           sudo LDAP_WORK=/var/lib/ldap/talkops-test tests/ldap/start.sh
       - name: Install PostgreSQL 17 client tools (backup tests)
         run: |
+          # GitHub-hosted images ship postgresql-common; the self-hosted runner does not.
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq postgresql-common
           sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq postgresql-client-17
       - name: Install rclone (backup target tests)
@@ -91,7 +99,7 @@ jobs:
           # Same pinned release and checksum as docker/talkops/Dockerfile.
           curl -fsSLo /tmp/rclone.zip https://downloads.rclone.org/v1.75.2/rclone-v1.75.2-linux-amd64.zip
           echo "349ac8fba6ff65d6247043f1750cdcb518ec5d500ef91463a10d37c0ccdf3702  /tmp/rclone.zip" | sha256sum -c -
-          unzip -q /tmp/rclone.zip -d /tmp
+          unzip -oq /tmp/rclone.zip -d /tmp  # -o: the self-hosted runner keeps /tmp between jobs
           sudo install -m 0755 /tmp/rclone-v1.75.2-linux-amd64/rclone /usr/local/bin/rclone
           rclone version
       - name: Install and test the optional Cisco TFTP transport
@@ -206,29 +214,22 @@ jobs:
 
   images:
     name: Image build (${{ matrix.image }}, ${{ matrix.arch }})
-    runs-on: ${{ matrix.runner }}
+    # Same runner choice as the rust job.
+    runs-on: ${{ vars.CI_RUNNER == 'talkops' && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON('["self-hosted","talkops"]') || 'ubuntu-24.04' }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - image: talkops-server
             arch: amd64
-            runner: ubuntu-24.04
             context: .
             dockerfile: docker/talkops/Dockerfile
           - image: talkops-media-worker
             arch: amd64
-            runner: ubuntu-24.04
             context: .
             dockerfile: docker/media-worker/Dockerfile
           - image: talkops-coral-stt
             arch: amd64
-            runner: ubuntu-24.04
-            context: .
-            dockerfile: docker/coral-stt/Dockerfile
-          - image: talkops-coral-stt
-            arch: arm64
-            runner: ubuntu-24.04-arm
             context: .
             dockerfile: docker/coral-stt/Dockerfile
           - image: talkops-cuda-stt

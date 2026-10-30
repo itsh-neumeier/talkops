@@ -1,4 +1,4 @@
-//! Speech recognition of one turn on top of the [Engine] (ADR 0053).
+//! Speech recognition of one turn on top of the [Engine] (ADR 0054).
 //!
 //! The models are not streaming models. While a live turn grows, the turn
 //! decodes all its audio again after each partial interval and publishes the

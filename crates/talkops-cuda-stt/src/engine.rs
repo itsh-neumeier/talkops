@@ -1,6 +1,6 @@
 //! The GPU, the job queue and the load limit.
 //!
-//! One process uses one GPU (ADR 0053). A device thread loads the selected
+//! One process uses one GPU (ADR 0054). A device thread loads the selected
 //! models and then takes jobs from one queue. Live jobs (realtime sessions)
 //! come before file jobs. Waiting jobs for the same model go to the GPU in
 //! one batch. The queue has a fixed capacity: a full queue rejects new jobs

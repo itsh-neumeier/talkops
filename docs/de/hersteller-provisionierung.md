@@ -59,6 +59,26 @@ Die Swissvoice-Vorlagen enthalten keine Telefonbuchdatei. Die URL-Felder
 bleiben zunächst leer und können auf ein kompatibles externes Telefonbuch
 verweisen. Firmwaredateien werden nicht mitgeliefert.
 
+### Provisionierungsdateien bearbeiten oder hinzufügen
+
+Die Telefonseite hat die Reiter **Telefone**, **Allgemein**,
+**Cisco Enterprise** und **Debug / Erweitert**. Unter
+**Debug / Erweitert → Provisionierungsdateien** siehst, ersetzt oder ergänzt
+du Dateien:
+
+1. Wähle ein Telefon. Die Tabelle zeigt die Dateien, die das Telefon erhält.
+2. **Erzeugte anzeigen** zeigt eine erzeugte Datei.
+3. **Bearbeiten** startet eine gespeicherte Kopie der Datei. Speichere sie.
+   Das Telefon erhält dann die gespeicherte statt der erzeugten Datei.
+4. **Neue Datei** fügt eine Datei hinzu. TFTP-Dateien gelten für
+   Cisco-Enterprise-Telefone, für ein Telefon oder für alle. HTTP-Dateien
+   verwenden den Pfad unter `/provisioning/` und gelten für alle Telefone.
+5. **Entfernen** verwendet wieder die erzeugte Datei.
+
+Eine gespeicherte Kopie ändert sich nicht, wenn du das Telefon in TalkOps
+änderst. TalkOps speichert die Dateien verschlüsselt. Jede Datei darf 1 MiB
+groß sein.
+
 ## Telefon kopieren
 
 1. Wähle **Einstellungen von einem Telefon übernehmen**.
@@ -211,10 +231,9 @@ Jedes Enterprise-Profil erlaubt **ein unabhängiges SIP-Konto auf Platz 1**.
 Mehr physische Leitungstasten belegen keine Unterstützung unabhängiger
 Digest-Zugangsdaten pro Leitung. TalkOps vereinheitlicht oder schwächt keine
 Kontenpasswörter, um zusätzliche Leitungen einzurichten. Die MPP-Kontengrenzen
-bleiben erhalten. Eigene Tastenbelegung, BLF, Firmwareupdates und
-Sprachpaket-Downloads sind nicht enthalten. Resync, Neustart, Klingeltöne und
-das Telefonbuch stellt TalkOps bereit (siehe unten). Die installierte Telefonsprache
-bleibt erhalten. NTP und die unterstützten Zeitzonen UTC, Mitteleuropa und
+bleiben erhalten. Firmwareupdates und BLF-Besetztlampen sind nicht enthalten.
+Resync, Neustart, Klingeltöne, Kurzwahltasten, hochgeladene Sprachpakete und
+das Telefonbuch stellt TalkOps bereit (siehe unten). NTP und die unterstützten Zeitzonen UTC, Mitteleuropa und
 London verwenden die gemeinsamen Einstellungen.
 
 ### Optionale TFTP-Bereitstellung aktivieren
@@ -252,7 +271,7 @@ und `DAC_READ_SEARCH` und nutzt `no-new-privileges` sowie ein schreibgeschützte
 Dateisystem. Jede Übertragung läuft als UID 10001. Docker muss die echte LAN-Client-IP erhalten.
 Ein Proxy oder NAT, das alle Clientadressen ersetzt, ist damit nicht vereinbar.
 TalkOps exportiert ausschließlich die deklarierte SEP-Konfiguration, `dialplan.xml`
-und bei gewähltem Klingelton `Ringlist-wb.xml` mit den `.rwb`-Klingeltönen
+und bei hochgeladenen Klingeltönen `Ringlist-wb.xml` mit den `.rwb`-Klingeltönen
 in ein privates flüchtiges tmpfs-Volume. Der TFTP-Dienst bindet es
 schreibgeschützt ein. Dateien erhalten Modus 0600, Verzeichnisse Modus 0700.
 Die Exporte werden alle 30 Sekunden erneuert. Doppelte Client-IPs, fehlende
@@ -347,9 +366,22 @@ TalkOps wandelt alle hochgeladenen Klingeltöne in das Cisco-Breitbandformat um
 TFTP-Export enthält `Ringlist-wb.xml` und die `.rwb`-Dateien, der gewählte
 Klingelton steht an erster Stelle. Die Konfigurationsdatei kann keinen eigenen
 Klingelton auswählen. Wähle ihn nach dem nächsten Resync am Telefon unter
-**Einstellungen → Klingelton** aus. Ohne gewählten Klingelton exportiert
-TalkOps keine Klingeltonliste. Pro Telefon werden höchstens 50 Klingeltöne
-und 8 MB exportiert.
+**Einstellungen → Klingelton** aus. Ohne gewählten Klingelton enthält die
+Liste alle Klingeltöne in der Reihenfolge des Hochladens. TalkOps liefert keine
+eigenen Cisco-Klingeltöne mit. Pro Telefon werden höchstens 50 Klingeltöne und
+8 MB exportiert.
+
+**Tasten.** Die Profile 7821, 7841 und 7861 haben die Tastengruppe **line**.
+Taste 1 ist die SIP-Leitung. Tasten ab 2 werden Kurzwahltasten (`featureID`
+21) mit Beschriftung und Nummer. Eine BLF-Taste wird ebenfalls eine Kurzwahl:
+Die Besetztlampe braucht die Präsenz von Cisco Unified CM. Ohne Beschriftung
+zeigt das Telefon die Nummer.
+
+**Sprachpaket pro Telefon.** Der Block **Sprache und Uhrzeit** eines
+Cisco-Enterprise-Telefons hat das Feld **Cisco-Sprachpaket**. *Automatisch*
+verwendet das hochgeladene Paket zur Telefonsprache. Wähle ein Paket, um es zu
+verwenden, zum Beispiel Niederländisch, obwohl TalkOps als Telefonsprache nur
+Deutsch und Englisch anbietet.
 
 **Kontakte.** Die SEP-Datei enthält eine `directoryURL`. Die Taste
 **Verzeichnisse** bzw. **Kontakte** am Telefon zeigt dann das TalkOps-Telefonbuch:
@@ -373,8 +405,19 @@ zum Beispiel `http://192.168.140.30:8080/provisioning`. HTTP ist unverschlüssel
 Telefonbuch und Token sind im LAN sichtbar. Verwende das nur in einem
 vertrauenswürdigen LAN.
 
-**Deutsche Anzeige und Töne** brauchen Cisco-Sprachdateien, die TalkOps nicht
-mitliefert. Sie sind noch nicht verfügbar.
+**Deutsche Anzeige** braucht das Cisco-Paket für die Benutzersprache. TalkOps
+liefert keine Cisco-Dateien mit. Lade `po-locale-de_DE-<Version>.cop.sha512`
+aus deinem Cisco-Download für den CUCM-Locale-Installer herunter und lade es
+unter **Telefone → Cisco-Enterprise-Sprachen** hoch. TalkOps liest nur die
+Telefondateien (`usr/local/cm/tftp/<Sprache>/`) und führt keine Skripte des
+Pakets aus. Ein Cisco-Enterprise-Telefon mit der Gerätesprache Deutsch erhält
+dann einen `userLocale`-Eintrag in seiner SEP-Datei und lädt
+`German_Germany/sp-sip.jar` per TFTP. Starte einen Resync. Das Telefon lädt
+die Sprache und startet seine Oberfläche neu.
+
+Deutsche Rufsignaltöne sind nicht im Paket für die Benutzersprache enthalten.
+Sie brauchen das separate Netzwerk-Locale-Paket. TalkOps unterstützt es noch
+nicht.
 
 ### Vorhandenes Enterprise-Telefon testen
 

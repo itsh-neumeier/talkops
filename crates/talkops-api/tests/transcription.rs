@@ -348,7 +348,7 @@ async fn fake_cuda() -> String {
     format!("http://127.0.0.1:{port}/v1")
 }
 
-/// A CUDA connection (ADR 0053): loopback only, health in the test, and
+/// A CUDA connection (ADR 0054): loopback only, health in the test, and
 /// the model library through `/api/v1/speech-services/{id}`.
 #[sqlx::test(migrator = "talkops_core::db::MIGRATOR")]
 async fn cuda_connection_and_model_library(db: PgPool) {

@@ -188,7 +188,7 @@ services:
     # group_add:
     #   - "998"
 
-  # Optional speech recognition on an NVIDIA GPU in this server (ADR 0053).
+  # Optional speech recognition on an NVIDIA GPU in this server (ADR 0054).
   # Needs an NVIDIA driver 580 or later (CUDA 13) and the NVIDIA Container
   # Toolkit on the host. Enable with COMPOSE_PROFILES=cuda, then add the
   # connection "NVIDIA GPU (this server)" in Settings > Calls > Transcription

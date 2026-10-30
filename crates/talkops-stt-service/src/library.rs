@@ -1,4 +1,4 @@
-//! Format-independent parts of the model library (ADR 0052, ADR 0053):
+//! Format-independent parts of the model library (ADR 0053, ADR 0054):
 //! errors, model ids, license and source statements, staged writes and
 //! usage numbers. Each service owns its model format and checks.
 

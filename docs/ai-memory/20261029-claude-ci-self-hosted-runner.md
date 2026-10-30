@@ -1,0 +1,76 @@
+# Optional self-hosted runner for heavy CI jobs
+
+## Task state
+
+- Task ID: 20261029-claude-ci-self-hosted-runner
+- Date: 2026-10-29
+- Tool: Claude Code
+- Status: Completed
+- Branch: claude/ci-self-hosted-runner (based on claude/ci-amd64-only)
+- Base commit: 45e2b25 (main, 1.8.17 candidate)
+- Related commits or PR: Pending
+
+## Goal
+
+The owner registered a self-hosted runner and asked to use it for faster CI.
+
+## Result
+
+- `ci.yml`: the `rust` and `images` jobs select
+  `[self-hosted, talkops]` when the repository variable `CI_RUNNER` is
+  `talkops` and the run is a push or a pull request from this repository.
+  Otherwise they use `ubuntu-24.04`.
+- The LDAP test step deletes its old directory, because a reused runner keeps
+  it.
+- `docs/release-workflow.md` describes the switch.
+
+## Decisions
+
+- Only the heavy jobs move. E2E, FreeSWITCH and release stay on GitHub-hosted
+  runners until the self-hosted runner proves stable.
+- A repository variable switches the runner, so a powered-off host does not
+  block CI.
+- Fork pull requests never use the self-hosted runner (public repository).
+
+## Runner facts (owner's PC)
+
+- `myoung34/github-runner:ubuntu-noble` in Docker Desktop 4.96.3 (WSL2),
+  i7-12700 (20 threads), 31 GB for the VM, ephemeral, Docker socket mounted,
+  compose file `C:\talkops-runner\docker-compose.yml`.
+- Host networking in Docker Desktop works: a host-network container reaches
+  published ports on 127.0.0.1 (tested).
+- The runner container needs `network_mode: host`. The owner must add it; the
+  assistant was not permitted to change that file.
+
+## Checks
+
+- CI on the PR (GitHub-hosted, variable not set) is the check.
+- Not tested: a run on the self-hosted runner. It needs the variable and the
+  runner change.
+- STE review: repository writing rules applied; full standard unavailable.
+
+## First self-hosted run (2026-10-30)
+
+- Run 41008422510, attempt 2, on main 2fdf037 with `CI_RUNNER=talkops`:
+  the three image builds passed on the runner (server 12 min, media worker
+  9 min, Coral 6 min, serial). The rust job passed fmt, clippy, the Postgres
+  service and the LDAP start, then failed: the runner image has no
+  `postgresql-common`, so `apt.postgresql.org.sh` was missing. The CI step
+  now installs `postgresql-common` first.
+- The web job (GitHub-hosted) failed once in `tests/browser/side-panel.mjs`:
+  the panel still showed the loading state. The same test passed on PR101 and
+  on b7e46ad. Treated as intermittent; watch for repeats.
+- The owner's UniFi IPS blocked SSH from the owner's PC after more than five
+  SSH connections in two minutes (signature 2003068). The owner suppressed
+  the signature for that source IP. Use one SSH connection per batch.
+- Later PR104 runs found two more differences on the runner. The runner keeps
+  `/tmp` between jobs, so `unzip` stopped at a prompt for the old rclone files;
+  the step now uses `unzip -o`. The runner runs jobs as root, and root ignores
+  directory modes, so `read_only_fax_directory_rejects_upload_without_queueing`
+  failed. The test now writes a probe file and skips when the mode is not
+  enforced. GitHub-hosted runners still run the full test.
+
+## Next action
+
+Merge PR100 first, then this PR. Then add `network_mode: host` to the runner,
+set `CI_RUNNER=talkops` and check one CI run.

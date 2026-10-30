@@ -6,6 +6,115 @@ All notable changes to TalkOps. The format follows
 
 ## [Unreleased]
 
+## [1.8.23] – 2026-10-30
+
+### Added
+
+- Phones: the page has the tabs **Phones**, **General**, **Cisco Enterprise**
+  and **Debug / advanced**.
+- Provisioning files (ADR 0052): look at the files that a phone gets, replace a
+  generated file with an edited copy or add files, over HTTP or the Cisco TFTP
+  export. TalkOps stores the files encrypted.
+- Cisco Enterprise SIP phones (7821, 7841, 7861): keys 2 and higher in the key
+  group **line** become speed dials. BLF keys also become speed dials; the
+  busy lamp needs Cisco Unified CM.
+- Cisco Enterprise SIP phones: the field **Cisco language package** in
+  **Language and time** selects an uploaded locale per phone, also a language
+  that TalkOps does not offer as phone language.
+
+### Fixed
+
+- Cisco Enterprise SIP phones: the contacts stayed on "Requesting". The
+  `directoryURL` returned a directory page, but a CP-7861 on 14.2(1) expects a
+  `CiscoIPPhoneMenu` there. The bare URL now returns a menu with the phone book
+  and the search form.
+- Cisco Enterprise SIP phones: without a selected ringtone the TFTP export had
+  no ring list, so the phone offered no uploaded ringtones. The list now has all
+  uploaded ringtones.
+
+### Upgrade notes
+
+- New migration `20261114000001_provisioning_files`. TalkOps applies it at
+  start. No breaking API change.
+
+## [1.8.22] – 2026-10-30
+
+### Fixed
+
+- Cisco Enterprise SIP phones: the uploaded user locale had no effect. The
+  phone requests the locale file in the locale directory
+  (`German_Germany/sp-sip.jar`), and the TFTP rule accepted only the root.
+  The rule now accepts one locale directory level.
+
+### Upgrade notes
+
+- No new migration and no breaking API change. Only `TALKOPS_VERSION` changes.
+
+## [1.8.21] – 2026-10-30
+
+### Added
+
+- Cisco Enterprise SIP phones: upload a Cisco user locale package
+  (`po-locale-xx_YY-….cop.sha512`) under **Phones → Cisco Enterprise
+  languages**. TalkOps extracts only the phone TFTP files and never runs the
+  package scripts. Phones with a matching device language get a `userLocale`
+  entry in the SEP file and load the locale files over TFTP. Network locales
+  (call progress tones) are not supported yet.
+
+### Upgrade notes
+
+- No new migration and no breaking API change. Only `TALKOPS_VERSION` changes.
+
+## [1.8.20] – 2026-10-30
+
+### Fixed
+
+- Cisco Enterprise SIP phones: a **Resync** right after a change delivered the
+  previous SEP file. The TFTP export ran only every 30 seconds. A resync now
+  exports the saved state before it signals the phone. Phone, account, settings
+  and ringtone changes also start an export at once.
+
+### Upgrade notes
+
+- No new migration and no breaking API change. Only `TALKOPS_VERSION` changes.
+
+## [1.8.19] – 2026-10-30
+
+### Fixed
+
+- Cisco Enterprise SIP phones (CP-78x1, firmware 14.2(1)) did not register.
+  The phone showed "Registration in progress" and sent no SIP. The SIP stack of
+  the phone ignores the call manager when the `callManagerGroup` tags have no
+  whitespace between them. The SEP file now puts each of these elements on a
+  separate line. The file content changes, so the phone parses it again on the
+  next download.
+
+### Changed
+
+- CI: fixes for the optional self-hosted runner (`postgresql-common`,
+  `unzip -o`, read-only fax test skips when run as root). CI uses
+  GitHub-hosted runners while the repository variable `CI_RUNNER` is not set.
+
+### Upgrade notes
+
+- No new migration and no breaking API change. Only `TALKOPS_VERSION` changes.
+- Cisco Enterprise phones get a new SEP file automatically and register again.
+
+## [1.8.18] – 2026-10-29
+
+### Fixed
+
+- Cisco Enterprise SIP phones: **Resync** and **Restart** reported "not
+  registered", and last contact, IP address and firmware stayed empty.
+  TalkOps read the user agent from the `show registrations` metadata column,
+  which FreeSWITCH fills with `registration_metadata`, not the SIP User-Agent.
+  TalkOps now reads the user agent from the mod_sofia registration list. The
+  live status shows real user agents, too.
+
+### Upgrade notes
+
+- No new migration and no breaking API change.
+
 ## [1.8.17] – 2026-10-29
 
 ### Added

@@ -12,14 +12,22 @@
       <timeZone>{{ cisco_enterprise_timezone }}</timeZone>
       <ntps><ntp><name>{{ ntp_server_primary }}</name><ntpMode>unicast</ntpMode></ntp></ntps>
     </dateTimeSetting>
-    <callManagerGroup><members><member priority="0"><callManager>
-      <ports>
-        <ethernetPhonePort>2000</ethernetPhonePort>
-        <sipPort>{{ account['1'].sip_port }}</sipPort>
-        <securedSipPort>5061</securedSipPort>
-      </ports>
-      <processNodeName>{{ server_address }}</processNodeName>
-    </callManager></member></members></callManagerGroup>
+    {# Keep one element per line: the 14.2(1) SIP stack ignores a callManager
+       nested without whitespace and then reports no valid CUCM. #}
+    <callManagerGroup>
+      <members>
+        <member priority="0">
+          <callManager>
+            <ports>
+              <ethernetPhonePort>2000</ethernetPhonePort>
+              <sipPort>{{ account['1'].sip_port }}</sipPort>
+              <securedSipPort>5061</securedSipPort>
+            </ports>
+            <processNodeName>{{ server_address }}</processNodeName>
+          </callManager>
+        </member>
+      </members>
+    </callManagerGroup>
   </devicePool>
   <sipProfile>
     <sipProxies><registerWithProxy>true</registerWithProxy></sipProxies>
@@ -30,7 +38,7 @@
     <phoneLabel>{{ device_label }}</phoneLabel>
     <sipLines>
 {% for row in lines %}{% if row.enabled %}
-      <line button="1" lineIndex="1">
+      <line button="{{ loop.index }}" lineIndex="{{ loop.index }}">
         <featureID>9</featureID>
         <featureLabel>{{ row.label }}</featureLabel>
         <proxy>USECALLMANAGER</proxy><port>{{ row.sip_port }}</port>
@@ -40,6 +48,14 @@
         <messagesNumber>{{ voicemail_number }}</messagesNumber>
       </line>
 {% endif %}{% endfor %}
+{# Button 1 is the line. Other keys are speed dials: the busy lamp needs CUCM presence. #}
+{% if keys.line is mapping %}{% for id, key in keys.line|dictsort %}{% if key.device_key_id > 1 and key.device_key_type != "disabled" and key.device_key_value %}
+      <line button="{{ key.device_key_id }}">
+        <featureID>21</featureID>
+        <featureLabel>{{ key.device_key_label or key.device_key_value }}</featureLabel>
+        <speedDialNumber>{{ key.device_key_value }}</speedDialNumber>
+      </line>
+{% endif %}{% endfor %}{% endif %}
     </sipLines>
     <dialTemplate>dialplan.xml</dialTemplate>
   </sipProfile>
@@ -49,6 +65,14 @@
 {% if cisco_directory_url %}  <directoryURL>{{ cisco_directory_url|safe }}</directoryURL>
 {% endif %}  {# TalkOps replaces the stamp with a hash of the rendered file (ADR 0051). #}
   <versionStamp>talkops-content-hash</versionStamp>
-  <deviceSecurityMode>1</deviceSecurityMode>
+{% if cisco_user_locale %}  {# The phone then requests sp-sip.jar from its TFTP export directory. #}
+  <userLocale>
+    <name>{{ cisco_user_locale.name }}</name>
+    <uid>1</uid>
+    <langCode>{{ cisco_user_locale.lang_code }}</langCode>
+    <version>{{ cisco_user_locale.version }}</version>
+    <winCharSet>utf-8</winCharSet>
+  </userLocale>
+{% endif %}  <deviceSecurityMode>1</deviceSecurityMode>
   <transportLayerProtocol>1</transportLayerProtocol>
 </device>

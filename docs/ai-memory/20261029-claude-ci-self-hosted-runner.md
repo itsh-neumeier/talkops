@@ -63,6 +63,12 @@ The owner registered a self-hosted runner and asked to use it for faster CI.
 - The owner's UniFi IPS blocked SSH from the owner's PC after more than five
   SSH connections in two minutes (signature 2003068). The owner suppressed
   the signature for that source IP. Use one SSH connection per batch.
+- Later PR104 runs found two more differences on the runner. The runner keeps
+  `/tmp` between jobs, so `unzip` stopped at a prompt for the old rclone files;
+  the step now uses `unzip -o`. The runner runs jobs as root, and root ignores
+  directory modes, so `read_only_fax_directory_rejects_upload_without_queueing`
+  failed. The test now writes a probe file and skips when the mode is not
+  enforced. GitHub-hosted runners still run the full test.
 
 ## Next action
 

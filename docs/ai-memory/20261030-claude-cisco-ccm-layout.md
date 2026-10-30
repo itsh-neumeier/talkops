@@ -8,7 +8,7 @@
 - Status: In progress
 - Branch: claude/cisco-ccm-layout
 - Base commit: 2fdf037
-- Related commits or PR: Pending
+- Related commits or PR: PR105, release 1.8.19
 
 ## Goal
 

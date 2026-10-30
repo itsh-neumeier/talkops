@@ -6,6 +6,8 @@ All notable changes to TalkOps. The format follows
 
 ## [Unreleased]
 
+## [1.8.19] – 2026-10-30
+
 ### Fixed
 
 - Cisco Enterprise SIP phones (CP-78x1, firmware 14.2(1)) did not register.
@@ -14,6 +16,17 @@ All notable changes to TalkOps. The format follows
   whitespace between them. The SEP file now puts each of these elements on a
   separate line. The file content changes, so the phone parses it again on the
   next download.
+
+### Changed
+
+- CI: fixes for the optional self-hosted runner (`postgresql-common`,
+  `unzip -o`, read-only fax test skips when run as root). CI uses
+  GitHub-hosted runners while the repository variable `CI_RUNNER` is not set.
+
+### Upgrade notes
+
+- No new migration and no breaking API change. Only `TALKOPS_VERSION` changes.
+- Cisco Enterprise phones get a new SEP file automatically and register again.
 
 ## [1.8.18] – 2026-10-29
 

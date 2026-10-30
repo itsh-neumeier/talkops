@@ -278,6 +278,10 @@ fn enterprise_profiles_are_separate_single_identity_tcp_bundles() {
             assert_eq!(value(&doc, name), expected);
         }
         assert!(body.starts_with("<?xml"));
+        // The phone ignores the call manager when these tags touch (device test 2026-10-30).
+        for pair in ["<callManagerGroup><", "<members><", "\"0\"><", "</callManager><"] {
+            assert!(!body.contains(pair), "{pair} needs whitespace");
+        }
         assert!(value(&doc, "versionStamp").starts_with("talkops-"));
         assert!(
             !body.contains("directoryURL"),

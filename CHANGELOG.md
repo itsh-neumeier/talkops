@@ -6,6 +6,15 @@ All notable changes to TalkOps. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Cisco Enterprise SIP phones (CP-78x1, firmware 14.2(1)) did not register.
+  The phone showed "Registration in progress" and sent no SIP. The SIP stack of
+  the phone ignores the call manager when the `callManagerGroup` tags have no
+  whitespace between them. The SEP file now puts each of these elements on a
+  separate line. The file content changes, so the phone parses it again on the
+  next download.
+
 ## [1.8.18] – 2026-10-29
 
 ### Fixed

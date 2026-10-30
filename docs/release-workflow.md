@@ -117,3 +117,17 @@ failures explicitly. Never move an already published tag to a different commit.
 This is a workflow for active chat requests. Background monitoring needs a
 separately requested automation. Neither the files nor the prompt create an
 automation, worktree, branch protection rule or scheduled release on their own.
+
+## Self-hosted CI runner
+
+The `rust` and `images` jobs of `.github/workflows/ci.yml` can use the
+owner's self-hosted runner. Set the repository variable `CI_RUNNER` to
+`talkops` to use it. Remove the variable to go back to GitHub-hosted runners,
+for example when the runner host is off.
+
+- The runner must have the labels `self-hosted` and `talkops`, Docker access
+  and the host network. The jobs reach the Postgres service container and
+  test containers on `127.0.0.1`.
+- Pull requests from forks always use GitHub-hosted runners. Keep the setting
+  "Require approval for all external contributors".
+- E2E, FreeSWITCH and release workflows use GitHub-hosted runners.

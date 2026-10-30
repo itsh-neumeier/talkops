@@ -364,7 +364,8 @@ Cisco download for the CUCM locale installer. Upload it under **Phones →
 Cisco Enterprise languages**. TalkOps reads only the phone files
 (`usr/local/cm/tftp/<locale>/`) and does not run the package scripts. A
 Cisco Enterprise phone with the device language German then gets a
-`userLocale` entry in its SEP file and loads `sp-sip.jar` over TFTP. Do a
+`userLocale` entry in its SEP file and loads `German_Germany/sp-sip.jar` over
+TFTP. Do a
 resync. The phone downloads the locale and restarts its user interface.
 
 The user locale package does not contain German call progress tones. These

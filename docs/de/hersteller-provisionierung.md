@@ -379,9 +379,9 @@ aus deinem Cisco-Download für den CUCM-Locale-Installer herunter und lade es
 unter **Telefone → Cisco-Enterprise-Sprachen** hoch. TalkOps liest nur die
 Telefondateien (`usr/local/cm/tftp/<Sprache>/`) und führt keine Skripte des
 Pakets aus. Ein Cisco-Enterprise-Telefon mit der Gerätesprache Deutsch erhält
-dann einen `userLocale`-Eintrag in seiner SEP-Datei und lädt `sp-sip.jar` per
-TFTP. Starte einen Resync. Das Telefon lädt die Sprache und startet seine
-Oberfläche neu.
+dann einen `userLocale`-Eintrag in seiner SEP-Datei und lädt
+`German_Germany/sp-sip.jar` per TFTP. Starte einen Resync. Das Telefon lädt
+die Sprache und startet seine Oberfläche neu.
 
 Deutsche Rufsignaltöne sind nicht im Paket für die Benutzersprache enthalten.
 Sie brauchen das separate Netzwerk-Locale-Paket. TalkOps unterstützt es noch

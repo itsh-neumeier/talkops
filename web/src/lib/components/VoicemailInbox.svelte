@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { api, type VoicemailMessage } from '#lib/api.ts';
+	import CallParty from '#lib/components/CallParty.svelte';
 	import ErrorBox from '#lib/components/ErrorBox.svelte';
 	import TranscriptView from '#lib/components/TranscriptView.svelte';
 	import { formatDateTime, t } from '#lib/i18n/index.svelte.ts';
@@ -59,10 +60,11 @@
 			<li class="space-y-2 py-3">
 				<div class="flex flex-wrap items-center justify-between gap-2">
 					<div>
-						<span class="font-medium">{m.caller_name || m.caller_number || t('vm.unknown')}</span>
-						{#if m.caller_name && m.caller_number}<span class="font-mono text-sm text-slate-500">
-								{m.caller_number}</span
-							>{/if}
+						{#if m.caller.name || m.caller.number}
+							<CallParty party={m.caller} flag />
+						{:else}
+							<span class="font-medium">{t('vm.unknown')}</span>
+						{/if}
 						{#if m.status === 'new'}<span class="badge badge-ok">{t('vm.new')}</span>{/if}
 						<div class="text-sm text-slate-500">
 							{formatDateTime(m.created_at)} · {duration(m.duration_secs)}

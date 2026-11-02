@@ -126,6 +126,9 @@ minutes); until then the previous prompt plays.
 
 **Voicemail** lists all messages with player, download, "mark as heard" and
 delete. Playing a message marks it as heard and updates the phone's lamp.
+The caller shows with the name from the phone book or the extension list, as
+in the call log. Click the name to open the phone book entry. When more than
+one entry has the number, a button shows all entries.
 
 ## E-mail (SMTP)
 

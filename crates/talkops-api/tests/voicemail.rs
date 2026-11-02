@@ -116,6 +116,22 @@ async fn voicemail_api(db: PgPool) {
         .await;
     assert_eq!(status, StatusCode::OK);
     assert_eq!(list[0]["status"], "new");
+    assert_eq!(list[0]["caller"]["name"], "");
+    assert_eq!(list[0]["caller"]["number"], "+4930123456");
+
+    // The phone book supplies the caller name, as in the call log.
+    let (_, contact) = admin
+        .post(
+            "/api/v1/contacts",
+            json!({"name": "Bäckerei Schmidt", "phone_work": "+49 30 123456"}),
+        )
+        .await;
+    let (_, list) = anna
+        .get(&format!("/api/v1/voicemail/messages?extension_id={ext_id}"))
+        .await;
+    assert_eq!(list[0]["caller"]["name"], "Bäckerei Schmidt");
+    assert_eq!(list[0]["caller"]["contact_id"], contact["id"]);
+    assert_eq!(list[0]["caller_number"], "+4930123456");
     let (_, b) = anna
         .get(&format!("/api/v1/extensions/{ext_id}/voicemail"))
         .await;

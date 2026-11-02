@@ -18,6 +18,7 @@ use utoipa_axum::routes;
 use uuid::Uuid;
 
 use crate::AppState;
+use crate::active_calls::{Directory, Party};
 use crate::auth::AuthUser;
 use crate::error::{ApiError, ApiResult};
 use crate::voicemail::{VmContext, delete_message as remove_message, update_mwi};
@@ -243,16 +244,38 @@ pub struct MessageQuery {
     pub extension_id: Uuid,
 }
 
+/// A voicemail message with its resolved caller.
+#[derive(Serialize, ToSchema)]
+pub struct MessageEntry {
+    #[serde(flatten)]
+    pub message: Message,
+    /// Caller: an extension, or an external number with its phone book name.
+    pub caller: Party,
+}
+
 /// Messages of a box, new ones first.
-#[utoipa::path(get, path = "/api/v1/voicemail/messages", tag = "voicemail", params(MessageQuery), responses((status = 200, body = [Message])))]
+#[utoipa::path(get, path = "/api/v1/voicemail/messages", tag = "voicemail", params(MessageQuery), responses((status = 200, body = [MessageEntry])))]
 pub async fn list_messages(
     State(state): State<AppState>,
     auth: AuthUser,
     Query(q): Query<MessageQuery>,
-) -> ApiResult<Json<Vec<Message>>> {
+) -> ApiResult<Json<Vec<MessageEntry>>> {
     owned_extension(&state, &auth, q.extension_id).await?;
+    let (directory, messages) = tokio::try_join!(Directory::load(&state, auth.tenant), async {
+        Ok(voicemail::list_messages(&state.db, auth.tenant, q.extension_id).await?)
+    })?;
     Ok(Json(
-        voicemail::list_messages(&state.db, auth.tenant, q.extension_id).await?,
+        messages
+            .into_iter()
+            .map(|message| MessageEntry {
+                caller: directory.voicemail_caller(
+                    &message.caller_number,
+                    &message.caller_name,
+                    Some(message.extension_id),
+                ),
+                message,
+            })
+            .collect(),
     ))
 }
 

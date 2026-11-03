@@ -881,6 +881,8 @@ export interface VoicemailMessage {
 	created_at: string;
 	heard_at: string | null;
 	transcript_status: TranscriptStatus;
+	/** Resolved caller: an extension, or a phone book entry for the number. */
+	caller: CallParty;
 }
 
 export type TranscriptionPurpose =

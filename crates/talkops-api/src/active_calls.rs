@@ -436,14 +436,11 @@ impl Directory {
             return JobParties::default();
         }
         let box_owner = j.extension_id;
-        let internal = self.party(caller_number, caller_name, None);
-        let (direction, caller) = if internal.extension_id.is_some() {
-            (Direction::Internal, internal)
+        let caller = self.voicemail_caller(caller_number, caller_name, box_owner);
+        let direction = if caller.extension_id.is_some() {
+            Direction::Internal
         } else {
-            (
-                Direction::Inbound,
-                self.external_party(caller_number, caller_name, box_owner),
-            )
+            Direction::Inbound
         };
         JobParties {
             direction: Some(direction),
@@ -451,6 +448,17 @@ impl Directory {
             called: Some(self.party(destination, "", box_owner)),
             via_number: None,
         }
+    }
+
+    /// The caller of a voicemail message: an extension, or an external
+    /// number with its phone book name. Entries in a phone book of the box
+    /// owner win when several entries have the number.
+    pub fn voicemail_caller(&self, number: &str, name: &str, box_owner: Option<Uuid>) -> Party {
+        let internal = self.party(number, name, None);
+        if internal.extension_id.is_some() {
+            return internal;
+        }
+        self.external_party(number, name, box_owner)
     }
 
     pub fn resolve(&self, call: ActiveCall, meta: Metadata) -> OverviewCall {

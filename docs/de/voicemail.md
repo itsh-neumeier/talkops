@@ -130,7 +130,10 @@ Minuten); bis dahin läuft die bisherige Ansage.
 
 Unter **Voicemail** stehen alle Nachrichten mit Player, Download, „als gehört
 markieren“ und Löschen. Das Abspielen markiert eine Nachricht als gehört und
-aktualisiert die Lampe am Telefon.
+aktualisiert die Lampe am Telefon. Der Anrufer erscheint wie in der Anrufliste
+mit dem Namen aus dem Telefonbuch oder der Nebenstellenliste. Ein Klick auf
+den Namen öffnet den Telefonbucheintrag. Haben mehrere Einträge die Nummer,
+zeigt eine Schaltfläche alle Einträge.
 
 ## E-Mail (SMTP)
 
